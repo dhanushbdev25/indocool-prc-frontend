@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../store/store';
 import { logoutApp } from '../store/reducers/actions';
 import Cookie from '../utils/Cookie';
-import { useLogoutUserMutation } from '../store/api/auth/authApi';
+import { useLogoutUserMutation } from '../store/api/auth/auth.api';
 
 export const useLogout = () => {
 	const dispatch = useAppDispatch();

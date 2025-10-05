@@ -4,7 +4,7 @@ import { useTheme } from '@mui/material/styles';
 import { Box, useMediaQuery } from '@mui/material';
 import Drawer from './Drawer';
 import Cookie from '../../utils/Cookie';
-import { useSessionContextQuery } from '../../store/api/auth/sessionApi';
+import { useSessionContextQuery } from '../../store/api/auth/session.api';
 import BackdropLoader from '../../components/third-party/BackdropLoader';
 import SessionError from '../../pages/general/SessionError';
 import { RoleProvider } from '../../contexts/RoleContext';

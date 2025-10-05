@@ -1,3 +1,4 @@
-import ListCatalyst from './componets/ListCatalyst';
+import ListCatalyst from './componets/list-catalyst';
+import CreateCatalyst from './componets/create-catalyst';
 
-export default ListCatalyst;
+export { ListCatalyst, CreateCatalyst };

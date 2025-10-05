@@ -15,7 +15,7 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 		columns,
 		data: memoData,
 		initialState: {
-			pagination: { pageIndex: 0, pageSize: 15 }
+			pagination: { pageIndex: 0, pageSize: 5 }
 		},
 		enableStickyHeader: true,
 		enablePagination: true,
@@ -31,7 +31,7 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 		},
 		muiTableHeadCellProps: {
 			sx: {
-				backgroundColor: '#e6eefe',
+				// backgroundColor: '#e6eefe',
 				color: '#000',
 				fontWeight: 'bold',
 				borderRight: '1px solid rgba(224, 224, 224, 1)'
@@ -63,13 +63,13 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 	}
 
 	return (
-		<Box sx={{ backgroundColor: '#fff', pt: 2 }}>
+		<Box sx={{ backgroundColor: '#fff', }}>
 			<MaterialReactTable table={table} />
 			<Box
 				sx={{
 					width: '100%',
 					display: 'flex',
-					justifyContent: 'center',
+					justifyContent: 'flex-end',
 					alignItems: 'center',
 					padding: '12px',
 					borderTop: '1px solid #e0e0e0'
@@ -81,7 +81,7 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 					onChange={(_, pageIndex) => table.setPageIndex(visiblePages[pageIndex - 1] - 1)}
 					renderItem={(item) => {
 						if (item.type === 'page') {
-							const realPage = visiblePages[item.page - 1];
+							const realPage = visiblePages[item.page ? item.page - 1 : 0];
 							return <PaginationItem {...item} page={realPage} selected={realPage === currentPage} />;
 						}
 						return <PaginationItem {...item} />;

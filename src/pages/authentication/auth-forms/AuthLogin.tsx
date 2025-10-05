@@ -17,7 +17,7 @@ import * as Yup from 'yup';
 import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
-import { useLoginUserMutation } from '../../../store/api/auth/authApi';
+import { useLoginUserMutation } from '../../../store/api/auth/auth.api';
 import { FaMicrosoft } from 'react-icons/fa6';
 import { useMsal } from '@azure/msal-react';
 import { loginRequest } from '../../../config';
@@ -84,7 +84,7 @@ const AuthLogin = () => {
 				email: response.account?.username || '',
 				password: '',
 				token: response.accessToken
-			} as any).unwrap();
+			} as { email: string; password: string; token: string }).unwrap();
 			navigate('/');
 		} catch (err) {
 			console.error(err);

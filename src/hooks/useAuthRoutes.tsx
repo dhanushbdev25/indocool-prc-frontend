@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import Cookie from '../utils/Cookie';
 import MainLayout from '../layouts/MainLayout';
 import { Screens } from '../routes/screenList';
-import { useSessionContextQuery } from '../store/api/auth/sessionApi';
+import { useSessionContextQuery } from '../store/api/auth/session.api';
 import { LoginRoutes } from '../routes/LoginRoutes';
 import NotFound from '../pages/general/NotFound';
 import { getAllPermissions } from '../store/api/userSessionContextParser';

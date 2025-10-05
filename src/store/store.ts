@@ -5,8 +5,9 @@ import Swal from 'sweetalert2';
 
 // project import
 import appReducer from './reducers';
-import { authApi } from './api/auth/authApi';
-import { sessionApi } from './api/auth/sessionApi';
+import { authApi } from './api/auth/auth.api';
+import { sessionApi } from './api/auth/session.api';
+import { catalystApi } from './api/business/catalyst-master/catalyst.api';
 import { logoutApp } from './reducers/actions';
 
 // ==============================|| REDUX TOOLKIT - MAIN STORE ||============================== //
@@ -37,6 +38,7 @@ export const store = configureStore({
 		getDefaultMiddleware().concat([
 			authApi.middleware,
 			sessionApi.middleware,
+			catalystApi.middleware,
 			rtkQueryErrorLogger
 		])
 });
