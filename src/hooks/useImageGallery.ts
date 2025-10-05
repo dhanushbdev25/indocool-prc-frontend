@@ -1,0 +1,34 @@
+import { useState } from 'react';
+
+export type ImageItem = {
+	id: number | string;
+	file: File | null;
+	image: string;
+};
+
+export function useImageGallery() {
+	const [gallery, setGallery] = useState<ImageItem[]>([]);
+	const [remove, setRemove] = useState<(number | string)[]>([]);
+
+	const handleAddImage = (file: File) => {
+		const newItem: ImageItem = {
+			id: Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000,
+			file,
+			image: URL.createObjectURL(file)
+		};
+		setGallery(prev => [...prev, newItem]);
+	};
+
+	const handleRemoveImage = (id: number | string) => {
+		setGallery(prev => prev.filter(item => item.id !== id));
+		setRemove(prev => [...prev, id]);
+	};
+
+	return {
+		gallery,
+		remove,
+		handleAddImage,
+		handleRemoveImage,
+		setGallery
+	};
+}

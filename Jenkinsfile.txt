@@ -1,0 +1,21 @@
+pipeline {
+    agent any
+    
+    environment {
+        SSH_USER = 'p2p'
+        SSH_HOST = '192.168.6.21'
+        CREDENTIALS_ID = 'p2p'
+    }
+    
+    stages {
+        stage('SSH into Server') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: "${CREDENTIALS_ID}", passwordVariable: 'SSH_PASSWORD', usernameVariable: 'SSH_USER')]) {
+                    sh '''
+                    sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -l $SSH_USER $SSH_HOST 'cd /home/p2p/P2P_PORTAL/Frontend && git pull && npm install && npm run build && cp -r ./dist/* /var/www/html'
+                    '''
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,46 @@
+.green-box {
+  width: 12px;
+  height: 12px;
+  background-color: #138469;
+  border-radius: 40%; /* This makes the element a circle */
+}
+.green-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #14b8a6;
+  border-radius: 40%; /* This makes the element a circle */
+}
+.blue-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #3b82f6;
+  border-radius: 50%; /* This makes the element a circle */
+}
+.orange-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #f59e0b;
+  border-radius: 50%; /* This makes the element a circle */
+}
+.yellow-dot {
+  width: 12px;
+  height: 12px;
+  background-color: #facc15;
+  border-radius: 50%; /* This makes the element a circle */
+}
+
+.pinned-row {
+  position: sticky;
+  top: 0;
+  background-color: #E6E6E6;
+  z-index: 10;
+  font-weight: 700;
+}
+
+.swal-text-left ol {
+  text-align: left;
+}
+
+.custom-swal-zindex {
+	z-index: 9999 !important;
+}

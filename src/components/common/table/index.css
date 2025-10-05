@@ -1,0 +1,17 @@
+/* Customizing the scrollbar */
+::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 8px;
+  flex-shrink: 0;
+  background: #f4f6fa;
+}
+
+::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  width: 10px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 16px;
+  background: #d7e3ff;
+}
