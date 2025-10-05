@@ -28,7 +28,9 @@ function mergeMany<T>(...objects: T[]): T {
 	return objects.reduce((acc, obj) => deepmerge(acc, obj), {} as T);
 }
 
-export default function ComponentsOverrides(theme: any) {
+import { Theme } from '@mui/material/styles';
+
+export default function ComponentsOverrides(theme: Theme) {
 	return mergeMany(
 		Button(theme),
 		// @ts-expect-error TODO: fix when all component overrides are merged

@@ -1,29 +1,26 @@
 import Loadable from '../components/common/Loadable';
 import { lazy } from 'react';
-import DashBoardIcon from '../components/svg/DashBoardIcon';
-
+import PersonAdd from '@mui/icons-material/PersonAdd';
 
 const imports = {
-	Dashboard: Loadable(lazy(() => import('../pages/sample'))),
+	catalystMaster: Loadable(lazy(() => import('../pages/masters/catalyst-master')))
 };
 
-// Screen configurations
+// Screen configurations - mapped to permissions
 export const Screens = {
-	DASHBOARD: {
-		icon: DashBoardIcon,
-		path: 'dashboard',
-		element: imports.Dashboard
-	},
+	LISTCATALYST: {
+		icon: PersonAdd,
+		path: 'listcatalyst',
+		element: imports.catalystMaster
+	}
 } as const;
 
 export const sideBar = {
-	//sections
-	DASHBOARD: {
-		icon: DashBoardIcon,
-		text: 'Dashboard',
-		path: 'dashboard'
-	},
-	
+	LISTCATALYST: {
+		icon: PersonAdd,
+		text: 'Catalyst Master',
+		path: 'listcatalyst'
+	}
 } as const;
 
 export type SectionsType = typeof sideBar;

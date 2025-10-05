@@ -37,12 +37,13 @@ const useBaseDownload = () => {
 			const blob = await response.blob();
 
 			await downloadFile(blob, filePath);
-		} catch (error: any) {
-			if (error.name === 'AbortError') {
+		} catch (error: unknown) {
+			if (error instanceof Error && error.name === 'AbortError') {
+				// Handle abort error silently
 			} else {
 				Swal.fire({
 					title: 'Download Failed',
-					text: error.message ?? "Couldn't download the file.",
+					text: error instanceof Error ? error.message : "Couldn't download the file.",
 					icon: 'error'
 				});
 			}

@@ -9,7 +9,7 @@ import ThemeOption from './theme';
 
 // ==============================|| DEFAULT THEME - PALETTE  ||============================== //
 
-const Palette = (mode: any) => {
+const Palette = (mode: 'light' | 'dark') => {
 	const colors = presetPalettes;
 
 	const greyPrimary = [

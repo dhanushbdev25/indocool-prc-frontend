@@ -1,4 +1,4 @@
-export function dateFormater(date: any, separator: any) {
+export function dateFormater(date: Date | null | undefined, separator: string) {
 	if (date) {
 		let day = date?.getDate();
 		// add +1 to month because getMonth() returns month from 0 to 11

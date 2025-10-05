@@ -1,6 +1,6 @@
 // ==============================|| OVERRIDES - DATAGRID ||============================== //
 
-export default function DataGrid(theme: any) {
+export default function DataGrid() {
 	return {
 		MuiDataGrid: {
 			styleOverrides: {

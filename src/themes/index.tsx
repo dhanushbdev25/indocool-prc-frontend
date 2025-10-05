@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 
 // material-ui
 import { CssBaseline, StyledEngineProvider } from '@mui/material';
-import { createTheme, Theme, ThemeProvider } from '@mui/material/styles';
+import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 // project import
 import Palette from './palette';
@@ -13,12 +13,14 @@ import componentsOverride from './overrides';
 
 // ==============================|| DEFAULT THEME - MAIN  ||============================== //
 
-export default function ThemeCustomization({ children }: any) {
+import { ReactNode } from 'react';
+
+export default function ThemeCustomization({ children }: { children: ReactNode }) {
 	const theme = Palette('light');
 	const themeTypography = Typography(`'Poppins', sans-serif`);
 	const themeCustomShadows = useMemo(() => CustomShadows(theme), [theme]);
 
-	const themeOptions: any = useMemo(
+	const themeOptions = useMemo(
 		() => ({
 			breakpoints: {
 				values: {

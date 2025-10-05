@@ -12,7 +12,7 @@ interface TransitionsProps {
 // ==============================|| TRANSITIONS ||============================== //
 
 const Transitions = forwardRef<HTMLDivElement, TransitionsProps>(
-	({ children, position = 'top-left', type = 'grow', ...others }, ref) => {
+	({ children, type = 'grow', ...others }, ref) => {
 		const positionSX = {
 			transformOrigin: '0 0 0'
 		};

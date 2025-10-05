@@ -1,12 +1,12 @@
 import Swal from 'sweetalert2';
 
-export const displayError = (error: any) => {
+export const displayError = (error: unknown) => {
 	if (error) {
 		if ('data' in error) {
 			Swal.fire({
 				icon: 'error',
 				title: 'Error',
-				text: (error.data as any)?.message || (error.data as any)?.msg
+				text: (error as { data?: { message?: string; msg?: string } })?.data?.message || (error as { data?: { message?: string; msg?: string } })?.data?.msg
 			});
 		} else {
 			Swal.fire({
@@ -118,8 +118,8 @@ export function truncateString(text: string, maxLength: number) {
 export function extractErrorMessage(err: unknown): string {
 	if (err instanceof Error) return err.message;
 
-	if (typeof err === 'object' && err !== null && 'data' in err && typeof (err as any).data?.message === 'string')
-		return (err as any).data.message;
+	if (typeof err === 'object' && err !== null && 'data' in err && typeof (err as { data?: { message?: string } }).data?.message === 'string')
+		return (err as { data: { message: string } }).data.message;
 
 	return 'Something went wrong';
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { StepIconProps } from '@mui/material/StepIcon';
 import { Code } from '@mui/icons-material'; // </> icon
 
-const CustomStepIcon: React.FC<StepIconProps> = ({ active, completed, icon }) => {
+const CustomStepIcon: React.FC<StepIconProps> = ({ active, completed }) => {
 	return (
 		<div
 			style={{

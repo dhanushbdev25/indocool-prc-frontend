@@ -7,7 +7,7 @@ export default defineConfig({
 	plugins: [
 		react(),
 		EnvironmentPlugin({
-			APP_NAME: 'Digitalisation',
+			VITE_APP_NAME: 'PRC Management Portal',
 			API_BASE_URL: '//localhost:8000/web/',
 			REDIRECT_URI: 'http://localhost:5173/auth/login',
 			AZURE_CLIENT_ID: '6e3a5cb0-04eb-46f2-a413-36e9a623cfac',

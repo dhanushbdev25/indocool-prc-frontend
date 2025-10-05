@@ -2,8 +2,17 @@
 
 import { darken, lighten } from '@mui/material';
 
-const Theme = (colors: any) => {
-	const { gold, cyan, green, grey, red, purple, yellow } = colors;
+interface ColorPalette {
+	gold: string[];
+	cyan: string[];
+	green: string[];
+	grey: string[];
+	red: string[];
+	yellow: string[];
+}
+
+const Theme = (colors: ColorPalette) => {
+	const { gold, cyan, green, grey, red, yellow } = colors;
 	const greyColors = {
 		0: grey[0],
 		50: grey[1],
@@ -49,7 +58,7 @@ const Theme = (colors: any) => {
 	const secondaryBaseColor = '#042E70';
 
 	// Utility functions to generate shades
-	const generateShades = (color: any) => ({
+	const generateShades = (color: string) => ({
 		lighter: lighten(color, 0.85),
 		100: lighten(color, 0.7),
 		200: lighten(color, 0.5),

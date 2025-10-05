@@ -7,8 +7,11 @@ import Cookie from '../../utils/Cookie';
 import { useSessionContextQuery } from '../../store/api/auth/sessionApi';
 import BackdropLoader from '../../components/third-party/BackdropLoader';
 import SessionError from '../../pages/general/SessionError';
+import { RoleProvider } from '../../contexts/RoleContext';
+import { useRole } from '../../contexts/useRole';
+import ModernTopBar from '../../components/common/TopBar/ModernTopBar';
 
-const MainLayout: any = () => {
+const MainLayout: React.FC = () => {
 	const theme = useTheme();
 	const matchDownLG = useMediaQuery(theme.breakpoints.down('lg'));
 	const [open, setOpen] = useState(true);
@@ -26,32 +29,70 @@ const MainLayout: any = () => {
 	const handleDrawerToggle = () => {
 		setOpen(!open);
 	};
+
+	return (
+		<RoleProvider sessionData={data}>
+			<MainLayoutContent 
+				open={open} 
+				handleDrawerToggle={handleDrawerToggle} 
+				data={data}
+			/>
+		</RoleProvider>
+	);
+};
+
+const MainLayoutContent: React.FC<{
+	open: boolean;
+	handleDrawerToggle: () => void;
+	data: unknown;
+}> = ({ open, handleDrawerToggle, data }) => {
+	const { getCurrentPermissions } = useRole();
+	const permissions = getCurrentPermissions();
+
 	return (
 		<Box
 			sx={{
 				display: 'flex',
 				flexDirection: 'column',
 				height: '100vh',
-				backgroundColor: '#F0F0F0 !important'
+				backgroundColor: '#fafafa'
 			}}
 		>
-			<Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-				<Drawer open={open} handleDrawerToggle={handleDrawerToggle} permissions={data.permissions} />
+			{/* Modern Top Bar */}
+			<ModernTopBar onMenuToggle={handleDrawerToggle} drawerOpen={open} />
+			
+			<Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden', pt: '64px' }}>
+				<Drawer open={open} handleDrawerToggle={handleDrawerToggle} permissions={permissions} />
 				<Box
 					component="main"
 					sx={{
-						width: '100%',
-						height: '100vh',
+						flexGrow: 1,
+						height: 'calc(100vh - 64px)',
 						overflow: 'hidden',
 						display: 'flex',
-						flexDirection: 'column'
+						flexDirection: 'column',
+						backgroundColor: '#fafafa',
+						transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
 					}}
 				>
 					<Box
 						sx={{
 							flexGrow: 1,
-							overflow: 'auto'
-							// padding: '1%'
+							overflow: 'auto',
+							p: { xs: 2, sm: 3 },
+							'&::-webkit-scrollbar': {
+								width: '6px'
+							},
+							'&::-webkit-scrollbar-track': {
+								backgroundColor: 'transparent'
+							},
+							'&::-webkit-scrollbar-thumb': {
+								backgroundColor: 'rgba(0, 0, 0, 0.2)',
+								borderRadius: '3px',
+								'&:hover': {
+									backgroundColor: 'rgba(0, 0, 0, 0.3)'
+								}
+							}
 						}}
 					>
 						<Outlet context={data} />

@@ -1,19 +1,20 @@
 import React from 'react';
-import { Button as MUIButton } from '@mui/material';
+import { Button as MUIButton, ButtonProps as MUIButtonProps } from '@mui/material';
+
 export type ButtonPropsType = {
 	label: string;
 	name?: string;
 	disableElevation?: boolean;
 	size?: 'small' | 'medium' | 'large';
-	onClick?: any;
-	color?: any;
+	onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+	color?: MUIButtonProps['color'];
 	variant?: 'text' | 'outlined' | 'contained';
 	disabled?: boolean;
 	type?: 'button' | 'submit' | 'reset';
 	fullWidth?: boolean;
 	style?: React.CSSProperties;
-	endIcon?: any;
-	startIcon?: any;
+	endIcon?: React.ReactNode;
+	startIcon?: React.ReactNode;
 };
 
 const Button: React.FC<ButtonPropsType> = ({

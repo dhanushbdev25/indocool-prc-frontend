@@ -5,18 +5,8 @@ import { Screens } from '../routes/screenList';
 import { useSessionContextQuery } from '../store/api/auth/sessionApi';
 import { LoginRoutes } from '../routes/LoginRoutes';
 import NotFound from '../pages/general/NotFound';
-import { Loading } from '../components/Loading';
-import SessionError from '../pages/general/SessionError';
-
-const LoadingRoutes = {
-	path: '*',
-	element: <Loading name="session" />
-};
-
-const ErrorRoutes = (error: string) => ({
-	path: '*',
-	element: <SessionError errMsg={error} />
-});
+import { getAllPermissions } from '../store/api/userSessionContextParser';
+import { createLoadingRoutes, createErrorRoutes } from './useAuthRoutes.constants';
 
 export function useAuthRoutes() {
 	const token = Cookie.getToken();
@@ -25,11 +15,12 @@ export function useAuthRoutes() {
 
 	if (!token) return [LoginRoutes];
 
-	if (isLoading || !data) return [LoadingRoutes];
+	if (isLoading || !data) return [createLoadingRoutes()];
 
-	if (isError || !data) return [ErrorRoutes(errorMessage ?? 'unknown Error')];
+	if (isError || !data) return [createErrorRoutes(errorMessage ?? 'unknown Error')];
 
-	const { permissions = [] } = data;
+	// Use static permissions for initial route setup
+	const permissions = getAllPermissions(data);
 
 	const dynamicRoutes = permissions
 		.map(permission => {

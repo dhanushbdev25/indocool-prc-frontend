@@ -4,7 +4,9 @@ import { useLocation } from 'react-router-dom';
 
 // ==============================|| NAVIGATION - SCROLL TO TOP ||============================== //
 
-const ScrollTop = ({ children }: any) => {
+import { ReactNode } from 'react';
+
+const ScrollTop = ({ children }: { children: ReactNode }) => {
 	const location = useLocation();
 	const { pathname } = location;
 

@@ -1,4 +1,7 @@
-export default function ScrollBar(theme: any) {
+
+// ==============================|| OVERRIDES - SCROLLBAR ||============================== //
+
+export default function ScrollBar() {
 	return {
 		MuiCssBaseline: {
 			styleOverrides: {

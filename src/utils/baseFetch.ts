@@ -1,4 +1,4 @@
-async function baseFetch(endpoint: string, controller: AbortController, token: any) {
+async function baseFetch(endpoint: string, controller: AbortController, token: string) {
 	const response = await fetch(`${process.env.API_BASE_URL}${endpoint}`, {
 		signal: controller.signal,
 		headers: {

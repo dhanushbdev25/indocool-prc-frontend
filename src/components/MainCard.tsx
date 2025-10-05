@@ -25,7 +25,7 @@ interface MainCardProps {
 	sx?: React.CSSProperties;
 	title?: string | ReactNode;
 	codeHighlight?: boolean;
-	[key: string]: any;
+	[key: string]: unknown;
 }
 
 const MainCard = forwardRef<HTMLDivElement, MainCardProps>(
@@ -39,10 +39,8 @@ const MainCard = forwardRef<HTMLDivElement, MainCardProps>(
 			darkTitle,
 			elevation,
 			secondary,
-			shadow,
 			sx = {},
 			title,
-			codeHighlight,
 			...others
 		},
 		ref

@@ -1,10 +1,10 @@
-import { MaterialReactTable, useMaterialReactTable } from 'material-react-table';
+import { MaterialReactTable, useMaterialReactTable, MRT_ColumnDef } from 'material-react-table';
 import { Box, Pagination, PaginationItem } from '@mui/material';
 import { useMemo } from 'react';
 
 interface TableProps<T> {
 	data: T[];
-	tableColumns: any[];
+	tableColumns: MRT_ColumnDef<T>[];
 }
 
 export default function TableComponent<T extends object>({ data, tableColumns }: TableProps<T>) {
@@ -57,7 +57,7 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 		startPage = Math.max(endPage - 4, 1);
 	}
 
-	const visiblePages: any = [];
+	const visiblePages: number[] = [];
 	for (let i = startPage; i <= endPage; i++) {
 		visiblePages.push(i);
 	}
@@ -79,7 +79,7 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 					count={visiblePages.length}
 					page={visiblePages.indexOf(currentPage) + 1}
 					onChange={(_, pageIndex) => table.setPageIndex(visiblePages[pageIndex - 1] - 1)}
-					renderItem={(item: any) => {
+					renderItem={(item) => {
 						if (item.type === 'page') {
 							const realPage = visiblePages[item.page - 1];
 							return <PaginationItem {...item} page={realPage} selected={realPage === currentPage} />;

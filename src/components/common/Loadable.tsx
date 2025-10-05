@@ -6,7 +6,9 @@ import { ErrorBoundary } from './ErrorBoundary';
 
 // ==============================|| LOADABLE - LAZY LOADING ||============================== //
 
-const Loadable = (Component: any) => (props: any) => (
+import { ComponentType } from 'react';
+
+const Loadable = (Component: ComponentType) => (props: Record<string, unknown>) => (
 	<ErrorBoundary>
 		<Suspense fallback={<Loader />}>
 			<Component {...props} />

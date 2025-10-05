@@ -8,15 +8,12 @@ export const authApi = createApi({
 	reducerPath: 'authApi',
 	baseQuery: rawBaseQuery,
 	endpoints: builder => ({
-		loginUser: builder.mutation<LoginRes, any>({
+		loginUser: builder.mutation<LoginRes, { email: string; password: string }>({
 			query(data) {
 				return {
 					url: 'auth/login',
 					method: 'post',
-					body: data,
-					headers: {
-						Authorization: `Bearer ${data.token}`
-					}
+					body: data
 				};
 			}
 		}),

@@ -1,14 +1,9 @@
 import { styled, Theme, CSSObject } from '@mui/material/styles';
 import MuiDrawer from '@mui/material/Drawer';
 import List from '@mui/material/List';
-import IconButton from '@mui/material/IconButton';
-import { Box, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
-import DrawerHeader from './DrawerHeader';
+import { Box } from '@mui/material';
 import { sideBar } from '../../../routes/screenList';
 import NavItem from './NavItem';
-import MenuIcon from '../../../components/svg/MenuIcon';
-import { useLogout } from '../../../hooks/useLogOut';
-import LogoutIcon from '@mui/icons-material/Logout';
 
 const drawerWidth = 240;
 
@@ -33,28 +28,23 @@ const closedMixin = (theme: Theme): CSSObject => ({
 	}
 });
 
-const Header = styled('div')(({ theme }) => ({
-	display: 'flex',
-	alignItems: 'center',
-	justifyContent: 'flex-end',
-	padding: theme.spacing(0, 1),
-	// necessary for content to be below app bar
-	...theme.mixins.toolbar
-}));
 
 const Drawer = styled(MuiDrawer, { shouldForwardProp: prop => prop !== 'open' })(({ theme, open }) => ({
 	width: drawerWidth,
 	flexShrink: 0,
 	whiteSpace: 'nowrap',
 	boxSizing: 'border-box',
-	...(open && {
-		...openedMixin(theme),
-		'& .MuiDrawer-paper': openedMixin(theme)
-	}),
-	...(!open && {
-		...closedMixin(theme),
-		'& .MuiDrawer-paper': closedMixin(theme)
-	})
+	'& .MuiDrawer-paper': {
+		borderRight: 'none',
+		boxShadow: '0 0 20px rgba(0, 0, 0, 0.1)',
+		backdropFilter: 'blur(20px)',
+		...(open && {
+			...openedMixin(theme)
+		}),
+		...(!open && {
+			...closedMixin(theme)
+		})
+	}
 }));
 
 interface DrawerProps {
@@ -62,8 +52,7 @@ interface DrawerProps {
 	handleDrawerToggle: () => void;
 	permissions: string[];
 }
-export default function DrawerComp({ open, handleDrawerToggle, permissions }: Readonly<DrawerProps>) {
-	const logout = useLogout();
+export default function DrawerComp({ open, permissions }: Readonly<DrawerProps>) {
 	const menuItems = permissions
 		.map(permission => {
 			const key = permission.toUpperCase() as keyof typeof sideBar;
@@ -79,36 +68,22 @@ export default function DrawerComp({ open, handleDrawerToggle, permissions }: Re
 				open={open}
 				PaperProps={{
 					sx: {
-						borderRadius: 0,
-						backgroundColor: '#012B64',
-						color: '#fff',
+						backgroundColor: '#ffffff',
+						color: '#1e293b',
 						display: 'flex',
-						flexDirection: 'column'
+						flexDirection: 'column',
+						borderRight: '1px solid rgba(226, 232, 240, 0.8)',
+						backdropFilter: 'blur(20px)',
+						boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.1)'
 					}
 				}}
 			>
-				<Header>
-					<DrawerHeader open={open} />
-					<IconButton onClick={handleDrawerToggle} sx={open ? {} : { position: 'relative', left: -10 }}>
-						<MenuIcon fill="white" />
-					</IconButton>
-				</Header>
-				<List>
+				<List sx={{ px: 1, py: 1, mt: 8 }}>
 					{menuItems.map(item => (
-						<List key={item.path} sx={{ mb: 1.5, py: 0, zIndex: 0 }}>
+						<List key={item.path} sx={{ mb: 0, py: 0, zIndex: 0 }}>
 							<NavItem key={item.path} text={item.text} path={item.path} icon={item.icon} open={open} />
 						</List>
 					))}
-				</List>
-
-				<List sx={{ mt: 'auto', ml: '15px' }}>
-					<ListItemButton onClick={logout}>
-						<ListItemIcon sx={{ position: 'relative', left: -10 }}>
-							<LogoutIcon sx={{ color: 'white' }} />
-						</ListItemIcon>
-
-						{open && <ListItemText primary="Logout" />}
-					</ListItemButton>
 				</List>
 			</Drawer>
 		</Box>
