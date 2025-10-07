@@ -2,7 +2,7 @@ import { styled, Theme, CSSObject } from '@mui/material/styles';
 import MuiDrawer from '@mui/material/Drawer';
 import List from '@mui/material/List';
 import { Box } from '@mui/material';
-import { sideBar } from '../../../routes/screenList';
+import { getSidebarScreens } from '../../../routes/screenHelpers';
 import NavItem from './NavItem';
 
 const drawerWidth = 240;
@@ -53,14 +53,7 @@ interface DrawerProps {
 	permissions: string[];
 }
 export default function DrawerComp({ open, permissions }: Readonly<DrawerProps>) {
-	const menuItems = permissions
-		.map(permission => {
-			const key = permission.toUpperCase() as keyof typeof sideBar;
-			const element = sideBar[key];
-			if (!element) return null;
-			return element;
-		})
-		.filter(x => x !== null);
+	const menuItems = getSidebarScreens(permissions);
 	return (
 		<Box sx={{ display: 'flex' }}>
 			<Drawer

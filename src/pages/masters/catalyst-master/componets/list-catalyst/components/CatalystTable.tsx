@@ -10,7 +10,7 @@ import {
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
-import { type Catalyst } from '../../../../../../store/api/business/catalyst-master/catalyst.api';
+import { type Catalyst } from '../../../../../../store/api/business/catalyst-master/catalyst.validators';
 
 // Use the Zod-validated type from the API
 export type CatalystData = Catalyst;

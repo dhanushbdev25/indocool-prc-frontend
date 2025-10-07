@@ -1,7 +1,7 @@
 import { Navigate } from 'react-router-dom';
 import Cookie from '../utils/Cookie';
 import MainLayout from '../layouts/MainLayout';
-import { Screens } from '../routes/screenList';
+import { getOrderedScreens, getInitialScreen } from '../routes/screenHelpers';
 import { useSessionContextQuery } from '../store/api/auth/session.api';
 import { LoginRoutes } from '../routes/LoginRoutes';
 import NotFound from '../pages/general/NotFound';
@@ -21,28 +21,19 @@ export function useAuthRoutes() {
 
 	// Use static permissions for initial route setup
 	const permissions = getAllPermissions(data);
+	const orderedScreens = getOrderedScreens(permissions);
+	const initialScreen = getInitialScreen(permissions);
 
-	const dynamicRoutes = permissions
-		.map(permission => {
-			const key = permission.toUpperCase() as keyof typeof Screens;
-			const ScreenComponent = Screens[key]?.element;
-			const path = Screens[key]?.path;
-
-			const moduleRoute = ScreenComponent
-				? {
-						path,
-						element: <ScreenComponent />
-					}
-				: null;
-
-			return moduleRoute;
-		})
-		.filter(x => x !== null);
+	// Create dynamic routes based on ordered screens
+	const dynamicRoutes = orderedScreens.map(screen => ({
+		path: screen.path,
+		element: <screen.element />
+	}));
 
 	const finalRoutes = [
 		{
 			path: '/',
-			element: <Navigate to={dynamicRoutes[0]?.path} replace />
+			element: <Navigate to={initialScreen?.path || '/not-found'} replace />
 		},
 		...dynamicRoutes,
 		{ path: '*', element: <NotFound /> } //wildcard

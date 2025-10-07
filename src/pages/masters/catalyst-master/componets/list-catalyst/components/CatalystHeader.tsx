@@ -6,7 +6,7 @@ const CatalystHeader = () => {
     const navigate = useNavigate();
 
     const handleAddChart = () => {
-        navigate('/createcatalyst');
+        navigate('/catalyst-master/createcatalyst');
     };
 
     return (

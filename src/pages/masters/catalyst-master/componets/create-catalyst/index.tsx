@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, CircularProgress } from '@mui/material';
+import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
 import { ArrowBack, Save, Cancel } from '@mui/icons-material';
+import Swal from 'sweetalert2';
 import CatalystBasicInfo from './components/CatalystBasicInfo';
 import CatalystConfiguration from './components/CatalystConfiguration';
 import { catalystFormSchema, defaultCatalystFormData } from './schemas';
 import { CatalystFormData } from './schemas';
+import { useFetchCatalystByIdQuery, useCreateCatalystMutation, useUpdateCatalystMutation } from '../../../../../store/api/business/catalyst-master/catalyst.api';
 
 const steps = ['Basic Information', 'Configuration Settings'];
 
@@ -17,8 +19,21 @@ const CreateCatalyst = () => {
 	const isEditMode = Boolean(id);
 
 	const [activeStep, setActiveStep] = useState(0);
-	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+
+	// Fetch catalyst data for edit mode
+	const { 
+		data: catalystData, 
+		isLoading: isFetching, 
+		isSuccess: isFetchSuccess 
+	} = useFetchCatalystByIdQuery(
+		{ id: Number(id) }, 
+		{ skip: !isEditMode || !id }
+	);
+
+	// API mutations
+	const [createCatalyst, { isLoading: isCreating }] = useCreateCatalystMutation();
+	const [updateCatalyst, { isLoading: isUpdating }] = useUpdateCatalystMutation();
 
 	// Initialize React Hook Form
 	const methods = useForm<CatalystFormData>({
@@ -37,77 +52,23 @@ const CreateCatalyst = () => {
 		}
 	}, [errors]);
 
-	
-
-	const loadCatalystData = useCallback(async (catalystId: string) => {
-		setLoading(true);
-		try {
-			// In a real app, this would be an API call
-			// For now, we'll use mock data based on the sample data from ListCatalyst
-			const mockData: CatalystFormData = {
-				id: parseInt(catalystId),
-				chartId: 'CAT-CHT-001',
-				chartSupplier: 'ABC Chemicals Ltd.',
-				notes: 'Used for standard resin curing at room temperature.',
-				mekpDensity: '1.12',
-				isActive: true,
-				catalystConfiguration: [
-					{
-						id: 7,
-						catalystId: parseInt(catalystId),
-						chartId: 'CAT-CHT-001',
-						minTemperature: '20',
-						maxTemperature: '35',
-						minHumidity: '40',
-						maxHumidity: '65',
-						minGelcoat: '1.5',
-						maxGelcoat: '2.5',
-						gelcoatLabel: 'Standard Gelcoat Mix',
-						minResinDosage: '0.8',
-						maxResinDosage: '1.2',
-						resinLabel: 'General Purpose Resin',
-						blockCatalystMixing: false,
-						requestSupervisorApproval: false,
-						createdAt: '2025-10-05T14:20:47.048Z',
-						updatedAt: '2025-10-05T14:20:47.048Z'
-					},
-					{
-						id: 8,
-						catalystId: parseInt(catalystId),
-						chartId: 'CAT-CHT-001',
-						minTemperature: '10',
-						maxTemperature: '25',
-						minHumidity: '30',
-						maxHumidity: '55',
-						minGelcoat: '1',
-						maxGelcoat: '1.8',
-						gelcoatLabel: 'Cold Weather Mix',
-						minResinDosage: '0.6',
-						maxResinDosage: '1',
-						resinLabel: 'Low Temp Resin',
-						blockCatalystMixing: true,
-						requestSupervisorApproval: true,
-						createdAt: '2025-10-05T14:20:47.048Z',
-						updatedAt: '2025-10-05T14:20:47.048Z'
-					}
-				],
-				createdAt: '2025-10-05T13:28:27.105Z',
-				updatedAt: '2025-10-05T14:20:46.233Z'
-			};
-			reset(mockData);
-		} catch (err) {
-			setError('Failed to load catalyst data');
-		} finally {
-			setLoading(false);
-		}
-	}, [reset]);
-
-	// Load data for edit mode
+	// Load data for edit mode when API data is available
 	useEffect(() => {
-		if (isEditMode && id) {
-			loadCatalystData(id);
+		if (isEditMode && isFetchSuccess && catalystData) {
+			const formData: CatalystFormData = {
+				id: catalystData.detail.catalyst.id,
+				chartId: catalystData.detail.catalyst.chartId,
+				chartSupplier: catalystData.detail.catalyst.chartSupplier,
+				notes: catalystData.detail.catalyst.notes || '',
+				mekpDensity: catalystData.detail.catalyst.mekpDensity,
+				isActive: catalystData.detail.catalyst.isActive,
+				catalystConfiguration: catalystData.detail.catalystConfiguration,
+				createdAt: catalystData.detail.catalyst.createdAt,
+				updatedAt: catalystData.detail.catalyst.updatedAt
+			};
+			reset(formData);
 		}
-	}, [isEditMode, id, loadCatalystData]);
+	}, [isEditMode, isFetchSuccess, catalystData, reset]);
 
 	const handleNext = async () => {
 		// Define fields to validate for each step
@@ -147,7 +108,6 @@ const CreateCatalyst = () => {
 	};
 
 	const onSubmit = async (data: CatalystFormData) => {
-		setLoading(true);
 		setError(null);
 
 		try {
@@ -159,23 +119,74 @@ const CreateCatalyst = () => {
 				return;
 			}
 
-			// In a real app, this would be an API call
-			console.log('Saving catalyst data:', data);
+			// Transform form data to API request format
+			const apiData = {
+				catalyst: {
+					status: data.isActive ? 'ACTIVE' : 'INACTIVE',
+					chartId: data.chartId,
+					chartSupplier: data.chartSupplier,
+					notes: data.notes || '',
+					mekpDensity: Number(data.mekpDensity),
+					isActive: data.isActive ?? true
+				},
+				catalystConfiguration: (data.catalystConfiguration || []).map(config => ({
+					minTemperature: Number(config.minTemperature),
+					maxTemperature: Number(config.maxTemperature),
+					minHumidity: Number(config.minHumidity),
+					maxHumidity: Number(config.maxHumidity),
+					minGelcoat: Number(config.minGelcoat),
+					maxGelcoat: Number(config.maxGelcoat),
+					gelcoatLabel: config.gelcoatLabel,
+					minResinDosage: Number(config.minResinDosage),
+					maxResinDosage: Number(config.maxResinDosage),
+					resinLabel: config.resinLabel,
+					blockCatalystMixing: config.blockCatalystMixing ?? false,
+					requestSupervisorApproval: config.requestSupervisorApproval ?? false
+				}))
+			};
 
-			// Simulate API call
-			await new Promise(resolve => setTimeout(resolve, 1000));
+			console.log('Saving catalyst data:', apiData);
 
-			// Navigate back to list
-			navigate('/listcatalyst');
-		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to save catalyst');
-		} finally {
-			setLoading(false);
+			if (isEditMode && data.id) {
+				// Update existing catalyst
+				await updateCatalyst({ id: data.id, ...apiData }).unwrap();
+				
+				// Show success message
+				Swal.fire({
+					icon: 'success',
+					title: 'Success!',
+					text: 'Catalyst chart updated successfully',
+					timer: 2000,
+					showConfirmButton: false
+				});
+			} else {
+				// Create new catalyst
+				await createCatalyst(apiData).unwrap();
+				
+				// Show success message
+				Swal.fire({
+					icon: 'success',
+					title: 'Success!',
+					text: 'Catalyst chart created successfully',
+					timer: 2000,
+					showConfirmButton: false
+				});
+			}
+
+			// Navigate back to list on success
+			navigate('/catalyst-master');
+		} catch (err: any) {
+			console.error('API Error:', err);
+			setError(
+				err?.data?.message || 
+				err?.message || 
+				`Failed to ${isEditMode ? 'update' : 'create'} catalyst`
+			);
 		}
 	};
 
 	const handleCancel = () => {
-		navigate('/listcatalyst');
+		navigate('/catalyst-master');
 	};
 
 	const renderStepContent = (step: number) => {
@@ -194,10 +205,36 @@ const CreateCatalyst = () => {
 		}
 	};
 
-	if (loading && isEditMode) {
+	// Show skeleton loading state when fetching data in edit mode
+	if (isEditMode && isFetching) {
 		return (
-			<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
-				<CircularProgress />
+			<Box sx={{ minHeight: '100vh' }}>
+				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+					{/* Header skeleton */}
+					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+						<Skeleton variant="rectangular" width={80} height={36} sx={{ mr: 2, borderRadius: 1 }} />
+						<Skeleton variant="text" width={300} height={40} />
+					</Box>
+
+					{/* Stepper skeleton */}
+					<Box sx={{ mb: 4 }}>
+						<Skeleton variant="rectangular" width="100%" height={60} sx={{ borderRadius: 1 }} />
+					</Box>
+
+					{/* Form content skeleton */}
+					<Box sx={{ mb: 4 }}>
+						<Skeleton variant="rectangular" width="100%" height={400} sx={{ borderRadius: 1 }} />
+					</Box>
+
+					{/* Navigation buttons skeleton */}
+					<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
+						<Skeleton variant="rectangular" width={80} height={36} sx={{ borderRadius: 1 }} />
+						<Box sx={{ display: 'flex', gap: 2 }}>
+							<Skeleton variant="rectangular" width={100} height={36} sx={{ borderRadius: 1 }} />
+							<Skeleton variant="rectangular" width={120} height={36} sx={{ borderRadius: 1 }} />
+						</Box>
+					</Box>
+				</Paper>
 			</Box>
 		);
 	}
@@ -253,14 +290,14 @@ const CreateCatalyst = () => {
 								variant="contained"
 								startIcon={<Save />}
 								onClick={handleSubmit(onSubmit)}
-								disabled={loading}
+								disabled={isCreating || isUpdating}
 								sx={{
 									textTransform: 'none',
 									backgroundColor: '#1976d2',
 									'&:hover': { backgroundColor: '#1565c0' }
 								}}
 							>
-								{loading ? 'Saving...' : isEditMode ? 'Update Chart' : 'Create Chart'}
+								{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Chart' : 'Create Chart'}
 							</Button>
 						) : (
 							<Button
