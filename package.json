@@ -71,14 +71,14 @@
     "vite": "^7.1.9"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
+    "src/**/*.{ts,tsx}": [
+      "eslint --fix --max-warnings 0",
       "prettier --write"
     ],
-    "*.{js,jsx,json,md,html,css,scss}": [
+    "src/**/*.{js,jsx}": [
       "prettier --write"
     ],
-    "package.json": [
+    "src/**/*.{css,scss}": [
       "prettier --write"
     ]
   }
