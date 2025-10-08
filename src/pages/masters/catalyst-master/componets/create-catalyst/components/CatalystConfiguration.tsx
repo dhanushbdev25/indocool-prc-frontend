@@ -183,7 +183,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											required
 											placeholder="e.g., 20"
 											error={!!fieldErrors?.minTemperature}
-											helperText={fieldErrors?.minTemperature?.message}
+											helperText={(fieldErrors?.minTemperature as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -202,7 +202,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											required
 											placeholder="e.g., 35"
 											error={!!fieldErrors?.maxTemperature}
-											helperText={fieldErrors?.maxTemperature?.message}
+											helperText={(fieldErrors?.maxTemperature as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -228,7 +228,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											required
 											placeholder="e.g., 40"
 											error={!!fieldErrors?.minHumidity}
-											helperText={fieldErrors?.minHumidity?.message}
+											helperText={(fieldErrors?.minHumidity as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -247,7 +247,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											required
 											placeholder="e.g., 65"
 											error={!!fieldErrors?.maxHumidity}
-											helperText={fieldErrors?.maxHumidity?.message}
+											helperText={(fieldErrors?.maxHumidity as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -274,7 +274,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											placeholder="e.g., 1.5"
 											inputProps={{ step: '0.1' }}
 											error={!!fieldErrors?.minGelcoat}
-											helperText={fieldErrors?.minGelcoat?.message}
+											helperText={(fieldErrors?.minGelcoat as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -294,7 +294,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											placeholder="e.g., 2.5"
 											inputProps={{ step: '0.1' }}
 											error={!!fieldErrors?.maxGelcoat}
-											helperText={fieldErrors?.maxGelcoat?.message}
+											helperText={(fieldErrors?.maxGelcoat as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -312,7 +312,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											required
 											placeholder="e.g., Standard Gelcoat Mix"
 											error={!!fieldErrors?.gelcoatLabel}
-											helperText={fieldErrors?.gelcoatLabel?.message}
+											helperText={(fieldErrors?.gelcoatLabel as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -339,7 +339,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											placeholder="e.g., 0.8"
 											inputProps={{ step: '0.1' }}
 											error={!!fieldErrors?.minResinDosage}
-											helperText={fieldErrors?.minResinDosage?.message}
+											helperText={(fieldErrors?.minResinDosage as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -359,7 +359,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											placeholder="e.g., 1.2"
 											inputProps={{ step: '0.1' }}
 											error={!!fieldErrors?.maxResinDosage}
-											helperText={fieldErrors?.maxResinDosage?.message}
+											helperText={(fieldErrors?.maxResinDosage as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}
@@ -377,7 +377,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											required
 											placeholder="e.g., General Purpose Resin"
 											error={!!fieldErrors?.resinLabel}
-											helperText={fieldErrors?.resinLabel?.message}
+											helperText={(fieldErrors?.resinLabel as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}

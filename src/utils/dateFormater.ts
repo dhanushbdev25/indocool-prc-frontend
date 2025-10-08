@@ -8,10 +8,10 @@ export function dateFormater(date: Date | null | undefined, separator: string) {
 		// show date and month in two digits
 		// if month is less than 10, add a 0 before it
 		if (day < 10) {
-			day = ('0' + day.toString()) as string | number;
+			day = ('0' + day.toString()) as unknown;
 		}
 		if (month < 10) {
-			month = ('0' + month.toString()) as string | number;
+			month = ('0' + month.toString()) as unknown;
 		}
 		if (day && year && month && separator) return day + separator + month + separator + year;
 		else return '';

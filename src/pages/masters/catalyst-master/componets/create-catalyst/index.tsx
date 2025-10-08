@@ -38,7 +38,7 @@ const CreateCatalyst = () => {
 
 	// Initialize React Hook Form
 	const methods = useForm<CatalystFormData>({
-		resolver: yupResolver(catalystFormSchema),
+		resolver: yupResolver(catalystFormSchema) as unknown,
 		defaultValues: defaultCatalystFormData,
 		mode: 'onChange', // Validate on change for immediate feedback
 		reValidateMode: 'onChange' // Re-validate on change
@@ -206,9 +206,9 @@ const CreateCatalyst = () => {
 	const renderStepContent = (step: number) => {
 		switch (step) {
 			case 0:
-				return <CatalystBasicInfo control={control} errors={errors} />;
+				return <CatalystBasicInfo control={control as unknown} errors={errors} />;
 			case 1:
-				return <CatalystConfiguration control={control} errors={errors} />;
+				return <CatalystConfiguration control={control as unknown} errors={errors} />;
 			default:
 				return null;
 		}
@@ -298,7 +298,7 @@ const CreateCatalyst = () => {
 								<Button
 									variant="contained"
 									startIcon={<Save />}
-									onClick={handleSubmit(onSubmit)}
+									onClick={handleSubmit(onSubmit as unknown)}
 									disabled={isCreating || isUpdating}
 									sx={{
 										textTransform: 'none',

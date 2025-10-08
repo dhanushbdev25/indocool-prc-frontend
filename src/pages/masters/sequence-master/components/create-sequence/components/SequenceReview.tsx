@@ -23,7 +23,7 @@ import {
 } from '@mui/icons-material';
 import { useWatch } from 'react-hook-form';
 import { SequenceReviewProps } from '../types';
-import { ProcessStepGroupFormData, ProcessStepFormData } from '../schemas';
+import { ProcessStepFormData } from '../schemas';
 
 const SequenceReview = ({ control }: SequenceReviewProps) => {
 	const formData = useWatch({ control });
@@ -124,7 +124,7 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 					Process Step Groups
 				</Typography>
 
-				{formData?.processStepGroups?.map((stepGroup: ProcessStepGroupFormData, groupIndex: number) => (
+				{formData?.processStepGroups?.map((stepGroup: unknown, groupIndex: number) => (
 					<Accordion key={groupIndex} sx={{ mb: 2 }}>
 						<AccordionSummary expandIcon={<ExpandMoreIcon />}>
 							<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
@@ -263,7 +263,8 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#7b1fa2' }}>
 									{formData?.processStepGroups?.reduce(
-										(total: number, group: ProcessStepGroupFormData) => total + (group.processSteps?.length || 0),
+										(total: number, group: unknown) =>
+											total + ((group as { processSteps?: unknown[] }).processSteps?.length || 0),
 										0
 									) || 0}
 								</Typography>
@@ -278,8 +279,11 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#c62828' }}>
 									{formData?.processStepGroups?.reduce(
-										(total: number, group: ProcessStepGroupFormData) =>
-											total + (group.processSteps?.filter((step: ProcessStepFormData) => step.ctq)?.length || 0),
+										(total: number, group: unknown) =>
+											total +
+											((group as { processSteps?: unknown[] }).processSteps?.filter(
+												(step: unknown) => (step as { ctq?: boolean }).ctq
+											)?.length || 0),
 										0
 									) || 0}
 								</Typography>

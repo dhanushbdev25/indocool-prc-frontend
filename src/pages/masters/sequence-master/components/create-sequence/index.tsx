@@ -39,7 +39,7 @@ const CreateSequence = () => {
 
 	// Initialize React Hook Form
 	const methods = useForm<SequenceFormData>({
-		resolver: yupResolver(sequenceFormSchema),
+		resolver: yupResolver(sequenceFormSchema) as unknown,
 		defaultValues: defaultSequenceFormData,
 		mode: 'onChange',
 		reValidateMode: 'onChange'
@@ -253,11 +253,11 @@ const CreateSequence = () => {
 	const renderStepContent = (step: number) => {
 		switch (step) {
 			case 0:
-				return <SequenceBasicInfo control={control} errors={errors} />;
+				return <SequenceBasicInfo control={control as unknown} errors={errors} />;
 			case 1:
-				return <SequenceStepGroups control={control} errors={errors} />;
+				return <SequenceStepGroups control={control as unknown} errors={errors} />;
 			case 2:
-				return <SequenceReview control={control} errors={errors} />;
+				return <SequenceReview control={control as unknown} errors={errors} />;
 			default:
 				return null;
 		}
@@ -343,7 +343,7 @@ const CreateSequence = () => {
 								<Button
 									variant="contained"
 									startIcon={<Save />}
-									onClick={handleSubmit(onSubmit)}
+									onClick={handleSubmit(onSubmit as unknown)}
 									disabled={isCreating || isUpdating}
 									sx={{
 										textTransform: 'none',
