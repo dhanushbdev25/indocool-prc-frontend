@@ -15,19 +15,18 @@ import {
 	TableCell,
 	TableContainer,
 	TableHead,
-	TableRow,
-	Button
+	TableRow
 } from '@mui/material';
 import {
 	ExpandMore as ExpandMoreIcon,
-	Edit as EditIcon,
 	CheckCircle as CheckCircleIcon,
 	Cancel as CancelIcon
 } from '@mui/icons-material';
 import { useWatch } from 'react-hook-form';
 import { SequenceReviewProps } from '../types';
+import { ProcessStepGroupFormData, ProcessStepFormData } from '../schemas';
 
-const SequenceReview: React.FC<SequenceReviewProps> = ({ control, errors }) => {
+const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 	const formData = useWatch({ control });
 
 	return (
@@ -126,7 +125,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control, errors }) => {
 					Process Step Groups
 				</Typography>
 
-				{formData?.processStepGroups?.map((stepGroup: any, groupIndex: number) => (
+				{formData?.processStepGroups?.map((stepGroup: ProcessStepGroupFormData, groupIndex: number) => (
 					<Accordion key={groupIndex} sx={{ mb: 2 }}>
 						<AccordionSummary expandIcon={<ExpandMoreIcon />}>
 							<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
@@ -165,7 +164,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control, errors }) => {
 											</TableRow>
 										</TableHead>
 										<TableBody>
-											{stepGroup.processSteps.map((step: any, stepIndex: number) => (
+											{stepGroup.processSteps.map((step: ProcessStepFormData, stepIndex: number) => (
 												<TableRow key={stepIndex}>
 													<TableCell>{step.stepNumber}</TableCell>
 													<TableCell>
@@ -265,7 +264,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control, errors }) => {
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#7b1fa2' }}>
 									{formData?.processStepGroups?.reduce(
-										(total: number, group: any) => total + (group.processSteps?.length || 0),
+										(total: number, group: ProcessStepGroupFormData) => total + (group.processSteps?.length || 0),
 										0
 									) || 0}
 								</Typography>
@@ -280,8 +279,8 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control, errors }) => {
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#c62828' }}>
 									{formData?.processStepGroups?.reduce(
-										(total: number, group: any) =>
-											total + (group.processSteps?.filter((step: any) => step.ctq)?.length || 0),
+										(total: number, group: ProcessStepGroupFormData) =>
+											total + (group.processSteps?.filter((step: ProcessStepFormData) => step.ctq)?.length || 0),
 										0
 									) || 0}
 								</Typography>

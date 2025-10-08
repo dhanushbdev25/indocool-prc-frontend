@@ -165,10 +165,9 @@ export const clearBreadcrumbCaches = (): void => {
 /**
  * Generate breadcrumbs based on current path and module hierarchy
  * @param currentPath - Current route path
- * @param _permissions - Array of permission strings from user session (currently unused but kept for future use)
  * @returns Array of breadcrumb items
  */
-export const generateBreadcrumbs = (currentPath: string, _permissions: string[]): BreadcrumbItem[] => {
+export const generateBreadcrumbs = (currentPath: string): BreadcrumbItem[] => {
 	// Early return for invalid paths
 	if (!currentPath || currentPath === '/') {
 		return [];

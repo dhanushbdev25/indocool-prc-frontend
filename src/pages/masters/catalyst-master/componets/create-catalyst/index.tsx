@@ -182,9 +182,14 @@ const CreateCatalyst = () => {
 
 			// Navigate back to list on success
 			navigate('/catalyst-master');
-		} catch (err: any) {
+		} catch (err: unknown) {
 			console.error('API Error:', err);
-			setError(err?.data?.message || err?.message || `Failed to ${isEditMode ? 'update' : 'create'} catalyst`);
+			const errorMessage = err && typeof err === 'object' && 'data' in err && err.data && typeof err.data === 'object' && 'message' in err.data
+				? (err.data as { message: string }).message
+				: err && typeof err === 'object' && 'message' in err
+				? (err as { message: string }).message
+				: `Failed to ${isEditMode ? 'update' : 'create'} catalyst`;
+			setError(errorMessage);
 		}
 	};
 

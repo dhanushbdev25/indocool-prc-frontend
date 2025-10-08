@@ -27,8 +27,9 @@ import {
 	PlaylistAdd as StepIcon,
 	Group as GroupIcon
 } from '@mui/icons-material';
-import { Controller, useFieldArray } from 'react-hook-form';
+import { Controller, useFieldArray, Control, FieldErrors } from 'react-hook-form';
 import { SequenceStepGroupsProps, stepTypeOptions, targetValueTypeOptions, uomOptions } from '../types';
+import { SequenceFormData } from '../schemas';
 
 const SequenceStepGroups: React.FC<SequenceStepGroupsProps> = ({ control, errors }) => {
 	const {
@@ -177,8 +178,8 @@ const SequenceStepGroups: React.FC<SequenceStepGroupsProps> = ({ control, errors
 };
 
 interface StepGroupFormProps {
-	control: any;
-	errors: any;
+	control: Control<SequenceFormData>;
+	errors: FieldErrors<SequenceFormData>;
 	groupIndex: number;
 }
 
@@ -198,7 +199,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 			// Update step number to be sequential
 			// This will be handled by the form's setValue in the component
 		});
-	}, [stepFields.length]);
+	}, [stepFields]);
 
 	const addStep = () => {
 		appendStep({
