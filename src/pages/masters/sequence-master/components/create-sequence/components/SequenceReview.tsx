@@ -124,120 +124,126 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 					Process Step Groups
 				</Typography>
 
-				{formData?.processStepGroups?.map((stepGroup: unknown, groupIndex: number) => (
-					<Accordion key={groupIndex} sx={{ mb: 2 }}>
-						<AccordionSummary expandIcon={<ExpandMoreIcon />}>
-							<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-								<Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-									{stepGroup.processName || `Step Group ${groupIndex + 1}`}
-								</Typography>
-								<Chip
-									label={`${stepGroup.processSteps?.length || 0} steps`}
-									size="small"
-									sx={{ ml: 2, backgroundColor: '#e3f2fd', color: '#1976d2' }}
-								/>
-							</Box>
-						</AccordionSummary>
-						<AccordionDetails>
-							<Box sx={{ mb: 2 }}>
-								<Typography variant="body2" sx={{ color: '#666', mb: 1 }}>
-									Description
-								</Typography>
-								<Typography variant="body1" sx={{ fontWeight: 500 }}>
-									{stepGroup.processDescription || 'No description provided'}
-								</Typography>
-							</Box>
+				{formData?.processStepGroups?.map(
+					(
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						stepGroup: any,
+						groupIndex: number
+					) => (
+						<Accordion key={groupIndex} sx={{ mb: 2 }}>
+							<AccordionSummary expandIcon={<ExpandMoreIcon />}>
+								<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+									<Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+										{stepGroup.processName || `Step Group ${groupIndex + 1}`}
+									</Typography>
+									<Chip
+										label={`${stepGroup.processSteps?.length || 0} steps`}
+										size="small"
+										sx={{ ml: 2, backgroundColor: '#e3f2fd', color: '#1976d2' }}
+									/>
+								</Box>
+							</AccordionSummary>
+							<AccordionDetails>
+								<Box sx={{ mb: 2 }}>
+									<Typography variant="body2" sx={{ color: '#666', mb: 1 }}>
+										Description
+									</Typography>
+									<Typography variant="body1" sx={{ fontWeight: 500 }}>
+										{stepGroup.processDescription || 'No description provided'}
+									</Typography>
+								</Box>
 
-							{stepGroup.processSteps && stepGroup.processSteps.length > 0 && (
-								<TableContainer>
-									<Table size="small">
-										<TableHead>
-											<TableRow>
-												<TableCell>Step #</TableCell>
-												<TableCell>Parameter</TableCell>
-												<TableCell>Type</TableCell>
-												<TableCell>Target Value</TableCell>
-												<TableCell>UOM</TableCell>
-												<TableCell>CTQ</TableCell>
-												<TableCell>Attachments</TableCell>
-											</TableRow>
-										</TableHead>
-										<TableBody>
-											{stepGroup.processSteps.map((step: ProcessStepFormData, stepIndex: number) => (
-												<TableRow key={stepIndex}>
-													<TableCell>{step.stepNumber}</TableCell>
-													<TableCell>
-														<Typography variant="body2" sx={{ fontWeight: 500 }}>
-															{step.parameterDescription}
-														</Typography>
-														{step.evaluationMethod && (
-															<Typography variant="caption" sx={{ color: '#666' }}>
-																Method: {step.evaluationMethod}
-															</Typography>
-														)}
-													</TableCell>
-													<TableCell>
-														<Chip
-															label={step.stepType}
-															size="small"
-															sx={{
-																backgroundColor: '#f5f5f5',
-																color: '#333',
-																fontSize: '0.75rem'
-															}}
-														/>
-													</TableCell>
-													<TableCell>
-														{step.targetValueType === 'ok/not ok' ? (
-															<Typography variant="body2">OK/Not OK</Typography>
-														) : step.targetValueType === 'exact value' ? (
-															<Typography variant="body2">{step.minimumAcceptanceValue}</Typography>
-														) : (
-															<Typography variant="body2">
-																{step.minimumAcceptanceValue} - {step.maximumAcceptanceValue}
-															</Typography>
-														)}
-													</TableCell>
-													<TableCell>{step.uom}</TableCell>
-													<TableCell>
-														<Chip
-															icon={step.ctq ? <CheckCircleIcon /> : <CancelIcon />}
-															label={step.ctq ? 'Yes' : 'No'}
-															size="small"
-															sx={{
-																backgroundColor: step.ctq ? '#4caf50' : '#9e9e9e',
-																color: 'white',
-																fontSize: '0.75rem',
-																'& .MuiChip-icon': {
-																	color: 'white'
-																}
-															}}
-														/>
-													</TableCell>
-													<TableCell>
-														<Chip
-															icon={step.allowAttachments ? <CheckCircleIcon /> : <CancelIcon />}
-															label={step.allowAttachments ? 'Yes' : 'No'}
-															size="small"
-															sx={{
-																backgroundColor: step.allowAttachments ? '#4caf50' : '#9e9e9e',
-																color: 'white',
-																fontSize: '0.75rem',
-																'& .MuiChip-icon': {
-																	color: 'white'
-																}
-															}}
-														/>
-													</TableCell>
+								{stepGroup.processSteps && stepGroup.processSteps.length > 0 && (
+									<TableContainer>
+										<Table size="small">
+											<TableHead>
+												<TableRow>
+													<TableCell>Step #</TableCell>
+													<TableCell>Parameter</TableCell>
+													<TableCell>Type</TableCell>
+													<TableCell>Target Value</TableCell>
+													<TableCell>UOM</TableCell>
+													<TableCell>CTQ</TableCell>
+													<TableCell>Attachments</TableCell>
 												</TableRow>
-											))}
-										</TableBody>
-									</Table>
-								</TableContainer>
-							)}
-						</AccordionDetails>
-					</Accordion>
-				))}
+											</TableHead>
+											<TableBody>
+												{stepGroup.processSteps.map((step: ProcessStepFormData, stepIndex: number) => (
+													<TableRow key={stepIndex}>
+														<TableCell>{step.stepNumber}</TableCell>
+														<TableCell>
+															<Typography variant="body2" sx={{ fontWeight: 500 }}>
+																{step.parameterDescription}
+															</Typography>
+															{step.evaluationMethod && (
+																<Typography variant="caption" sx={{ color: '#666' }}>
+																	Method: {step.evaluationMethod}
+																</Typography>
+															)}
+														</TableCell>
+														<TableCell>
+															<Chip
+																label={step.stepType}
+																size="small"
+																sx={{
+																	backgroundColor: '#f5f5f5',
+																	color: '#333',
+																	fontSize: '0.75rem'
+																}}
+															/>
+														</TableCell>
+														<TableCell>
+															{step.targetValueType === 'ok/not ok' ? (
+																<Typography variant="body2">OK/Not OK</Typography>
+															) : step.targetValueType === 'exact value' ? (
+																<Typography variant="body2">{step.minimumAcceptanceValue}</Typography>
+															) : (
+																<Typography variant="body2">
+																	{step.minimumAcceptanceValue} - {step.maximumAcceptanceValue}
+																</Typography>
+															)}
+														</TableCell>
+														<TableCell>{step.uom}</TableCell>
+														<TableCell>
+															<Chip
+																icon={step.ctq ? <CheckCircleIcon /> : <CancelIcon />}
+																label={step.ctq ? 'Yes' : 'No'}
+																size="small"
+																sx={{
+																	backgroundColor: step.ctq ? '#4caf50' : '#9e9e9e',
+																	color: 'white',
+																	fontSize: '0.75rem',
+																	'& .MuiChip-icon': {
+																		color: 'white'
+																	}
+																}}
+															/>
+														</TableCell>
+														<TableCell>
+															<Chip
+																icon={step.allowAttachments ? <CheckCircleIcon /> : <CancelIcon />}
+																label={step.allowAttachments ? 'Yes' : 'No'}
+																size="small"
+																sx={{
+																	backgroundColor: step.allowAttachments ? '#4caf50' : '#9e9e9e',
+																	color: 'white',
+																	fontSize: '0.75rem',
+																	'& .MuiChip-icon': {
+																		color: 'white'
+																	}
+																}}
+															/>
+														</TableCell>
+													</TableRow>
+												))}
+											</TableBody>
+										</Table>
+									</TableContainer>
+								)}
+							</AccordionDetails>
+						</Accordion>
+					)
+				)}
 			</Paper>
 
 			{/* Summary Statistics */}
@@ -263,8 +269,8 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#7b1fa2' }}>
 									{formData?.processStepGroups?.reduce(
-										(total: number, group: unknown) =>
-											total + ((group as { processSteps?: unknown[] }).processSteps?.length || 0),
+										// eslint-disable-next-line @typescript-eslint/no-explicit-any
+										(total: number, group: any) => total + (group.processSteps?.length || 0),
 										0
 									) || 0}
 								</Typography>
@@ -279,10 +285,12 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#c62828' }}>
 									{formData?.processStepGroups?.reduce(
-										(total: number, group: unknown) =>
+										// eslint-disable-next-line @typescript-eslint/no-explicit-any
+										(total: number, group: any) =>
 											total +
-											((group as { processSteps?: unknown[] }).processSteps?.filter(
-												(step: unknown) => (step as { ctq?: boolean }).ctq
+											(group.processSteps?.filter(
+												// eslint-disable-next-line @typescript-eslint/no-explicit-any
+												(step: any) => step.ctq
 											)?.length || 0),
 										0
 									) || 0}

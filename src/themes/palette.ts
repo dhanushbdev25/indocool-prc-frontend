@@ -30,7 +30,8 @@ const Palette = (mode: 'light' | 'dark') => {
 
 	colors.grey = [...greyPrimary, ...greyAscent, ...greyConstant];
 
-	const paletteColor = ThemeOption(colors as unknown);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const paletteColor = ThemeOption(colors as any);
 
 	return createTheme({
 		palette: {

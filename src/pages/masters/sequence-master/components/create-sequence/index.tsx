@@ -39,7 +39,8 @@ const CreateSequence = () => {
 
 	// Initialize React Hook Form
 	const methods = useForm<SequenceFormData>({
-		resolver: yupResolver(sequenceFormSchema) as unknown,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		resolver: yupResolver(sequenceFormSchema) as any,
 		defaultValues: defaultSequenceFormData,
 		mode: 'onChange',
 		reValidateMode: 'onChange'
@@ -175,8 +176,6 @@ const CreateSequence = () => {
 						version: 1,
 						isLatest: true,
 						category: data.category,
-						createdBy: 1, // TODO: Get from user context
-						updatedBy: 1, // TODO: Get from user context
 						type: data.type,
 						notes: data.notes || '',
 						totalSteps: data.totalSteps || 0,
@@ -253,11 +252,14 @@ const CreateSequence = () => {
 	const renderStepContent = (step: number) => {
 		switch (step) {
 			case 0:
-				return <SequenceBasicInfo control={control as unknown} errors={errors} />;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				return <SequenceBasicInfo control={control as any} errors={errors} />;
 			case 1:
-				return <SequenceStepGroups control={control as unknown} errors={errors} />;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				return <SequenceStepGroups control={control as any} errors={errors} />;
 			case 2:
-				return <SequenceReview control={control as unknown} errors={errors} />;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				return <SequenceReview control={control as any} errors={errors} />;
 			default:
 				return null;
 		}
@@ -343,7 +345,8 @@ const CreateSequence = () => {
 								<Button
 									variant="contained"
 									startIcon={<Save />}
-									onClick={handleSubmit(onSubmit as unknown)}
+									// eslint-disable-next-line @typescript-eslint/no-explicit-any
+									onClick={handleSubmit(onSubmit as any)}
 									disabled={isCreating || isUpdating}
 									sx={{
 										textTransform: 'none',

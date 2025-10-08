@@ -38,7 +38,8 @@ const CreateCatalyst = () => {
 
 	// Initialize React Hook Form
 	const methods = useForm<CatalystFormData>({
-		resolver: yupResolver(catalystFormSchema) as unknown,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		resolver: yupResolver(catalystFormSchema) as any,
 		defaultValues: defaultCatalystFormData,
 		mode: 'onChange', // Validate on change for immediate feedback
 		reValidateMode: 'onChange' // Re-validate on change
@@ -206,9 +207,11 @@ const CreateCatalyst = () => {
 	const renderStepContent = (step: number) => {
 		switch (step) {
 			case 0:
-				return <CatalystBasicInfo control={control as unknown} errors={errors} />;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				return <CatalystBasicInfo control={control as any} errors={errors} />;
 			case 1:
-				return <CatalystConfiguration control={control as unknown} errors={errors} />;
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				return <CatalystConfiguration control={control as any} errors={errors} />;
 			default:
 				return null;
 		}
@@ -298,7 +301,8 @@ const CreateCatalyst = () => {
 								<Button
 									variant="contained"
 									startIcon={<Save />}
-									onClick={handleSubmit(onSubmit as unknown)}
+									// eslint-disable-next-line @typescript-eslint/no-explicit-any
+									onClick={handleSubmit(onSubmit as any)}
 									disabled={isCreating || isUpdating}
 									sx={{
 										textTransform: 'none',
