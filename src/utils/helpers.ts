@@ -2,7 +2,7 @@ import Swal from 'sweetalert2';
 
 export const displayError = (error: unknown) => {
 	if (error) {
-		if ('data' in error) {
+		if (typeof error === 'object' && error !== null && 'data' in error) {
 			Swal.fire({
 				icon: 'error',
 				title: 'Error',

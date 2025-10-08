@@ -1,4 +1,3 @@
-import React from 'react';
 import { Chip, Box, Typography, useTheme } from '@mui/material';
 import { AdminPanelSettings, Person } from '@mui/icons-material';
 import { useCurrentRole } from '../../../hooks/useCurrentRole';

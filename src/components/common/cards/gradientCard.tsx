@@ -42,9 +42,9 @@ export default function GradientCard(props: gradientCardPropsType) {
 							<CardTotalRequest>{totalRequests}</CardTotalRequest>
 						</Grid>
 
-						{props.requests && <CardUtilis item>{`/ ${utilisItem}`}</CardUtilis>}
+						{props.requests && <CardUtilis>{`/ ${utilisItem}`}</CardUtilis>}
 
-						<CardUtilis item>{props.utilis}</CardUtilis>
+						<CardUtilis>{props.utilis}</CardUtilis>
 					</Grid>
 
 					<Grid container spacing={2}>
@@ -55,7 +55,7 @@ export default function GradientCard(props: gradientCardPropsType) {
 										<CardRequestItem>In Use</CardRequestItem>
 									</Grid>
 
-									<CardRequestData item>{props.requests?.inUse}</CardRequestData>
+									<CardRequestData>{props.requests?.inUse}</CardRequestData>
 								</CardRequestContainer>
 							)}
 						</Grid>
@@ -67,7 +67,7 @@ export default function GradientCard(props: gradientCardPropsType) {
 										<CardRequestItem>Partially in Use</CardRequestItem>
 									</Grid>
 
-									<CardRequestData item>{props.requests?.partiallyInUse}</CardRequestData>
+									<CardRequestData>{props.requests?.partiallyInUse}</CardRequestData>
 								</CardRequestContainer>
 							)}
 						</Grid>
@@ -79,7 +79,7 @@ export default function GradientCard(props: gradientCardPropsType) {
 										<CardRequestItem>Un assigned</CardRequestItem>
 									</Grid>
 
-									<CardRequestData item>{props.requests?.unassigned}</CardRequestData>
+									<CardRequestData>{props.requests?.unassigned}</CardRequestData>
 								</CardRequestContainer>
 							)}
 						</Grid>

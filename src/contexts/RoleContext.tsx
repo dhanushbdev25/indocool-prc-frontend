@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
+import { RoleContextType } from './RoleContext.types';
 import { Role, RoleProviderProps } from './RoleContext.types';
 import { RoleContext } from './RoleContext.context';
 

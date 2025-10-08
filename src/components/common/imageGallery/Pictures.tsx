@@ -1,4 +1,3 @@
-import React from 'react';
 import { Grid, Paper } from '@mui/material';
 import PictureItem from './PictureItem';
 import { ImageItem } from '../../../hooks/useImageGallery';

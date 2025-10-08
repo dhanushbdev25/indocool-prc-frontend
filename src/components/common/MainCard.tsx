@@ -57,7 +57,7 @@ const MainCard = forwardRef<HTMLDivElement, MainCardProps>(
 					border: border ? '1px solid' : 'none',
 					borderRadius: 2,
 					borderColor: 'transparent',
-					boxShadow: boxShadow && `0px 4px 6px 0px rgba(0, 0, 0, 0.07)`,
+					boxShadow: boxShadow ? `0px 4px 6px 0px rgba(0, 0, 0, 0.07)` : 'none',
 					':hover': {
 						boxShadow: boxShadow ? `0px 4px 6px 0px rgba(0, 0, 0, 0.07)` : 'inherit'
 					},
@@ -67,19 +67,28 @@ const MainCard = forwardRef<HTMLDivElement, MainCardProps>(
 						fontFamily: theme.typography.fontFamily,
 						fontSize: '0.75rem'
 					},
-					...sx
+					...(sx || {})
 				}}
 			>
 				{/* card header and action */}
 				{!darkTitle && title && (
-					<CardHeader sx={headerSX} titleTypographyProps={{ variant: 'subtitle1' }} title={title} action={secondary} />
+					<CardHeader
+						sx={headerSX}
+						titleTypographyProps={{ variant: 'subtitle1' }}
+						title={title as ReactNode}
+						action={secondary as ReactNode}
+					/>
 				)}
 				{darkTitle && title && (
-					<CardHeader sx={headerSX} title={<Typography variant="h3">{title}</Typography>} action={secondary} />
+					<CardHeader
+						sx={headerSX}
+						title={<Typography variant="h3">{title as ReactNode}</Typography>}
+						action={secondary as ReactNode}
+					/>
 				)}
 
 				{/* card content */}
-				{content && <CardContent sx={contentSX}>{children}</CardContent>}
+				{content && <CardContent sx={contentSX as React.CSSProperties}>{children}</CardContent>}
 				{!content && children}
 			</Card>
 		);

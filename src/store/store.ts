@@ -15,7 +15,8 @@ import { sequenceApi } from './api/business/sequence-master/sequence.api';
 
 export const rtkQueryErrorLogger: Middleware = () => next => action => {
 	if (isRejectedWithValue(action)) {
-		const { status, data, error } = action.payload || {};
+		const { status, data, error } =
+			(action.payload as { status?: number; data?: { msg?: string; message?: string }; error?: string }) || {};
 		let text = data?.msg || data?.message || error || 'server error';
 
 		if (status === 401) {

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Stepper, Step, StepLabel, Box, Typography } from '@mui/material';
 import CustomStepIcon from './CustomStepIcon';
 

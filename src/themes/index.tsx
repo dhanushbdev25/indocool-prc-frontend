@@ -32,7 +32,7 @@ export default function ThemeCustomization({ children }: ThemeCustomizationProps
 					xl: 1536
 				}
 			},
-			direction: 'ltr',
+			direction: 'ltr' as const,
 			mixins: {
 				toolbar: {
 					minHeight: 60,

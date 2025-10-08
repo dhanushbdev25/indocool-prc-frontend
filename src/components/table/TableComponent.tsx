@@ -1,13 +1,13 @@
-import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
+import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef, type MRT_RowData } from 'material-react-table';
 import { Box, Pagination, PaginationItem } from '@mui/material';
 import { useMemo, memo } from 'react';
 
-interface TableProps<T> {
+interface TableProps<T extends MRT_RowData> {
 	data: T[];
 	tableColumns: MRT_ColumnDef<T>[];
 }
 
-const TableComponent = <T extends object>({ data, tableColumns }: TableProps<T>) => {
+const TableComponent = <T extends MRT_RowData>({ data, tableColumns }: TableProps<T>) => {
 	const columns = useMemo(() => tableColumns, [tableColumns]);
 	const memoData = useMemo(() => data, [data]);
 

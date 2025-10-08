@@ -24,8 +24,8 @@ import NumberInputOverride from './NumberInputOverride';
 
 // ==============================|| OVERRIDES - MAIN ||============================== //
 
-function mergeMany<T>(...objects: T[]): T {
-	return objects.reduce((acc, obj) => deepmerge(acc, obj), {} as T);
+function mergeMany(...objects: Record<string, unknown>[]): Record<string, unknown> {
+	return objects.reduce((acc, obj) => deepmerge(acc, obj), {});
 }
 
 import { Theme } from '@mui/material/styles';
@@ -39,17 +39,17 @@ export default function ComponentsOverrides(theme: Theme) {
 		Checkbox(theme),
 		Chip(theme),
 		IconButton(theme),
-		InputLabel(theme),
+		InputLabel(),
 		NumberInputOverride(),
 		LinearProgress(),
 		Link(),
-		DataGrid(theme),
+		DataGrid(),
 		ListItemIcon(),
-		OutlinedInput(theme),
+		OutlinedInput(),
 		Tab(theme),
 		TableCell(theme),
 		Tabs(),
 		Typography(),
-		ScrollBar(theme)
+		ScrollBar()
 	);
 }
