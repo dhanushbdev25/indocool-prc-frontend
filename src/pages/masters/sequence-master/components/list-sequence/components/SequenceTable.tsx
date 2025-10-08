@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { Box, Chip, IconButton, Typography, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	CheckCircle as CheckCircleIcon,
@@ -21,7 +21,7 @@ interface SequenceTableProps {
 	onEdit?: (sequenceId: number) => void;
 }
 
-const SequenceTable = ({ data, onActionClick, onEdit }: SequenceTableProps) => {
+const SequenceTable = memo(({ data, onActionClick, onEdit }: SequenceTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<SequenceData | null>(null);
 
@@ -259,21 +259,23 @@ const SequenceTable = ({ data, onActionClick, onEdit }: SequenceTableProps) => {
 					horizontal: 'right'
 				}}
 			>
-				<MenuItem onClick={handleEdit}>
-					<ListItemIcon>
-						<EditIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>Edit</ListItemText>
-				</MenuItem>
-				<MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-					<ListItemIcon>
-						<DeleteIcon fontSize="small" color="error" />
-					</ListItemIcon>
-					<ListItemText>Delete</ListItemText>
-				</MenuItem>
+				{[
+					<MenuItem key="edit" onClick={handleEdit}>
+						<ListItemIcon>
+							<EditIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>Edit</ListItemText>
+					</MenuItem>,
+					<MenuItem key="delete" onClick={handleDelete} sx={{ color: 'error.main' }}>
+						<ListItemIcon>
+							<DeleteIcon fontSize="small" color="error" />
+						</ListItemIcon>
+						<ListItemText>Delete</ListItemText>
+					</MenuItem>
+				]}
 			</Menu>
 		</Box>
 	);
-};
+});
 
 export default SequenceTable;

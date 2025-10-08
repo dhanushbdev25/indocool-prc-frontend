@@ -9,7 +9,7 @@ interface ConfirmationProps {
 	onCancel: () => void;
 }
 
-const Confirmation: React.FC<ConfirmationProps> = ({ status, desc, handleConfirm, onCancel }) => {
+const Confirmation = ({ status, desc, handleConfirm, onCancel }: ConfirmationProps) => {
 	return (
 		<Box
 			sx={{

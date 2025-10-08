@@ -18,13 +18,7 @@ interface RoleGuardProps {
  * @param requireAll - If true, user must have ALL specified permissions/roles. Default: false
  * @param fallback - Component to render if user doesn't have required permissions/roles
  */
-const RoleGuard: React.FC<RoleGuardProps> = ({
-	children,
-	permissions = [],
-	roles = [],
-	requireAll = false,
-	fallback = null
-}) => {
+const RoleGuard = ({ children, permissions = [], roles = [], requireAll = false, fallback = null }: RoleGuardProps) => {
 	const { currentRole, hasAnyPermission, hasAllPermissions } = useCurrentRole();
 
 	// Check role requirements

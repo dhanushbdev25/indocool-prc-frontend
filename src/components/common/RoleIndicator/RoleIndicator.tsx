@@ -10,12 +10,12 @@ interface RoleIndicatorProps {
 	showPermissions?: boolean;
 }
 
-const RoleIndicator: React.FC<RoleIndicatorProps> = ({
+const RoleIndicator = ({
 	variant = 'chip',
 	size = 'medium',
 	showIcon = true,
 	showPermissions = false
-}) => {
+}: RoleIndicatorProps) => {
 	const theme = useTheme();
 	const { currentRole, permissions } = useCurrentRole();
 

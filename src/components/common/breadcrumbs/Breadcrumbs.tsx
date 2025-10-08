@@ -9,7 +9,7 @@ interface BreadcrumbsProps {
 	permissions: string[];
 }
 
-const Breadcrumbs: React.FC<BreadcrumbsProps> = React.memo(({ permissions }) => {
+const Breadcrumbs = React.memo(({ permissions }: BreadcrumbsProps) => {
 	const location = useLocation();
 
 	// Memoize breadcrumb generation to avoid recalculation on every render

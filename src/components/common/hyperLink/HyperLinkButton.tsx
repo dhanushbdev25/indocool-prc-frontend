@@ -8,7 +8,7 @@ interface HyperlinkIconButtonProps extends IconButtonProps {
 	openInNewTab?: boolean;
 }
 
-const HyperlinkIconButton: React.FC<HyperlinkIconButtonProps> = ({ href, title, openInNewTab = true, ...rest }) => {
+const HyperlinkIconButton = ({ href, title, openInNewTab = true, ...rest }: HyperlinkIconButtonProps) => {
 	return (
 		<Tooltip title={title}>
 			<IconButton

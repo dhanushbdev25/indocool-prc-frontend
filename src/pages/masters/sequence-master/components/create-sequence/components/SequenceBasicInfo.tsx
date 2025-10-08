@@ -17,7 +17,7 @@ import { Info as InfoIcon } from '@mui/icons-material';
 import { Controller } from 'react-hook-form';
 import { SequenceBasicInfoProps } from '../types';
 
-const SequenceBasicInfo: React.FC<SequenceBasicInfoProps> = ({ control, errors }) => {
+const SequenceBasicInfo = ({ control, errors }: SequenceBasicInfoProps) => {
 	return (
 		<Box>
 			<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -30,7 +30,7 @@ const SequenceBasicInfo: React.FC<SequenceBasicInfoProps> = ({ control, errors }
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
 				<Grid container spacing={3}>
 					{/* Sequence ID */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="sequenceId"
 							control={control}
@@ -54,7 +54,7 @@ const SequenceBasicInfo: React.FC<SequenceBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* Sequence Name */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="sequenceName"
 							control={control}
@@ -78,7 +78,7 @@ const SequenceBasicInfo: React.FC<SequenceBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* Category */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="category"
 							control={control}
@@ -102,7 +102,7 @@ const SequenceBasicInfo: React.FC<SequenceBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* Type */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="type"
 							control={control}
@@ -124,7 +124,7 @@ const SequenceBasicInfo: React.FC<SequenceBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* Active Status */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Box
 							sx={{
 								display: 'flex',
@@ -156,7 +156,7 @@ const SequenceBasicInfo: React.FC<SequenceBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* Notes */}
-					<Grid item xs={12}>
+					<Grid size={{ xs: 12 }}>
 						<Divider sx={{ my: 2 }} />
 						<Controller
 							name="notes"

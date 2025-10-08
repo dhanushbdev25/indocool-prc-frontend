@@ -11,7 +11,7 @@ interface CustomStepperProps {
 	activeStep: number;
 }
 
-const CustomStepper: React.FC<CustomStepperProps> = ({ steps, activeStep }) => {
+const CustomStepper = ({ steps, activeStep }: CustomStepperProps) => {
 	return (
 		<Box sx={{ width: '100%' }}>
 			<Stepper activeStep={activeStep} alternativeLabel>

@@ -17,7 +17,7 @@ import { Logout, ExpandMore, Person, AdminPanelSettings } from '@mui/icons-mater
 import { useRole } from '../../../contexts/useRole';
 import { useLogout } from '../../../hooks/useLogOut';
 
-const TopBarSimple: React.FC = () => {
+const TopBarSimple = () => {
 	const { currentRole, availableRoles, userInfo, switchRole } = useRole();
 	const logout = useLogout();
 

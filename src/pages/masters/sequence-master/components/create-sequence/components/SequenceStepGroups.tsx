@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import {
 	Box,
 	Paper,
@@ -31,7 +31,7 @@ import { Controller, useFieldArray, Control, FieldErrors } from 'react-hook-form
 import { SequenceStepGroupsProps, stepTypeOptions, targetValueTypeOptions, uomOptions } from '../types';
 import { SequenceFormData } from '../schemas';
 
-const SequenceStepGroups: React.FC<SequenceStepGroupsProps> = ({ control, errors }) => {
+const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 	const {
 		fields: stepGroupFields,
 		append: appendStepGroup,
@@ -183,7 +183,7 @@ interface StepGroupFormProps {
 	groupIndex: number;
 }
 
-const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupIndex }) => {
+const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 	const {
 		fields: stepFields,
 		append: appendStep,
@@ -227,7 +227,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 					Process Information
 				</Typography>
 				<Grid container spacing={3}>
-					<Grid item xs={12}>
+					<Grid size={{ xs: 12 }}>
 						<Controller
 							name={`processStepGroups.${groupIndex}.processName`}
 							control={control}
@@ -250,7 +250,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							)}
 						/>
 					</Grid>
-					<Grid item xs={12}>
+					<Grid size={{ xs: 12 }}>
 						<Controller
 							name={`processStepGroups.${groupIndex}.processDescription`}
 							control={control}
@@ -354,7 +354,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 
 						<Grid container spacing={2}>
 							{/* Parameter Description */}
-							<Grid item xs={12} md={6}>
+							<Grid size={{ xs: 12, md: 6 }}>
 								<Controller
 									name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.parameterDescription`}
 									control={control}
@@ -380,7 +380,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							</Grid>
 
 							{/* Step Number - Auto-calculated */}
-							<Grid item xs={12} md={2}>
+							<Grid size={{ xs: 12, md: 2 }}>
 								<TextField
 									fullWidth
 									label="Step #"
@@ -397,7 +397,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							</Grid>
 
 							{/* Step Type */}
-							<Grid item xs={12} md={4}>
+							<Grid size={{ xs: 12, md: 4 }}>
 								<Controller
 									name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.stepType`}
 									control={control}
@@ -420,7 +420,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							</Grid>
 
 							{/* Evaluation Method */}
-							<Grid item xs={12} md={6}>
+							<Grid size={{ xs: 12, md: 6 }}>
 								<Controller
 									name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.evaluationMethod`}
 									control={control}
@@ -446,7 +446,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							</Grid>
 
 							{/* Target Value Type */}
-							<Grid item xs={12} md={6}>
+							<Grid size={{ xs: 12, md: 6 }}>
 								<Controller
 									name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.targetValueType`}
 									control={control}
@@ -477,7 +477,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 
 									return (
 										<>
-											<Grid item xs={12} md={6}>
+											<Grid size={{ xs: 12, md: 6 }}>
 												<Controller
 													name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.minimumAcceptanceValue`}
 													control={control}
@@ -511,7 +511,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 													)}
 												/>
 											</Grid>
-											<Grid item xs={12} md={6}>
+											<Grid size={{ xs: 12, md: 6 }}>
 												<Controller
 													name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.maximumAcceptanceValue`}
 													control={control}
@@ -551,7 +551,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							/>
 
 							{/* Multiple Measurements */}
-							<Grid item xs={12} md={6}>
+							<Grid size={{ xs: 12, md: 6 }}>
 								<Controller
 									name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.multipleMeasurements`}
 									control={control}
@@ -610,7 +610,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							</Grid>
 
 							{/* UOM */}
-							<Grid item xs={12} md={6}>
+							<Grid size={{ xs: 12, md: 6 }}>
 								<Controller
 									name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.uom`}
 									control={control}
@@ -633,7 +633,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							</Grid>
 
 							{/* CTQ and Allow Attachments */}
-							<Grid item xs={12} md={6}>
+							<Grid size={{ xs: 12, md: 6 }}>
 								<Box sx={{ display: 'flex', gap: 2 }}>
 									<Controller
 										name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.ctq`}
@@ -659,7 +659,7 @@ const StepGroupForm: React.FC<StepGroupFormProps> = ({ control, errors, groupInd
 							</Grid>
 
 							{/* Notes */}
-							<Grid item xs={12}>
+							<Grid size={{ xs: 12 }}>
 								<Controller
 									name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.notes`}
 									control={control}

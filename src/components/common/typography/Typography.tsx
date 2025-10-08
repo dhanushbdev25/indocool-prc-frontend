@@ -31,7 +31,7 @@ export type TypographyPropsType = {
 	style?: React.CSSProperties;
 };
 
-const Typography: React.FC<TypographyPropsType> = ({
+const Typography = ({
 	variant = 'body1',
 	color = 'initial',
 	gutterBottom = false,
@@ -39,7 +39,7 @@ const Typography: React.FC<TypographyPropsType> = ({
 	style,
 	fontSize,
 	...typographyProps
-}) => {
+}: TypographyPropsType) => {
 	return (
 		<MuiTypography
 			variant={variant}

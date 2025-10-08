@@ -11,12 +11,13 @@ export default function Button(theme: Theme) {
 
 	return {
 		MuiButton: {
-			defaultProps: {
-				disableElevation: true
-			},
 			styleOverrides: {
 				root: {
-					fontWeight: 400
+					fontWeight: 400,
+					boxShadow: 'none', // React 19 compatible: use styleOverrides instead of defaultProps
+					'&:hover': {
+						boxShadow: 'none'
+					}
 				},
 				contained: {
 					...disabledStyle

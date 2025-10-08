@@ -33,7 +33,6 @@ import { Theme } from '@mui/material/styles';
 export default function ComponentsOverrides(theme: Theme) {
 	return mergeMany(
 		Button(theme),
-		// @ts-expect-error TODO: fix when all component overrides are merged
 		Paper(),
 		Badge(theme),
 		CardContent(),

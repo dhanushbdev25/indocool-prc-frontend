@@ -17,13 +17,13 @@ export type ButtonPropsType = {
 	startIcon?: React.ReactNode;
 };
 
-const Button: React.FC<ButtonPropsType> = ({
+const Button = ({
 	color = 'primary',
 	variant = 'contained',
 	disabled = false,
 	style,
 	...buttonProps
-}) => {
+}: ButtonPropsType) => {
 	return (
 		<MUIButton color={color} variant={variant} disabled={disabled} style={style} {...buttonProps}>
 			{buttonProps.label}

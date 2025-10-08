@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { Role, RoleProviderProps } from './RoleContext.types';
 import { RoleContext } from './RoleContext.context';
 
-export const RoleProvider: React.FC<RoleProviderProps> = ({ children, sessionData }) => {
+export const RoleProvider = ({ children, sessionData }: RoleProviderProps) => {
 	const [currentRoleId, setCurrentRoleId] = useState<number>(sessionData.defaultRole.id);
 
 	// Get all available roles (default + other roles)

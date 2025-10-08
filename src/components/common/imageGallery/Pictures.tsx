@@ -10,14 +10,14 @@ interface PicturesProps {
 	view?: boolean;
 }
 
-const Pictures: React.FC<PicturesProps> = ({ gallery, onAddImage, onRemoveImage, view }) => {
+const Pictures = ({ gallery, onAddImage, onRemoveImage, view }: PicturesProps) => {
 	return (
 		<Grid container spacing={1} columns={3}>
 			{gallery.map(item => (
 				<PictureItem key={item.id} item={item} onRemoveImage={onRemoveImage} view={view} />
 			))}
 			{!view && (
-				<Grid item>
+				<Grid>
 					<Paper
 						variant="outlined"
 						sx={{

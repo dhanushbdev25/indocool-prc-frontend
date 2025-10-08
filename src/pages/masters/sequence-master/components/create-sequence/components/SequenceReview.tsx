@@ -26,7 +26,7 @@ import { useWatch } from 'react-hook-form';
 import { SequenceReviewProps } from '../types';
 import { ProcessStepGroupFormData, ProcessStepFormData } from '../schemas';
 
-const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
+const SequenceReview = ({ control }: SequenceReviewProps) => {
 	const formData = useWatch({ control });
 
 	return (
@@ -44,7 +44,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 					Basic Information
 				</Typography>
 				<Grid container spacing={3}>
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>
 							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
 								Sequence ID
@@ -54,7 +54,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 							</Typography>
 						</Box>
 					</Grid>
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>
 							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
 								Sequence Name
@@ -64,7 +64,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 							</Typography>
 						</Box>
 					</Grid>
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>
 							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
 								Category
@@ -74,7 +74,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 							</Typography>
 						</Box>
 					</Grid>
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>
 							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
 								Type
@@ -84,7 +84,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 							</Typography>
 						</Box>
 					</Grid>
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>
 							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
 								Status
@@ -105,7 +105,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 						</Box>
 					</Grid>
 					{formData?.notes && (
-						<Grid item xs={12}>
+						<Grid size={{ xs: 12 }}>
 							<Box>
 								<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
 									Notes
@@ -247,7 +247,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 					Summary Statistics
 				</Typography>
 				<Grid container spacing={3}>
-					<Grid item xs={12} md={4}>
+					<Grid size={{ xs: 12, md: 4 }}>
 						<Card sx={{ backgroundColor: '#e3f2fd' }}>
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#1976d2' }}>
@@ -259,7 +259,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 							</CardContent>
 						</Card>
 					</Grid>
-					<Grid item xs={12} md={4}>
+					<Grid size={{ xs: 12, md: 4 }}>
 						<Card sx={{ backgroundColor: '#f3e5f5' }}>
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#7b1fa2' }}>
@@ -274,7 +274,7 @@ const SequenceReview: React.FC<SequenceReviewProps> = ({ control }) => {
 							</CardContent>
 						</Card>
 					</Grid>
-					<Grid item xs={12} md={4}>
+					<Grid size={{ xs: 12, md: 4 }}>
 						<Card sx={{ backgroundColor: '#ffebee' }}>
 							<CardContent sx={{ textAlign: 'center' }}>
 								<Typography variant="h4" sx={{ fontWeight: 700, color: '#c62828' }}>

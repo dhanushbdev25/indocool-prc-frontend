@@ -26,7 +26,7 @@ import { Controller, useFieldArray } from 'react-hook-form';
 import { CatalystConfigurationProps } from '../types';
 import { defaultCatalystConfiguration } from '../schemas';
 
-const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, errors }) => {
+const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) => {
 	const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set([0]));
 	const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<number>>(new Set());
 
@@ -165,12 +165,12 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 
 						<Grid container spacing={3}>
 							{/* Temperature Range */}
-							<Grid item xs={12}>
+							<Grid size={{ xs: 12 }}>
 								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
 									Temperature Range (°C)
 								</Typography>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.minTemperature`}
 									control={control}
@@ -189,7 +189,7 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 									)}
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.maxTemperature`}
 									control={control}
@@ -210,12 +210,12 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 							</Grid>
 
 							{/* Humidity Range */}
-							<Grid item xs={12}>
+							<Grid size={{ xs: 12 }}>
 								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
 									Humidity Range (%)
 								</Typography>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.minHumidity`}
 									control={control}
@@ -234,7 +234,7 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 									)}
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.maxHumidity`}
 									control={control}
@@ -255,12 +255,12 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 							</Grid>
 
 							{/* Gelcoat Settings */}
-							<Grid item xs={12}>
+							<Grid size={{ xs: 12 }}>
 								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
 									Gelcoat Settings
 								</Typography>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.minGelcoat`}
 									control={control}
@@ -280,7 +280,7 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 									)}
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.maxGelcoat`}
 									control={control}
@@ -300,7 +300,7 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 									)}
 								/>
 							</Grid>
-							<Grid item xs={12}>
+							<Grid size={{ xs: 12 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.gelcoatLabel`}
 									control={control}
@@ -320,12 +320,12 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 							</Grid>
 
 							{/* Resin Settings */}
-							<Grid item xs={12}>
+							<Grid size={{ xs: 12 }}>
 								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
 									Resin Settings
 								</Typography>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.minResinDosage`}
 									control={control}
@@ -345,7 +345,7 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 									)}
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.maxResinDosage`}
 									control={control}
@@ -365,7 +365,7 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 									)}
 								/>
 							</Grid>
-							<Grid item xs={12}>
+							<Grid size={{ xs: 12 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.resinLabel`}
 									control={control}
@@ -385,12 +385,12 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 							</Grid>
 
 							{/* Safety Settings */}
-							<Grid item xs={12}>
+							<Grid size={{ xs: 12 }}>
 								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
 									Safety & Approval Settings
 								</Typography>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.blockCatalystMixing`}
 									control={control}
@@ -402,7 +402,7 @@ const CatalystConfiguration: React.FC<CatalystConfigurationProps> = ({ control, 
 									)}
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid size={{ xs: 6 }}>
 								<Controller
 									name={`catalystConfiguration.${index}.requestSupervisorApproval`}
 									control={control}

@@ -19,7 +19,7 @@ import { Logout, ExpandMore, Person, AdminPanelSettings } from '@mui/icons-mater
 import { useRole } from '../../../contexts/useRole';
 import { useLogout } from '../../../hooks/useLogOut';
 
-const TopBar: React.FC = () => {
+const TopBar = () => {
 	const theme = useTheme();
 	const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 	const { currentRole, availableRoles, userInfo, switchRole } = useRole();

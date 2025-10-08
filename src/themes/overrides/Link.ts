@@ -3,8 +3,13 @@
 export default function Link() {
 	return {
 		MuiLink: {
-			defaultProps: {
-				underline: 'hover'
+			styleOverrides: {
+				root: {
+					textDecoration: 'none',
+					'&:hover': {
+						textDecoration: 'underline'
+					}
+				}
 			}
 		}
 	};

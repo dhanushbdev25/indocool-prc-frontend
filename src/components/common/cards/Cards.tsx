@@ -47,7 +47,7 @@ export default function Cards(props: Readonly<CardsPropsType>) {
 					</CardHeader>
 
 					<Grid container spacing={1}>
-						<Grid item>
+						<Grid>
 							<CardTotalRequest
 								className="card-total"
 								sx={{
@@ -57,32 +57,30 @@ export default function Cards(props: Readonly<CardsPropsType>) {
 								{totalRequests}
 							</CardTotalRequest>
 						</Grid>
-						<CardUtilis item sx={{ marginTop: '12px', color: '#44546F' }}>
-							{props.utilis}
-						</CardUtilis>
+						<CardUtilis sx={{ marginTop: '12px', color: '#44546F' }}>{props.utilis}</CardUtilis>
 					</Grid>
 
 					<Grid container spacing={2}>
-						<Grid item>
+						<Grid>
 							{props.requests?.nr !== undefined ? (
 								<CardRequestContainer container>
-									<Grid item>
+									<Grid>
 										<CardRequestItem>NR</CardRequestItem>
 									</Grid>
-									<CardRequestData item>{props.requests?.nr}</CardRequestData>
+									<CardRequestData>{props.requests?.nr}</CardRequestData>
 								</CardRequestContainer>
 							) : (
 								<CardRequestItem>{props.textValue}</CardRequestItem>
 							)}
 						</Grid>
 
-						<Grid item>
+						<Grid>
 							{props.requests?.cr !== undefined && (
 								<CardRequestContainer container>
-									<Grid item>
+									<Grid>
 										<CardRequestItem>CR</CardRequestItem>
 									</Grid>
-									<CardRequestData item>{props.requests?.cr}</CardRequestData>
+									<CardRequestData>{props.requests?.cr}</CardRequestData>
 								</CardRequestContainer>
 							)}
 						</Grid>

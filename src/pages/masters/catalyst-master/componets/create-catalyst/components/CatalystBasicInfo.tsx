@@ -1,10 +1,9 @@
-import React from 'react';
 import { Box, Paper, Typography, TextField, FormControlLabel, Switch, Grid, Divider } from '@mui/material';
 import { Info as InfoIcon } from '@mui/icons-material';
 import { Controller } from 'react-hook-form';
 import { CatalystBasicInfoProps } from '../types';
 
-const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }) => {
+const CatalystBasicInfo = ({ control, errors }: CatalystBasicInfoProps) => {
 	return (
 		<Box>
 			<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -17,7 +16,7 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
 				<Grid container spacing={3}>
 					{/* Chart ID */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="chartId"
 							control={control}
@@ -41,7 +40,7 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* Chart Supplier */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="chartSupplier"
 							control={control}
@@ -65,7 +64,7 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* MEKP Density */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="mekpDensity"
 							control={control}
@@ -91,7 +90,7 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* Active Status */}
-					<Grid item xs={12} md={6}>
+					<Grid size={{ xs: 12, md: 6 }}>
 						<Box
 							sx={{
 								display: 'flex',
@@ -123,7 +122,7 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 					</Grid>
 
 					{/* Notes */}
-					<Grid item xs={12}>
+					<Grid size={{ xs: 12 }}>
 						<Divider sx={{ my: 2 }} />
 						<Controller
 							name="notes"

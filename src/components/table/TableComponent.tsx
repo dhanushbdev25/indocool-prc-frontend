@@ -1,13 +1,13 @@
-import { MaterialReactTable, useMaterialReactTable, MRT_ColumnDef } from 'material-react-table';
+import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
 import { Box, Pagination, PaginationItem } from '@mui/material';
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 
 interface TableProps<T> {
 	data: T[];
 	tableColumns: MRT_ColumnDef<T>[];
 }
 
-export default function TableComponent<T extends object>({ data, tableColumns }: TableProps<T>) {
+const TableComponent = <T extends object>({ data, tableColumns }: TableProps<T>) => {
 	const columns = useMemo(() => tableColumns, [tableColumns]);
 	const memoData = useMemo(() => data, [data]);
 
@@ -17,12 +17,23 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 		initialState: {
 			pagination: { pageIndex: 0, pageSize: 5 }
 		},
+		// Performance optimizations
 		enableStickyHeader: true,
 		enablePagination: true,
 		enableSorting: true,
 		enableTopToolbar: false,
 		renderBottomToolbar: false,
 		enableColumnActions: false,
+		// Disable features we don't use for better performance
+		enableColumnFilters: false,
+		enableGlobalFilter: false,
+		enableRowSelection: false,
+		enableColumnResizing: false,
+		enableColumnOrdering: false,
+		enableHiding: false,
+		enableDensityToggle: false,
+		enableFullScreenToggle: false,
+		// MUI v7 optimized styling
 		muiTableContainerProps: {
 			sx: {
 				maxHeight: '600px',
@@ -31,7 +42,6 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 		},
 		muiTableHeadCellProps: {
 			sx: {
-				// backgroundColor: '#e6eefe',
 				color: '#000',
 				fontWeight: 'bold',
 				borderRight: '1px solid rgba(224, 224, 224, 1)'
@@ -45,22 +55,30 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 		}
 	});
 
-	const totalPages = Math.ceil(data.length / table.getState().pagination.pageSize);
-	const currentPage = table.getState().pagination.pageIndex + 1;
+	// Memoize pagination calculations for better performance
+	const paginationState = useMemo(() => {
+		const totalPages = Math.ceil(data.length / table.getState().pagination.pageSize);
+		const currentPage = table.getState().pagination.pageIndex + 1;
 
-	// sliding window logic
-	let startPage = Math.max(currentPage - 2, 1);
-	let endPage = startPage + 4;
+		// Optimized sliding window logic
+		const windowSize = 5;
+		const halfWindow = Math.floor(windowSize / 2);
 
-	if (endPage > totalPages) {
-		endPage = totalPages;
-		startPage = Math.max(endPage - 4, 1);
-	}
+		let startPage = Math.max(currentPage - halfWindow, 1);
+		let endPage = Math.min(startPage + windowSize - 1, totalPages);
 
-	const visiblePages: number[] = [];
-	for (let i = startPage; i <= endPage; i++) {
-		visiblePages.push(i);
-	}
+		// Adjust start if we're near the end
+		if (endPage - startPage < windowSize - 1) {
+			startPage = Math.max(endPage - windowSize + 1, 1);
+		}
+
+		const visiblePages: number[] = [];
+		for (let i = startPage; i <= endPage; i++) {
+			visiblePages.push(i);
+		}
+
+		return { totalPages, currentPage, visiblePages };
+	}, [data.length, table.getState().pagination.pageSize, table.getState().pagination.pageIndex]);
 
 	return (
 		<Box sx={{ backgroundColor: '#fff' }}>
@@ -76,13 +94,13 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 				}}
 			>
 				<Pagination
-					count={visiblePages.length}
-					page={visiblePages.indexOf(currentPage) + 1}
-					onChange={(_, pageIndex) => table.setPageIndex(visiblePages[pageIndex - 1] - 1)}
+					count={paginationState.visiblePages.length}
+					page={paginationState.visiblePages.indexOf(paginationState.currentPage) + 1}
+					onChange={(_, pageIndex) => table.setPageIndex(paginationState.visiblePages[pageIndex - 1] - 1)}
 					renderItem={item => {
 						if (item.type === 'page') {
-							const realPage = visiblePages[item.page ? item.page - 1 : 0];
-							return <PaginationItem {...item} page={realPage} selected={realPage === currentPage} />;
+							const realPage = paginationState.visiblePages[item.page ? item.page - 1 : 0];
+							return <PaginationItem {...item} page={realPage} selected={realPage === paginationState.currentPage} />;
 						}
 						return <PaginationItem {...item} />;
 					}}
@@ -104,4 +122,6 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 			</Box>
 		</Box>
 	);
-}
+};
+
+export default memo(TableComponent) as typeof TableComponent;

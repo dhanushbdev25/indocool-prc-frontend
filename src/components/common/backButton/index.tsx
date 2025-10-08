@@ -10,7 +10,7 @@ const BackNavigationButton = () => {
 	};
 
 	return (
-		<Grid item xs={12} color="primary.main" onClick={handleBackClick} style={{ cursor: 'pointer' }}>
+		<Grid size={{ xs: 12 }} color="primary.main" onClick={handleBackClick} style={{ cursor: 'pointer' }}>
 			<ArrowLeftOutlined /> Back
 		</Grid>
 	);

@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import { Box, Chip, IconButton, Typography, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	CheckCircle as CheckCircleIcon,
@@ -21,7 +21,7 @@ interface CatalystTableProps {
 	onEdit?: (catalystId: number) => void;
 }
 
-const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
+const CatalystTable = memo(({ data, onActionClick, onEdit }: CatalystTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<CatalystData | null>(null);
 	const getStatusColor = (status: string) => {
@@ -220,21 +220,23 @@ const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
 					horizontal: 'right'
 				}}
 			>
-				<MenuItem onClick={handleEdit}>
-					<ListItemIcon>
-						<EditIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>Edit</ListItemText>
-				</MenuItem>
-				<MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
-					<ListItemIcon>
-						<DeleteIcon fontSize="small" color="error" />
-					</ListItemIcon>
-					<ListItemText>Delete</ListItemText>
-				</MenuItem>
+				{[
+					<MenuItem key="edit" onClick={handleEdit}>
+						<ListItemIcon>
+							<EditIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>Edit</ListItemText>
+					</MenuItem>,
+					<MenuItem key="delete" onClick={handleDelete} sx={{ color: 'error.main' }}>
+						<ListItemIcon>
+							<DeleteIcon fontSize="small" color="error" />
+						</ListItemIcon>
+						<ListItemText>Delete</ListItemText>
+					</MenuItem>
+				]}
 			</Menu>
 		</Box>
 	);
-};
+});
 
 export default CatalystTable;

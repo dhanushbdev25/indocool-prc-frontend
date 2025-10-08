@@ -38,7 +38,7 @@ export default function GradientCard(props: gradientCardPropsType) {
 					<CardHeader>{props.header}</CardHeader>
 
 					<Grid container spacing={1}>
-						<Grid item>
+						<Grid>
 							<CardTotalRequest>{totalRequests}</CardTotalRequest>
 						</Grid>
 
@@ -48,10 +48,10 @@ export default function GradientCard(props: gradientCardPropsType) {
 					</Grid>
 
 					<Grid container spacing={2}>
-						<Grid item>
+						<Grid>
 							{props.requests?.inUse && (
 								<CardRequestContainer container>
-									<Grid item>
+									<Grid>
 										<CardRequestItem>In Use</CardRequestItem>
 									</Grid>
 
@@ -60,10 +60,10 @@ export default function GradientCard(props: gradientCardPropsType) {
 							)}
 						</Grid>
 
-						<Grid item>
+						<Grid>
 							{props.requests?.partiallyInUse && (
 								<CardRequestContainer container>
-									<Grid item>
+									<Grid>
 										<CardRequestItem>Partially in Use</CardRequestItem>
 									</Grid>
 
@@ -72,10 +72,10 @@ export default function GradientCard(props: gradientCardPropsType) {
 							)}
 						</Grid>
 
-						<Grid item>
+						<Grid>
 							{props.requests?.unassigned && (
 								<CardRequestContainer container>
-									<Grid item>
+									<Grid>
 										<CardRequestItem>Un assigned</CardRequestItem>
 									</Grid>
 

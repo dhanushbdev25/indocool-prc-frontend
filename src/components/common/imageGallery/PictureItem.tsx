@@ -9,9 +9,9 @@ interface PictureItemProps {
 	view?: boolean;
 }
 
-const PictureItem: React.FC<PictureItemProps> = ({ item, onRemoveImage, view }) => {
+const PictureItem = ({ item, onRemoveImage, view }: PictureItemProps) => {
 	return (
-		<Grid item>
+		<Grid>
 			<Paper
 				variant="outlined"
 				sx={{

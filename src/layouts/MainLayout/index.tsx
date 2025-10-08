@@ -12,7 +12,7 @@ import { useRole } from '../../contexts/useRole';
 import ModernTopBar from '../../components/common/TopBar/ModernTopBar';
 import Breadcrumbs from '../../components/common/breadcrumbs/Breadcrumbs';
 
-const MainLayout: React.FC = () => {
+const MainLayout = () => {
 	const theme = useTheme();
 	const matchDownLG = useMediaQuery(theme.breakpoints.down('lg'));
 	const [open, setOpen] = useState(true);
@@ -38,11 +38,15 @@ const MainLayout: React.FC = () => {
 	);
 };
 
-const MainLayoutContent: React.FC<{
+const MainLayoutContent = ({
+	open,
+	handleDrawerToggle,
+	data
+}: {
 	open: boolean;
 	handleDrawerToggle: () => void;
 	data: unknown;
-}> = ({ open, handleDrawerToggle, data }) => {
+}) => {
 	const { getCurrentPermissions } = useRole();
 	const permissions = getCurrentPermissions();
 
