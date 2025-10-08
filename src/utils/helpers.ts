@@ -6,7 +6,9 @@ export const displayError = (error: unknown) => {
 			Swal.fire({
 				icon: 'error',
 				title: 'Error',
-				text: (error as { data?: { message?: string; msg?: string } })?.data?.message || (error as { data?: { message?: string; msg?: string } })?.data?.msg
+				text:
+					(error as { data?: { message?: string; msg?: string } })?.data?.message ||
+					(error as { data?: { message?: string; msg?: string } })?.data?.msg
 			});
 		} else {
 			Swal.fire({
@@ -118,7 +120,12 @@ export function truncateString(text: string, maxLength: number) {
 export function extractErrorMessage(err: unknown): string {
 	if (err instanceof Error) return err.message;
 
-	if (typeof err === 'object' && err !== null && 'data' in err && typeof (err as { data?: { message?: string } }).data?.message === 'string')
+	if (
+		typeof err === 'object' &&
+		err !== null &&
+		'data' in err &&
+		typeof (err as { data?: { message?: string } }).data?.message === 'string'
+	)
 		return (err as { data: { message: string } }).data.message;
 
 	return 'Something went wrong';

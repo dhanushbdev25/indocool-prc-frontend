@@ -44,9 +44,9 @@ const NavItem = ({ text, path, icon: Icon, open }: NavItemProps) => (
 					</ListItemIcon>
 					<ListItemText
 						primary={
-							<Typography 
-								sx={{ 
-									fontSize: 14, 
+							<Typography
+								sx={{
+									fontSize: 14,
 									fontWeight: isActive ? 500 : 400,
 									color: isActive ? '#334155' : '#64748b',
 									letterSpacing: '-0.01em',
@@ -56,7 +56,7 @@ const NavItem = ({ text, path, icon: Icon, open }: NavItemProps) => (
 								{text}
 							</Typography>
 						}
-						sx={{ 
+						sx={{
 							opacity: open ? 1 : 0,
 							transition: 'opacity 0.2s ease'
 						}}

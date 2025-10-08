@@ -2,11 +2,11 @@ import { Button, Box, Typography } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-const CatalystHeader = () => {
+const SequenceHeader = () => {
 	const navigate = useNavigate();
 
-	const handleAddChart = () => {
-		navigate('/catalyst-master/create-catalyst');
+	const handleAddSequence = () => {
+		navigate('/sequence-master/create-sequence');
 	};
 
 	return (
@@ -22,7 +22,7 @@ const CatalystHeader = () => {
 							fontSize: '2rem'
 						}}
 					>
-						Catalyst Mixing Master
+						Process Sequence Master
 					</Typography>
 					<Typography
 						variant="body1"
@@ -32,13 +32,13 @@ const CatalystHeader = () => {
 							fontWeight: 400
 						}}
 					>
-						Manage temperature-based catalyst dosage formulations
+						Manage and configure process sequences for production workflows
 					</Typography>
 				</Box>
 				<Button
 					variant="contained"
 					startIcon={<AddIcon />}
-					onClick={handleAddChart}
+					onClick={handleAddSequence}
 					sx={{
 						backgroundColor: '#1976d2',
 						color: 'white',
@@ -53,11 +53,11 @@ const CatalystHeader = () => {
 						}
 					}}
 				>
-					Add Chart
+					Add Sequence
 				</Button>
 			</Box>
 		</Box>
 	);
 };
 
-export default CatalystHeader;
+export default SequenceHeader;

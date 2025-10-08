@@ -1,5 +1,5 @@
 import { Box, Card, CardContent, Typography } from '@mui/material';
-import { Science as BeakerIcon, CheckCircle as ActiveIcon, Cancel as InactiveIcon } from '@mui/icons-material';
+import { AccountTree as SequenceIcon, CheckCircle as ActiveIcon, Cancel as InactiveIcon } from '@mui/icons-material';
 
 interface SummaryCardData {
 	title: string;
@@ -16,23 +16,23 @@ interface SummaryCardsProps {
 }
 
 const SummaryCards = ({ headerData }: SummaryCardsProps) => {
-	const totalCharts = headerData.ACTIVE + headerData.INACTIVE;
+	const totalSequences = headerData.ACTIVE + headerData.INACTIVE;
 
 	const summaryData: SummaryCardData[] = [
 		{
-			title: 'Total Charts',
-			value: totalCharts,
-			subtitle: `${headerData.ACTIVE} active charts`,
-			icon: <BeakerIcon sx={{ color: '#666', fontSize: '1.5rem', opacity: 0.7 }} />
+			title: 'Total Sequences',
+			value: totalSequences,
+			subtitle: `${headerData.ACTIVE} active sequences`,
+			icon: <SequenceIcon sx={{ color: '#666', fontSize: '1.5rem', opacity: 0.7 }} />
 		},
 		{
-			title: 'Active Charts',
+			title: 'Active Sequences',
 			value: headerData.ACTIVE,
 			subtitle: 'Currently in production',
 			icon: <ActiveIcon sx={{ color: '#4caf50', fontSize: '1.5rem', opacity: 0.8 }} />
 		},
 		{
-			title: 'Inactive Charts',
+			title: 'Inactive Sequences',
 			value: headerData.INACTIVE,
 			subtitle: 'Not in use',
 			icon: <InactiveIcon sx={{ color: '#f44336', fontSize: '1.5rem', opacity: 0.8 }} />

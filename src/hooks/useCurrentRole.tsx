@@ -14,9 +14,9 @@ export const useCurrentRole = () => {
 		availableRoles,
 		userInfo,
 		hasPermission: (permission: string) => getCurrentPermissions().includes(permission),
-		hasAnyPermission: (permissions: string[]) => 
+		hasAnyPermission: (permissions: string[]) =>
 			permissions.some(permission => getCurrentPermissions().includes(permission)),
-		hasAllPermissions: (permissions: string[]) => 
+		hasAllPermissions: (permissions: string[]) =>
 			permissions.every(permission => getCurrentPermissions().includes(permission))
 	};
 };

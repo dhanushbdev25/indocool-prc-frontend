@@ -6,10 +6,10 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children, sessionDat
 	const [currentRoleId, setCurrentRoleId] = useState<number>(sessionData.defaultRole.id);
 
 	// Get all available roles (default + other roles)
-	const availableRoles: Role[] = useMemo(() => [
-		sessionData.defaultRole,
-		...sessionData.otherRoles
-	], [sessionData.defaultRole, sessionData.otherRoles]);
+	const availableRoles: Role[] = useMemo(
+		() => [sessionData.defaultRole, ...sessionData.otherRoles],
+		[sessionData.defaultRole, sessionData.otherRoles]
+	);
 
 	// Get current role based on selected role ID
 	const currentRole = availableRoles.find(role => role.id === currentRoleId) || sessionData.defaultRole;
@@ -22,12 +22,15 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children, sessionDat
 	};
 
 	// Switch role function
-	const switchRole = useCallback((roleId: number) => {
-		const roleExists = availableRoles.find(role => role.id === roleId);
-		if (roleExists) {
-			setCurrentRoleId(roleId);
-		}
-	}, [availableRoles]);
+	const switchRole = useCallback(
+		(roleId: number) => {
+			const roleExists = availableRoles.find(role => role.id === roleId);
+			if (roleExists) {
+				setCurrentRoleId(roleId);
+			}
+		},
+		[availableRoles]
+	);
 
 	// Get current permissions
 	const getCurrentPermissions = useCallback(() => {
@@ -42,10 +45,5 @@ export const RoleProvider: React.FC<RoleProviderProps> = ({ children, sessionDat
 		getCurrentPermissions
 	};
 
-	return (
-		<RoleContext.Provider value={value}>
-			{children}
-		</RoleContext.Provider>
-	);
+	return <RoleContext.Provider value={value}>{children}</RoleContext.Provider>;
 };
-

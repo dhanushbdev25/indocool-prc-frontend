@@ -1,10 +1,23 @@
 import React from 'react';
-import { Box, Paper, Typography, TextField, FormControlLabel, Switch, Grid, Divider } from '@mui/material';
+import {
+	Box,
+	Paper,
+	Typography,
+	TextField,
+	FormControlLabel,
+	Switch,
+	Grid,
+	Divider,
+	FormControl,
+	InputLabel,
+	Select,
+	MenuItem
+} from '@mui/material';
 import { Info as InfoIcon } from '@mui/icons-material';
 import { Controller } from 'react-hook-form';
-import { CatalystBasicInfoProps } from '../types';
+import { SequenceBasicInfoProps } from '../types';
 
-const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }) => {
+const SequenceBasicInfo: React.FC<SequenceBasicInfoProps> = ({ control, errors }) => {
 	return (
 		<Box>
 			<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
@@ -16,20 +29,20 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
 				<Grid container spacing={3}>
-					{/* Chart ID */}
+					{/* Sequence ID */}
 					<Grid item xs={12} md={6}>
 						<Controller
-							name="chartId"
+							name="sequenceId"
 							control={control}
 							render={({ field }) => (
 								<TextField
 									{...field}
 									fullWidth
-									label="Chart ID"
+									label="Sequence ID"
 									required
-									placeholder="e.g., CAT-CHT-001"
-									helperText={errors.chartId?.message || 'Unique identifier for the catalyst chart'}
-									error={!!errors.chartId}
+									placeholder="e.g., SEQ-001"
+									helperText={errors.sequenceId?.message || 'Unique identifier for the process sequence'}
+									error={!!errors.sequenceId}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'
@@ -40,20 +53,20 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 						/>
 					</Grid>
 
-					{/* Chart Supplier */}
+					{/* Sequence Name */}
 					<Grid item xs={12} md={6}>
 						<Controller
-							name="chartSupplier"
+							name="sequenceName"
 							control={control}
 							render={({ field }) => (
 								<TextField
 									{...field}
 									fullWidth
-									label="Chart Supplier"
+									label="Sequence Name"
 									required
-									placeholder="e.g., ABC Chemicals Ltd."
-									helperText={errors.chartSupplier?.message || 'Name of the chemical supplier'}
-									error={!!errors.chartSupplier}
+									placeholder="e.g., Composite Molding Line - Phase 1"
+									helperText={errors.sequenceName?.message || 'Descriptive name for the process sequence'}
+									error={!!errors.sequenceName}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'
@@ -64,28 +77,48 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 						/>
 					</Grid>
 
-					{/* MEKP Density */}
+					{/* Category */}
 					<Grid item xs={12} md={6}>
 						<Controller
-							name="mekpDensity"
+							name="category"
 							control={control}
 							render={({ field }) => (
 								<TextField
 									{...field}
 									fullWidth
-									label="MEKP Density"
+									label="Category"
 									required
-									type="number"
-									placeholder="e.g., 1.12"
-									helperText={errors.mekpDensity?.message || 'Methyl Ethyl Ketone Peroxide density (g/cm³)'}
-									error={!!errors.mekpDensity}
-									inputProps={{ step: '0.01', min: '0' }}
+									placeholder="e.g., Production"
+									helperText={errors.category?.message || 'Category classification for the sequence'}
+									error={!!errors.category}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'
 										}
 									}}
 								/>
+							)}
+						/>
+					</Grid>
+
+					{/* Type */}
+					<Grid item xs={12} md={6}>
+						<Controller
+							name="type"
+							control={control}
+							render={({ field }) => (
+								<FormControl fullWidth error={!!errors.type}>
+									<InputLabel>Type</InputLabel>
+									<Select {...field} label="Type" sx={{ borderRadius: '8px' }}>
+										<MenuItem value="Layout">Layout</MenuItem>
+										<MenuItem value="ISP">ISP</MenuItem>
+									</Select>
+									{errors.type && (
+										<Typography variant="caption" sx={{ color: 'error.main', mt: 0.5, ml: 1.75 }}>
+											{errors.type.message}
+										</Typography>
+									)}
+								</FormControl>
 							)}
 						/>
 					</Grid>
@@ -101,7 +134,7 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 							}}
 						>
 							<Controller
-								name="isActive"
+								name="status"
 								control={control}
 								render={({ field }) => (
 									<FormControlLabel
@@ -112,7 +145,7 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 													Active Status
 												</Typography>
 												<Typography variant="caption" sx={{ color: '#666' }}>
-													Enable this chart for use in production
+													Enable this sequence for use in production
 												</Typography>
 											</Box>
 										}
@@ -135,7 +168,7 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 									label="Notes"
 									multiline
 									rows={4}
-									placeholder="Additional notes about this catalyst chart..."
+									placeholder="Additional notes about this process sequence..."
 									helperText={
 										errors.notes?.message ||
 										'Optional notes about usage, special conditions, or other relevant information'
@@ -156,4 +189,4 @@ const CatalystBasicInfo: React.FC<CatalystBasicInfoProps> = ({ control, errors }
 	);
 };
 
-export default CatalystBasicInfo;
+export default SequenceBasicInfo;

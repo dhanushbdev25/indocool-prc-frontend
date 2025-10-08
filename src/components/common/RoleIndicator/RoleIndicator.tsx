@@ -95,7 +95,9 @@ const RoleIndicator: React.FC<RoleIndicatorProps> = ({
 		<Chip
 			icon={showIcon ? getRoleIcon(currentRole.name) : undefined}
 			label={getRoleLabel(currentRole.name)}
-			color={getRoleColor(currentRole.name) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
+			color={
+				getRoleColor(currentRole.name) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'
+			}
 			size={size}
 			variant="filled"
 			sx={{

@@ -2,8 +2,8 @@ import { styled, Theme, CSSObject } from '@mui/material/styles';
 import MuiDrawer from '@mui/material/Drawer';
 import List from '@mui/material/List';
 import { Box } from '@mui/material';
-import { getSidebarScreens } from '../../../routes/screenHelpers';
-import NavItem from './NavItem';
+import { getSidebarModules } from '../../../routes/screenHelpers';
+import HierarchicalNavItem from './HierarchicalNavItem';
 
 const drawerWidth = 240;
 
@@ -27,7 +27,6 @@ const closedMixin = (theme: Theme): CSSObject => ({
 		width: `calc(${theme.spacing(8)} + 1px)`
 	}
 });
-
 
 const Drawer = styled(MuiDrawer, { shouldForwardProp: prop => prop !== 'open' })(({ theme, open }) => ({
 	width: drawerWidth,
@@ -53,7 +52,7 @@ interface DrawerProps {
 	permissions: string[];
 }
 export default function DrawerComp({ open, permissions }: Readonly<DrawerProps>) {
-	const menuItems = getSidebarScreens(permissions);
+	const menuModules = getSidebarModules(permissions);
 	return (
 		<Box sx={{ display: 'flex' }}>
 			<Drawer
@@ -72,10 +71,8 @@ export default function DrawerComp({ open, permissions }: Readonly<DrawerProps>)
 				}}
 			>
 				<List sx={{ px: 1, py: 1, mt: 8 }}>
-					{menuItems.map(item => (
-						<List key={item.path} sx={{ mb: 0, py: 0, zIndex: 0 }}>
-							<NavItem key={item.path} text={item.text} path={item.path} icon={item.icon} open={open} />
-						</List>
+					{menuModules.map(module => (
+						<HierarchicalNavItem key={module.text} module={module} open={open} />
 					))}
 				</List>
 			</Drawer>

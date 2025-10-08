@@ -5,19 +5,20 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
 import { ArrowBack, Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
-import CatalystBasicInfo from './components/CatalystBasicInfo';
-import CatalystConfiguration from './components/CatalystConfiguration';
-import { catalystFormSchema, defaultCatalystFormData } from './schemas';
-import { CatalystFormData } from './schemas';
+import SequenceBasicInfo from './components/SequenceBasicInfo';
+import SequenceStepGroups from './components/SequenceStepGroups';
+import SequenceReview from './components/SequenceReview';
+import { sequenceFormSchema, defaultSequenceFormData } from './schemas';
+import { SequenceFormData } from './schemas';
 import {
-	useFetchCatalystByIdQuery,
-	useCreateCatalystMutation,
-	useUpdateCatalystMutation
-} from '../../../../../store/api/business/catalyst-master/catalyst.api';
+	useFetchProcessSequenceByIdQuery,
+	useCreateProcessSequenceMutation,
+	useUpdateProcessSequenceMutation
+} from '../../../../../store/api/business/sequence-master/sequence.api';
 
-const steps = ['Basic Information', 'Configuration Settings'];
+const steps = ['Basic Information', 'Step Groups & Steps', 'Review & Submit'];
 
-const CreateCatalyst = () => {
+const CreateSequence = () => {
 	const navigate = useNavigate();
 	const { id } = useParams();
 	const isEditMode = Boolean(id);
@@ -25,23 +26,23 @@ const CreateCatalyst = () => {
 	const [activeStep, setActiveStep] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 
-	// Fetch catalyst data for edit mode
+	// Fetch sequence data for edit mode
 	const {
-		data: catalystData,
+		data: sequenceData,
 		isLoading: isFetching,
 		isSuccess: isFetchSuccess
-	} = useFetchCatalystByIdQuery({ id: Number(id) }, { skip: !isEditMode || !id });
+	} = useFetchProcessSequenceByIdQuery({ id: Number(id) }, { skip: !isEditMode || !id });
 
 	// API mutations
-	const [createCatalyst, { isLoading: isCreating }] = useCreateCatalystMutation();
-	const [updateCatalyst, { isLoading: isUpdating }] = useUpdateCatalystMutation();
+	const [createSequence, { isLoading: isCreating }] = useCreateProcessSequenceMutation();
+	const [updateSequence, { isLoading: isUpdating }] = useUpdateProcessSequenceMutation();
 
 	// Initialize React Hook Form
-	const methods = useForm<CatalystFormData>({
-		resolver: yupResolver(catalystFormSchema),
-		defaultValues: defaultCatalystFormData,
-		mode: 'onChange', // Validate on change for immediate feedback
-		reValidateMode: 'onChange' // Re-validate on change
+	const methods = useForm<SequenceFormData>({
+		resolver: yupResolver(sequenceFormSchema),
+		defaultValues: defaultSequenceFormData,
+		mode: 'onChange',
+		reValidateMode: 'onChange'
 	});
 
 	const {
@@ -49,8 +50,30 @@ const CreateCatalyst = () => {
 		handleSubmit,
 		formState: { errors },
 		reset,
-		trigger
+		trigger,
+		watch
 	} = methods;
+
+	// Watch form data for calculations
+	const watchedData = watch();
+
+	// Calculate totalSteps and ctqSteps
+	useEffect(() => {
+		if (watchedData.processStepGroups) {
+			const totalSteps = watchedData.processStepGroups.reduce(
+				(total, group) => total + (group.processSteps?.length || 0),
+				0
+			);
+			const ctqSteps = watchedData.processStepGroups.reduce(
+				(total, group) => total + (group.processSteps?.filter(step => step.ctq)?.length || 0),
+				0
+			);
+
+			// Update form values
+			methods.setValue('totalSteps', totalSteps);
+			methods.setValue('ctqSteps', ctqSteps);
+		}
+	}, [watchedData.processStepGroups, methods]);
 
 	// Debug: Log errors when they change
 	useEffect(() => {
@@ -61,41 +84,59 @@ const CreateCatalyst = () => {
 
 	// Load data for edit mode when API data is available
 	useEffect(() => {
-		if (isEditMode && isFetchSuccess && catalystData) {
-			const formData: CatalystFormData = {
-				id: catalystData.detail.catalyst.id,
-				chartId: catalystData.detail.catalyst.chartId,
-				chartSupplier: catalystData.detail.catalyst.chartSupplier,
-				notes: catalystData.detail.catalyst.notes || '',
-				mekpDensity: catalystData.detail.catalyst.mekpDensity,
-				isActive: catalystData.detail.catalyst.isActive,
-				catalystConfiguration: catalystData.detail.catalystConfiguration,
-				createdAt: catalystData.detail.catalyst.createdAt,
-				updatedAt: catalystData.detail.catalyst.updatedAt
+		if (isEditMode && isFetchSuccess && sequenceData) {
+			const formData: SequenceFormData = {
+				id: sequenceData.detail.id,
+				sequenceId: sequenceData.detail.sequenceId,
+				sequenceName: sequenceData.detail.sequenceName,
+				category: sequenceData.detail.category,
+				type: sequenceData.detail.type,
+				status: sequenceData.detail.status === 'ACTIVE',
+				notes: sequenceData.detail.notes || '',
+				totalSteps: sequenceData.detail.totalSteps,
+				ctqSteps: sequenceData.detail.ctqSteps,
+				processStepGroups: sequenceData.detail.stepGroups.map(group => ({
+					processName: group.processName,
+					processDescription: group.processDescription,
+					processSteps: group.steps.map(step => ({
+						parameterDescription: step.parameterDescription,
+						stepNumber: step.stepNumber,
+						stepType: step.stepType,
+						evaluationMethod: step.evaluationMethod,
+						targetValueType: step.targetValueType,
+						minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
+						maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
+						multipleMeasurements: step.multipleMeasurements,
+						multipleMeasurementMaximumCount: step.multipleMeasurementMaxCount,
+						uom: step.uom,
+						ctq: step.ctq,
+						allowAttachments: step.allowAttachments,
+						notes: step.notes
+					}))
+				})),
+				createdAt: sequenceData.detail.createdAt,
+				updatedAt: sequenceData.detail.updatedAt
 			};
 			reset(formData);
 		}
-	}, [isEditMode, isFetchSuccess, catalystData, reset]);
+	}, [isEditMode, isFetchSuccess, sequenceData, reset]);
 
 	const handleNext = async () => {
 		// Define fields to validate for each step
 		const stepFields = {
-			0: ['chartId', 'chartSupplier', 'mekpDensity', 'isActive', 'notes'] as const, // Basic info step
-			1: ['catalystConfiguration'] as const // Configuration step
+			0: ['sequenceId', 'sequenceName', 'category', 'type', 'status', 'notes'] as const,
+			1: ['processStepGroups'] as const
 		};
 
 		const fieldsToValidate = stepFields[activeStep as keyof typeof stepFields];
 
 		if (fieldsToValidate) {
 			try {
-				// Convert readonly tuple to mutable array to satisfy trigger's type requirement
-				const isValid = await trigger([...fieldsToValidate] as (keyof CatalystFormData)[]);
+				const isValid = await trigger([...fieldsToValidate] as (keyof SequenceFormData)[]);
 				if (isValid) {
 					setActiveStep(prevActiveStep => prevActiveStep + 1);
 				} else {
-					// Validation failed - errors will be displayed inline
 					console.log('Validation failed for step:', activeStep, 'Errors (Yup):', errors);
-					// Scroll to first error field
 					const firstErrorField = document.querySelector('.Mui-error');
 					if (firstErrorField) {
 						firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -103,7 +144,6 @@ const CreateCatalyst = () => {
 				}
 			} catch (error) {
 				console.error('Validation error:', error);
-				// Don't proceed to next step if validation throws an error
 			}
 		} else {
 			setActiveStep(prevActiveStep => prevActiveStep + 1);
@@ -114,11 +154,10 @@ const CreateCatalyst = () => {
 		setActiveStep(prevActiveStep => prevActiveStep - 1);
 	};
 
-	const onSubmit = async (data: CatalystFormData) => {
+	const onSubmit = async (data: SequenceFormData) => {
 		setError(null);
 
 		try {
-			// Validate the entire form before submission
 			const isValid = await trigger();
 			if (!isValid) {
 				console.log('Form validation failed on submit:', errors);
@@ -128,76 +167,86 @@ const CreateCatalyst = () => {
 
 			// Transform form data to API request format
 			const apiData = {
-				catalyst: {
-					status: data.isActive ? 'ACTIVE' : 'INACTIVE',
-					chartId: data.chartId,
-					chartSupplier: data.chartSupplier,
-					notes: data.notes || '',
-					mekpDensity: Number(data.mekpDensity),
-					isActive: data.isActive ?? true
-				},
-				catalystConfiguration: (data.catalystConfiguration || []).map(config => ({
-					minTemperature: Number(config.minTemperature),
-					maxTemperature: Number(config.maxTemperature),
-					minHumidity: Number(config.minHumidity),
-					maxHumidity: Number(config.maxHumidity),
-					minGelcoat: Number(config.minGelcoat),
-					maxGelcoat: Number(config.maxGelcoat),
-					gelcoatLabel: config.gelcoatLabel,
-					minResinDosage: Number(config.minResinDosage),
-					maxResinDosage: Number(config.maxResinDosage),
-					resinLabel: config.resinLabel,
-					blockCatalystMixing: config.blockCatalystMixing ?? false,
-					requestSupervisorApproval: config.requestSupervisorApproval ?? false
-				}))
+				data: {
+					processSequence: {
+						status: data.status ? 'ACTIVE' : 'INACTIVE',
+						sequenceId: data.sequenceId,
+						sequenceName: data.sequenceName,
+						version: 1,
+						isLatest: true,
+						category: data.category,
+						createdBy: 1, // TODO: Get from user context
+						updatedBy: 1, // TODO: Get from user context
+						type: data.type,
+						notes: data.notes || '',
+						totalSteps: data.totalSteps || 0,
+						ctqSteps: data.ctqSteps || 0
+					},
+					processStepGroups: (data.processStepGroups || []).map(group => ({
+						processName: group.processName,
+						processDescription: group.processDescription,
+						processSteps: (group.processSteps || []).map((step, stepIndex) => ({
+							parameterDescription: step.parameterDescription,
+							stepNumber: stepIndex + 1, // Auto-calculate step number
+							stepType: step.stepType,
+							evaluationMethod: step.evaluationMethod,
+							targetValueType: step.targetValueType,
+							minimumAcceptanceValue: step.minimumAcceptanceValue ?? null,
+							maximumAcceptanceValue: step.maximumAcceptanceValue ?? null,
+							multipleMeasurements: step.multipleMeasurements ?? false,
+							multipleMeasurementMaximumCount: step.multipleMeasurementMaximumCount ?? null,
+							uom: step.uom,
+							ctq: step.ctq ?? false,
+							allowAttachments: step.allowAttachments ?? false,
+							notes: step.notes || ''
+						}))
+					}))
+				}
 			};
 
-			console.log('Saving catalyst data:', apiData);
+			console.log('Saving sequence data:', apiData);
 
 			if (isEditMode && data.id) {
-				// Update existing catalyst
-				await updateCatalyst({ id: data.id, ...apiData }).unwrap();
+				await updateSequence({ id: data.id, data: apiData.data }).unwrap();
 
-				// Show success message
 				Swal.fire({
 					icon: 'success',
 					title: 'Success!',
-					text: 'Catalyst chart updated successfully',
+					text: 'Process sequence updated successfully',
 					timer: 2000,
 					showConfirmButton: false
 				});
 			} else {
-				// Create new catalyst
-				await createCatalyst(apiData).unwrap();
+				await createSequence(apiData).unwrap();
 
-				// Show success message
 				Swal.fire({
 					icon: 'success',
 					title: 'Success!',
-					text: 'Catalyst chart created successfully',
+					text: 'Process sequence created successfully',
 					timer: 2000,
 					showConfirmButton: false
 				});
 			}
 
-			// Navigate back to list on success
-			navigate('/catalyst-master');
+			navigate('/sequence-master');
 		} catch (err: any) {
 			console.error('API Error:', err);
-			setError(err?.data?.message || err?.message || `Failed to ${isEditMode ? 'update' : 'create'} catalyst`);
+			setError(err?.data?.message || err?.message || `Failed to ${isEditMode ? 'update' : 'create'} process sequence`);
 		}
 	};
 
 	const handleCancel = () => {
-		navigate('/catalyst-master');
+		navigate('/sequence-master');
 	};
 
 	const renderStepContent = (step: number) => {
 		switch (step) {
 			case 0:
-				return <CatalystBasicInfo control={control} errors={errors} />;
+				return <SequenceBasicInfo control={control} errors={errors} />;
 			case 1:
-				return <CatalystConfiguration control={control} errors={errors} />;
+				return <SequenceStepGroups control={control} errors={errors} />;
+			case 2:
+				return <SequenceReview control={control} errors={errors} />;
 			default:
 				return null;
 		}
@@ -208,23 +257,19 @@ const CreateCatalyst = () => {
 		return (
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-					{/* Header skeleton */}
 					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
 						<Skeleton variant="rectangular" width={80} height={36} sx={{ mr: 2, borderRadius: 1 }} />
 						<Skeleton variant="text" width={300} height={40} />
 					</Box>
 
-					{/* Stepper skeleton */}
 					<Box sx={{ mb: 4 }}>
 						<Skeleton variant="rectangular" width="100%" height={60} sx={{ borderRadius: 1 }} />
 					</Box>
 
-					{/* Form content skeleton */}
 					<Box sx={{ mb: 4 }}>
 						<Skeleton variant="rectangular" width="100%" height={400} sx={{ borderRadius: 1 }} />
 					</Box>
 
-					{/* Navigation buttons skeleton */}
 					<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
 						<Skeleton variant="rectangular" width={80} height={36} sx={{ borderRadius: 1 }} />
 						<Box sx={{ display: 'flex', gap: 2 }}>
@@ -247,7 +292,7 @@ const CreateCatalyst = () => {
 							Back
 						</Button>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
-							{isEditMode ? 'Edit Catalyst Chart' : 'Create New Catalyst Chart'}
+							{isEditMode ? 'Edit Process Sequence' : 'Create New Process Sequence'}
 						</Typography>
 					</Box>
 
@@ -295,7 +340,7 @@ const CreateCatalyst = () => {
 										'&:hover': { backgroundColor: '#1565c0' }
 									}}
 								>
-									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Chart' : 'Create Chart'}
+									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Sequence' : 'Create Sequence'}
 								</Button>
 							) : (
 								<Button
@@ -318,4 +363,4 @@ const CreateCatalyst = () => {
 	);
 };
 
-export default CreateCatalyst;
+export default CreateSequence;

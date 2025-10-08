@@ -39,7 +39,6 @@ const App = () => {
 
 const Routes = () => {
 	const r = useAuthRoutes();
-	console.log('routessssssssssssssssssssss', r);
 	return useRoutes(r);
 };
 

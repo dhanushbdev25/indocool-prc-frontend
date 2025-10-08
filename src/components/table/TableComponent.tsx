@@ -63,7 +63,7 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 	}
 
 	return (
-		<Box sx={{ backgroundColor: '#fff', }}>
+		<Box sx={{ backgroundColor: '#fff' }}>
 			<MaterialReactTable table={table} />
 			<Box
 				sx={{
@@ -79,7 +79,7 @@ export default function TableComponent<T extends object>({ data, tableColumns }:
 					count={visiblePages.length}
 					page={visiblePages.indexOf(currentPage) + 1}
 					onChange={(_, pageIndex) => table.setPageIndex(visiblePages[pageIndex - 1] - 1)}
-					renderItem={(item) => {
+					renderItem={item => {
 						if (item.type === 'page') {
 							const realPage = visiblePages[item.page ? item.page - 1 : 0];
 							return <PaginationItem {...item} page={realPage} selected={realPage === currentPage} />;

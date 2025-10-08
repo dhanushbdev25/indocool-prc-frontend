@@ -1,4 +1,3 @@
-
 // ==============================|| OVERRIDES - SCROLLBAR ||============================== //
 
 export default function ScrollBar() {

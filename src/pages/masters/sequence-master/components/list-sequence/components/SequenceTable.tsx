@@ -4,32 +4,31 @@ import { MRT_ColumnDef } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	CheckCircle as CheckCircleIcon,
-	Business as BusinessIcon,
+	Category as CategoryIcon,
 	Edit as EditIcon,
 	Delete as DeleteIcon
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
-import { type Catalyst } from '../../../../../../store/api/business/catalyst-master/catalyst.validators';
+import { type ProcessSequence } from '../../../../../../store/api/business/sequence-master/sequence.validators';
 
 // Use the Zod-validated type from the API
-export type CatalystData = Catalyst;
+export type SequenceData = ProcessSequence;
 
-interface CatalystTableProps {
-	data: CatalystData[];
-	onActionClick?: (chartId: string, action: string) => void;
-	onEdit?: (catalystId: number) => void;
+interface SequenceTableProps {
+	data: SequenceData[];
+	onActionClick?: (sequenceId: string, action: string) => void;
+	onEdit?: (sequenceId: number) => void;
 }
 
-const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
+const SequenceTable = ({ data, onActionClick, onEdit }: SequenceTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-	const [selectedRow, setSelectedRow] = useState<CatalystData | null>(null);
+	const [selectedRow, setSelectedRow] = useState<SequenceData | null>(null);
+
 	const getStatusColor = (status: string) => {
 		switch (status) {
 			case 'ACTIVE':
 				return '#4caf50';
-			case 'NEW':
-				return '#2196f3';
 			case 'INACTIVE':
 				return '#9e9e9e';
 			default:
@@ -45,7 +44,7 @@ const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
 		});
 	};
 
-	const handleMenuClick = (event: React.MouseEvent<HTMLElement>, row: CatalystData) => {
+	const handleMenuClick = (event: React.MouseEvent<HTMLElement>, row: SequenceData) => {
 		setAnchorEl(event.currentTarget);
 		setSelectedRow(row);
 	};
@@ -64,16 +63,16 @@ const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
 
 	const handleDelete = () => {
 		if (selectedRow && onActionClick) {
-			onActionClick(selectedRow.chartId, 'delete');
+			onActionClick(selectedRow.sequenceId, 'delete');
 		}
 		handleMenuClose();
 	};
 
-	const columns = useMemo<MRT_ColumnDef<CatalystData>[]>(
+	const columns = useMemo<MRT_ColumnDef<SequenceData>[]>(
 		() => [
 			{
-				accessorKey: 'chartId',
-				header: 'Chart ID',
+				accessorKey: 'sequenceId',
+				header: 'Sequence ID',
 				size: 200,
 				Cell: ({ row }) => (
 					<Box>
@@ -85,7 +84,7 @@ const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
 								fontSize: '0.875rem'
 							}}
 						>
-							{row.original.chartId}
+							{row.original.sequenceId}
 						</Typography>
 						<Typography
 							variant="caption"
@@ -98,9 +97,9 @@ const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
 							Updated: {formatDate(row.original.updatedAt)}
 						</Typography>
 						<Chip
-							label={row.original.chartSupplier}
+							label={row.original.category}
 							size="small"
-							icon={<BusinessIcon sx={{ fontSize: '0.75rem' }} />}
+							icon={<CategoryIcon sx={{ fontSize: '0.75rem' }} />}
 							sx={{
 								backgroundColor: '#e3f2fd',
 								color: '#1976d2',
@@ -113,20 +112,60 @@ const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
 				)
 			},
 			{
-				accessorKey: 'mekpDensity',
-				header: 'MEKP Density',
+				accessorKey: 'sequenceName',
+				header: 'Sequence Name',
+				size: 250,
+				Cell: ({ row }) => (
+					<Box>
+						<Typography
+							variant="body2"
+							sx={{
+								fontWeight: 500,
+								color: '#333',
+								fontSize: '0.875rem'
+							}}
+						>
+							{row.original.sequenceName}
+						</Typography>
+						<Typography
+							variant="caption"
+							sx={{
+								color: '#666',
+								fontSize: '0.75rem'
+							}}
+						>
+							Type: {row.original.type}
+						</Typography>
+					</Box>
+				)
+			},
+			{
+				accessorKey: 'totalSteps',
+				header: 'Steps',
 				size: 120,
 				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem',
-							fontWeight: 500
-						}}
-					>
-						{row.original.mekpDensity} g/cm³
-					</Typography>
+					<Box>
+						<Typography
+							variant="body2"
+							sx={{
+								color: '#333',
+								fontSize: '0.875rem',
+								fontWeight: 500
+							}}
+						>
+							{row.original.totalSteps} Total
+						</Typography>
+						<Typography
+							variant="caption"
+							sx={{
+								color: '#f44336',
+								fontSize: '0.75rem',
+								fontWeight: 500
+							}}
+						>
+							{row.original.ctqSteps} CTQ
+						</Typography>
+					</Box>
 				)
 			},
 			{
@@ -237,4 +276,4 @@ const CatalystTable = ({ data, onActionClick, onEdit }: CatalystTableProps) => {
 	);
 };
 
-export default CatalystTable;
+export default SequenceTable;

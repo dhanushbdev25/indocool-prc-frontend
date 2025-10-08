@@ -10,6 +10,7 @@ import SessionError from '../../pages/general/SessionError';
 import { RoleProvider } from '../../contexts/RoleContext';
 import { useRole } from '../../contexts/useRole';
 import ModernTopBar from '../../components/common/TopBar/ModernTopBar';
+import Breadcrumbs from '../../components/common/breadcrumbs/Breadcrumbs';
 
 const MainLayout: React.FC = () => {
 	const theme = useTheme();
@@ -32,11 +33,7 @@ const MainLayout: React.FC = () => {
 
 	return (
 		<RoleProvider sessionData={data}>
-			<MainLayoutContent 
-				open={open} 
-				handleDrawerToggle={handleDrawerToggle} 
-				data={data}
-			/>
+			<MainLayoutContent open={open} handleDrawerToggle={handleDrawerToggle} data={data} />
 		</RoleProvider>
 	);
 };
@@ -60,7 +57,7 @@ const MainLayoutContent: React.FC<{
 		>
 			{/* Modern Top Bar */}
 			<ModernTopBar onMenuToggle={handleDrawerToggle} drawerOpen={open} />
-			
+
 			<Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden', pt: '64px' }}>
 				<Drawer open={open} handleDrawerToggle={handleDrawerToggle} permissions={permissions} />
 				<Box
@@ -95,6 +92,7 @@ const MainLayoutContent: React.FC<{
 							}
 						}}
 					>
+						<Breadcrumbs permissions={permissions} />
 						<Outlet context={data} />
 					</Box>
 				</Box>

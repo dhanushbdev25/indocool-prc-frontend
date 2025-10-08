@@ -15,12 +15,7 @@ import {
 	Divider,
 	Tooltip
 } from '@mui/material';
-import {
-	Logout,
-	ExpandMore,
-	Person,
-	AdminPanelSettings
-} from '@mui/icons-material';
+import { Logout, ExpandMore, Person, AdminPanelSettings } from '@mui/icons-material';
 import { useRole } from '../../../contexts/useRole';
 import { useLogout } from '../../../hooks/useLogOut';
 
@@ -149,7 +144,7 @@ const TopBar: React.FC = () => {
 									</Typography>
 								</Box>
 								<Divider />
-								{availableRoles.map((role) => (
+								{availableRoles.map(role => (
 									<MenuItem
 										key={role.id}
 										onClick={() => handleRoleChange(role.id)}
@@ -175,7 +170,16 @@ const TopBar: React.FC = () => {
 											<Chip
 												label={role.name.replace('_', ' ')}
 												size="small"
-												color={getRoleColor(role.name) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
+												color={
+													getRoleColor(role.name) as
+														| 'default'
+														| 'primary'
+														| 'secondary'
+														| 'error'
+														| 'info'
+														| 'success'
+														| 'warning'
+												}
 												variant={role.id === currentRole.id ? 'filled' : 'outlined'}
 											/>
 										</Box>
@@ -234,7 +238,16 @@ const TopBar: React.FC = () => {
 								<Chip
 									icon={getRoleIcon(currentRole.name)}
 									label={currentRole.name.replace('_', ' ')}
-									color={getRoleColor(currentRole.name) as 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'}
+									color={
+										getRoleColor(currentRole.name) as
+											| 'default'
+											| 'primary'
+											| 'secondary'
+											| 'error'
+											| 'info'
+											| 'success'
+											| 'warning'
+									}
 									size="small"
 									variant="outlined"
 								/>

@@ -1,7 +1,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
-import { 
-	catalystChartResponseSchema, 
+import {
+	catalystChartResponseSchema,
 	catalystByIdResponseSchema,
 	type CatalystChartResponse,
 	type CatalystByIdResponse,
@@ -51,7 +51,7 @@ export const catalystApi = createApi({
 		}),
 		// Create new catalyst
 		createCatalyst: builder.mutation<CatalystByIdResponse, CreateCatalystRequest>({
-			query: (data) => ({
+			query: data => ({
 				url: 'catalyst',
 				method: 'POST',
 				body: data
@@ -86,7 +86,7 @@ export const catalystApi = createApi({
 	})
 });
 
-export const { 
+export const {
 	useFetchCatalystChartsQuery,
 	useFetchCatalystByIdQuery,
 	useCreateCatalystMutation,

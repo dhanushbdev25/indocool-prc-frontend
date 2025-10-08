@@ -46,7 +46,7 @@ const Login = () => {
 						alignItems: 'center',
 						justifyContent: 'center',
 						width: 32,
-						height: 32,
+						height: 32
 					}}
 				>
 					<Logo sx={{ width: 18, height: 18 }} fill="black" />

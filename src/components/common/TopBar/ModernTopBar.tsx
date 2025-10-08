@@ -105,8 +105,8 @@ const ModernTopBar: React.FC<ModernTopBarProps> = ({ onMenuToggle, drawerOpen })
 				transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
 			}}
 		>
-			<Toolbar 
-				sx={{ 
+			<Toolbar
+				sx={{
 					minHeight: '64px !important',
 					px: { xs: 2, sm: 3 },
 					justifyContent: 'space-between'
@@ -131,7 +131,7 @@ const ModernTopBar: React.FC<ModernTopBarProps> = ({ onMenuToggle, drawerOpen })
 					>
 						<MenuIcon sx={{ fontSize: 20 }} />
 					</IconButton>
-					
+
 					<Typography
 						variant="h6"
 						component="div"
@@ -244,7 +244,10 @@ const ModernTopBar: React.FC<ModernTopBarProps> = ({ onMenuToggle, drawerOpen })
 
 						{/* Current Role Display */}
 						<Box sx={{ p: 2, pt: 2.5 }}>
-							<Typography variant="caption" sx={{ color: '#666666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+							<Typography
+								variant="caption"
+								sx={{ color: '#666666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px' }}
+							>
 								Current Role
 							</Typography>
 							<Box sx={{ mt: 1.5, p: 2, backgroundColor: 'rgba(0, 0, 0, 0.02)', borderRadius: '12px' }}>
@@ -280,13 +283,23 @@ const ModernTopBar: React.FC<ModernTopBarProps> = ({ onMenuToggle, drawerOpen })
 							<>
 								<Divider sx={{ borderColor: 'rgba(0, 0, 0, 0.06)' }} />
 								<Box sx={{ p: 2 }}>
-									<Typography variant="caption" sx={{ color: '#666666', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.5px', mb: 1.5, display: 'block' }}>
+									<Typography
+										variant="caption"
+										sx={{
+											color: '#666666',
+											fontWeight: 500,
+											textTransform: 'uppercase',
+											letterSpacing: '0.5px',
+											mb: 1.5,
+											display: 'block'
+										}}
+									>
 										Switch Role
 									</Typography>
 									<FormControl fullWidth size="small">
 										<Select
 											value={currentRole.id}
-											onChange={(e) => handleRoleChange(Number(e.target.value))}
+											onChange={e => handleRoleChange(Number(e.target.value))}
 											displayEmpty
 											sx={{
 												borderRadius: '12px',
@@ -400,7 +413,7 @@ const ModernTopBar: React.FC<ModernTopBarProps> = ({ onMenuToggle, drawerOpen })
 									</Typography>
 								</Stack>
 							</MenuItem>
-							
+
 							<MenuItem
 								onClick={logout}
 								sx={{
