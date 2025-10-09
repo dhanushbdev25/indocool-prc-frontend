@@ -3,10 +3,17 @@ import { baseQuery } from '../../baseApi';
 import {
 	catalystChartResponseSchema,
 	catalystByIdResponseSchema,
+	createCatalystResponseSchema,
+	updateCatalystResponseSchema,
+	deleteCatalystTaskResponseSchema,
 	type CatalystChartResponse,
 	type CatalystByIdResponse,
 	type CreateCatalystRequest,
-	type UpdateCatalystRequest
+	type UpdateCatalystRequest,
+	type CreateCatalystResponse,
+	type UpdateCatalystResponse,
+	type DeleteCatalystTaskRequest,
+	type DeleteCatalystTaskResponse
 } from './catalyst.validators';
 
 // API parameters
@@ -32,7 +39,8 @@ export const catalystApi = createApi({
 					throw new Error('Invalid catalyst charts response structure');
 				}
 				return parsed.data;
-			}
+			},
+			providesTags: ['Catalyst']
 		}),
 		// Fetch single catalyst by ID
 		fetchCatalystById: builder.query<CatalystByIdResponse, FetchCatalystByIdParams>({
@@ -50,14 +58,14 @@ export const catalystApi = createApi({
 			}
 		}),
 		// Create new catalyst
-		createCatalyst: builder.mutation<CatalystByIdResponse, CreateCatalystRequest>({
+		createCatalyst: builder.mutation<CreateCatalystResponse, CreateCatalystRequest>({
 			query: data => ({
 				url: 'catalyst',
 				method: 'POST',
-				body: data
+				body: { data: data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = catalystByIdResponseSchema.safeParse(response);
+				const parsed = createCatalystResponseSchema.safeParse(response);
 				if (!parsed.success) {
 					console.error('Zod validation failed for create catalyst response:', parsed.error);
 					throw new Error('Invalid create catalyst response structure');
@@ -67,17 +75,34 @@ export const catalystApi = createApi({
 			invalidatesTags: ['Catalyst']
 		}),
 		// Update existing catalyst
-		updateCatalyst: builder.mutation<CatalystByIdResponse, UpdateCatalystRequest>({
+		updateCatalyst: builder.mutation<UpdateCatalystResponse, UpdateCatalystRequest>({
 			query: ({ id, ...data }) => ({
 				url: `catalyst/${id}`,
 				method: 'PUT',
-				body: data
+				body: { data: data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = catalystByIdResponseSchema.safeParse(response);
+				const parsed = updateCatalystResponseSchema.safeParse(response);
 				if (!parsed.success) {
 					console.error('Zod validation failed for update catalyst response:', parsed.error);
 					throw new Error('Invalid update catalyst response structure');
+				}
+				return parsed.data;
+			},
+			invalidatesTags: ['Catalyst']
+		}),
+		// Delete catalyst task (set status to INACTIVE)
+		deleteCatalystTask: builder.mutation<DeleteCatalystTaskResponse, DeleteCatalystTaskRequest>({
+			query: data => ({
+				url: `catalyst/${data?.catalyst?.id}`,
+				method: 'PUT',
+				body: { data: { ...data, catalyst: { ...data.catalyst, status: 'INACTIVE' } } }
+			}),
+			transformResponse: (response: unknown) => {
+				const parsed = deleteCatalystTaskResponseSchema.safeParse(response);
+				if (!parsed.success) {
+					console.error('Zod validation failed for delete catalyst task response:', parsed.error);
+					throw new Error('Invalid delete catalyst task response structure');
 				}
 				return parsed.data;
 			},
@@ -90,5 +115,6 @@ export const {
 	useFetchCatalystChartsQuery,
 	useFetchCatalystByIdQuery,
 	useCreateCatalystMutation,
-	useUpdateCatalystMutation
+	useUpdateCatalystMutation,
+	useDeleteCatalystTaskMutation
 } = catalystApi;

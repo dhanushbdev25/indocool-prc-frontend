@@ -78,7 +78,7 @@ export const processStepRequestSchema = z.object({
 	minimumAcceptanceValue: z.number().nullable(),
 	maximumAcceptanceValue: z.number().nullable(),
 	multipleMeasurements: z.boolean(),
-	multipleMeasurementMaximumCount: z.number().nullable(),
+	multipleMeasurementMaxCount: z.number().nullable(),
 	uom: z.string(),
 	ctq: z.boolean(),
 	allowAttachments: z.boolean(),
@@ -144,7 +144,22 @@ export const createSequenceResponseSchema = z.object({
 
 export const updateSequenceResponseSchema = z.object({
 	message: z.string(),
-	data: processSequenceSchema
+	data: processSequenceBasicSchema
+});
+
+// Delete task request schema - sets status to INACTIVE and sends remaining data
+export const deleteSequenceTaskRequestSchema = z.object({
+	id: z.number(),
+	data: z.object({
+		processSequence: processSequenceRequestSchema,
+		processStepGroups: z.array(processStepGroupRequestSchema)
+	})
+});
+
+// Delete task response schema
+export const deleteSequenceTaskResponseSchema = z.object({
+	message: z.string(),
+	data: processSequenceBasicSchema
 });
 
 // TypeScript types inferred from Zod schemas
@@ -166,3 +181,7 @@ export type UpdateSequenceRequest = z.infer<typeof updateSequenceRequestSchema>;
 // Response types
 export type CreateSequenceResponse = z.infer<typeof createSequenceResponseSchema>;
 export type UpdateSequenceResponse = z.infer<typeof updateSequenceResponseSchema>;
+
+// Delete task types
+export type DeleteSequenceTaskRequest = z.infer<typeof deleteSequenceTaskRequestSchema>;
+export type DeleteSequenceTaskResponse = z.infer<typeof deleteSequenceTaskResponseSchema>;

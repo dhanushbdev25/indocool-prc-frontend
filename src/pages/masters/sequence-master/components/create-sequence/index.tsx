@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
-import { ArrowBack, Save, Cancel } from '@mui/icons-material';
+import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
 import SequenceBasicInfo from './components/SequenceBasicInfo';
 import SequenceStepGroups from './components/SequenceStepGroups';
@@ -108,7 +108,7 @@ const CreateSequence = () => {
 						minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
 						maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
 						multipleMeasurements: step.multipleMeasurements,
-						multipleMeasurementMaximumCount: step.multipleMeasurementMaxCount,
+						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
 						uom: step.uom,
 						ctq: step.ctq,
 						allowAttachments: step.allowAttachments,
@@ -138,6 +138,7 @@ const CreateSequence = () => {
 					setActiveStep(prevActiveStep => prevActiveStep + 1);
 				} else {
 					console.log('Validation failed for step:', activeStep, 'Errors (Yup):', errors);
+					// Scroll to first error field for better UX
 					const firstErrorField = document.querySelector('.Mui-error');
 					if (firstErrorField) {
 						firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -152,7 +153,13 @@ const CreateSequence = () => {
 	};
 
 	const handleBack = () => {
-		setActiveStep(prevActiveStep => prevActiveStep - 1);
+		if (activeStep === 0) {
+			// If on first step, go back to main page
+			navigate('/sequence-master');
+		} else {
+			// Otherwise, go to previous step
+			setActiveStep(prevActiveStep => prevActiveStep - 1);
+		}
 	};
 
 	const onSubmit = async (data: SequenceFormData) => {
@@ -173,8 +180,8 @@ const CreateSequence = () => {
 						status: data.status ? 'ACTIVE' : 'INACTIVE',
 						sequenceId: data.sequenceId,
 						sequenceName: data.sequenceName,
-						version: 1,
-						isLatest: true,
+						version: isEditMode && sequenceData ? sequenceData.detail.version : 1,
+						isLatest: isEditMode && sequenceData ? sequenceData.detail.isLatest : true,
 						category: data.category,
 						type: data.type,
 						notes: data.notes || '',
@@ -193,7 +200,7 @@ const CreateSequence = () => {
 							minimumAcceptanceValue: step.minimumAcceptanceValue ?? null,
 							maximumAcceptanceValue: step.maximumAcceptanceValue ?? null,
 							multipleMeasurements: step.multipleMeasurements ?? false,
-							multipleMeasurementMaximumCount: step.multipleMeasurementMaximumCount ?? null,
+							multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
 							uom: step.uom,
 							ctq: step.ctq ?? false,
 							allowAttachments: step.allowAttachments ?? false,
@@ -301,9 +308,6 @@ const CreateSequence = () => {
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
 					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-						<Button startIcon={<ArrowBack />} onClick={handleCancel} sx={{ mr: 2, textTransform: 'none' }}>
-							Back
-						</Button>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
 							{isEditMode ? 'Edit Process Sequence' : 'Create New Process Sequence'}
 						</Typography>
@@ -332,7 +336,7 @@ const CreateSequence = () => {
 
 					{/* Navigation Buttons */}
 					<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
-						<Button disabled={activeStep === 0} onClick={handleBack} sx={{ textTransform: 'none' }}>
+						<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
 							Back
 						</Button>
 

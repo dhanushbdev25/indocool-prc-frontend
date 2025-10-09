@@ -55,7 +55,7 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 					minimumAcceptanceValue: null,
 					maximumAcceptanceValue: null,
 					multipleMeasurements: false,
-					multipleMeasurementMaximumCount: null,
+					multipleMeasurementMaxCount: null,
 					uom: '',
 					ctq: false,
 					allowAttachments: false,
@@ -211,7 +211,7 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 			minimumAcceptanceValue: null,
 			maximumAcceptanceValue: null,
 			multipleMeasurements: false,
-			multipleMeasurementMaximumCount: null,
+			multipleMeasurementMaxCount: null,
 			uom: '',
 			ctq: false,
 			allowAttachments: false,
@@ -571,7 +571,7 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 										return (
 											<Box sx={{ mt: 1 }}>
 												<Controller
-													name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.multipleMeasurementMaximumCount`}
+													name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.multipleMeasurementMaxCount`}
 													control={control}
 													render={({ field }) => (
 														<TextField
@@ -589,11 +589,11 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 															placeholder="e.g., 3"
 															helperText={
 																errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
-																	?.multipleMeasurementMaximumCount?.message
+																	?.multipleMeasurementMaxCount?.message
 															}
 															error={
 																!!errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
-																	?.multipleMeasurementMaximumCount
+																	?.multipleMeasurementMaxCount
 															}
 															sx={{
 																'& .MuiOutlinedInput-root': {

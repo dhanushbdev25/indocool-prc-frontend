@@ -78,7 +78,7 @@ const CatalystBasicInfo = ({ control, errors }: CatalystBasicInfoProps) => {
 									placeholder="e.g., 1.12"
 									helperText={errors.mekpDensity?.message || 'Methyl Ethyl Ketone Peroxide density (g/cm³)'}
 									error={!!errors.mekpDensity}
-									inputProps={{ step: '0.01', min: '0' }}
+									slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'
@@ -134,7 +134,7 @@ const CatalystBasicInfo = ({ control, errors }: CatalystBasicInfoProps) => {
 									label="Notes"
 									multiline
 									rows={4}
-									placeholder="Additional notes about this catalyst chart..."
+									placeholder="Additional notes about this catalyst chart"
 									helperText={
 										errors.notes?.message ||
 										'Optional notes about usage, special conditions, or other relevant information'

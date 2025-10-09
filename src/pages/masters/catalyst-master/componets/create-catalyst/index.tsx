@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
-import { ArrowBack, Save, Cancel } from '@mui/icons-material';
+import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
 import CatalystBasicInfo from './components/CatalystBasicInfo';
 import CatalystConfiguration from './components/CatalystConfiguration';
@@ -14,6 +14,7 @@ import {
 	useCreateCatalystMutation,
 	useUpdateCatalystMutation
 } from '../../../../../store/api/business/catalyst-master/catalyst.api';
+import { displayValidationErrors } from '../../../../../utils/helpers';
 
 const steps = ['Basic Information', 'Configuration Settings'];
 
@@ -69,7 +70,7 @@ const CreateCatalyst = () => {
 				chartSupplier: catalystData.detail.catalyst.chartSupplier,
 				notes: catalystData.detail.catalyst.notes || '',
 				mekpDensity: catalystData.detail.catalyst.mekpDensity,
-				isActive: catalystData.detail.catalyst.isActive,
+				isActive: catalystData.detail.catalyst.status === 'ACTIVE',
 				catalystConfiguration: catalystData.detail.catalystConfiguration,
 				createdAt: catalystData.detail.catalyst.createdAt,
 				updatedAt: catalystData.detail.catalyst.updatedAt
@@ -94,8 +95,9 @@ const CreateCatalyst = () => {
 				if (isValid) {
 					setActiveStep(prevActiveStep => prevActiveStep + 1);
 				} else {
-					// Validation failed - errors will be displayed inline
+					// Validation failed - show popup with errors
 					console.log('Validation failed for step:', activeStep, 'Errors (Yup):', errors);
+					displayValidationErrors(errors);
 					// Scroll to first error field
 					const firstErrorField = document.querySelector('.Mui-error');
 					if (firstErrorField) {
@@ -112,7 +114,13 @@ const CreateCatalyst = () => {
 	};
 
 	const handleBack = () => {
-		setActiveStep(prevActiveStep => prevActiveStep - 1);
+		if (activeStep === 0) {
+			// If on first step, go back to main page
+			navigate('/catalyst-master');
+		} else {
+			// Otherwise, go to previous step
+			setActiveStep(prevActiveStep => prevActiveStep - 1);
+		}
 	};
 
 	const onSubmit = async (data: CatalystFormData) => {
@@ -123,41 +131,50 @@ const CreateCatalyst = () => {
 			const isValid = await trigger();
 			if (!isValid) {
 				console.log('Form validation failed on submit:', errors);
+				displayValidationErrors(errors);
 				setError('Please fix all validation errors before submitting');
 				return;
 			}
 
 			// Transform form data to API request format
-			const apiData = {
-				catalyst: {
-					status: data.isActive ? 'ACTIVE' : 'INACTIVE',
-					chartId: data.chartId,
-					chartSupplier: data.chartSupplier,
-					notes: data.notes || '',
-					mekpDensity: Number(data.mekpDensity),
-					isActive: data.isActive ?? true
-				},
-				catalystConfiguration: (data.catalystConfiguration || []).map(config => ({
-					minTemperature: Number(config.minTemperature),
-					maxTemperature: Number(config.maxTemperature),
-					minHumidity: Number(config.minHumidity),
-					maxHumidity: Number(config.maxHumidity),
-					minGelcoat: Number(config.minGelcoat),
-					maxGelcoat: Number(config.maxGelcoat),
-					gelcoatLabel: config.gelcoatLabel,
-					minResinDosage: Number(config.minResinDosage),
-					maxResinDosage: Number(config.maxResinDosage),
-					resinLabel: config.resinLabel,
-					blockCatalystMixing: config.blockCatalystMixing ?? false,
-					requestSupervisorApproval: config.requestSupervisorApproval ?? false
-				}))
+			const catalystRequestData = {
+				status: data.isActive ? 'ACTIVE' : 'INACTIVE',
+				chartId: data.chartId,
+				chartSupplier: data.chartSupplier,
+				notes: data.notes || '',
+				mekpDensity: Number(data.mekpDensity),
+				isActive: data.isActive ?? true
 			};
 
-			console.log('Saving catalyst data:', apiData);
+			const catalystConfiguration = (data.catalystConfiguration || []).map(config => ({
+				minTemperature: Number(config.minTemperature),
+				maxTemperature: Number(config.maxTemperature),
+				minHumidity: Number(config.minHumidity),
+				maxHumidity: Number(config.maxHumidity),
+				minGelcoat: Number(config.minGelcoat),
+				maxGelcoat: Number(config.maxGelcoat),
+				gelcoatLabel: config.gelcoatLabel,
+				minResinDosage: Number(config.minResinDosage),
+				maxResinDosage: Number(config.maxResinDosage),
+				resinLabel: config.resinLabel,
+				blockCatalystMixing: config.blockCatalystMixing ?? false,
+				requestSupervisorApproval: config.requestSupervisorApproval ?? false
+			}));
+
+			console.log('Saving catalyst data:', { catalystRequestData, catalystConfiguration });
 
 			if (isEditMode && data.id) {
 				// Update existing catalyst
-				await updateCatalyst({ id: data.id, ...apiData }).unwrap();
+				const updateData = {
+					id: data.id,
+					catalyst: {
+						id: data.id,
+						version: catalystData ? catalystData.detail.catalyst.version : 1,
+						...catalystRequestData
+					},
+					catalystConfiguration
+				};
+				await updateCatalyst(updateData).unwrap();
 
 				// Show success message
 				Swal.fire({
@@ -169,7 +186,11 @@ const CreateCatalyst = () => {
 				});
 			} else {
 				// Create new catalyst
-				await createCatalyst(apiData).unwrap();
+				const createData = {
+					catalyst: catalystRequestData,
+					catalystConfiguration
+				};
+				await createCatalyst(createData).unwrap();
 
 				// Show success message
 				Swal.fire({
@@ -181,7 +202,6 @@ const CreateCatalyst = () => {
 				});
 			}
 
-			// Navigate back to list on success
 			navigate('/catalyst-master');
 		} catch (err: unknown) {
 			console.error('API Error:', err);
@@ -257,9 +277,6 @@ const CreateCatalyst = () => {
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
 					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-						<Button startIcon={<ArrowBack />} onClick={handleCancel} sx={{ mr: 2, textTransform: 'none' }}>
-							Back
-						</Button>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
 							{isEditMode ? 'Edit Catalyst Chart' : 'Create New Catalyst Chart'}
 						</Typography>
@@ -288,7 +305,7 @@ const CreateCatalyst = () => {
 
 					{/* Navigation Buttons */}
 					<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
-						<Button disabled={activeStep === 0} onClick={handleBack} sx={{ textTransform: 'none' }}>
+						<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
 							Back
 						</Button>
 

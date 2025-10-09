@@ -85,7 +85,7 @@ export const catalystConfigurationSchema = yup
 		createdAt: yup.string().optional(),
 		updatedAt: yup.string().optional()
 	})
-	.test('min-max-validation', 'Minimum values must be less than maximum values', function (value) {
+	.test('min-max-validation', 'Minimum values must be less than or equal to maximum values', function (value) {
 		const {
 			minTemperature,
 			maxTemperature,
@@ -106,8 +106,11 @@ export const catalystConfigurationSchema = yup
 		const minResin = Number(minResinDosage);
 		const maxResin = Number(maxResinDosage);
 
-		if (minTemp >= maxTemp || minHum >= maxHum || minGel >= maxGel || minResin >= maxResin) {
-			return this.createError({ path: 'minTemperature', message: 'Minimum values must be less than maximum values' });
+		if (minTemp > maxTemp || minHum > maxHum || minGel > maxGel || minResin > maxResin) {
+			return this.createError({
+				path: 'minTemperature',
+				message: 'Minimum values must be less than or equal to maximum values'
+			});
 		}
 		return true;
 	});

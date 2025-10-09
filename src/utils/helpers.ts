@@ -1,4 +1,5 @@
 import Swal from 'sweetalert2';
+import { FieldErrors } from 'react-hook-form';
 
 export const displayError = (error: unknown) => {
 	if (error) {
@@ -18,6 +19,59 @@ export const displayError = (error: unknown) => {
 			});
 		}
 	}
+};
+
+export const displayValidationErrors = (errors: FieldErrors) => {
+	const errorMessages: string[] = [];
+
+	const extractErrors = (obj: Record<string, unknown>, path = ''): void => {
+		Object.keys(obj).forEach(key => {
+			const currentPath = path ? `${path}.${key}` : key;
+			const value = obj[key];
+
+			if (value && typeof value === 'object') {
+				if (value.message) {
+					// This is a field error
+					const friendlyPath = formatFieldPath(currentPath);
+					errorMessages.push(`${friendlyPath}: ${value.message}`);
+				} else {
+					// This is a nested object, recurse
+					extractErrors(value, currentPath);
+				}
+			}
+		});
+	};
+
+	extractErrors(errors);
+
+	if (errorMessages.length > 0) {
+		Swal.fire({
+			icon: 'error',
+			title: 'Validation Errors',
+			html: `
+				<div style="text-align: left;">
+					<p style="margin-bottom: 10px; font-weight: 600;">Please fix the following errors:</p>
+					<ul style="margin: 0; padding-left: 20px;">
+						${errorMessages.map(msg => `<li style="margin-bottom: 5px;">${msg}</li>`).join('')}
+					</ul>
+				</div>
+			`,
+			confirmButtonText: 'OK',
+			confirmButtonColor: '#1976d2'
+		});
+	}
+};
+
+// Helper function to format field paths into user-friendly names
+const formatFieldPath = (path: string): string => {
+	// Convert camelCase to Title Case and replace dots with spaces
+	return path
+		.replace(/([A-Z])/g, ' $1') // Add space before capital letters
+		.replace(/\./g, ' ') // Replace dots with spaces
+		.replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+		.replace(/\b\w/g, l => l.toUpperCase()) // Capitalize each word
+		.replace(/\s+/g, ' ') // Remove extra spaces
+		.trim();
 };
 
 export const formatDate = (date: Date) => {

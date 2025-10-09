@@ -84,6 +84,17 @@ export const catalystRequestSchema = z.object({
 	isActive: z.boolean()
 });
 
+export const catalystRequestWithIdSchema = z.object({
+	id: z.number(),
+	version: z.number(),
+	status: z.string(),
+	chartId: z.string(),
+	chartSupplier: z.string(),
+	notes: z.string().optional(),
+	mekpDensity: z.number(),
+	isActive: z.boolean()
+});
+
 export const createCatalystRequestSchema = z.object({
 	catalyst: catalystRequestSchema,
 	catalystConfiguration: z.array(catalystConfigurationRequestSchema)
@@ -91,8 +102,45 @@ export const createCatalystRequestSchema = z.object({
 
 export const updateCatalystRequestSchema = z.object({
 	id: z.number(),
-	catalyst: catalystRequestSchema,
+	catalyst: catalystRequestWithIdSchema,
 	catalystConfiguration: z.array(catalystConfigurationRequestSchema)
+});
+
+// Response schemas for create/update operations
+export const catalystBasicSchema = z.object({
+	id: z.number(),
+	status: z.string(),
+	chartId: z.string(),
+	version: z.number(),
+	isLatest: z.boolean(),
+	chartSupplier: z.string(),
+	notes: z.string(),
+	mekpDensity: z.string(),
+	isActive: z.boolean(),
+	createdAt: z.string(),
+	updatedAt: z.string()
+});
+
+export const createCatalystResponseSchema = z.object({
+	message: z.string(),
+	data: catalystBasicSchema
+});
+
+export const updateCatalystResponseSchema = z.object({
+	message: z.string(),
+	data: catalystBasicSchema
+});
+
+// Delete task request schema - sets status to INACTIVE and sends remaining data
+export const deleteCatalystTaskRequestSchema = z.object({
+	catalyst: catalystRequestWithIdSchema,
+	catalystConfiguration: z.array(catalystConfigurationRequestSchema)
+});
+
+// Delete task response schema
+export const deleteCatalystTaskResponseSchema = z.object({
+	message: z.string(),
+	data: catalystBasicSchema
 });
 
 // TypeScript types inferred from Zod schemas
@@ -106,5 +154,15 @@ export type CatalystByIdResponse = z.infer<typeof catalystByIdResponseSchema>;
 // Request types
 export type CatalystConfigurationRequest = z.infer<typeof catalystConfigurationRequestSchema>;
 export type CatalystRequest = z.infer<typeof catalystRequestSchema>;
+export type CatalystRequestWithId = z.infer<typeof catalystRequestWithIdSchema>;
 export type CreateCatalystRequest = z.infer<typeof createCatalystRequestSchema>;
 export type UpdateCatalystRequest = z.infer<typeof updateCatalystRequestSchema>;
+
+// Response types
+export type CatalystBasic = z.infer<typeof catalystBasicSchema>;
+export type CreateCatalystResponse = z.infer<typeof createCatalystResponseSchema>;
+export type UpdateCatalystResponse = z.infer<typeof updateCatalystResponseSchema>;
+
+// Delete task types
+export type DeleteCatalystTaskRequest = z.infer<typeof deleteCatalystTaskRequestSchema>;
+export type DeleteCatalystTaskResponse = z.infer<typeof deleteCatalystTaskResponseSchema>;

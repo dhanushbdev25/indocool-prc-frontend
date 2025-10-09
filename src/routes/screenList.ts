@@ -1,13 +1,15 @@
 import Loadable from '../components/common/Loadable';
 import { lazy } from 'react';
-import PersonAdd from '@mui/icons-material/PersonAdd';
+import { Science, Timeline, Settings } from '@mui/icons-material';
 
 // Lazy-loaded components
 export const imports = {
 	catalystMaster: Loadable(lazy(() => import('../pages/masters/catalyst-master/componets/list-catalyst'))),
 	createCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/componets/create-catalyst'))),
+	viewCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/componets/view-catalyst'))),
 	sequenceMaster: Loadable(lazy(() => import('../pages/masters/sequence-master/components/list-sequence'))),
-	createSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/create-sequence')))
+	createSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/create-sequence'))),
+	viewSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/view-sequence')))
 };
 
 // Screen configuration interface
@@ -34,11 +36,11 @@ export interface MainModuleConfig {
 export const mainModuleConfigs: MainModuleConfig[] = [
 	{
 		text: 'Masters',
-		icon: PersonAdd,
+		icon: Settings,
 		order: 1,
 		submodules: [
 			{
-				icon: PersonAdd,
+				icon: Science,
 				text: 'Catalyst Master',
 				path: 'catalyst-master',
 				element: imports.catalystMaster,
@@ -55,6 +57,13 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				showInSidebar: false
 			},
 			{
+				text: 'View Catalyst',
+				path: 'catalyst-master/view-catalyst/:id',
+				element: imports.viewCatalyst,
+				permission: 'EDITCATALYST',
+				showInSidebar: false
+			},
+			{
 				text: 'Edit Catalyst',
 				path: 'catalyst-master/edit-catalyst/:id',
 				element: imports.createCatalyst,
@@ -62,7 +71,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				showInSidebar: false
 			},
 			{
-				icon: PersonAdd,
+				icon: Timeline,
 				text: 'Sequence Master',
 				path: 'sequence-master',
 				element: imports.sequenceMaster,
@@ -75,6 +84,13 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				path: 'sequence-master/create-sequence',
 				element: imports.createSequence,
 				permission: 'CREATEPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'View Sequence',
+				path: 'sequence-master/view-sequence/:id',
+				element: imports.viewSequence,
+				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			},
 			{

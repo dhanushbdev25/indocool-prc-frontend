@@ -43,7 +43,7 @@ export const processStepSchema = yup
 				otherwise: schema => schema.nullable()
 			}),
 		multipleMeasurements: yup.boolean(),
-		multipleMeasurementMaximumCount: yup
+		multipleMeasurementMaxCount: yup
 			.number()
 			.nullable()
 			.when('multipleMeasurements', {
@@ -62,14 +62,14 @@ export const processStepSchema = yup
 		allowAttachments: yup.boolean(),
 		notes: yup.string().max(500, 'Notes must be less than 500 characters').optional()
 	})
-	.test('min-max-validation', 'Minimum value must be less than maximum value', function (value) {
+	.test('min-max-validation', 'Minimum value must be less than or equal to maximum value', function (value) {
 		const { minimumAcceptanceValue, maximumAcceptanceValue, targetValueType } = value;
 
 		if (targetValueType === 'range' && minimumAcceptanceValue && maximumAcceptanceValue) {
-			if (minimumAcceptanceValue >= maximumAcceptanceValue) {
+			if (minimumAcceptanceValue > maximumAcceptanceValue) {
 				return this.createError({
 					path: 'minimumAcceptanceValue',
-					message: 'Minimum value must be less than maximum value'
+					message: 'Minimum value must be less than or equal to maximum value'
 				});
 			}
 		}
@@ -100,7 +100,6 @@ export const processStepGroupSchema = yup.object({
 		.max(500, 'Process description must be less than 500 characters'),
 	processSteps: yup
 		.array(processStepSchema)
-		.min(1, 'At least one process step is required')
 		.test('unique-step-numbers', 'Step numbers must be unique within each group', function (steps) {
 			if (!steps) return true;
 			const stepNumbers = steps.map(step => step.stepNumber);
@@ -131,7 +130,7 @@ export const sequenceFormSchema = yup.object({
 	type: yup.string().required('Type is required').oneOf(['Layout', 'ISP'], 'Type must be either Layout or ISP'),
 	status: yup.boolean(),
 	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
-	processStepGroups: yup.array(processStepGroupSchema).min(1, 'At least one process step group is required'),
+	processStepGroups: yup.array(processStepGroupSchema),
 	totalSteps: yup.number().optional(),
 	ctqSteps: yup.number().optional(),
 	createdAt: yup.string().optional(),
@@ -153,7 +152,7 @@ export const defaultProcessStep: ProcessStepFormData = {
 	minimumAcceptanceValue: null,
 	maximumAcceptanceValue: null,
 	multipleMeasurements: false,
-	multipleMeasurementMaximumCount: null,
+	multipleMeasurementMaxCount: null,
 	uom: '',
 	ctq: false,
 	allowAttachments: false,
@@ -163,7 +162,7 @@ export const defaultProcessStep: ProcessStepFormData = {
 export const defaultProcessStepGroup: ProcessStepGroupFormData = {
 	processName: '',
 	processDescription: '',
-	processSteps: [defaultProcessStep]
+	processSteps: []
 };
 
 export const defaultSequenceFormData: SequenceFormData = {
@@ -173,7 +172,7 @@ export const defaultSequenceFormData: SequenceFormData = {
 	type: 'Layout',
 	status: true,
 	notes: '',
-	processStepGroups: [defaultProcessStepGroup]
+	processStepGroups: []
 };
 
 // Section-specific validation schemas
@@ -200,5 +199,5 @@ export const basicInfoSchema = yup.object({
 });
 
 export const stepGroupsSchema = yup.object({
-	processStepGroups: yup.array(processStepGroupSchema).min(1, 'At least one process step group is required')
+	processStepGroups: yup.array(processStepGroupSchema)
 });

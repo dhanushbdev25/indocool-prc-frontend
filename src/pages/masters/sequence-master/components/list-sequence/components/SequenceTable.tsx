@@ -6,7 +6,8 @@ import {
 	CheckCircle as CheckCircleIcon,
 	Category as CategoryIcon,
 	Edit as EditIcon,
-	Delete as DeleteIcon
+	Delete as DeleteIcon,
+	Visibility as ViewIcon
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
@@ -19,9 +20,10 @@ interface SequenceTableProps {
 	data: SequenceData[];
 	onActionClick?: (sequenceId: string, action: string) => void;
 	onEdit?: (sequenceId: number) => void;
+	onView?: (sequenceId: number) => void;
 }
 
-const SequenceTable = memo(({ data, onActionClick, onEdit }: SequenceTableProps) => {
+const SequenceTable = memo(({ data, onActionClick, onEdit, onView }: SequenceTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<SequenceData | null>(null);
 
@@ -57,6 +59,13 @@ const SequenceTable = memo(({ data, onActionClick, onEdit }: SequenceTableProps)
 	const handleEdit = () => {
 		if (selectedRow && onEdit) {
 			onEdit(selectedRow.id);
+		}
+		handleMenuClose();
+	};
+
+	const handleView = () => {
+		if (selectedRow && onView) {
+			onView(selectedRow.id);
 		}
 		handleMenuClose();
 	};
@@ -260,6 +269,12 @@ const SequenceTable = memo(({ data, onActionClick, onEdit }: SequenceTableProps)
 				}}
 			>
 				{[
+					<MenuItem key="view" onClick={handleView}>
+						<ListItemIcon>
+							<ViewIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>View</ListItemText>
+					</MenuItem>,
 					<MenuItem key="edit" onClick={handleEdit}>
 						<ListItemIcon>
 							<EditIcon fontSize="small" />

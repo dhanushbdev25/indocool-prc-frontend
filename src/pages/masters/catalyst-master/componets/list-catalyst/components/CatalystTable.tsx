@@ -6,7 +6,8 @@ import {
 	CheckCircle as CheckCircleIcon,
 	Business as BusinessIcon,
 	Edit as EditIcon,
-	Delete as DeleteIcon
+	Delete as DeleteIcon,
+	Visibility as ViewIcon
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
@@ -19,9 +20,10 @@ interface CatalystTableProps {
 	data: CatalystData[];
 	onActionClick?: (chartId: string, action: string) => void;
 	onEdit?: (catalystId: number) => void;
+	onView?: (catalystId: number) => void;
 }
 
-const CatalystTable = memo(({ data, onActionClick, onEdit }: CatalystTableProps) => {
+const CatalystTable = memo(({ data, onActionClick, onEdit, onView }: CatalystTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<CatalystData | null>(null);
 	const getStatusColor = (status: string) => {
@@ -58,6 +60,13 @@ const CatalystTable = memo(({ data, onActionClick, onEdit }: CatalystTableProps)
 	const handleEdit = () => {
 		if (selectedRow && onEdit) {
 			onEdit(selectedRow.id);
+		}
+		handleMenuClose();
+	};
+
+	const handleView = () => {
+		if (selectedRow && onView) {
+			onView(selectedRow.id);
 		}
 		handleMenuClose();
 	};
@@ -221,6 +230,12 @@ const CatalystTable = memo(({ data, onActionClick, onEdit }: CatalystTableProps)
 				}}
 			>
 				{[
+					<MenuItem key="view" onClick={handleView}>
+						<ListItemIcon>
+							<ViewIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>View</ListItemText>
+					</MenuItem>,
 					<MenuItem key="edit" onClick={handleEdit}>
 						<ListItemIcon>
 							<EditIcon fontSize="small" />

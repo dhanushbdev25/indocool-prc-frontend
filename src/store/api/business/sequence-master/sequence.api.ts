@@ -5,12 +5,15 @@ import {
 	sequenceByIdResponseSchema,
 	createSequenceResponseSchema,
 	updateSequenceResponseSchema,
+	deleteSequenceTaskResponseSchema,
 	type SequenceListResponse,
 	type SequenceByIdResponse,
 	type CreateSequenceRequest,
 	type UpdateSequenceRequest,
 	type CreateSequenceResponse,
-	type UpdateSequenceResponse
+	type UpdateSequenceResponse,
+	type DeleteSequenceTaskRequest,
+	type DeleteSequenceTaskResponse
 } from './sequence.validators';
 
 // API parameters
@@ -36,7 +39,8 @@ export const sequenceApi = createApi({
 					throw new Error('Invalid process sequences response structure');
 				}
 				return parsed.data;
-			}
+			},
+			providesTags: ['Sequence']
 		}),
 		// Fetch single process sequence by ID
 		fetchProcessSequenceById: builder.query<SequenceByIdResponse, FetchSequenceByIdParams>({
@@ -51,7 +55,8 @@ export const sequenceApi = createApi({
 					throw new Error('Invalid process sequence by ID response structure');
 				}
 				return parsed.data;
-			}
+			},
+			providesTags: ['Sequence']
 		}),
 		// Create new process sequence
 		createProcessSequence: builder.mutation<CreateSequenceResponse, CreateSequenceRequest>({
@@ -75,13 +80,40 @@ export const sequenceApi = createApi({
 			query: ({ id, ...data }) => ({
 				url: `processSequence/${id}`,
 				method: 'PUT',
-				body: data
+				body: { id, ...data }
 			}),
 			transformResponse: (response: unknown) => {
 				const parsed = updateSequenceResponseSchema.safeParse(response);
 				if (!parsed.success) {
 					console.error('Zod validation failed for update process sequence response:', parsed.error);
 					throw new Error('Invalid update process sequence response structure');
+				}
+				return parsed.data;
+			},
+			invalidatesTags: ['Sequence']
+		}),
+		// Delete sequence task (set status to INACTIVE)
+		deleteSequenceTask: builder.mutation<DeleteSequenceTaskResponse, DeleteSequenceTaskRequest>({
+			query: ({ id, ...data }) => ({
+				url: `processSequence/${id}`,
+				method: 'PUT',
+				body: {
+					id,
+					...data,
+					data: {
+						...data.data,
+						processSequence: {
+							...data.data.processSequence,
+							status: 'INACTIVE'
+						}
+					}
+				}
+			}),
+			transformResponse: (response: unknown) => {
+				const parsed = deleteSequenceTaskResponseSchema.safeParse(response);
+				if (!parsed.success) {
+					console.error('Zod validation failed for delete sequence task response:', parsed.error);
+					throw new Error('Invalid delete sequence task response structure');
 				}
 				return parsed.data;
 			},
@@ -94,5 +126,6 @@ export const {
 	useFetchProcessSequencesQuery,
 	useFetchProcessSequenceByIdQuery,
 	useCreateProcessSequenceMutation,
-	useUpdateProcessSequenceMutation
+	useUpdateProcessSequenceMutation,
+	useDeleteSequenceTaskMutation
 } = sequenceApi;

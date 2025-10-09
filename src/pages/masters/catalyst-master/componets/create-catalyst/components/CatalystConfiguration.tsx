@@ -166,7 +166,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 						<Grid container spacing={3}>
 							{/* Temperature Range */}
 							<Grid size={{ xs: 12 }}>
-								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555' }}>
 									Temperature Range (°C)
 								</Typography>
 							</Grid>
@@ -211,7 +211,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 
 							{/* Humidity Range */}
 							<Grid size={{ xs: 12 }}>
-								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555' }}>
 									Humidity Range (%)
 								</Typography>
 							</Grid>
@@ -256,7 +256,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 
 							{/* Gelcoat Settings */}
 							<Grid size={{ xs: 12 }}>
-								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555' }}>
 									Gelcoat Settings
 								</Typography>
 							</Grid>
@@ -272,7 +272,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											type="number"
 											required
 											placeholder="e.g., 1.5"
-											inputProps={{ step: '0.1' }}
+											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.minGelcoat}
 											helperText={(fieldErrors?.minGelcoat as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
@@ -292,7 +292,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											type="number"
 											required
 											placeholder="e.g., 2.5"
-											inputProps={{ step: '0.1' }}
+											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.maxGelcoat}
 											helperText={(fieldErrors?.maxGelcoat as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
@@ -321,7 +321,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 
 							{/* Resin Settings */}
 							<Grid size={{ xs: 12 }}>
-								<Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 600, color: '#555' }}>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555' }}>
 									Resin Settings
 								</Typography>
 							</Grid>
@@ -337,7 +337,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											type="number"
 											required
 											placeholder="e.g., 0.8"
-											inputProps={{ step: '0.1' }}
+											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.minResinDosage}
 											helperText={(fieldErrors?.minResinDosage as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
@@ -357,7 +357,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											type="number"
 											required
 											placeholder="e.g., 1.2"
-											inputProps={{ step: '0.1' }}
+											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.maxResinDosage}
 											helperText={(fieldErrors?.maxResinDosage as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}

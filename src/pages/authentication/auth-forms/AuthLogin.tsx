@@ -18,10 +18,11 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useLoginUserMutation } from '../../../store/api/auth/auth.api';
-import { FaMicrosoft } from 'react-icons/fa6';
-import { useMsal } from '@azure/msal-react';
-import { loginRequest } from '../../../config';
+// import { FaMicrosoft } from 'react-icons/fa6';
+// import { useMsal } from '@azure/msal-react';
+// import { loginRequest } from '../../../config';
 import Button from '../../../components/common/button/Button';
+import { displayValidationErrors } from '../../../utils/helpers';
 
 interface FormValues {
 	email: string;
@@ -75,21 +76,28 @@ const AuthLogin = () => {
 		}
 	};
 
-	const { instance } = useMsal();
-
-	const handleMicroSoftLogin = async () => {
-		try {
-			const response = await instance.loginPopup(loginRequest);
-			await loginUser({
-				email: response.account?.username || '',
-				password: '',
-				token: response.accessToken
-			} as { email: string; password: string; token: string }).unwrap();
-			navigate('/');
-		} catch (err) {
-			console.error(err);
+	// Show validation errors as popup when form has errors
+	React.useEffect(() => {
+		if (Object.keys(errors).length > 0) {
+			displayValidationErrors(errors);
 		}
-	};
+	}, [errors]);
+
+	// const { instance } = useMsal();
+
+	// const handleMicroSoftLogin = async () => {
+	// 	try {
+	// 		const response = await instance.loginPopup(loginRequest);
+	// 		await loginUser({
+	// 			email: response.account?.username || '',
+	// 			password: '',
+	// 			token: response.accessToken
+	// 		} as { email: string; password: string; token: string }).unwrap();
+	// 		navigate('/');
+	// 	} catch (err) {
+	// 		console.error(err);
+	// 	}
+	// };
 
 	return (
 		<form noValidate onSubmit={handleSubmit(onSubmit)}>
@@ -319,7 +327,7 @@ const AuthLogin = () => {
 				/>
 
 				{/* Microsoft Login Button */}
-				<Button
+				{/* <Button
 					onClick={handleMicroSoftLogin}
 					disableElevation
 					disabled={isSubmitting}
@@ -340,7 +348,7 @@ const AuthLogin = () => {
 						backgroundColor: '#ffffff',
 						transition: 'all 0.2s ease'
 					}}
-				/>
+				/> */}
 			</Stack>
 		</form>
 	);
