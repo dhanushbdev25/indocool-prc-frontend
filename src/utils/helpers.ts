@@ -30,13 +30,13 @@ export const displayValidationErrors = (errors: FieldErrors) => {
 			const value = obj[key];
 
 			if (value && typeof value === 'object') {
-				if (value.message) {
+				if ('message' in value && typeof value.message === 'string') {
 					// This is a field error
 					const friendlyPath = formatFieldPath(currentPath);
 					errorMessages.push(`${friendlyPath}: ${value.message}`);
 				} else {
 					// This is a nested object, recurse
-					extractErrors(value, currentPath);
+					extractErrors(value as Record<string, unknown>, currentPath);
 				}
 			}
 		});
