@@ -55,7 +55,11 @@ export const catalystApi = createApi({
 					throw new Error('Invalid catalyst by ID response structure');
 				}
 				return parsed.data;
-			}
+			},
+			providesTags: (_, __, { id }) => [
+				{ type: 'Catalyst', id },
+				{ type: 'Catalyst', id: 'LIST' }
+			]
 		}),
 		// Create new catalyst
 		createCatalyst: builder.mutation<CreateCatalystResponse, CreateCatalystRequest>({
@@ -89,7 +93,7 @@ export const catalystApi = createApi({
 				}
 				return parsed.data;
 			},
-			invalidatesTags: ['Catalyst']
+			invalidatesTags: (_, __, { id }) => [{ type: 'Catalyst', id }, { type: 'Catalyst', id: 'LIST' }, 'Catalyst']
 		}),
 		// Delete catalyst task (set status to INACTIVE)
 		deleteCatalystTask: builder.mutation<DeleteCatalystTaskResponse, DeleteCatalystTaskRequest>({
@@ -106,7 +110,11 @@ export const catalystApi = createApi({
 				}
 				return parsed.data;
 			},
-			invalidatesTags: ['Catalyst']
+			invalidatesTags: (_, __, { catalyst }) => [
+				{ type: 'Catalyst', id: catalyst?.id },
+				{ type: 'Catalyst', id: 'LIST' },
+				'Catalyst'
+			]
 		})
 	})
 });
