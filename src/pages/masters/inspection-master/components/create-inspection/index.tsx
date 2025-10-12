@@ -168,14 +168,14 @@ const CreateInspection = () => {
 				order: param.order,
 				parameterName: param.parameterName,
 				specification: param.specification,
-				tolerance: param.tolerance || '',
+				tolerance: param.tolerance ? String(param.tolerance) : undefined,
 				type: param.type,
 				files: param.files || {},
 				columns: (param.columns || []).map(col => ({
 					name: col.name,
 					type: col.type,
-					defaultValue: col.defaultValue || '',
-					tolerance: col.tolerance || ''
+					defaultValue: col.defaultValue ? String(col.defaultValue) : undefined,
+					tolerance: col.tolerance ? String(col.tolerance) : undefined
 				})),
 				role: param.role,
 				ctq: param.ctq ?? false
