@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -55,26 +55,42 @@ const CreateSequence = () => {
 		watch
 	} = methods;
 
-	// Watch form data for calculations
-	const watchedData = watch();
+	// Watch form data for calculations - use ref to avoid memoization issues
+	const watchRef = useRef(watch);
 
-	// Calculate totalSteps and ctqSteps
 	useEffect(() => {
-		if (watchedData.processStepGroups) {
-			const totalSteps = watchedData.processStepGroups.reduce(
-				(total, group) => total + (group.processSteps?.length || 0),
-				0
-			);
-			const ctqSteps = watchedData.processStepGroups.reduce(
-				(total, group) => total + (group.processSteps?.filter(step => step.ctq)?.length || 0),
-				0
-			);
+		watchRef.current = watch;
 
-			// Update form values
-			methods.setValue('totalSteps', totalSteps);
-			methods.setValue('ctqSteps', ctqSteps);
-		}
-	}, [watchedData.processStepGroups, methods]);
+		const calculateSteps = () => {
+			const currentProcessStepGroups = methods.getValues('processStepGroups');
+			if (currentProcessStepGroups) {
+				const totalSteps = currentProcessStepGroups.reduce(
+					(total, group) => total + (group.processSteps?.length || 0),
+					0
+				);
+				const ctqSteps = currentProcessStepGroups.reduce(
+					(total, group) => total + (group.processSteps?.filter(step => step.ctq)?.length || 0),
+					0
+				);
+
+				// Update form values
+				methods.setValue('totalSteps', totalSteps);
+				methods.setValue('ctqSteps', ctqSteps);
+			}
+		};
+
+		// Calculate steps when component mounts
+		calculateSteps();
+
+		// Set up a subscription to watch for changes
+		const subscription = watchRef.current((_value, { name }) => {
+			if (name === 'processStepGroups') {
+				calculateSteps();
+			}
+		});
+
+		return () => subscription.unsubscribe();
+	}, [methods, watch]);
 
 	// Debug: Log errors when they change
 	useEffect(() => {

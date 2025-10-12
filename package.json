@@ -18,7 +18,7 @@
     "pre-push": "npm run build && npm run lint && npm run pretty:check",
     "check-deps": "npm outdated",
     "check-security": "npm audit --audit-level=moderate",
-    "check-all": "npm run lint && npm run pretty:check && npm run build && npm run check-deps && npm run check-security",
+    "check-all": "npm run lint && npm run pretty:check && npx tsc --noEmit && npm run build && npm run check-deps && npm run check-security",
     "setup-hooks": "node scripts/setup-hooks.js",
     "test-hooks": "npm run setup-hooks"
   },
@@ -32,6 +32,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@mui/icons-material": "^7.3.4",
     "@mui/material": "^7.3.4",
+    "@mui/material-pigment-css": "^7.3.3",
     "@mui/x-date-pickers": "^8.12.0",
     "@reduxjs/toolkit": "^2.9.0",
     "axios": "^1.9.0",
@@ -56,12 +57,14 @@
     "@typescript-eslint/eslint-plugin": "^8.46.0",
     "@typescript-eslint/parser": "^8.46.0",
     "@vitejs/plugin-react-swc": "^4.1.0",
+    "@wyw-in-js/transform": "^0.7.0",
     "cross-env": "^10.1.0",
     "eslint": "^9.37.0",
-    "eslint-plugin-react-hooks": "^6.1.1",
+    "eslint-plugin-react-hooks": "^7.0.0",
     "eslint-plugin-react-refresh": "^0.4.23",
     "eslint-plugin-unused-imports": "^4.2.0",
     "globals": "^16.4.0",
+    "happy-dom": "^20.0.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.3",
     "prettier": "^3.6.2",
@@ -81,5 +84,9 @@
     "src/**/*.{css,scss}": [
       "prettier --write"
     ]
+  },
+  "overrides": {
+    "happy-dom": "^20.0.0",
+    "@wyw-in-js/transform": "^0.7.0"
   }
 }

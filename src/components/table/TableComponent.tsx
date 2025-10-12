@@ -55,10 +55,15 @@ const TableComponent = <T extends MRT_RowData>({ data, tableColumns }: TableProp
 		}
 	});
 
+	// Extract pagination state values to avoid complex expressions in dependency array
+	const tablePaginationState = table.getState().pagination;
+	const pageSize = tablePaginationState.pageSize;
+	const pageIndex = tablePaginationState.pageIndex;
+
 	// Memoize pagination calculations for better performance
 	const paginationState = useMemo(() => {
-		const totalPages = Math.ceil(data.length / table.getState().pagination.pageSize);
-		const currentPage = table.getState().pagination.pageIndex + 1;
+		const totalPages = Math.ceil(data.length / pageSize);
+		const currentPage = pageIndex + 1;
 
 		// Optimized sliding window logic
 		const windowSize = 5;
@@ -78,7 +83,7 @@ const TableComponent = <T extends MRT_RowData>({ data, tableColumns }: TableProp
 		}
 
 		return { totalPages, currentPage, visiblePages };
-	}, [data.length, table.getState().pagination.pageSize, table.getState().pagination.pageIndex]);
+	}, [data.length, pageSize, pageIndex]);
 
 	return (
 		<Box sx={{ backgroundColor: '#fff' }}>

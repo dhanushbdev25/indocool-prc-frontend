@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
 	Box,
 	Paper,
@@ -35,15 +35,13 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 		name: 'catalystConfiguration'
 	});
 
-	// Auto-expand cards with validation errors and ensure first card is expanded
-	useEffect(() => {
+	// Auto-expand cards with validation errors and ensure first card is expanded - use derived state
+	const autoExpandedCards = useMemo(() => {
 		const newExpanded = new Set(expandedCards);
-		let hasChanges = false;
 
 		// Always ensure first configuration is expanded unless manually collapsed
 		if (fields.length > 0 && !manuallyCollapsed.has(0) && !newExpanded.has(0)) {
 			newExpanded.add(0);
-			hasChanges = true;
 		}
 
 		// Auto-expand cards with validation errors
@@ -51,19 +49,14 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 			(errors.catalystConfiguration as Record<string, unknown>[]).forEach(
 				(fieldErrors: Record<string, unknown>, index: number) => {
 					if (fieldErrors && Object.keys(fieldErrors).length > 0 && !manuallyCollapsed.has(index)) {
-						if (!newExpanded.has(index)) {
-							newExpanded.add(index);
-							hasChanges = true;
-						}
+						newExpanded.add(index);
 					}
 				}
 			);
 		}
 
-		if (hasChanges) {
-			setExpandedCards(newExpanded);
-		}
-	}, [errors.catalystConfiguration, expandedCards, manuallyCollapsed, fields.length]);
+		return newExpanded;
+	}, [errors.catalystConfiguration, manuallyCollapsed, fields.length, expandedCards]);
 
 	const addConfiguration = () => {
 		append(defaultCatalystConfiguration);
@@ -115,7 +108,7 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 	};
 
 	const renderConfigurationCard = (_field: Record<string, unknown>, index: number) => {
-		const isExpanded = expandedCards.has(index);
+		const isExpanded = autoExpandedCards.has(index);
 		const isFirst = index === 0;
 		const fieldErrors = errors.catalystConfiguration?.[index] as Record<string, unknown>;
 		const isManuallyCollapsed = manuallyCollapsed.has(index);

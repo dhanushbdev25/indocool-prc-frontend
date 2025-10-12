@@ -4,13 +4,15 @@ import { LOGOUT, AuthActionTypes } from './actions';
 import { sessionApi } from '../api/auth/session.api';
 import { catalystApi } from '../api/business/catalyst-master/catalyst.api';
 import { sequenceApi } from '../api/business/sequence-master/sequence.api';
+import { inspectionApi } from '../api/business/inspection-master/inspection.api';
 import Cookie from '../../utils/Cookie';
 
 const rootReducer = combineReducers({
 	[authApi.reducerPath]: authApi.reducer,
 	[sessionApi.reducerPath]: sessionApi.reducer,
 	[catalystApi.reducerPath]: catalystApi.reducer,
-	[sequenceApi.reducerPath]: sequenceApi.reducer
+	[sequenceApi.reducerPath]: sequenceApi.reducer,
+	[inspectionApi.reducerPath]: inspectionApi.reducer
 });
 
 // Handle the LOGOUT action

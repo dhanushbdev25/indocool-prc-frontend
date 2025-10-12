@@ -5,19 +5,20 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
-import CatalystBasicInfo from './components/CatalystBasicInfo';
-import CatalystConfiguration from './components/CatalystConfiguration';
-import { catalystFormSchema, defaultCatalystFormData } from './schemas';
-import { CatalystFormData } from './schemas';
+import InspectionBasicInfo from './components/InspectionBasicInfo';
+import InspectionParameters from './components/InspectionParameters';
+import InspectionReview from './components/InspectionReview';
+import { inspectionFormSchema, defaultInspectionFormData } from './schemas';
+import { InspectionFormData } from './schemas';
 import {
-	useFetchCatalystByIdQuery,
-	useCreateCatalystMutation,
-	useUpdateCatalystMutation
-} from '../../../../../store/api/business/catalyst-master/catalyst.api';
+	useFetchInspectionByIdQuery,
+	useCreateInspectionMutation,
+	useUpdateInspectionMutation
+} from '../../../../../store/api/business/inspection-master/inspection.api';
 
-const steps = ['Basic Information', 'Configuration Settings'];
+const steps = ['Basic Information', 'Inspection Parameters', 'Review & Submit'];
 
-const CreateCatalyst = () => {
+const CreateInspection = () => {
 	const navigate = useNavigate();
 	const { id } = useParams();
 	const isEditMode = Boolean(id);
@@ -25,22 +26,22 @@ const CreateCatalyst = () => {
 	const [activeStep, setActiveStep] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 
-	// Fetch catalyst data for edit mode
+	// Fetch inspection data for edit mode
 	const {
-		data: catalystData,
+		data: inspectionData,
 		isLoading: isFetching,
 		isSuccess: isFetchSuccess
-	} = useFetchCatalystByIdQuery({ id: Number(id) }, { skip: !isEditMode || !id });
+	} = useFetchInspectionByIdQuery({ id: Number(id) }, { skip: !isEditMode || !id });
 
 	// API mutations
-	const [createCatalyst, { isLoading: isCreating }] = useCreateCatalystMutation();
-	const [updateCatalyst, { isLoading: isUpdating }] = useUpdateCatalystMutation();
+	const [createInspection, { isLoading: isCreating }] = useCreateInspectionMutation();
+	const [updateInspection, { isLoading: isUpdating }] = useUpdateInspectionMutation();
 
 	// Initialize React Hook Form
-	const methods = useForm<CatalystFormData>({
+	const methods = useForm<InspectionFormData>({
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		resolver: yupResolver(catalystFormSchema) as any,
-		defaultValues: defaultCatalystFormData,
+		resolver: yupResolver(inspectionFormSchema) as any,
+		defaultValues: defaultInspectionFormData,
 		mode: 'onChange', // Validate on change for immediate feedback
 		reValidateMode: 'onChange' // Re-validate on change
 	});
@@ -62,27 +63,45 @@ const CreateCatalyst = () => {
 
 	// Load data for edit mode when API data is available
 	useEffect(() => {
-		if (isEditMode && isFetchSuccess && catalystData) {
-			const formData: CatalystFormData = {
-				id: catalystData.detail.catalyst.id,
-				chartId: catalystData.detail.catalyst.chartId,
-				chartSupplier: catalystData.detail.catalyst.chartSupplier,
-				notes: catalystData.detail.catalyst.notes || '',
-				mekpDensity: catalystData.detail.catalyst.mekpDensity,
-				isActive: catalystData.detail.catalyst.status === 'ACTIVE',
-				catalystConfiguration: catalystData.detail.catalystConfiguration,
-				createdAt: catalystData.detail.catalyst.createdAt,
-				updatedAt: catalystData.detail.catalyst.updatedAt
+		if (isEditMode && isFetchSuccess && inspectionData) {
+			const formData: InspectionFormData = {
+				id: inspectionData.detail.inspection.id,
+				inspectionName: inspectionData.detail.inspection.inspectionName,
+				status: inspectionData.detail.inspection.status === 'ACTIVE',
+				inspectionId: inspectionData.detail.inspection.inspectionId,
+				type: inspectionData.detail.inspection.type,
+				version: inspectionData.detail.inspection.version,
+				isLatest: inspectionData.detail.inspection.isLatest,
+				showPartImages: inspectionData.detail.inspection.showPartImages,
+				partImages: inspectionData.detail.inspection.partImages,
+				inspectionParameters: inspectionData.detail.inspectionParameters.map(param => ({
+					order: param.order,
+					parameterName: param.parameterName,
+					specification: param.specification,
+					tolerance: param.tolerance,
+					type: param.type,
+					files: param.files || {},
+					columns: param.columns.map(col => ({
+						name: col.name,
+						type: col.type,
+						defaultValue: col.defaultValue || '',
+						tolerance: col.tolerance || ''
+					})),
+					role: param.role,
+					ctq: param.ctq
+				})),
+				createdAt: inspectionData.detail.inspection.createdAt,
+				updatedAt: inspectionData.detail.inspection.updatedAt
 			};
 			reset(formData);
 		}
-	}, [isEditMode, isFetchSuccess, catalystData, reset]);
+	}, [isEditMode, isFetchSuccess, inspectionData, reset]);
 
 	const handleNext = async () => {
 		// Define fields to validate for each step
 		const stepFields = {
-			0: ['chartId', 'chartSupplier', 'mekpDensity', 'isActive', 'notes'] as const, // Basic info step
-			1: ['catalystConfiguration'] as const // Configuration step
+			0: ['inspectionName', 'inspectionId', 'type', 'status', 'showPartImages', 'partImages'] as const, // Basic info step
+			1: ['inspectionParameters'] as const // Parameters step
 		};
 
 		const fieldsToValidate = stepFields[activeStep as keyof typeof stepFields];
@@ -90,11 +109,13 @@ const CreateCatalyst = () => {
 		if (fieldsToValidate) {
 			try {
 				// Convert readonly tuple to mutable array to satisfy trigger's type requirement
-				const isValid = await trigger([...fieldsToValidate] as (keyof CatalystFormData)[]);
+				const isValid = await trigger([...fieldsToValidate] as (keyof InspectionFormData)[]);
 				if (isValid) {
 					setActiveStep(prevActiveStep => prevActiveStep + 1);
 				} else {
+					// Validation failed - show popup with errors
 					console.log('Validation failed for step:', activeStep, 'Errors (Yup):', errors);
+					// Scroll to first error field
 					const firstErrorField = document.querySelector('.Mui-error');
 					if (firstErrorField) {
 						firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -112,14 +133,14 @@ const CreateCatalyst = () => {
 	const handleBack = () => {
 		if (activeStep === 0) {
 			// If on first step, go back to main page
-			navigate('/catalyst-master');
+			navigate('/inspection-master');
 		} else {
 			// Otherwise, go to previous step
 			setActiveStep(prevActiveStep => prevActiveStep - 1);
 		}
 	};
 
-	const onSubmit = async (data: CatalystFormData) => {
+	const onSubmit = async (data: InspectionFormData) => {
 		setError(null);
 
 		try {
@@ -132,72 +153,75 @@ const CreateCatalyst = () => {
 			}
 
 			// Transform form data to API request format
-			const catalystRequestData = {
-				status: data.isActive ? 'ACTIVE' : 'INACTIVE',
-				chartId: data.chartId,
-				chartSupplier: data.chartSupplier,
-				notes: data.notes || '',
-				mekpDensity: Number(data.mekpDensity),
-				isActive: data.isActive ?? true
+			const inspectionRequestData = {
+				inspectionName: data.inspectionName,
+				status: data.status ? 'ACTIVE' : 'INACTIVE',
+				inspectionId: data.inspectionId,
+				type: data.type,
+				version: data.version || 1,
+				isLatest: data.isLatest ?? true,
+				showPartImages: data.showPartImages ?? false,
+				partImages: data.partImages || []
 			};
 
-			const catalystConfiguration = (data.catalystConfiguration || []).map(config => ({
-				minTemperature: Number(config.minTemperature),
-				maxTemperature: Number(config.maxTemperature),
-				minHumidity: Number(config.minHumidity),
-				maxHumidity: Number(config.maxHumidity),
-				minGelcoat: Number(config.minGelcoat),
-				maxGelcoat: Number(config.maxGelcoat),
-				gelcoatLabel: config.gelcoatLabel,
-				minResinDosage: Number(config.minResinDosage),
-				maxResinDosage: Number(config.maxResinDosage),
-				resinLabel: config.resinLabel,
-				blockCatalystMixing: config.blockCatalystMixing ?? false,
-				requestSupervisorApproval: config.requestSupervisorApproval ?? false
+			const inspectionParameters = (data.inspectionParameters || []).map(param => ({
+				order: param.order,
+				parameterName: param.parameterName,
+				specification: param.specification,
+				tolerance: param.tolerance || '',
+				type: param.type,
+				files: param.files || {},
+				columns: (param.columns || []).map(col => ({
+					name: col.name,
+					type: col.type,
+					defaultValue: col.defaultValue || '',
+					tolerance: col.tolerance || ''
+				})),
+				role: param.role,
+				ctq: param.ctq ?? false
 			}));
 
-			console.log('Saving catalyst data:', { catalystRequestData, catalystConfiguration });
+			console.log('Saving inspection data:', { inspectionRequestData, inspectionParameters });
 
 			if (isEditMode && data.id) {
-				// Update existing catalyst
+				// Update existing inspection
 				const updateData = {
 					id: data.id,
-					catalyst: {
+					inspection: {
 						id: data.id,
-						version: catalystData ? catalystData.detail.catalyst.version : 1,
-						...catalystRequestData
+						...inspectionRequestData
 					},
-					catalystConfiguration
+					inspectionParameters
 				};
-				await updateCatalyst(updateData).unwrap();
+				await updateInspection(updateData).unwrap();
 
 				// Show success message
 				Swal.fire({
 					icon: 'success',
 					title: 'Success!',
-					text: 'Catalyst chart updated successfully',
+					text: 'Inspection updated successfully',
 					timer: 2000,
 					showConfirmButton: false
 				});
 			} else {
-				// Create new catalyst
+				// Create new inspection
 				const createData = {
-					catalyst: catalystRequestData,
-					catalystConfiguration
+					inspection: inspectionRequestData,
+					inspectionParameters
 				};
-				await createCatalyst(createData).unwrap();
+				await createInspection(createData).unwrap();
 
 				// Show success message
 				Swal.fire({
 					icon: 'success',
 					title: 'Success!',
-					text: 'Catalyst chart created successfully',
+					text: 'Inspection created successfully',
 					timer: 2000,
 					showConfirmButton: false
 				});
 			}
 
-			navigate('/catalyst-master');
+			navigate('/inspection-master');
 		} catch (err: unknown) {
 			console.error('API Error:', err);
 			const errorMessage =
@@ -210,23 +234,26 @@ const CreateCatalyst = () => {
 					? (err.data as { message: string }).message
 					: err && typeof err === 'object' && 'message' in err
 						? (err as { message: string }).message
-						: `Failed to ${isEditMode ? 'update' : 'create'} catalyst`;
+						: `Failed to ${isEditMode ? 'update' : 'create'} inspection`;
 			setError(errorMessage);
 		}
 	};
 
 	const handleCancel = () => {
-		navigate('/catalyst-master');
+		navigate('/inspection-master');
 	};
 
 	const renderStepContent = (step: number) => {
 		switch (step) {
 			case 0:
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				return <CatalystBasicInfo control={control as any} errors={errors} />;
+				return <InspectionBasicInfo control={control as any} errors={errors} />;
 			case 1:
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				return <CatalystConfiguration control={control as any} errors={errors} />;
+				return <InspectionParameters control={control as any} errors={errors} />;
+			case 2:
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				return <InspectionReview control={control as any} errors={errors} />;
 			default:
 				return null;
 		}
@@ -273,7 +300,7 @@ const CreateCatalyst = () => {
 					{/* Header */}
 					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
-							{isEditMode ? 'Edit Catalyst Chart' : 'Create New Catalyst Chart'}
+							{isEditMode ? 'Edit Inspection' : 'Create New Inspection'}
 						</Typography>
 					</Box>
 
@@ -322,7 +349,7 @@ const CreateCatalyst = () => {
 										'&:hover': { backgroundColor: '#1565c0' }
 									}}
 								>
-									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Chart' : 'Create Chart'}
+									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Inspection' : 'Create Inspection'}
 								</Button>
 							) : (
 								<Button
@@ -345,4 +372,4 @@ const CreateCatalyst = () => {
 	);
 };
 
-export default CreateCatalyst;
+export default CreateInspection;

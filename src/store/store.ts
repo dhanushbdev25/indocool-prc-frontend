@@ -10,6 +10,7 @@ import { sessionApi } from './api/auth/session.api';
 import { catalystApi } from './api/business/catalyst-master/catalyst.api';
 import { logoutApp } from './reducers/actions';
 import { sequenceApi } from './api/business/sequence-master/sequence.api';
+import { inspectionApi } from './api/business/inspection-master/inspection.api';
 
 // ==============================|| REDUX TOOLKIT - MAIN STORE ||============================== //
 
@@ -42,6 +43,7 @@ export const store = configureStore({
 			sessionApi.middleware,
 			catalystApi.middleware,
 			sequenceApi.middleware,
+			inspectionApi.middleware,
 			rtkQueryErrorLogger
 		])
 });

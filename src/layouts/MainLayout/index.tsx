@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { Box, useMediaQuery } from '@mui/material';
@@ -17,8 +17,9 @@ const MainLayout = () => {
 	const matchDownLG = useMediaQuery(theme.breakpoints.down('lg'));
 	const [open, setOpen] = useState(true);
 
-	useEffect(() => {
-		setOpen(!matchDownLG);
+	// Use derived state instead of effect
+	const shouldBeOpen = useMemo(() => {
+		return !matchDownLG;
 	}, [matchDownLG]);
 
 	const token = Cookie.getToken();
@@ -33,7 +34,7 @@ const MainLayout = () => {
 
 	return (
 		<RoleProvider sessionData={data}>
-			<MainLayoutContent open={open} handleDrawerToggle={handleDrawerToggle} data={data} />
+			<MainLayoutContent open={shouldBeOpen} handleDrawerToggle={handleDrawerToggle} data={data} />
 		</RoleProvider>
 	);
 };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import Typography from '@mui/material/Typography';
 import { ListItem, ListItemButton, ListItemIcon, ListItemText, Collapse, Box } from '@mui/material';
@@ -27,12 +27,10 @@ const HierarchicalNavItem = ({ module, open }: HierarchicalNavItemProps) => {
 		return location.pathname === `/${submodule.path}` || location.pathname.startsWith(`/${submodule.path}/`);
 	});
 
-	// Auto-expand if any submodule is active
-	useEffect(() => {
-		if (isAnySubmoduleActive) {
-			setIsExpanded(true);
-		}
-	}, [isAnySubmoduleActive]);
+	// Auto-expand if any submodule is active - use derived state instead of effect
+	const shouldBeExpanded = useMemo(() => {
+		return isExpanded || isAnySubmoduleActive;
+	}, [isExpanded, isAnySubmoduleActive]);
 
 	const handleToggle = () => {
 		setIsExpanded(!isExpanded);
@@ -91,12 +89,12 @@ const HierarchicalNavItem = ({ module, open }: HierarchicalNavItemProps) => {
 							transition: 'opacity 0.2s ease'
 						}}
 					/>
-					{open && <Box sx={{ ml: 1 }}>{isExpanded ? <ExpandLess /> : <ExpandMore />}</Box>}
+					{open && <Box sx={{ ml: 1 }}>{shouldBeExpanded ? <ExpandLess /> : <ExpandMore />}</Box>}
 				</ListItemButton>
 			</ListItem>
 
 			{/* Submodules */}
-			<Collapse in={isExpanded && open} timeout="auto" unmountOnExit>
+			<Collapse in={shouldBeExpanded && open} timeout="auto" unmountOnExit>
 				<Box sx={{ pl: 2 }}>
 					{module.submodules.map(submodule =>
 						submodule.icon ? (

@@ -1,6 +1,6 @@
 import Loadable from '../components/common/Loadable';
 import { lazy } from 'react';
-import { Science, Timeline, Settings } from '@mui/icons-material';
+import { Science, Timeline, Settings, Checklist } from '@mui/icons-material';
 
 // Lazy-loaded components
 export const imports = {
@@ -9,7 +9,10 @@ export const imports = {
 	viewCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/componets/view-catalyst'))),
 	sequenceMaster: Loadable(lazy(() => import('../pages/masters/sequence-master/components/list-sequence'))),
 	createSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/create-sequence'))),
-	viewSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/view-sequence')))
+	viewSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/view-sequence'))),
+	inspectionMaster: Loadable(lazy(() => import('../pages/masters/inspection-master/components/list-inspection'))),
+	createInspection: Loadable(lazy(() => import('../pages/masters/inspection-master/components/create-inspection'))),
+	viewInspection: Loadable(lazy(() => import('../pages/masters/inspection-master/components/view-inspection')))
 };
 
 // Screen configuration interface
@@ -97,6 +100,36 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Edit Sequence',
 				path: 'sequence-master/edit-sequence/:id',
 				element: imports.createSequence,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				icon: Checklist,
+				text: 'Inspection Master',
+				path: 'inspection-master',
+				element: imports.inspectionMaster,
+				permission: 'EDITPROCESSSEQUENCE',
+				order: 3,
+				showInSidebar: true
+			},
+			{
+				text: 'Create Inspection',
+				path: 'inspection-master/create-inspection',
+				element: imports.createInspection,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'View Inspection',
+				path: 'inspection-master/view-inspection/:id',
+				element: imports.viewInspection,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'Edit Inspection',
+				path: 'inspection-master/edit-inspection/:id',
+				element: imports.createInspection,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			}
