@@ -1,6 +1,6 @@
 import Loadable from '../components/common/Loadable';
 import { lazy } from 'react';
-import { Science, Timeline, Settings, Checklist } from '@mui/icons-material';
+import { Science, Timeline, Settings, Checklist, Assignment } from '@mui/icons-material';
 
 // Lazy-loaded components
 export const imports = {
@@ -12,7 +12,12 @@ export const imports = {
 	viewSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/view-sequence'))),
 	inspectionMaster: Loadable(lazy(() => import('../pages/masters/inspection-master/components/list-inspection'))),
 	createInspection: Loadable(lazy(() => import('../pages/masters/inspection-master/components/create-inspection'))),
-	viewInspection: Loadable(lazy(() => import('../pages/masters/inspection-master/components/view-inspection')))
+	viewInspection: Loadable(lazy(() => import('../pages/masters/inspection-master/components/view-inspection'))),
+	prcTemplateMaster: Loadable(lazy(() => import('../pages/masters/prc-template-master/components/list-prc-template'))),
+	createPrcTemplate: Loadable(
+		lazy(() => import('../pages/masters/prc-template-master/components/create-prc-template'))
+	),
+	viewPrcTemplate: Loadable(lazy(() => import('../pages/masters/prc-template-master/components/view-prc-template')))
 };
 
 // Screen configuration interface
@@ -130,6 +135,36 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Edit Inspection',
 				path: 'inspection-master/edit-inspection/:id',
 				element: imports.createInspection,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				icon: Assignment,
+				text: 'PRC Template Master',
+				path: 'prc-template-master',
+				element: imports.prcTemplateMaster,
+				permission: 'EDITPROCESSSEQUENCE',
+				order: 4,
+				showInSidebar: true
+			},
+			{
+				text: 'Create PRC Template',
+				path: 'prc-template-master/create-prc-template',
+				element: imports.createPrcTemplate,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'View PRC Template',
+				path: 'prc-template-master/view-prc-template/:id',
+				element: imports.viewPrcTemplate,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'Edit PRC Template',
+				path: 'prc-template-master/edit-prc-template/:id',
+				element: imports.createPrcTemplate,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			}

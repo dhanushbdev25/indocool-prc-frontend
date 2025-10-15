@@ -98,8 +98,8 @@ const ListInspection = () => {
 						inspectionId: fullInspectionDetail.inspection.inspectionId,
 						type: fullInspectionDetail.inspection.type,
 						isLatest: fullInspectionDetail.inspection.isLatest,
-						showPartImages: fullInspectionDetail.inspection.showPartImages,
-						partImages: fullInspectionDetail.inspection.partImages,
+						showPartImages: fullInspectionDetail.inspection.showPartImages ?? false,
+						partImages: fullInspectionDetail.inspection.partImages ?? [],
 						createdBy: fullInspectionDetail.inspection.createdBy,
 						updatedBy: fullInspectionDetail.inspection.updatedBy
 					},

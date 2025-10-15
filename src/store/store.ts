@@ -11,6 +11,7 @@ import { catalystApi } from './api/business/catalyst-master/catalyst.api';
 import { logoutApp } from './reducers/actions';
 import { sequenceApi } from './api/business/sequence-master/sequence.api';
 import { inspectionApi } from './api/business/inspection-master/inspection.api';
+import { prcTemplateApi } from './api/business/prc-template/prc-template.api';
 
 // ==============================|| REDUX TOOLKIT - MAIN STORE ||============================== //
 
@@ -44,6 +45,7 @@ export const store = configureStore({
 			catalystApi.middleware,
 			sequenceApi.middleware,
 			inspectionApi.middleware,
+			prcTemplateApi.middleware,
 			rtkQueryErrorLogger
 		])
 });
