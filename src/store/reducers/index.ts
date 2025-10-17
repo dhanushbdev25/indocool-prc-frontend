@@ -6,6 +6,7 @@ import { catalystApi } from '../api/business/catalyst-master/catalyst.api';
 import { sequenceApi } from '../api/business/sequence-master/sequence.api';
 import { inspectionApi } from '../api/business/inspection-master/inspection.api';
 import { prcTemplateApi } from '../api/business/prc-template/prc-template.api';
+import { partApi } from '../api/business/part-master/part.api';
 import Cookie from '../../utils/Cookie';
 
 const rootReducer = combineReducers({
@@ -14,7 +15,8 @@ const rootReducer = combineReducers({
 	[catalystApi.reducerPath]: catalystApi.reducer,
 	[sequenceApi.reducerPath]: sequenceApi.reducer,
 	[inspectionApi.reducerPath]: inspectionApi.reducer,
-	[prcTemplateApi.reducerPath]: prcTemplateApi.reducer
+	[prcTemplateApi.reducerPath]: prcTemplateApi.reducer,
+	[partApi.reducerPath]: partApi.reducer
 });
 
 // Handle the LOGOUT action

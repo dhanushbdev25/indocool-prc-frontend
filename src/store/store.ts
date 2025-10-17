@@ -12,6 +12,7 @@ import { logoutApp } from './reducers/actions';
 import { sequenceApi } from './api/business/sequence-master/sequence.api';
 import { inspectionApi } from './api/business/inspection-master/inspection.api';
 import { prcTemplateApi } from './api/business/prc-template/prc-template.api';
+import { partApi } from './api/business/part-master/part.api';
 
 // ==============================|| REDUX TOOLKIT - MAIN STORE ||============================== //
 
@@ -46,6 +47,7 @@ export const store = configureStore({
 			sequenceApi.middleware,
 			inspectionApi.middleware,
 			prcTemplateApi.middleware,
+			partApi.middleware,
 			rtkQueryErrorLogger
 		])
 });
