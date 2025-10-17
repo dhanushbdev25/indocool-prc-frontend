@@ -1,6 +1,6 @@
 import Loadable from '../components/common/Loadable';
 import { lazy } from 'react';
-import { Science, Timeline, Settings, Checklist, Assignment } from '@mui/icons-material';
+import { Science, Timeline, Settings, Checklist, Assignment, Build } from '@mui/icons-material';
 
 // Lazy-loaded components
 export const imports = {
@@ -17,7 +17,10 @@ export const imports = {
 	createPrcTemplate: Loadable(
 		lazy(() => import('../pages/masters/prc-template-master/components/create-prc-template'))
 	),
-	viewPrcTemplate: Loadable(lazy(() => import('../pages/masters/prc-template-master/components/view-prc-template')))
+	viewPrcTemplate: Loadable(lazy(() => import('../pages/masters/prc-template-master/components/view-prc-template'))),
+	partMaster: Loadable(lazy(() => import('../pages/masters/part-master/components/list-part'))),
+	createPart: Loadable(lazy(() => import('../pages/masters/part-master/components/create-part'))),
+	viewPart: Loadable(lazy(() => import('../pages/masters/part-master/components/view-part')))
 };
 
 // Screen configuration interface
@@ -165,6 +168,36 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Edit PRC Template',
 				path: 'prc-template-master/edit-prc-template/:id',
 				element: imports.createPrcTemplate,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				icon: Build,
+				text: 'Part Master',
+				path: 'part-master',
+				element: imports.partMaster,
+				permission: 'EDITPROCESSSEQUENCE',
+				order: 5,
+				showInSidebar: true
+			},
+			{
+				text: 'Create Part',
+				path: 'part-master/create-part',
+				element: imports.createPart,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'View Part',
+				path: 'part-master/view-part/:id',
+				element: imports.viewPart,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'Edit Part',
+				path: 'part-master/edit-part/:id',
+				element: imports.createPart,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			}

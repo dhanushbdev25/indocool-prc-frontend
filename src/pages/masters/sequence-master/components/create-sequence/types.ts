@@ -46,6 +46,7 @@ export const uomOptions = [
 	{ value: 'mm', label: 'Millimeters (mm)' },
 	{ value: 'cm', label: 'Centimeters (cm)' },
 	{ value: 'm', label: 'Meters (m)' },
+	{ value: 'pcs', label: 'Pieces (pcs)' },
 	{ value: 'cP', label: 'Centipoise (cP)' },
 	{ value: 'Pa', label: 'Pascal (Pa)' },
 	{ value: 'bar', label: 'Bar' },
