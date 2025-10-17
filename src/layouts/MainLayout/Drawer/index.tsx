@@ -70,7 +70,7 @@ export default function DrawerComp({ open, permissions }: Readonly<DrawerProps>)
 					}
 				}}
 			>
-				<List sx={{ px: 1, py: 1, mt: 8 }}>
+				<List sx={{ px: 1, py: 1, mt: { xs: 8, sm: 8, md: 8 } }}>
 					{menuModules.map(module => (
 						<HierarchicalNavItem key={module.text} module={module} open={open} />
 					))}

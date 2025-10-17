@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import Typography from '@mui/material/Typography';
-import { ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
+import { ListItem, ListItemButton, ListItemIcon, ListItemText, Tooltip } from '@mui/material';
 
 type NavItemProps = {
 	text: string;
@@ -11,11 +11,11 @@ type NavItemProps = {
 
 const NavItem = ({ text, path, icon: Icon, open }: NavItemProps) => (
 	<NavLink to={path} style={{ textDecoration: 'none' }}>
-		{({ isActive }) => (
-			<ListItem disablePadding sx={{ display: 'block', mb: 0.25 }}>
+		{({ isActive }) => {
+			const navButton = (
 				<ListItemButton
 					sx={{
-						minHeight: 40,
+						minHeight: { xs: 44, sm: 40 }, // Ensure minimum touch target for tablets
 						justifyContent: open ? 'initial' : 'center',
 						px: open ? 2 : 1,
 						py: 1,
@@ -36,7 +36,7 @@ const NavItem = ({ text, path, icon: Icon, open }: NavItemProps) => (
 							color: isActive ? '#475569' : '#94a3b8',
 							transition: 'color 0.2s ease',
 							'& svg': {
-								fontSize: 18
+								fontSize: { xs: 20, sm: 18 } // Larger icons for tablets
 							}
 						}}
 					>
@@ -62,8 +62,20 @@ const NavItem = ({ text, path, icon: Icon, open }: NavItemProps) => (
 						}}
 					/>
 				</ListItemButton>
-			</ListItem>
-		)}
+			);
+
+			return (
+				<ListItem disablePadding sx={{ display: 'block', mb: 0.25 }}>
+					{open ? (
+						navButton
+					) : (
+						<Tooltip title={text} placement="right" arrow>
+							{navButton}
+						</Tooltip>
+					)}
+				</ListItem>
+			);
+		}}
 	</NavLink>
 );
 

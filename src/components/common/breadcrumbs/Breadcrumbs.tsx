@@ -20,14 +20,14 @@ const Breadcrumbs = React.memo(({ permissions: _permissions }: BreadcrumbsProps)
 	}
 
 	return (
-		<Box sx={{ mb: 2 }}>
+		<Box sx={{ mb: { xs: 1.5, sm: 2 } }}>
 			<MuiBreadcrumbs
 				separator={<NavigateNextIcon fontSize="small" />}
 				aria-label="breadcrumb"
 				sx={{
 					'& .MuiBreadcrumbs-separator': {
 						color: '#94a3b8',
-						fontSize: '16px'
+						fontSize: { xs: '14px', sm: '16px' }
 					}
 				}}
 			>
@@ -41,7 +41,7 @@ const Breadcrumbs = React.memo(({ permissions: _permissions }: BreadcrumbsProps)
 								key={`${item.text}-${index}`}
 								sx={{
 									color: isLast ? '#334155' : '#64748b',
-									fontSize: '14px',
+									fontSize: { xs: '13px', sm: '14px' },
 									fontWeight: isLast ? 500 : 400,
 									letterSpacing: '-0.01em'
 								}}
@@ -53,26 +53,24 @@ const Breadcrumbs = React.memo(({ permissions: _permissions }: BreadcrumbsProps)
 
 					// Clickable breadcrumb item
 					return (
-						<Link
+						<Box
 							key={`${item.text}-${index}`}
+							component={Link}
 							to={item.path}
-							style={{
+							sx={{
 								textDecoration: 'none',
 								color: '#64748b',
-								fontSize: '14px',
+								fontSize: { xs: '13px', sm: '14px' },
 								fontWeight: 400,
 								letterSpacing: '-0.01em',
-								transition: 'color 0.2s ease'
-							}}
-							onMouseEnter={e => {
-								e.currentTarget.style.color = '#334155';
-							}}
-							onMouseLeave={e => {
-								e.currentTarget.style.color = '#64748b';
+								transition: 'color 0.2s ease',
+								'&:hover': {
+									color: '#334155'
+								}
 							}}
 						>
 							{item.text}
-						</Link>
+						</Box>
 					);
 				})}
 			</MuiBreadcrumbs>

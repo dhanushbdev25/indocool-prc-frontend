@@ -108,12 +108,12 @@ const ModernTopBar = ({ onMenuToggle, drawerOpen }: ModernTopBarProps) => {
 			<Toolbar
 				sx={{
 					minHeight: '64px !important',
-					px: { xs: 2, sm: 3 },
+					px: { xs: 2, sm: 2.5, md: 3 },
 					justifyContent: 'space-between'
 				}}
 			>
 				{/* Left Section - Menu Toggle & Logo */}
-				<Stack direction="row" alignItems="center" spacing={2}>
+				<Stack direction="row" alignItems="center" spacing={{ xs: 1.5, sm: 2 }}>
 					<IconButton
 						onClick={onMenuToggle}
 						sx={{
@@ -125,11 +125,11 @@ const ModernTopBar = ({ onMenuToggle, drawerOpen }: ModernTopBarProps) => {
 							},
 							transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
 							borderRadius: '12px',
-							width: 40,
-							height: 40
+							width: { xs: 36, md: 40 },
+							height: { xs: 36, md: 40 }
 						}}
 					>
-						<MenuIcon sx={{ fontSize: 20 }} />
+						<MenuIcon sx={{ fontSize: { xs: 18, md: 20 } }} />
 					</IconButton>
 
 					<Typography
@@ -138,7 +138,7 @@ const ModernTopBar = ({ onMenuToggle, drawerOpen }: ModernTopBarProps) => {
 						sx={{
 							color: '#1a1a1a',
 							fontWeight: 600,
-							fontSize: { xs: '1rem', sm: '1.1rem' },
+							fontSize: { xs: '0.95rem', sm: '1rem', md: '1.1rem' },
 							letterSpacing: '-0.02em'
 						}}
 					>
@@ -147,7 +147,7 @@ const ModernTopBar = ({ onMenuToggle, drawerOpen }: ModernTopBarProps) => {
 				</Stack>
 
 				{/* Right Section - Notifications & User Profile */}
-				<Stack direction="row" alignItems="center" spacing={1}>
+				<Stack direction="row" alignItems="center" spacing={{ xs: 0.5, sm: 1, md: 1 }}>
 					{/* Notifications */}
 					<Tooltip title="Notifications">
 						<IconButton
@@ -159,12 +159,12 @@ const ModernTopBar = ({ onMenuToggle, drawerOpen }: ModernTopBarProps) => {
 								},
 								transition: 'all 0.2s ease',
 								borderRadius: '12px',
-								width: 40,
-								height: 40
+								width: { xs: 36, md: 40 },
+								height: { xs: 36, md: 40 }
 							}}
 						>
 							<Badge badgeContent={0} color="error" variant="dot">
-								<NotificationsNone sx={{ fontSize: 20 }} />
+								<NotificationsNone sx={{ fontSize: { xs: 18, md: 20 } }} />
 							</Badge>
 						</IconButton>
 					</Tooltip>
@@ -183,8 +183,8 @@ const ModernTopBar = ({ onMenuToggle, drawerOpen }: ModernTopBarProps) => {
 						>
 							<Avatar
 								sx={{
-									width: 36,
-									height: 36,
+									width: { xs: 32, md: 36 },
+									height: { xs: 32, md: 36 },
 									backgroundColor: '#6366f1',
 									fontSize: '0.875rem',
 									fontWeight: 600,

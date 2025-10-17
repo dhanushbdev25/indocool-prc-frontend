@@ -15,12 +15,19 @@ import Breadcrumbs from '../../components/common/breadcrumbs/Breadcrumbs';
 const MainLayout = () => {
 	const theme = useTheme();
 	const matchDownLG = useMediaQuery(theme.breakpoints.down('lg'));
-	const [open, setOpen] = useState(true);
 
-	// Use derived state instead of effect
+	// Use derived state for drawer open/closed based on screen size
 	const shouldBeOpen = useMemo(() => {
+		// On desktop (lg and above), drawer should be open by default
+		// On tablets/mobile (lg and below), drawer should be collapsed by default
 		return !matchDownLG;
 	}, [matchDownLG]);
+
+	// For manual toggling, we'll use a separate state
+	const [manuallyToggled, setManuallyToggled] = useState(false);
+
+	// Determine final drawer state
+	const drawerOpen = manuallyToggled ? !shouldBeOpen : shouldBeOpen;
 
 	const token = Cookie.getToken();
 	const { data, isLoading, isError, errorMessage } = useSessionContextQuery(token);
@@ -29,12 +36,12 @@ const MainLayout = () => {
 	if (isError || !data) return <SessionError errMsg={errorMessage} />;
 
 	const handleDrawerToggle = () => {
-		setOpen(!open);
+		setManuallyToggled(!manuallyToggled);
 	};
 
 	return (
 		<RoleProvider sessionData={data}>
-			<MainLayoutContent open={shouldBeOpen} handleDrawerToggle={handleDrawerToggle} data={data} />
+			<MainLayoutContent open={drawerOpen} handleDrawerToggle={handleDrawerToggle} data={data} />
 		</RoleProvider>
 	);
 };
@@ -63,25 +70,32 @@ const MainLayoutContent = ({
 			{/* Modern Top Bar */}
 			<ModernTopBar onMenuToggle={handleDrawerToggle} drawerOpen={open} />
 
-			<Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden', pt: '64px' }}>
+			<Box
+				sx={{
+					display: 'grid',
+					gridTemplateColumns: open ? '240px 1fr' : { xs: '57px 1fr', sm: '65px 1fr' },
+					flexGrow: 1,
+					overflow: 'hidden',
+					pt: '64px',
+					transition: 'grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+				}}
+			>
 				<Drawer open={open} handleDrawerToggle={handleDrawerToggle} permissions={permissions} />
 				<Box
 					component="main"
 					sx={{
-						flexGrow: 1,
 						height: 'calc(100vh - 64px)',
 						overflow: 'hidden',
 						display: 'flex',
 						flexDirection: 'column',
-						backgroundColor: '#fafafa',
-						transition: 'margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+						backgroundColor: '#fafafa'
 					}}
 				>
 					<Box
 						sx={{
 							flexGrow: 1,
 							overflow: 'auto',
-							p: { xs: 2, sm: 3 },
+							p: { xs: 2, sm: 2.5, md: 3 },
 							'&::-webkit-scrollbar': {
 								width: '6px'
 							},
