@@ -102,6 +102,7 @@ const ListPrcTemplate = () => {
 			if (fullTemplateDetail) {
 				const deleteRequest: DeletePrcTemplateTaskRequest = {
 					prcTemplate: {
+						id: fullTemplateDetail.prcTemplate.id!,
 						status: fullTemplateDetail.prcTemplate.status,
 						templateId: fullTemplateDetail.prcTemplate.templateId,
 						templateName: fullTemplateDetail.prcTemplate.templateName,

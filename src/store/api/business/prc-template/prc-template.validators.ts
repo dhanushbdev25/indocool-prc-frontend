@@ -94,7 +94,9 @@ export const updatePrcTemplateRequestSchema = z.object({
 
 // Delete request schema (for setting status to INACTIVE)
 export const deletePrcTemplateTaskRequestSchema = z.object({
-	prcTemplate: prcTemplateRequestSchema,
+	prcTemplate: prcTemplateRequestSchema.extend({
+		id: z.number()
+	}),
 	prcTemplateSteps: z.array(prcTemplateStepRequestSchema)
 });
 
