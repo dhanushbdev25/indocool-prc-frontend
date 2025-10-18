@@ -8,6 +8,7 @@ import { inspectionApi } from '../api/business/inspection-master/inspection.api'
 import { prcTemplateApi } from '../api/business/prc-template/prc-template.api';
 import { partApi } from '../api/business/part-master/part.api';
 import Cookie from '../../utils/Cookie';
+import { prcExecutionApi } from '../api/business/prc-execution/prc-execution.api';
 
 const rootReducer = combineReducers({
 	[authApi.reducerPath]: authApi.reducer,
@@ -16,6 +17,7 @@ const rootReducer = combineReducers({
 	[sequenceApi.reducerPath]: sequenceApi.reducer,
 	[inspectionApi.reducerPath]: inspectionApi.reducer,
 	[prcTemplateApi.reducerPath]: prcTemplateApi.reducer,
+	[prcExecutionApi.reducerPath]: prcExecutionApi.reducer,
 	[partApi.reducerPath]: partApi.reducer
 });
 

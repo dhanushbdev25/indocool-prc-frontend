@@ -64,7 +64,7 @@ export const partApi = createApi({
 		// Fetch customers
 		fetchCustomers: builder.query<CustomersResponse, void>({
 			query: () => ({
-				url: 'customer',
+				url: '/customer/combo',
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {

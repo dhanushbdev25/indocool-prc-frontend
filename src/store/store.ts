@@ -13,6 +13,7 @@ import { sequenceApi } from './api/business/sequence-master/sequence.api';
 import { inspectionApi } from './api/business/inspection-master/inspection.api';
 import { prcTemplateApi } from './api/business/prc-template/prc-template.api';
 import { partApi } from './api/business/part-master/part.api';
+import { prcExecutionApi } from './api/business/prc-execution/prc-execution.api';
 
 // ==============================|| REDUX TOOLKIT - MAIN STORE ||============================== //
 
@@ -48,6 +49,7 @@ export const store = configureStore({
 			inspectionApi.middleware,
 			prcTemplateApi.middleware,
 			partApi.middleware,
+			prcExecutionApi.middleware,
 			rtkQueryErrorLogger
 		])
 });

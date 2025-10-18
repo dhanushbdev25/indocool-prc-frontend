@@ -76,27 +76,11 @@ export const partMasterSchema = z.object({
 	customerName: z.string().nullable().optional()
 });
 
-// Customer schema
-export const customerSchema = z.object({
-	id: z.number(),
-	customerCode: z.string(),
-	customerName: z.string(),
-	contactPerson: z.string(),
-	contactNumber: z.string(),
-	email: z.string(),
-	addressLine1: z.string(),
-	addressLine2: z.string().optional(),
-	city: z.string(),
-	state: z.string(),
-	country: z.string(),
-	pincode: z.string(),
-	gstNumber: z.string(),
-	panNumber: z.string(),
-	isActive: z.boolean(),
-	createdBy: z.number().optional(),
-	updatedBy: z.number().optional(),
-	createdAt: z.string(),
-	updatedAt: z.string()
+// Customer combo schema (new format)
+export const customerComboSchema = z.object({
+	label: z.string(),
+	value: z.string(),
+	data: z.record(z.string(), z.unknown()).optional()
 });
 
 // Response schemas
@@ -128,7 +112,7 @@ export const partByIdResponseSchema = z.object({
 });
 
 export const customersResponseSchema = z.object({
-	data: z.array(customerSchema)
+	data: z.array(customerComboSchema)
 });
 
 // Create/Update response schema (single part object)
@@ -178,7 +162,7 @@ export type BOM = z.infer<typeof bomSchema>;
 export type Drilling = z.infer<typeof drillingSchema>;
 export type Cutting = z.infer<typeof cuttingSchema>;
 export type PartMaster = z.infer<typeof partMasterSchema>;
-export type Customer = z.infer<typeof customerSchema>;
+export type CustomerCombo = z.infer<typeof customerComboSchema>;
 export type PartDetail = z.infer<typeof partDetailSchema>;
 export type PartsResponse = z.infer<typeof partsResponseSchema>;
 export type PartByIdResponse = z.infer<typeof partByIdResponseSchema>;

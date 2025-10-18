@@ -1,6 +1,6 @@
 import Loadable from '../components/common/Loadable';
 import { lazy } from 'react';
-import { Science, Timeline, Settings, Checklist, Assignment, Build } from '@mui/icons-material';
+import { Science, Timeline, Settings, Checklist, Assignment, Build, PlayArrow } from '@mui/icons-material';
 
 // Lazy-loaded components
 export const imports = {
@@ -20,7 +20,9 @@ export const imports = {
 	viewPrcTemplate: Loadable(lazy(() => import('../pages/masters/prc-template-master/components/view-prc-template'))),
 	partMaster: Loadable(lazy(() => import('../pages/masters/part-master/components/list-part'))),
 	createPart: Loadable(lazy(() => import('../pages/masters/part-master/components/create-part'))),
-	viewPart: Loadable(lazy(() => import('../pages/masters/part-master/components/view-part')))
+	viewPart: Loadable(lazy(() => import('../pages/masters/part-master/components/view-part'))),
+	prcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/list-prc-execution'))),
+	viewPrcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/view-prc-execution')))
 };
 
 // Screen configuration interface
@@ -46,9 +48,33 @@ export interface MainModuleConfig {
 // Main module configurations with hierarchical structure
 export const mainModuleConfigs: MainModuleConfig[] = [
 	{
+		text: 'PRC Execution',
+		icon: PlayArrow,
+		order: 1,
+		submodules: [
+			{
+				icon: PlayArrow,
+				text: 'Execute PRC',
+				path: 'prc-execution',
+				element: imports.prcExecution,
+				permission: 'EDITPROCESSSEQUENCE',
+				isInitial: true,
+				order: 1,
+				showInSidebar: true
+			},
+			{
+				text: 'View PRC Execution',
+				path: 'prc-execution/view/:id',
+				element: imports.viewPrcExecution,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			}
+		]
+	},
+	{
 		text: 'Masters',
 		icon: Settings,
-		order: 1,
+		order: 2,
 		submodules: [
 			{
 				icon: Science,

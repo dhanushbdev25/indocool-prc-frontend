@@ -188,8 +188,8 @@ const GeneralInfo = ({ control, errors }: GeneralInfoProps) => {
 										}}
 									>
 										{customersData?.data?.map(customer => (
-											<MenuItem key={customer.id} value={customer.customerCode}>
-												{customer.customerName} ({customer.customerCode})
+											<MenuItem key={customer.value} value={customer.value}>
+												{customer.label}
 											</MenuItem>
 										))}
 									</Select>
