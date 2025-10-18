@@ -32,7 +32,7 @@ import {
 	Schedule as ScheduleIcon,
 	CheckCircle as CheckIcon
 } from '@mui/icons-material';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useFetchCustomersQuery } from '../../../../../store/api/business/part-master/part.api';
@@ -51,7 +51,7 @@ const createPrcExecutionSchema = yup.object({
 	date: yup.string().required('Date is required'),
 	shift: yup.string().required('Shift is required'),
 	inCharge: yup.number().required('In Charge is required'),
-	remarks: yup.string().optional()
+	remarks: yup.string().optional().default('')
 });
 
 type CreatePrcExecutionFormData = yup.InferType<typeof createPrcExecutionSchema>;
@@ -102,7 +102,7 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 			date: new Date().toISOString().split('T')[0], // Today's date
 			shift: 'Morning',
 			inCharge: 1,
-			remarks: undefined
+			remarks: ''
 		}
 	});
 
@@ -132,7 +132,7 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 		}
 	};
 
-	const onSubmit = async (data: CreatePrcExecutionFormData) => {
+	const onSubmit: SubmitHandler<CreatePrcExecutionFormData> = async data => {
 		if (!selectedPart || !selectedDate) {
 			return;
 		}
