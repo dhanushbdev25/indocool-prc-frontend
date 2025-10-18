@@ -58,15 +58,17 @@ export default function DrawerComp({ open, permissions }: Readonly<DrawerProps>)
 			<Drawer
 				variant="permanent"
 				open={open}
-				PaperProps={{
-					sx: {
-						backgroundColor: '#ffffff',
-						color: '#1e293b',
-						display: 'flex',
-						flexDirection: 'column',
-						borderRight: '1px solid rgba(226, 232, 240, 0.8)',
-						backdropFilter: 'blur(20px)',
-						boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+				slotProps={{
+					paper: {
+						sx: {
+							backgroundColor: '#ffffff',
+							color: '#1e293b',
+							display: 'flex',
+							flexDirection: 'column',
+							borderRight: '1px solid rgba(226, 232, 240, 0.8)',
+							backdropFilter: 'blur(20px)',
+							boxShadow: '0 0 0 1px rgba(0, 0, 0, 0.05), 0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+						}
 					}
 				}}
 			>

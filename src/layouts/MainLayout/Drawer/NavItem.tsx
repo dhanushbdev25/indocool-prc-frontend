@@ -19,6 +19,7 @@ const NavItem = ({ text, path, icon: Icon, open }: NavItemProps) => (
 						justifyContent: open ? 'initial' : 'center',
 						px: open ? 2 : 1,
 						py: 1,
+						p: 1,
 						mx: open ? 0.5 : 0.25,
 						borderRadius: '8px',
 						backgroundColor: isActive ? '#f1f5f9' : 'transparent',

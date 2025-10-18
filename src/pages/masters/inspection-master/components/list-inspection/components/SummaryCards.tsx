@@ -57,7 +57,12 @@ const SummaryCards = ({ headerData }: SummaryCardsProps) => {
 						flex: 1,
 						borderRadius: '12px',
 						boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-						backgroundColor: 'white'
+						backgroundColor: 'white',
+						transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+						'&:hover': {
+							transform: 'translateY(-2px)',
+							boxShadow: '0 4px 16px rgba(0,0,0,0.15)'
+						}
 					}}
 				>
 					<CardContent sx={{ p: 3, position: 'relative' }}>
