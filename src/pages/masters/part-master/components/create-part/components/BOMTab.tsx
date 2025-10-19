@@ -143,7 +143,6 @@ const BOMTab = ({ control, errors }: BOMTabProps) => {
 									<TableCell sx={{ fontWeight: 600, color: '#333' }}>Material Type</TableCell>
 									<TableCell sx={{ fontWeight: 600, color: '#333' }}>Description</TableCell>
 									<TableCell sx={{ fontWeight: 600, color: '#333' }}>BOM Quantity</TableCell>
-									<TableCell sx={{ fontWeight: 600, color: '#333' }}>Actual Quantity</TableCell>
 									<TableCell sx={{ fontWeight: 600, color: '#333', width: 120 }}>Actions</TableCell>
 								</TableRow>
 							</TableHead>
@@ -153,7 +152,6 @@ const BOMTab = ({ control, errors }: BOMTabProps) => {
 										<TableCell sx={{ fontWeight: 500, color: '#333' }}>{field.materialType}</TableCell>
 										<TableCell sx={{ color: '#666' }}>{field.description}</TableCell>
 										<TableCell sx={{ color: '#666' }}>{field.bomQuantity}</TableCell>
-										<TableCell sx={{ color: '#666' }}>{field.actualQuantity}</TableCell>
 										<TableCell>
 											<Box sx={{ display: 'flex', gap: 1 }}>
 												<IconButton size="small" onClick={() => handleOpenDialog(index)} sx={{ color: '#1976d2' }}>
@@ -228,20 +226,6 @@ const BOMTab = ({ control, errors }: BOMTabProps) => {
 								}
 							}}
 						/>
-
-						<TextField
-							fullWidth
-							label="Actual Quantity"
-							value={formData.actualQuantity}
-							onChange={e => handleInputChange('actualQuantity', e.target.value)}
-							placeholder="e.g., 1"
-							required
-							sx={{
-								'& .MuiOutlinedInput-root': {
-									borderRadius: '8px'
-								}
-							}}
-						/>
 					</Box>
 				</DialogContent>
 
@@ -252,9 +236,7 @@ const BOMTab = ({ control, errors }: BOMTabProps) => {
 					<Button
 						onClick={handleSave}
 						variant="contained"
-						disabled={
-							!formData.materialType || !formData.description || !formData.bomQuantity || !formData.actualQuantity
-						}
+						disabled={!formData.materialType || !formData.description || !formData.bomQuantity}
 						sx={{
 							textTransform: 'none',
 							backgroundColor: '#1976d2',

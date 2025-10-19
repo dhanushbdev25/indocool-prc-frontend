@@ -32,7 +32,6 @@ const ViewBOM = ({ bom }: ViewBOMProps) => {
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Material Type</TableCell>
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Description</TableCell>
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>BOM Quantity</TableCell>
-							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Actual Quantity</TableCell>
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Version</TableCell>
 						</TableRow>
 					</TableHead>
@@ -42,7 +41,6 @@ const ViewBOM = ({ bom }: ViewBOMProps) => {
 								<TableCell sx={{ fontWeight: 500, color: '#333' }}>{item.materialType}</TableCell>
 								<TableCell sx={{ color: '#666' }}>{item.description}</TableCell>
 								<TableCell sx={{ color: '#666' }}>{item.bomQuantity}</TableCell>
-								<TableCell sx={{ color: '#666' }}>{item.actualQuantity}</TableCell>
 								<TableCell sx={{ color: '#666' }}>v{item.version}</TableCell>
 							</TableRow>
 						))}

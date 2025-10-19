@@ -18,9 +18,6 @@ import { useForm } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useLoginUserMutation } from '../../../store/api/auth/auth.api';
-// import { FaMicrosoft } from 'react-icons/fa6';
-// import { useMsal } from '@azure/msal-react';
-// import { loginRequest } from '../../../config';
 import Button from '../../../components/common/button/Button';
 import { displayValidationErrors } from '../../../utils/helpers';
 

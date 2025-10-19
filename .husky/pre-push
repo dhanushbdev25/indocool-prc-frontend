@@ -1,5 +1,13 @@
 echo "🚀 Running pre-push checks..."
 
+# Pre-push hook configuration:
+# - TypeScript errors: MANDATORY (push will fail)
+# - ESLint errors: MANDATORY (push will fail)  
+# - Outdated dependencies: INTERACTIVE (user can choose to continue)
+# - Security vulnerabilities: INTERACTIVE (user can choose to continue)
+# - Build failures: MANDATORY (push will fail)
+# - Large files: INTERACTIVE (user can choose to continue)
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -30,16 +38,21 @@ if [ "$CURRENT_BRANCH" = "main" ] || [ "$CURRENT_BRANCH" = "master" ]; then
     print_warning "You're pushing to $CURRENT_BRANCH branch. Make sure this is intentional!"
 fi
 
-# 1. Check for TypeScript compilation errors (with warnings)
+# 1. Check for TypeScript compilation errors (MANDATORY)
 print_status "Checking TypeScript compilation..."
 npx tsc --noEmit 2>&1 | tee /tmp/tsc_output.log
 TS_EXIT_CODE=$?
 if [ $TS_EXIT_CODE -ne 0 ]; then
     ERROR_COUNT=$(grep -c "error TS" /tmp/tsc_output.log || echo "0")
-    print_warning "TypeScript compilation found $ERROR_COUNT errors"
-    print_warning "These are mostly form validation type issues that don't affect runtime"
-    print_warning "Continuing with push - errors should be addressed in future iterations"
-    # Don't exit on TypeScript errors for now
+    print_error "TypeScript compilation found $ERROR_COUNT errors!"
+    echo ""
+    print_error "All TypeScript errors must be resolved before pushing."
+    print_error "Run 'npm run check-all' to identify and fix type errors."
+    echo ""
+    cat /tmp/tsc_output.log
+    echo ""
+    print_error "Push blocked due to TypeScript errors."
+    exit 1
 else
     print_success "TypeScript compilation passed"
 fi
@@ -53,7 +66,7 @@ if [ $? -ne 0 ]; then
 fi
 print_success "ESLint checks passed"
 
-# 3. Check for outdated dependencies
+# 3. Check for outdated dependencies (INTERACTIVE - user can choose to continue)
 print_status "Checking for outdated dependencies..."
 OUTDATED_COUNT=$(npm outdated --json | jq 'length' 2>/dev/null || echo "0")
 if [ "$OUTDATED_COUNT" -gt 0 ]; then

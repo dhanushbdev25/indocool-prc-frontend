@@ -77,14 +77,8 @@ const ListPrcExecution = () => {
 		refetchPrcExecutions();
 	};
 
-	const handleActionClick = (executionId: string, action: string) => {
-		if (action === 'delete') {
-			const execution = allExecutionData.find(e => e.id.toString() === executionId);
-			if (execution) {
-				setExecutionToDelete(execution);
-				setDeleteDialogOpen(true);
-			}
-		}
+	const handleExecute = (executionId: number) => {
+		navigate(`/prc-execution/execute/${executionId}`);
 	};
 
 	const handleDeleteConfirm = async () => {
@@ -97,15 +91,6 @@ const ListPrcExecution = () => {
 	const handleDeleteCancel = () => {
 		setDeleteDialogOpen(false);
 		setExecutionToDelete(null);
-	};
-
-	const handleEdit = (executionId: number) => {
-		// TODO: Navigate to edit screen when implemented
-		console.log('Edit execution:', executionId);
-	};
-
-	const handleView = (executionId: number) => {
-		navigate(`/prc-execution/view/${executionId}`);
 	};
 
 	// Mock header data for summary cards (replace with actual API data when available)
@@ -131,12 +116,7 @@ const ListPrcExecution = () => {
 			<PrcExecutionHeader onCreateClick={handleCreateClick} />
 			<SummaryCards headerData={mockHeaderData} />
 			<PrcExecutionManagement onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
-			<PrcExecutionTable
-				data={filteredData}
-				onActionClick={handleActionClick}
-				onEdit={handleEdit}
-				onView={handleView}
-			/>
+			<PrcExecutionTable data={filteredData} onExecute={handleExecute} />
 
 			{/* Create Modal */}
 			<CreatePrcExecutionModal

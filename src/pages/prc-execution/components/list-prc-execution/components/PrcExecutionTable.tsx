@@ -1,24 +1,7 @@
-import { useMemo, memo, useState, useCallback } from 'react';
-import {
-	Box,
-	Chip,
-	IconButton,
-	Typography,
-	Menu,
-	MenuItem,
-	ListItemIcon,
-	ListItemText,
-	LinearProgress
-} from '@mui/material';
+import { useMemo, memo } from 'react';
+import { Box, Chip, Button, Typography, LinearProgress } from '@mui/material';
 import { type MRT_ColumnDef } from 'material-react-table';
-import {
-	MoreVert as MoreVertIcon,
-	Visibility as ViewIcon,
-	Edit as EditIcon,
-	Delete as DeleteIcon,
-	PlayArrow as ExecutionIcon,
-	CheckCircle as CheckCircleIcon
-} from '@mui/icons-material';
+import { PlayArrow as PlayArrowIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import TableComponent from '../../../../../components/table/TableComponent';
 import { type PrcExecution } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 
@@ -26,47 +9,12 @@ export type PrcExecutionData = PrcExecution;
 
 interface PrcExecutionTableProps {
 	data: PrcExecutionData[];
-	onActionClick: (executionId: string, action: string) => void;
-	onEdit: (executionId: number) => void;
-	onView: (executionId: number) => void;
+	onExecute: (id: number) => void;
 }
 
-const PrcExecutionTable = memo(({ data, onActionClick, onEdit, onView }: PrcExecutionTableProps) => {
+const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => {
 	// Safety check for data
 	const safeData = data || [];
-	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-	const [selectedRow, setSelectedRow] = useState<PrcExecutionData | null>(null);
-
-	const handleMenuClick = useCallback((event: React.MouseEvent<HTMLElement>, row: PrcExecutionData) => {
-		setAnchorEl(event.currentTarget);
-		setSelectedRow(row);
-	}, []);
-
-	const handleMenuClose = () => {
-		setAnchorEl(null);
-		setSelectedRow(null);
-	};
-
-	const handleEdit = () => {
-		if (selectedRow && onEdit) {
-			onEdit(selectedRow.id);
-		}
-		handleMenuClose();
-	};
-
-	const handleView = () => {
-		if (selectedRow && onView) {
-			onView(selectedRow.id);
-		}
-		handleMenuClose();
-	};
-
-	const handleDelete = () => {
-		if (selectedRow && onActionClick) {
-			onActionClick(selectedRow.id.toString(), 'delete');
-		}
-		handleMenuClose();
-	};
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -147,7 +95,7 @@ const PrcExecutionTable = memo(({ data, onActionClick, onEdit, onView }: PrcExec
 						<Chip
 							label={`v${row.original.version}`}
 							size="small"
-							icon={<ExecutionIcon sx={{ fontSize: '0.75rem' }} />}
+							icon={<PlayArrowIcon sx={{ fontSize: '0.75rem' }} />}
 							sx={{
 								backgroundColor: '#e3f2fd',
 								color: '#1976d2',
@@ -271,24 +219,35 @@ const PrcExecutionTable = memo(({ data, onActionClick, onEdit, onView }: PrcExec
 				)
 			},
 			{
-				id: 'actions',
-				header: 'Actions',
-				size: 80,
+				id: 'execute',
+				header: 'Execute',
+				size: 120,
 				enableSorting: false,
 				Cell: ({ row }) => (
-					<IconButton size="small" onClick={e => handleMenuClick(e, row.original)} sx={{ color: '#666' }}>
-						<MoreVertIcon fontSize="small" />
-					</IconButton>
+					<Button
+						variant="contained"
+						startIcon={<PlayArrowIcon />}
+						onClick={() => onExecute(row.original.id)}
+						size="small"
+						sx={{
+							backgroundColor: '#1976d2',
+							'&:hover': {
+								backgroundColor: '#1565c0'
+							}
+						}}
+					>
+						Execute
+					</Button>
 				)
 			}
 		],
-		[handleMenuClick]
+		[onExecute]
 	);
 
 	if (safeData.length === 0) {
 		return (
 			<Box sx={{ textAlign: 'center', py: 8 }}>
-				<ExecutionIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
+				<PlayArrowIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
 				<Typography variant="h6" sx={{ color: '#666', mb: 1 }}>
 					No PRC Executions Found
 				</Typography>
@@ -299,33 +258,7 @@ const PrcExecutionTable = memo(({ data, onActionClick, onEdit, onView }: PrcExec
 		);
 	}
 
-	return (
-		<>
-			<TableComponent tableColumns={columns} data={safeData} />
-
-			{/* Action Menu */}
-			<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-				<MenuItem onClick={handleView}>
-					<ListItemIcon>
-						<ViewIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>View</ListItemText>
-				</MenuItem>
-				<MenuItem onClick={handleEdit}>
-					<ListItemIcon>
-						<EditIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>Edit</ListItemText>
-				</MenuItem>
-				<MenuItem onClick={handleDelete} sx={{ color: '#f44336' }}>
-					<ListItemIcon>
-						<DeleteIcon fontSize="small" sx={{ color: '#f44336' }} />
-					</ListItemIcon>
-					<ListItemText>Delete</ListItemText>
-				</MenuItem>
-			</Menu>
-		</>
-	);
+	return <TableComponent tableColumns={columns} data={safeData} />;
 });
 
 PrcExecutionTable.displayName = 'PrcExecutionTable';

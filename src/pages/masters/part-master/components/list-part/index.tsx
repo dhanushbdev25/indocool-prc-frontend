@@ -147,7 +147,6 @@ const ListPart = () => {
 						materialType: b.materialType,
 						description: b.description,
 						bomQuantity: b.bomQuantity,
-						actualQuantity: b.actualQuantity,
 						version: b.version,
 						isLatest: b.isLatest
 					})),

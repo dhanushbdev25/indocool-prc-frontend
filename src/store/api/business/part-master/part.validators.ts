@@ -20,7 +20,6 @@ export const bomSchema = z.object({
 	materialType: z.string().min(1, 'Material type is required'),
 	description: z.string().min(1, 'Description is required'),
 	bomQuantity: z.string().min(1, 'BOM quantity is required'),
-	actualQuantity: z.string().min(1, 'Actual quantity is required'),
 	version: z.number().default(1),
 	isLatest: z.boolean().default(true),
 	createdAt: z.string().optional(),

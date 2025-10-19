@@ -44,6 +44,25 @@ export const prcExecutionApi = createApi({
 				method: 'GET'
 			}),
 			providesTags: (_, __, { customerCode }) => [{ type: 'PartsCombo', id: customerCode }]
+		}),
+
+		// Fetch PRC execution details for execution screen
+		fetchPrcExecutionDetails: builder.query<unknown, number>({
+			query: id => ({
+				url: `/prcExecution/${id}`,
+				method: 'GET'
+			}),
+			providesTags: (_, __, id) => [{ type: 'PrcExecution', id }]
+		}),
+
+		// Update PRC execution progress
+		updatePrcExecutionProgress: builder.mutation<unknown, { id: number; data: unknown }>({
+			query: ({ id, data }) => ({
+				url: `/prcExecution/${id}`,
+				method: 'PUT',
+				body: { data: data }
+			}),
+			invalidatesTags: (_, __, { id }) => [{ type: 'PrcExecution', id }]
 		})
 	})
 });
@@ -52,5 +71,7 @@ export const {
 	useFetchPrcExecutionsQuery,
 	useFetchPrcExecutionByIdQuery,
 	useCreatePrcExecutionMutation,
-	useFetchPartsByCustomerQuery
+	useFetchPartsByCustomerQuery,
+	useFetchPrcExecutionDetailsQuery,
+	useUpdatePrcExecutionProgressMutation
 } = prcExecutionApi;

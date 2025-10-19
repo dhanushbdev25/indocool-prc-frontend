@@ -17,7 +17,6 @@ export const bomFormSchema = yup.object({
 	materialType: yup.string().required('Material type is required'),
 	description: yup.string().required('Description is required'),
 	bomQuantity: yup.string().required('BOM quantity is required'),
-	actualQuantity: yup.string().required('Actual quantity is required'),
 	version: yup.number().default(1),
 	isLatest: yup.boolean().default(true)
 });
@@ -103,7 +102,6 @@ export const defaultBOM: BOMFormData = {
 	materialType: '',
 	description: '',
 	bomQuantity: '',
-	actualQuantity: '',
 	version: 1,
 	isLatest: true
 };

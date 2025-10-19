@@ -22,7 +22,8 @@ export const imports = {
 	createPart: Loadable(lazy(() => import('../pages/masters/part-master/components/create-part'))),
 	viewPart: Loadable(lazy(() => import('../pages/masters/part-master/components/view-part'))),
 	prcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/list-prc-execution'))),
-	viewPrcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/view-prc-execution')))
+	viewPrcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/view-prc-execution'))),
+	executePrc: Loadable(lazy(() => import('../pages/prc-execution/components/execute-prc')))
 };
 
 // Screen configuration interface
@@ -66,6 +67,13 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'View PRC Execution',
 				path: 'prc-execution/view/:id',
 				element: imports.viewPrcExecution,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'Execute PRC',
+				path: 'prc-execution/execute/:id',
+				element: imports.executePrc,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			}

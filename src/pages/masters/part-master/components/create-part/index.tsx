@@ -138,7 +138,6 @@ const CreatePart = () => {
 					materialType: b.materialType,
 					description: b.description,
 					bomQuantity: b.bomQuantity,
-					actualQuantity: b.actualQuantity,
 					version: b.version,
 					isLatest: b.isLatest
 				})),
@@ -213,7 +212,6 @@ const CreatePart = () => {
 					materialType: b.materialType,
 					description: b.description,
 					bomQuantity: b.bomQuantity,
-					actualQuantity: b.actualQuantity,
 					version: b.version || 1,
 					isLatest: b.isLatest ?? true
 				})),

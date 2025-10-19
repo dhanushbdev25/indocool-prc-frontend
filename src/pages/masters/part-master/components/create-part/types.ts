@@ -76,7 +76,6 @@ export interface BOMFormData {
 	materialType: string;
 	description: string;
 	bomQuantity: string;
-	actualQuantity: string;
 	version: number;
 	isLatest: boolean;
 }
