@@ -52,8 +52,8 @@ const handleImageUploadAndUpdateForm = async (
 	setValue: any, // eslint-disable-line @typescript-eslint/no-explicit-any
 	setError: (error: string | null) => void,
 	setIsUploadingImages: (loading: boolean) => void
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[] | null> => {
-	// eslint-disable-line @typescript-eslint/no-explicit-any
 	if (gallery.length === 0) return [];
 
 	// Separate new files (to upload) from existing files (already uploaded)
@@ -130,12 +130,12 @@ const updateInspectionDiagramsWithApiFilenames = (
 
 	const updatedInspectionDiagrams = {
 		...formData.inspectionDiagrams,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		files: formData.inspectionDiagrams.files.map((file: any) => ({
-			// eslint-disable-line @typescript-eslint/no-explicit-any
 			...file,
 			fileName:
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				file.fileName?.map((fileObj: any) => {
-					// eslint-disable-line @typescript-eslint/no-explicit-any
 					// If it's already a complete file object, find the matching upload result
 					if (typeof fileObj === 'object' && fileObj.originalFileName) {
 						const uploadResult = uploads.find(upload => upload.originalFileName === fileObj.originalFileName);
@@ -204,8 +204,8 @@ const transformFormDataToApiRequest = (
 /**
  * Transforms array data (rawMaterials, bom, drilling, cutting) for API request
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const transformArrayData = (arrayData: any[], isEditMode: boolean) => {
-	// eslint-disable-line @typescript-eslint/no-explicit-any
 	return (arrayData || []).map(item => {
 		const { id, ...itemWithoutId } = item;
 		return {
@@ -220,19 +220,18 @@ const transformArrayData = (arrayData: any[], isEditMode: boolean) => {
 /**
  * Transforms inspectionDiagrams for API request
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const transformInspectionDiagrams = (inspectionDiagrams: any) => {
-	// eslint-disable-line @typescript-eslint/no-explicit-any
 	if (!inspectionDiagrams) return undefined;
 
 	return {
 		files:
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			inspectionDiagrams.files?.map((file: any) => ({
-				// eslint-disable-line @typescript-eslint/no-explicit-any
 				inspectionParameterId: file.inspectionParameterId || 0,
 				fileName: (file.fileName || []).filter(
-					(
-						fileObj: any // eslint-disable-line @typescript-eslint/no-explicit-any
-					) => fileObj !== undefined && fileObj !== null && typeof fileObj === 'object'
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(fileObj: any) => fileObj !== undefined && fileObj !== null && typeof fileObj === 'object'
 				)
 			})) || []
 	};

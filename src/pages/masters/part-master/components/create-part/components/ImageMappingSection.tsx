@@ -54,11 +54,11 @@ const ImageMappingSection = ({ control, setValue, gallery }: ImageMappingSection
 				// Collect inspection parameters from ALL inspection steps
 				const allParams: InspectionParameter[] = [];
 
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				inspectionSteps.forEach((inspectionStep: any) => {
-					// eslint-disable-line @typescript-eslint/no-explicit-any
 					if (inspectionStep.data?.inspectionParameters) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						const stepParams = inspectionStep.data.inspectionParameters.map((param: any) => ({
-							// eslint-disable-line @typescript-eslint/no-explicit-any
 							id: param.id || 0,
 							order: param.order,
 							parameterName: param.parameterName,
@@ -140,8 +140,8 @@ const ImageMappingSection = ({ control, setValue, gallery }: ImageMappingSection
 
 		// Find the corresponding image paths from gallery
 		const mappedImagePaths = mapping.fileName
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			.map((fileObj: any) => {
-				// eslint-disable-line @typescript-eslint/no-explicit-any
 				// Handle new file object structure
 				if (typeof fileObj === 'object' && fileObj.originalFileName) {
 					const imageItem = gallery.find(item => item.fileName === fileObj.originalFileName);
