@@ -12,17 +12,22 @@ import {
 	FormControlLabel,
 	Switch
 } from '@mui/material';
-import { Info as InfoIcon } from '@mui/icons-material';
+import { Info as InfoIcon, Image as ImageIcon } from '@mui/icons-material';
 import { Controller, Control, FieldErrors } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import { useFetchCustomersQuery } from '.././../../../../../store/api/business/part-master/part.api';
+import PartImageUpload from './PartImageUpload';
+import { ImageItem } from '../../../../../../hooks/useImageGallery';
 
 interface GeneralInfoProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
+	gallery: ImageItem[];
+	onAddImage: (file: File) => void;
+	onRemoveImage: (id: number | string) => void;
 }
 
-const GeneralInfo = ({ control, errors }: GeneralInfoProps) => {
+const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: GeneralInfoProps) => {
 	const { data: customersData, isLoading: isCustomersLoading } = useFetchCustomersQuery();
 
 	return (
@@ -98,8 +103,10 @@ const GeneralInfo = ({ control, errors }: GeneralInfoProps) => {
 									placeholder="e.g., 2"
 									helperText="Drawing revision number (auto-incremented by backend)"
 									error={!!errors.drawingRevision}
-									InputProps={{
-										readOnly: true
+									slotProps={{
+										htmlInput: {
+											readOnly: true
+										}
 									}}
 									sx={{
 										'& .MuiOutlinedInput-root': {
@@ -126,8 +133,10 @@ const GeneralInfo = ({ control, errors }: GeneralInfoProps) => {
 									placeholder="e.g., 3"
 									helperText="Part revision number (auto-incremented by backend)"
 									error={!!errors.partRevision}
-									InputProps={{
-										readOnly: true
+									slotProps={{
+										htmlInput: {
+											readOnly: true
+										}
 									}}
 									sx={{
 										'& .MuiOutlinedInput-root': {
@@ -302,6 +311,21 @@ const GeneralInfo = ({ control, errors }: GeneralInfoProps) => {
 						/>
 					</Grid>
 				</Grid>
+			</Paper>
+
+			{/* Part Drawings Section */}
+			<Paper sx={{ p: 3, mt: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
+				<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+					<ImageIcon sx={{ mr: 1, color: '#1976d2' }} />
+					<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
+						Part Drawings
+					</Typography>
+				</Box>
+				<Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+					Upload part drawing images. These will be available for mapping to inspection parameters when a PRC template
+					is linked.
+				</Typography>
+				<PartImageUpload gallery={gallery} onAddImage={onAddImage} onRemoveImage={onRemoveImage} view={false} />
 			</Paper>
 		</Box>
 	);

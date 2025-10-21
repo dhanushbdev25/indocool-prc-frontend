@@ -1,11 +1,21 @@
 import { Box, Grid, Typography, Chip, Paper } from '@mui/material';
-import { PartMaster } from '../../../../../../store/api/business/part-master/part.validators';
+import { PartMaster, PartDrawing } from '../../../../../../store/api/business/part-master/part.validators';
+import PartImageUpload from '../../create-part/components/PartImageUpload';
 
 interface ViewGeneralInfoProps {
 	partMaster: PartMaster;
+	files?: PartDrawing[];
 }
 
-const ViewGeneralInfo = ({ partMaster }: ViewGeneralInfoProps) => {
+const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
+	// Convert files to gallery format for display
+	const displayGallery = files.map((file, index) => ({
+		id: index,
+		file: null,
+		image: file.filePath, // This would need to be a proper URL in a real implementation
+		fileName: file.fileName
+	}));
+
 	const getStatusColor = (status: string) => {
 		switch (status) {
 			case 'ACTIVE':
@@ -201,6 +211,16 @@ const ViewGeneralInfo = ({ partMaster }: ViewGeneralInfoProps) => {
 					</Box>
 				</Grid>
 			</Grid>
+
+			{/* Part Drawings Section */}
+			{files.length > 0 && (
+				<Box sx={{ mt: 4 }}>
+					<Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#333' }}>
+						Part Drawings
+					</Typography>
+					<PartImageUpload gallery={displayGallery} onAddImage={() => {}} onRemoveImage={() => {}} view={true} />
+				</Box>
+			)}
 		</Paper>
 	);
 };

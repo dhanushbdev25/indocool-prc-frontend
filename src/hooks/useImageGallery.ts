@@ -4,6 +4,8 @@ export type ImageItem = {
 	id: number | string;
 	file: File | null;
 	image: string;
+	fileName?: string;
+	inspectionParameterId?: number;
 };
 
 export function useImageGallery() {
@@ -14,7 +16,8 @@ export function useImageGallery() {
 		const newItem: ImageItem = {
 			id: Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000,
 			file,
-			image: URL.createObjectURL(file)
+			image: URL.createObjectURL(file),
+			fileName: file.name
 		};
 		setGallery(prev => [...prev, newItem]);
 	};

@@ -3,11 +3,13 @@ import { baseQuery } from '../../baseApi';
 import {
 	prcTemplateListResponseSchema,
 	prcTemplateByIdResponseSchema,
+	prcTemplateInspectionsResponseSchema,
 	createPrcTemplateResponseSchema,
 	updatePrcTemplateResponseSchema,
 	deletePrcTemplateTaskResponseSchema,
 	type PrcTemplateListResponse,
 	type PrcTemplateByIdResponse,
+	type PrcTemplateInspectionsResponse,
 	type CreatePrcTemplateRequest,
 	type UpdatePrcTemplateRequest,
 	type CreatePrcTemplateResponse,
@@ -18,6 +20,10 @@ import {
 
 // API parameters
 export interface FetchPrcTemplateByIdParams {
+	id: number;
+}
+
+export interface FetchPrcTemplateInspectionsParams {
 	id: number;
 }
 
@@ -60,6 +66,22 @@ export const prcTemplateApi = createApi({
 				{ type: 'PrcTemplate', id },
 				{ type: 'PrcTemplate', id: 'LIST' }
 			]
+		}),
+		// Fetch PRC template inspections
+		fetchPrcTemplateInspections: builder.query<PrcTemplateInspectionsResponse, FetchPrcTemplateInspectionsParams>({
+			query: ({ id }) => ({
+				url: `prcTemplate/inspections/${id}`,
+				method: 'GET'
+			}),
+			transformResponse: (response: unknown) => {
+				const parsed = prcTemplateInspectionsResponseSchema.safeParse(response);
+				if (!parsed.success) {
+					console.error('Zod validation failed for PRC template inspections response:', parsed.error);
+					throw new Error('Invalid PRC template inspections response structure');
+				}
+				return parsed.data;
+			},
+			providesTags: (_, __, { id }) => [{ type: 'PrcTemplate', id: `inspections-${id}` }]
 		}),
 		// Create new PRC template
 		createPrcTemplate: builder.mutation<CreatePrcTemplateResponse, CreatePrcTemplateRequest>({
@@ -126,6 +148,7 @@ export const prcTemplateApi = createApi({
 export const {
 	useFetchPrcTemplatesQuery,
 	useFetchPrcTemplateByIdQuery,
+	useFetchPrcTemplateInspectionsQuery,
 	useCreatePrcTemplateMutation,
 	useUpdatePrcTemplateMutation,
 	useDeletePrcTemplateTaskMutation

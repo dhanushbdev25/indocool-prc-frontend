@@ -15,7 +15,8 @@ import {
 	DialogTitle,
 	DialogContent,
 	DialogActions,
-	IconButton
+	IconButton,
+	CircularProgress
 } from '@mui/material';
 import { Save, Cancel, Close as CloseIcon } from '@mui/icons-material';
 import Swal from 'sweetalert2';
@@ -32,6 +33,210 @@ import {
 	useUpdatePartMutation
 } from '../../../../../store/api/business/part-master/part.api';
 import { useFetchCustomersQuery } from '../../../../../store/api/business/part-master/part.api';
+import { uploadPartDrawings } from '../../../../../utils/uploadPartDrawings';
+import { useImageGallery } from '../../../../../hooks/useImageGallery';
+
+/**
+ * Handles image upload and updates form data with API filenames
+ * @param formData - Current form data
+ * @param gallery - Current image gallery
+ * @param setGallery - Function to update gallery
+ * @param setValue - Function to update form values
+ * @param setError - Function to set error messages
+ * @returns Uploaded drawings data or null if upload failed
+ */
+const handleImageUploadAndUpdateForm = async (
+	formData: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	gallery: any[], // eslint-disable-line @typescript-eslint/no-explicit-any
+	setGallery: (gallery: any[]) => void, // eslint-disable-line @typescript-eslint/no-explicit-any
+	setValue: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	setError: (error: string | null) => void,
+	setIsUploadingImages: (loading: boolean) => void
+): Promise<any[] | null> => {
+	// eslint-disable-line @typescript-eslint/no-explicit-any
+	if (gallery.length === 0) return [];
+
+	// Separate new files (to upload) from existing files (already uploaded)
+	const newFiles = gallery.map(item => item.file).filter(Boolean) as File[];
+	const existingFiles = gallery
+		.filter(item => !item.file && item.fileName)
+		.map(item => ({
+			fileName: item.fileName,
+			filePath: item.image,
+			originalFileName: item.fileName
+		}));
+
+	// If no new files to upload, return existing files
+	if (newFiles.length === 0) {
+		return existingFiles;
+	}
+
+	setIsUploadingImages(true);
+	try {
+		const { uploads, errors: uploadErrors } = await uploadPartDrawings(newFiles);
+
+		if (uploadErrors.length > 0) {
+			const errorMessage = uploadErrors.map(err => `${err.fileName}: ${err.error}`).join('\n');
+			setError(`Some images failed to upload:\n${errorMessage}`);
+			return null;
+		}
+
+		// Update gallery with API filenames
+		updateGalleryWithApiFilenames(gallery, uploads, setGallery);
+
+		// Update inspectionDiagrams with API filenames
+		updateInspectionDiagramsWithApiFilenames(formData, uploads, setValue);
+
+		// Return both existing files and newly uploaded files
+		return [...existingFiles, ...uploads];
+	} catch {
+		setError('Failed to upload images. Please try again.');
+		return null;
+	} finally {
+		setIsUploadingImages(false);
+	}
+};
+
+/**
+ * Updates gallery with API filenames from upload results
+ */
+const updateGalleryWithApiFilenames = (
+	gallery: any[], // eslint-disable-line @typescript-eslint/no-explicit-any
+	uploads: any[], // eslint-disable-line @typescript-eslint/no-explicit-any
+	setGallery: (gallery: any[]) => void // eslint-disable-line @typescript-eslint/no-explicit-any
+): void => {
+	const updatedGallery = gallery.map((imageItem, index) => {
+		const uploadResult = uploads[index];
+		if (uploadResult?.fileName) {
+			return {
+				...imageItem,
+				fileName: uploadResult.fileName
+			};
+		}
+		return imageItem;
+	});
+	setGallery(updatedGallery);
+};
+
+/**
+ * Updates inspectionDiagrams form data with API filenames
+ */
+const updateInspectionDiagramsWithApiFilenames = (
+	formData: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	uploads: any[], // eslint-disable-line @typescript-eslint/no-explicit-any
+	setValue: any // eslint-disable-line @typescript-eslint/no-explicit-any
+): void => {
+	if (!formData.inspectionDiagrams?.files) return;
+
+	const updatedInspectionDiagrams = {
+		...formData.inspectionDiagrams,
+		files: formData.inspectionDiagrams.files.map((file: any) => ({
+			// eslint-disable-line @typescript-eslint/no-explicit-any
+			...file,
+			fileName:
+				file.fileName?.map((fileObj: any) => {
+					// eslint-disable-line @typescript-eslint/no-explicit-any
+					// If it's already a complete file object, find the matching upload result
+					if (typeof fileObj === 'object' && fileObj.originalFileName) {
+						const uploadResult = uploads.find(upload => upload.originalFileName === fileObj.originalFileName);
+						if (uploadResult) {
+							return {
+								fileName: uploadResult.fileName,
+								filePath: uploadResult.filePath,
+								originalFileName: uploadResult.originalFileName
+							};
+						}
+					}
+					// If it's just a string (legacy format), find the matching upload result
+					else if (typeof fileObj === 'string') {
+						const uploadResult = uploads.find(upload => upload.originalFileName === fileObj);
+						if (uploadResult) {
+							return {
+								fileName: uploadResult.fileName,
+								filePath: uploadResult.filePath,
+								originalFileName: uploadResult.originalFileName
+							};
+						}
+					}
+					return fileObj;
+				}) || []
+		}))
+	};
+
+	setValue('inspectionDiagrams', updatedInspectionDiagrams);
+};
+
+/**
+ * Transforms form data to API request format
+ */
+const transformFormDataToApiRequest = (
+	formData: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+	uploadedDrawings: any[], // eslint-disable-line @typescript-eslint/no-explicit-any
+	isEditMode: boolean
+) => {
+	return {
+		partMaster: {
+			...(isEditMode && formData.id ? { id: formData.id } : {}),
+			partNumber: formData.partNumber,
+			drawingNumber: formData.drawingNumber,
+			drawingRevision: formData.drawingRevision,
+			partRevision: formData.partRevision,
+			status: formData.isActive ? ('ACTIVE' as const) : ('INACTIVE' as const),
+			customer: formData.customer,
+			description: formData.description,
+			notes: formData.notes || '',
+			layupType: formData.layupType || '',
+			model: formData.model || '',
+			version: formData.version || 1,
+			isLatest: formData.isLatest ?? true,
+			catalyst: formData.catalyst,
+			prcTemplate: formData.prcTemplate,
+			files: uploadedDrawings,
+			inspectionDiagrams: transformInspectionDiagrams(formData.inspectionDiagrams)
+		},
+		rawMaterials: transformArrayData(formData.rawMaterials, isEditMode),
+		bom: transformArrayData(formData.bom, isEditMode),
+		drilling: transformArrayData(formData.drilling, isEditMode),
+		cutting: transformArrayData(formData.cutting, isEditMode)
+	};
+};
+
+/**
+ * Transforms array data (rawMaterials, bom, drilling, cutting) for API request
+ */
+const transformArrayData = (arrayData: any[], isEditMode: boolean) => {
+	// eslint-disable-line @typescript-eslint/no-explicit-any
+	return (arrayData || []).map(item => {
+		const { id, ...itemWithoutId } = item;
+		return {
+			...(isEditMode && id && typeof id === 'number' ? { id } : {}),
+			...itemWithoutId,
+			version: item.version || 1,
+			isLatest: item.isLatest ?? true
+		};
+	});
+};
+
+/**
+ * Transforms inspectionDiagrams for API request
+ */
+const transformInspectionDiagrams = (inspectionDiagrams: any) => {
+	// eslint-disable-line @typescript-eslint/no-explicit-any
+	if (!inspectionDiagrams) return undefined;
+
+	return {
+		files:
+			inspectionDiagrams.files?.map((file: any) => ({
+				// eslint-disable-line @typescript-eslint/no-explicit-any
+				inspectionParameterId: file.inspectionParameterId || 0,
+				fileName: (file.fileName || []).filter(
+					(
+						fileObj: any // eslint-disable-line @typescript-eslint/no-explicit-any
+					) => fileObj !== undefined && fileObj !== null && typeof fileObj === 'object'
+				)
+			})) || []
+	};
+};
 
 interface TabPanelProps {
 	children?: React.ReactNode;
@@ -59,10 +264,12 @@ const CreatePart = () => {
 	const navigate = useNavigate();
 	const { id } = useParams();
 	const isEditMode = Boolean(id);
+	const { gallery, handleAddImage, handleRemoveImage, setGallery } = useImageGallery();
 
 	const [activeTab, setActiveTab] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 	const [showExitDialog, setShowExitDialog] = useState(false);
+	const [isUploadingImages, setIsUploadingImages] = useState(false);
 
 	// Fetch part data for edit mode
 	const {
@@ -93,7 +300,8 @@ const CreatePart = () => {
 		formState: { errors },
 		reset,
 		trigger,
-		setValue
+		setValue,
+		getValues
 	} = methods;
 
 	// Debug: Log errors when they change
@@ -159,12 +367,29 @@ const CreatePart = () => {
 					version: c.version,
 					isLatest: c.isLatest
 				})),
+				files: partMaster.files || [],
+				inspectionDiagrams: partMaster.inspectionDiagrams
+					? Array.isArray(partMaster.inspectionDiagrams)
+						? partMaster.inspectionDiagrams[0] // Take first item if array
+						: partMaster.inspectionDiagrams // Use as is if object
+					: undefined,
 				createdAt: partMaster.createdAt || undefined,
 				updatedAt: partMaster.updatedAt || undefined
 			};
 			reset(formData);
+
+			// Populate gallery with existing files
+			if (partMaster.files && partMaster.files.length > 0) {
+				const galleryItems = partMaster.files.map((file, index) => ({
+					id: `existing-${index}`,
+					file: null,
+					image: file.filePath ? file.filePath.replace(/\\/g, '/') : '',
+					fileName: file.originalFileName || `Image ${index}`
+				}));
+				setGallery(galleryItems);
+			}
 		}
-	}, [isEditMode, isFetchSuccess, partData, customersData, reset]);
+	}, [isEditMode, isFetchSuccess, partData, customersData, reset, setGallery]);
 
 	const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
 		setActiveTab(newValue);
@@ -181,60 +406,24 @@ const CreatePart = () => {
 				return;
 			}
 
+			// Upload images and update form data with API filenames
+			const currentUploadedDrawings = await handleImageUploadAndUpdateForm(
+				data,
+				gallery,
+				setGallery,
+				setValue,
+				setError,
+				setIsUploadingImages
+			);
+			if (!currentUploadedDrawings) return; // Upload failed
+
+			// Get updated form data after setValue calls
+			const updatedData = getValues();
+
 			// Transform form data to API request format
-			const partRequestData = {
-				partMaster: {
-					...(isEditMode && data.id ? { id: data.id } : {}),
-					partNumber: data.partNumber,
-					drawingNumber: data.drawingNumber,
-					drawingRevision: data.drawingRevision,
-					partRevision: data.partRevision,
-					status: data.isActive ? ('ACTIVE' as const) : ('INACTIVE' as const),
-					customer: data.customer,
-					description: data.description,
-					notes: data.notes || '',
-					layupType: data.layupType || '',
-					model: data.model || '',
-					version: data.version || 1,
-					isLatest: data.isLatest ?? true,
-					catalyst: data.catalyst,
-					prcTemplate: data.prcTemplate
-				},
-				rawMaterials: (data.rawMaterials || []).map(rm => ({
-					materialName: rm.materialName,
-					materialCode: rm.materialCode,
-					quantity: rm.quantity,
-					uom: rm.uom,
-					version: rm.version || 1,
-					isLatest: rm.isLatest ?? true
-				})),
-				bom: (data.bom || []).map(b => ({
-					materialType: b.materialType,
-					description: b.description,
-					bomQuantity: b.bomQuantity,
-					version: b.version || 1,
-					isLatest: b.isLatest ?? true
-				})),
-				drilling: (data.drilling || []).map(d => ({
-					characteristics: d.characteristics,
-					specification: d.specification,
-					noOfHoles: d.noOfHoles,
-					diaOfHoles: d.diaOfHoles,
-					tolerance: d.tolerance,
-					version: d.version || 1,
-					isLatest: d.isLatest ?? true
-				})),
-				cutting: (data.cutting || []).map(c => ({
-					characteristics: c.characteristics,
-					specification: c.specification,
-					tolerance: c.tolerance,
-					version: c.version || 1,
-					isLatest: c.isLatest ?? true
-				}))
-			};
+			const partRequestData = transformFormDataToApiRequest(updatedData, currentUploadedDrawings, isEditMode);
 
-			console.log('Saving part data:', partRequestData);
-
+			// Submit to API
 			if (isEditMode && data.id) {
 				// Update existing part
 				const updateData = {
@@ -338,17 +527,25 @@ const CreatePart = () => {
 							</Button>
 							<Button
 								variant="contained"
-								startIcon={<Save />}
+								startIcon={isUploadingImages ? <CircularProgress size={20} color="inherit" /> : <Save />}
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
 								onClick={handleSubmit(onSubmit as any)}
-								disabled={isCreating || isUpdating}
+								disabled={isCreating || isUpdating || isUploadingImages}
 								sx={{
 									textTransform: 'none',
 									backgroundColor: '#1976d2',
 									'&:hover': { backgroundColor: '#1565c0' }
 								}}
 							>
-								{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Part' : 'Create Part'}
+								{isUploadingImages
+									? 'Uploading Images...'
+									: isCreating || isUpdating
+										? isEditMode
+											? 'Updating...'
+											: 'Creating...'
+										: isEditMode
+											? 'Update Part'
+											: 'Create Part'}
 							</Button>
 						</Box>
 					</Box>
@@ -373,7 +570,13 @@ const CreatePart = () => {
 
 					{/* Tab Content */}
 					<TabPanel value={activeTab} index={0}>
-						<GeneralInfo control={control} errors={errors} />
+						<GeneralInfo
+							control={control}
+							errors={errors}
+							gallery={gallery}
+							onAddImage={handleAddImage}
+							onRemoveImage={handleRemoveImage}
+						/>
 					</TabPanel>
 					<TabPanel value={activeTab} index={1}>
 						<RawMaterialsTab control={control} errors={errors} />
@@ -385,7 +588,7 @@ const CreatePart = () => {
 						<TechnicalDataTab control={control} errors={errors} />
 					</TabPanel>
 					<TabPanel value={activeTab} index={4}>
-						<LinkedMastersTab control={control} errors={errors} setValue={setValue} />
+						<LinkedMastersTab control={control} errors={errors} setValue={setValue} gallery={gallery} />
 					</TabPanel>
 				</Paper>
 			</Box>

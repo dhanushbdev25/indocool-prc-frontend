@@ -2,7 +2,7 @@ import * as yup from 'yup';
 
 // Raw Material validation schema
 export const rawMaterialFormSchema = yup.object({
-	id: yup.number().optional(),
+	id: yup.mixed().optional(), // Allow both numbers and strings (UUIDs)
 	materialName: yup.string().required('Material name is required'),
 	materialCode: yup.string().required('Material code is required'),
 	quantity: yup.string().required('Quantity is required'),
@@ -13,7 +13,7 @@ export const rawMaterialFormSchema = yup.object({
 
 // BOM validation schema
 export const bomFormSchema = yup.object({
-	id: yup.number().optional(),
+	id: yup.mixed().optional(), // Allow both numbers and strings (UUIDs)
 	materialType: yup.string().required('Material type is required'),
 	description: yup.string().required('Description is required'),
 	bomQuantity: yup.string().required('BOM quantity is required'),
@@ -23,7 +23,7 @@ export const bomFormSchema = yup.object({
 
 // Drilling validation schema
 export const drillingFormSchema = yup.object({
-	id: yup.number().optional(),
+	id: yup.mixed().optional(), // Allow both numbers and strings (UUIDs)
 	characteristics: yup.string().required('Characteristics is required'),
 	specification: yup.string().required('Specification is required'),
 	noOfHoles: yup.string().required('Number of holes is required'),
@@ -35,12 +35,41 @@ export const drillingFormSchema = yup.object({
 
 // Cutting validation schema
 export const cuttingFormSchema = yup.object({
-	id: yup.number().optional(),
+	id: yup.mixed().optional(), // Allow both numbers and strings (UUIDs)
 	characteristics: yup.string().required('Characteristics is required'),
 	specification: yup.string().required('Specification is required'),
 	tolerance: yup.string().required('Tolerance is required'),
 	version: yup.number().default(1),
 	isLatest: yup.boolean().default(true)
+});
+
+// Part drawing validation schema
+export const partDrawingSchema = yup.object({
+	fileName: yup.string().optional(),
+	filePath: yup.string().optional(),
+	originalFileName: yup.string().optional()
+});
+
+// Inspection image mapping validation schema
+export const inspectionDiagramSchema = yup.object({
+	partId: yup.number().optional(),
+	files: yup
+		.array(
+			yup.object({
+				inspectionParameterId: yup.number().optional(),
+				fileName: yup
+					.array(
+						yup.object({
+							fileName: yup.string().optional(),
+							filePath: yup.string().optional(),
+							originalFileName: yup.string().optional()
+						})
+					)
+					.optional()
+			})
+		)
+		.nullable()
+		.default([])
 });
 
 // Main form validation schema
@@ -77,6 +106,8 @@ export const partMasterFormSchema = yup.object({
 	bom: yup.array(bomFormSchema).default([]),
 	drilling: yup.array(drillingFormSchema).default([]),
 	cutting: yup.array(cuttingFormSchema).default([]),
+	files: yup.array(partDrawingSchema).default([]),
+	inspectionDiagrams: inspectionDiagramSchema.optional(),
 	createdAt: yup.string().optional(),
 	updatedAt: yup.string().optional()
 });
@@ -86,6 +117,8 @@ export type RawMaterialFormData = yup.InferType<typeof rawMaterialFormSchema>;
 export type BOMFormData = yup.InferType<typeof bomFormSchema>;
 export type DrillingFormData = yup.InferType<typeof drillingFormSchema>;
 export type CuttingFormData = yup.InferType<typeof cuttingFormSchema>;
+export type PartDrawingFormData = yup.InferType<typeof partDrawingSchema>;
+export type InspectionDiagramFormData = yup.InferType<typeof inspectionDiagramSchema>;
 export type PartMasterFormData = yup.InferType<typeof partMasterFormSchema>;
 
 // Default values
@@ -124,6 +157,16 @@ export const defaultCutting: CuttingFormData = {
 	isLatest: true
 };
 
+export const defaultPartDrawing: PartDrawingFormData = {
+	fileName: '',
+	filePath: ''
+};
+
+export const defaultInspectionDiagram: InspectionDiagramFormData = {
+	partId: 0,
+	files: []
+};
+
 export const defaultPartMasterFormData: PartMasterFormData = {
 	partNumber: '',
 	drawingNumber: '',
@@ -142,7 +185,9 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	rawMaterials: [],
 	bom: [],
 	drilling: [],
-	cutting: []
+	cutting: [],
+	files: [],
+	inspectionDiagrams: undefined
 };
 
 // Section-specific validation schemas

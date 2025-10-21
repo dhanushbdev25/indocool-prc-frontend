@@ -52,6 +52,34 @@ export const cuttingSchema = z.object({
 	updatedAt: z.string().optional()
 });
 
+export const partDrawingSchema = z.object({
+	fileName: z.string().optional(),
+	filePath: z.string().optional(),
+	originalFileName: z.string().optional()
+});
+
+export const inspectionDiagramSchema = z.object({
+	partId: z.number().optional(),
+	files: z
+		.array(
+			z.object({
+				inspectionParameterId: z.number().optional(),
+				fileName: z
+					.array(
+						z.object({
+							fileName: z.string().optional(),
+							filePath: z.string().optional(),
+							originalFileName: z.string().optional()
+						})
+					)
+					.optional()
+			})
+		)
+		.nullable()
+		.optional()
+		.default([])
+});
+
 export const partMasterSchema = z.object({
 	id: z.number().optional(),
 	partNumber: z.string().min(1, 'Part number is required'),
@@ -72,7 +100,9 @@ export const partMasterSchema = z.object({
 	updatedBy: z.number().nullable().optional(),
 	createdAt: z.string().nullable().optional(),
 	updatedAt: z.string().nullable().optional(),
-	customerName: z.string().nullable().optional()
+	customerName: z.string().nullable().optional(),
+	files: z.array(partDrawingSchema).nullable().optional(),
+	inspectionDiagrams: inspectionDiagramSchema.nullable().optional()
 });
 
 // Customer combo schema (new format)
@@ -89,7 +119,11 @@ export const partDetailSchema = z.object({
 	bom: z.array(bomSchema),
 	drilling: z.array(drillingSchema),
 	cutting: z.array(cuttingSchema),
-	inspectionDiagrams: z.array(z.any()).optional()
+	files: z.array(partDrawingSchema).nullable().optional().default([]),
+	inspectionDiagrams: z
+		.union([inspectionDiagramSchema, z.array(inspectionDiagramSchema)])
+		.nullable()
+		.optional()
 });
 
 export const partsResponseSchema = z.object({
@@ -160,6 +194,8 @@ export type RawMaterial = z.infer<typeof rawMaterialSchema>;
 export type BOM = z.infer<typeof bomSchema>;
 export type Drilling = z.infer<typeof drillingSchema>;
 export type Cutting = z.infer<typeof cuttingSchema>;
+export type PartDrawing = z.infer<typeof partDrawingSchema>;
+export type InspectionDiagram = z.infer<typeof inspectionDiagramSchema>;
 export type PartMaster = z.infer<typeof partMasterSchema>;
 export type CustomerCombo = z.infer<typeof customerComboSchema>;
 export type PartDetail = z.infer<typeof partDetailSchema>;

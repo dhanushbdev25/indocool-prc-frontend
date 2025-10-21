@@ -132,3 +132,31 @@ export interface TechnicalDataTabProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
 }
+
+// Part drawing types
+export interface PartDrawing {
+	id?: number;
+	fileName: string;
+	filePath: string;
+}
+
+// Inspection diagram mapping types
+export interface InspectionDiagram {
+	partId: number;
+	files: Array<{
+		inspectionParameterId: number;
+		fileName: string[];
+	}>;
+}
+
+// Extended types for image mapping
+export interface InspectionParameter {
+	id: number;
+	order: number;
+	parameterName: string;
+	specification?: string;
+	tolerance?: string;
+	type: string;
+	role: string;
+	ctq: boolean;
+}

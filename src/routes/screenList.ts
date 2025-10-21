@@ -1,6 +1,15 @@
 import Loadable from '../components/common/Loadable';
 import { lazy } from 'react';
-import { Science, Timeline, Settings, Checklist, Assignment, Build, PlayArrow } from '@mui/icons-material';
+import {
+	Science,
+	Timeline,
+	Settings,
+	Checklist,
+	Assignment,
+	Build,
+	PlayArrow,
+	PlayCircleFilled
+} from '@mui/icons-material';
 
 // Lazy-loaded components
 export const imports = {
@@ -49,40 +58,9 @@ export interface MainModuleConfig {
 // Main module configurations with hierarchical structure
 export const mainModuleConfigs: MainModuleConfig[] = [
 	{
-		text: 'PRC Execution',
-		icon: PlayArrow,
-		order: 1,
-		submodules: [
-			{
-				icon: PlayArrow,
-				text: 'Execute PRC',
-				path: 'prc-execution',
-				element: imports.prcExecution,
-				permission: 'EDITPROCESSSEQUENCE',
-				isInitial: true,
-				order: 1,
-				showInSidebar: true
-			},
-			{
-				text: 'View PRC Execution',
-				path: 'prc-execution/view/:id',
-				element: imports.viewPrcExecution,
-				permission: 'EDITPROCESSSEQUENCE',
-				showInSidebar: false
-			},
-			{
-				text: 'Execute PRC',
-				path: 'prc-execution/execute/:id',
-				element: imports.executePrc,
-				permission: 'EDITPROCESSSEQUENCE',
-				showInSidebar: false
-			}
-		]
-	},
-	{
 		text: 'Masters',
 		icon: Settings,
-		order: 2,
+		order: 1,
 		submodules: [
 			{
 				icon: Science,
@@ -232,6 +210,37 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Edit Part',
 				path: 'part-master/edit-part/:id',
 				element: imports.createPart,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			}
+		]
+	},
+	{
+		text: 'PRC Execution',
+		icon: PlayArrow,
+		order: 2,
+		submodules: [
+			{
+				icon: PlayCircleFilled,
+				text: 'Execute PRC',
+				path: 'prc-execution',
+				element: imports.prcExecution,
+				permission: 'EDITPROCESSSEQUENCE',
+				isInitial: true,
+				order: 1,
+				showInSidebar: true
+			},
+			{
+				text: 'View PRC Execution',
+				path: 'prc-execution/view/:id',
+				element: imports.viewPrcExecution,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'Execute PRC',
+				path: 'prc-execution/execute/:id',
+				element: imports.executePrc,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			}

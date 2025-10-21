@@ -14,7 +14,8 @@ export const prcTemplateStepSchema = z.object({
 	requestSupervisorApproval: z.boolean(),
 	stepId: z.number().nullable(),
 	createdAt: z.string().optional(),
-	updatedAt: z.string().optional()
+	updatedAt: z.string().optional(),
+	data: z.any().optional() // Add data field to handle inspection parameters
 });
 
 // PRC Template schema
@@ -55,6 +56,11 @@ export const prcTemplateListResponseSchema = z.object({
 // Single template response schema
 export const prcTemplateByIdResponseSchema = z.object({
 	header: prcTemplateHeaderSchema,
+	detail: prcTemplateDetailSchema
+});
+
+// PRC Template inspections response schema (without header)
+export const prcTemplateInspectionsResponseSchema = z.object({
 	detail: prcTemplateDetailSchema
 });
 
@@ -142,6 +148,7 @@ export type PrcTemplateDetail = z.infer<typeof prcTemplateDetailSchema>;
 export type PrcTemplateHeader = z.infer<typeof prcTemplateHeaderSchema>;
 export type PrcTemplateListResponse = z.infer<typeof prcTemplateListResponseSchema>;
 export type PrcTemplateByIdResponse = z.infer<typeof prcTemplateByIdResponseSchema>;
+export type PrcTemplateInspectionsResponse = z.infer<typeof prcTemplateInspectionsResponseSchema>;
 export type PrcTemplateStepRequest = z.infer<typeof prcTemplateStepRequestSchema>;
 export type PrcTemplateRequest = z.infer<typeof prcTemplateRequestSchema>;
 export type CreatePrcTemplateRequest = z.infer<typeof createPrcTemplateRequestSchema>;

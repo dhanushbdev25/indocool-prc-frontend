@@ -12,7 +12,8 @@ import {
 	IconButton,
 	Alert,
 	Tabs,
-	Tab
+	Tab,
+	CircularProgress
 } from '@mui/material';
 import {
 	Add as AddIcon,
@@ -25,18 +26,24 @@ import { PartMasterFormData } from '../schemas';
 import { useFetchCatalystChartsQuery } from '../../../../../../store/api/business/catalyst-master/catalyst.api';
 import { useFetchPrcTemplatesQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import LinkedMasterCard from './LinkedMasterCard';
+import ImageMappingSection from './ImageMappingSection';
 import { SelectableCatalyst, SelectablePrcTemplate, isCatalystItem, isPrcTemplateItem } from '../types';
+import { ImageItem } from '../../../../../../hooks/useImageGallery';
 
 interface LinkedMastersTabProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
 	setValue: UseFormSetValue<PartMasterFormData>;
+	gallery: ImageItem[];
 }
 
-const LinkedMastersTab = ({ control, errors, setValue }: LinkedMastersTabProps) => {
+const LinkedMastersTab = ({ control, errors, setValue, gallery }: LinkedMastersTabProps) => {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [modalType, setModalType] = useState<'catalyst' | 'prcTemplate'>('catalyst');
 	const [activeTab, setActiveTab] = useState(0);
+
+	// Watch form values
+	// const partDrawings = useWatch({ control, name: 'partDrawings' }); // Unused variable
 
 	// Fetch catalyst and PRC template data
 	const { data: catalystData, isLoading: isCatalystLoading } = useFetchCatalystChartsQuery();
@@ -124,22 +131,31 @@ const LinkedMastersTab = ({ control, errors, setValue }: LinkedMastersTabProps) 
 							<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
 								Catalyst Chart
 							</Typography>
-							<Button
-								variant="outlined"
-								startIcon={<AddIcon />}
-								onClick={() => handleOpenModal('catalyst')}
-								sx={{
-									textTransform: 'none',
-									borderColor: '#1976d2',
-									color: '#1976d2',
-									'&:hover': {
-										borderColor: '#1565c0',
-										backgroundColor: 'rgba(25, 118, 210, 0.04)'
-									}
-								}}
-							>
-								{selectedCatalystItem ? 'Change' : 'Select'} Catalyst
-							</Button>
+							{isCatalystLoading ? (
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+									<CircularProgress size={16} />
+									<Typography variant="body2" color="text.secondary">
+										Loading...
+									</Typography>
+								</Box>
+							) : (
+								<Button
+									variant="outlined"
+									startIcon={<AddIcon />}
+									onClick={() => handleOpenModal('catalyst')}
+									sx={{
+										textTransform: 'none',
+										borderColor: '#1976d2',
+										color: '#1976d2',
+										'&:hover': {
+											borderColor: '#1565c0',
+											backgroundColor: 'rgba(25, 118, 210, 0.04)'
+										}
+									}}
+								>
+									{selectedCatalystItem ? 'Change' : 'Select'} Catalyst
+								</Button>
+							)}
 						</Box>
 
 						{selectedCatalystItem ? (
@@ -184,22 +200,31 @@ const LinkedMastersTab = ({ control, errors, setValue }: LinkedMastersTabProps) 
 							<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
 								PRC Template
 							</Typography>
-							<Button
-								variant="outlined"
-								startIcon={<AddIcon />}
-								onClick={() => handleOpenModal('prcTemplate')}
-								sx={{
-									textTransform: 'none',
-									borderColor: '#1976d2',
-									color: '#1976d2',
-									'&:hover': {
-										borderColor: '#1565c0',
-										backgroundColor: 'rgba(25, 118, 210, 0.04)'
-									}
-								}}
-							>
-								{selectedPrcTemplateItem ? 'Change' : 'Select'} Template
-							</Button>
+							{isPrcTemplateLoading ? (
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+									<CircularProgress size={16} />
+									<Typography variant="body2" color="text.secondary">
+										Loading...
+									</Typography>
+								</Box>
+							) : (
+								<Button
+									variant="outlined"
+									startIcon={<AddIcon />}
+									onClick={() => handleOpenModal('prcTemplate')}
+									sx={{
+										textTransform: 'none',
+										borderColor: '#1976d2',
+										color: '#1976d2',
+										'&:hover': {
+											borderColor: '#1565c0',
+											backgroundColor: 'rgba(25, 118, 210, 0.04)'
+										}
+									}}
+								>
+									{selectedPrcTemplateItem ? 'Change' : 'Select'} Template
+								</Button>
+							)}
 						</Box>
 
 						{selectedPrcTemplateItem ? (
@@ -315,6 +340,9 @@ const LinkedMastersTab = ({ control, errors, setValue }: LinkedMastersTabProps) 
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			{/* Image Mapping Section */}
+			<ImageMappingSection control={control} setValue={setValue} gallery={gallery} />
 		</Box>
 	);
 };
