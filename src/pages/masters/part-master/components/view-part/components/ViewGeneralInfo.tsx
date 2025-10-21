@@ -12,8 +12,8 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 	const displayGallery = files.map((file, index) => ({
 		id: index,
 		file: null,
-		image: file.filePath, // This would need to be a proper URL in a real implementation
-		fileName: file.fileName
+		image: file.filePath || '', // Ensure image is always a string
+		fileName: file.fileName || `Image ${index}`
 	}));
 
 	const getStatusColor = (status: string) => {

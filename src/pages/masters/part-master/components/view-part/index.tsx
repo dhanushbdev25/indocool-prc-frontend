@@ -113,7 +113,7 @@ const ViewPart = () => {
 
 				{/* Content Sections */}
 				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-					<ViewGeneralInfo partMaster={partMaster} files={partData?.detail?.files} />
+					<ViewGeneralInfo partMaster={partMaster} files={partData?.detail?.files || undefined} />
 					<ViewRawMaterials rawMaterials={rawMaterials} />
 					<ViewBOM bom={bom} />
 					<ViewTechnicalData drilling={drilling} cutting={cutting} />
