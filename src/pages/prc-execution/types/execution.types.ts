@@ -1,5 +1,31 @@
 // TypeScript interfaces for PRC Execution screen
 
+// Annotation types
+export interface AnnotationPoint {
+	type: 'point';
+	id: string;
+	x: number;
+	y: number;
+	cls: string;
+	comment: string;
+}
+
+export interface AnnotationPolygon {
+	type: 'polygon';
+	id: string;
+	points: Array<[number, number]>;
+	cls: string;
+	comment: string;
+}
+
+export type AnnotationRegion = AnnotationPoint | AnnotationPolygon;
+
+export interface ImageAnnotation {
+	imageFileName: string;
+	imageUrl: string;
+	regions: AnnotationRegion[];
+}
+
 export interface TimelineStep {
 	stepNumber: number;
 	type: 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
@@ -47,7 +73,11 @@ export interface TimelineStep {
 		}>;
 		specification: string;
 		order: number;
-		files?: Record<string, string>;
+		files?: Array<{
+			fileName: string;
+			filePath: string;
+			originalFileName: string;
+		}>;
 	}>;
 }
 
@@ -140,6 +170,8 @@ export interface ExecutionData {
 
 export interface FormData {
 	[key: string]: unknown;
+	// Support for annotation data
+	annotations?: ImageAnnotation[];
 }
 
 export interface StepTiming {

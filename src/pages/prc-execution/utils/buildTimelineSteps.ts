@@ -128,10 +128,22 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						}>;
 						specification: string;
 						order: number;
-						files?: Record<string, string>;
+						files?: Array<{
+							fileName: string;
+							filePath: string;
+							originalFileName: string;
+						}>;
 					}>;
 				};
 				const isCompleted = isInspectionStepCompleted(executionData.prcAggregatedSteps, prcTemplateStep.id);
+
+				// Debug logging
+				console.log('Inspection Step Status Debug:', {
+					prcTemplateStepId: prcTemplateStep.id,
+					isCompleted,
+					prcAggregatedSteps: executionData.prcAggregatedSteps,
+					stepData: executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()]
+				});
 
 				steps.push({
 					stepNumber: stepNumber++,
@@ -163,7 +175,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							columns: param.columns || [],
 							specification: param.specification,
 							order: param.order,
-							files: param.files || {}
+							files: param.files || []
 						})) || []
 				});
 			}

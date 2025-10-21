@@ -11,7 +11,7 @@ import { type TimelineStep, type ExecutionData, type FormData } from '../../type
 import ExecutionHeader from './components/ExecutionHeader';
 import ExecutionTimeline from './components/ExecutionTimeline';
 import ExecutionStepContent from './components/ExecutionStepContent';
-import ExecutionQuickStats from './components/ExecutionQuickStats';
+// import ExecutionQuickStats from './components/ExecutionQuickStats';
 
 const ExecutePrc = () => {
 	const { id } = useParams<{ id: string }>();
@@ -227,7 +227,7 @@ const ExecutePrc = () => {
 				</Box>
 
 				{/* Right Sidebar - Quick Stats */}
-				<Box
+				{/* <Box
 					sx={{
 						width: '18%',
 						height: '100%',
@@ -254,7 +254,7 @@ const ExecutePrc = () => {
 						currentStep={currentStep}
 						totalSteps={timelineSteps.length}
 					/>
-				</Box>
+				</Box> */}
 			</Box>
 		</Box>
 	);

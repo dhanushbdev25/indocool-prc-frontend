@@ -23,7 +23,7 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 	}
 
 	if (step.type === 'inspection' && step.inspectionParameters && step.stepData) {
-		// Build structure: { "82": { "15": { "TEST": { "TEST1": "value", "TEST2": "value" } } } }
+		// Build structure: { "82": { "28": { "UPLOAD-TEST-INSPEC-1-PAR-1": { "UPLOAD-TEST-INSPEC-1-PAR-1": "value", "annotations": [...] } } } }
 		const prcTemplateStepId = step.stepData.prcTemplateStepId;
 		const inspectionData: Record<string, unknown> = {};
 
@@ -41,6 +41,14 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 					paramData[param.parameterName] = value;
 				}
 			});
+
+			// Handle annotations for this parameter - check if annotations exist in formData for this parameter
+			if (formData[param.id.toString()] && typeof formData[param.id.toString()] === 'object') {
+				const paramFormData = formData[param.id.toString()] as Record<string, unknown>;
+				if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
+					paramData.annotations = paramFormData.annotations;
+				}
+			}
 
 			if (Object.keys(paramData).length > 0) {
 				// Wrap in parameter name level to match backend structure

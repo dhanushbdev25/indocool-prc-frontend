@@ -1,6 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Box, Typography, TextField, Button, Alert, Card, CardContent, Grid } from '@mui/material';
-import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
+import { Image } from '@mui/icons-material';
+import {
+	type TimelineStep,
+	type ExecutionData,
+	type FormData,
+	type ImageAnnotation
+} from '../../../../types/execution.types';
+import ImageAnnotator from '../ImageAnnotator';
 
 interface InspectionStepProps {
 	step: TimelineStep;
@@ -10,6 +17,8 @@ interface InspectionStepProps {
 
 const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
+	const [annotations, setAnnotations] = useState<ImageAnnotation[]>([]);
+	// Default all annotations to open (no need for expand/collapse state)
 
 	// Compute initial form data from existing data
 	const initialFormData = useMemo(() => {
@@ -38,19 +47,34 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			if (existingData && typeof existingData === 'object') {
 				// Convert the nested structure to flat form data
 				const newFormData: FormData = {};
+				const extractedAnnotations: ImageAnnotation[] = [];
+
 				Object.entries(existingData).forEach(([parameterId, parameterData]) => {
 					if (typeof parameterData === 'object' && parameterData !== null) {
 						// Check if there's an extra level with parameter name
-						// Structure: { "15": { "TEST": { "TEST1": "TEST", "TEST2": "12" } } }
+						// Structure: { "28": { "UPLOAD-TEST-INSPEC-1-PAR-1": { "UPLOAD-TEST-INSPEC-1-PAR-1": "value", "annotations": [...] } } }
 						const firstKey = Object.keys(parameterData)[0];
 						const firstValue = (
-							parameterData as Record<string, string | number | boolean | Record<string, string | number | boolean>>
+							parameterData as Record<
+								string,
+								string | number | boolean | Record<string, string | number | boolean | ImageAnnotation[]>
+							>
 						)[firstKey];
 
 						if (typeof firstValue === 'object' && firstValue !== null) {
 							// Extra level with parameter name
 							Object.entries(firstValue).forEach(([columnName, value]) => {
-								newFormData[`${parameterId}_${columnName}`] = String(value);
+								if (columnName === 'annotations' && Array.isArray(value)) {
+									// Store annotations in the parameter-specific structure
+									const existingData = (newFormData[parameterId] as Record<string, unknown>) || {};
+									newFormData[parameterId] = {
+										...existingData,
+										annotations: value
+									} as Record<string, unknown>;
+									extractedAnnotations.push(...(value as ImageAnnotation[]));
+								} else {
+									newFormData[`${parameterId}_${columnName}`] = String(value);
+								}
 							});
 						} else {
 							// Direct structure: { "15": { "TEST1": "Good", "TEST2": "1" } }
@@ -63,6 +87,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						newFormData[parameterId] = String(parameterData);
 					}
 				});
+
+				// Set extracted annotations for backward compatibility
+				if (extractedAnnotations.length > 0) {
+					newFormData.annotations = extractedAnnotations;
+				}
+
 				return newFormData;
 			}
 		}
@@ -73,13 +103,29 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 	// Update form data when initial data changes
 	useEffect(() => {
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setFormData(initialFormData);
+		// Initialize annotations from form data
+		if (initialFormData.annotations && Array.isArray(initialFormData.annotations)) {
+			setAnnotations(initialFormData.annotations as ImageAnnotation[]);
+		}
 	}, [initialFormData]);
 
 	const isReadOnly = step.status === 'completed';
 
+	// Debug logging
+	console.log('InspectionStep Debug:', {
+		stepStatus: step.status,
+		isReadOnly,
+		formData,
+		stepData: step.stepData,
+		inspectionParameters: step.inspectionParameters
+	});
+
 	const handleParameterChange = (parameterId: number, columnName: string, value: string) => {
-		const key = `${parameterId}_${columnName}`;
+		// For single value parameters, use just the parameter ID as key
+		// For multi-column parameters, use parameterId_columnName format
+		const key = columnName === 'value' ? parameterId.toString() : `${parameterId}_${columnName}`;
 		setFormData(prev => ({
 			...prev,
 			[key]: value
@@ -92,6 +138,20 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				[key]: ''
 			}));
 		}
+	};
+
+	const handleAnnotationSave = (parameterId: number, newAnnotations: ImageAnnotation[]) => {
+		setAnnotations(prev => {
+			// Remove existing annotations for this parameter
+			const filtered = prev.filter(
+				ann =>
+					!step.inspectionParameters?.find(
+						param => param.id === parameterId && param.files?.some(file => file.fileName === ann.imageFileName)
+					)
+			);
+			// Add new annotations
+			return [...filtered, ...newAnnotations];
+		});
 	};
 
 	const validateForm = () => {
@@ -133,7 +193,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 	const handleSubmit = () => {
 		if (validateForm()) {
-			// Convert flat form data to nested structure
+			// Convert flat form data to nested structure with annotations
 			const nestedData: Record<string, unknown> = {};
 
 			Object.entries(formData).forEach(([key, value]) => {
@@ -144,9 +204,28 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						nestedData[parameterId] = {};
 					}
 					(nestedData[parameterId] as Record<string, unknown>)[columnName] = value;
-				} else {
+				} else if (key !== 'annotations') {
 					// Single column parameter: "7" -> { "7": "100" }
 					nestedData[key] = value;
+				}
+			});
+
+			// Add annotations to each parameter that has images
+			step.inspectionParameters?.forEach(param => {
+				if (param.files && param.files.length > 0) {
+					const parameterAnnotations = annotations.filter(ann =>
+						param.files?.some(file => file.fileName === ann.imageFileName)
+					);
+
+					if (parameterAnnotations.length > 0) {
+						// Ensure parameter structure exists
+						if (!nestedData[param.id.toString()]) {
+							nestedData[param.id.toString()] = {};
+						}
+
+						// Add annotations to the parameter data
+						(nestedData[param.id.toString()] as Record<string, unknown>).annotations = parameterAnnotations;
+					}
 				}
 			});
 
@@ -238,16 +317,24 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 							/>
 						)}
 
-						{param.files && Object.keys(param.files).length > 0 && (
+						{/* Image Annotation Section */}
+						{param.files && param.files.length > 0 && (
 							<Box sx={{ mt: 2 }}>
-								<Typography variant="body2" sx={{ fontWeight: 500, color: '#666', mb: 1 }}>
-									Reference Files
-								</Typography>
-								{Object.entries(param.files).map(([key, url]) => (
-									<Typography key={key} variant="caption" sx={{ display: 'block', color: '#1976d2' }}>
-										{key}: {url}
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+									<Image color="primary" />
+									<Typography variant="body2" sx={{ fontWeight: 500, color: '#666' }}>
+										Image Annotation ({param.files.length} image{param.files.length > 1 ? 's' : ''})
 									</Typography>
-								))}
+								</Box>
+
+								<ImageAnnotator
+									images={param.files}
+									existingAnnotations={annotations.filter(ann =>
+										param.files?.some(file => file.fileName === ann.imageFileName)
+									)}
+									onSave={newAnnotations => handleAnnotationSave(param.id, newAnnotations)}
+									readOnly={isReadOnly}
+								/>
 							</Box>
 						)}
 					</CardContent>
