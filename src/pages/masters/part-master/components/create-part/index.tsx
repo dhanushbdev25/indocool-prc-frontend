@@ -382,7 +382,7 @@ const CreatePart = () => {
 				const galleryItems = partMaster.files.map((file, index) => ({
 					id: `existing-${index}`,
 					file: null,
-					image: file.filePath ? file.filePath.replace(/\\/g, '/') : '',
+					image: file.filePath ? `${process.env.API_BASE_URL_PRE_AUTH}${file.filePath.replace(/\\/g, '/')}` : '',
 					fileName: file.originalFileName || `Image ${index}`
 				}));
 				setGallery(galleryItems);

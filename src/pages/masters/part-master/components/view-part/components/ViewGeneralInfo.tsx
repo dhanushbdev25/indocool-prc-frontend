@@ -12,7 +12,7 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 	const displayGallery = files.map((file, index) => ({
 		id: index,
 		file: null,
-		image: file.filePath || '', // Ensure image is always a string
+		image: file.filePath ? `${process.env.API_BASE_URL_PRE_AUTH}${file.filePath}` : '', // Prepend base URL to file path
 		fileName: file.fileName || `Image ${index}`
 	}));
 

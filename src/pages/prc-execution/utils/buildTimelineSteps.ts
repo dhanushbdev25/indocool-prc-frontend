@@ -137,14 +137,6 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 				};
 				const isCompleted = isInspectionStepCompleted(executionData.prcAggregatedSteps, prcTemplateStep.id);
 
-				// Debug logging
-				console.log('Inspection Step Status Debug:', {
-					prcTemplateStepId: prcTemplateStep.id,
-					isCompleted,
-					prcAggregatedSteps: executionData.prcAggregatedSteps,
-					stepData: executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()]
-				});
-
 				steps.push({
 					stepNumber: stepNumber++,
 					type: 'inspection',

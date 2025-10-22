@@ -63,7 +63,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	const imageRef = useRef<Konva.Image>(null);
 
 	const currentImage = images[currentImageIndex];
-	const currentImageUrl = `https://static.vecteezy.com/system/resources/previews/060/666/693/non_2x/bus-set-outline-side-top-front-views-vector.jpg`;
+	const currentImageUrl = currentImage?.filePath ? `${process.env.API_BASE_URL_PRE_AUTH}${currentImage.filePath}` : '';
 
 	// Get annotations for current image
 	const getCurrentImageAnnotations = useCallback(() => {

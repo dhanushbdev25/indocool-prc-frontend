@@ -11,6 +11,7 @@ export default defineConfig({
 		EnvironmentPlugin({
 			VITE_APP_NAME: 'PRC Management Portal',
 			API_BASE_URL: '//localhost:8000/web/',
+			API_BASE_URL_PRE_AUTH: '//localhost:8000/',
 			REDIRECT_URI: 'http://localhost:5173/auth/login',
 			AZURE_CLIENT_ID: '6e3a5cb0-04eb-46f2-a413-36e9a623cfac',
 			AZURE_CLIENT_SECRET: '1Zn8Q~OCQ3SVqTOuGi~vnr1CpX44vr_yvKDsidBX'
