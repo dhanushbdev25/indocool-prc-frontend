@@ -433,10 +433,11 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					hasAnnotations: typeof value === 'object' && value !== null && 'annotations' in value,
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					valueType: typeof value === 'object' && value !== null ? typeof (value as any).value : 'N/A',
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					annotationsCount:
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						typeof value === 'object' && value !== null && Array.isArray((value as any).annotations)
-							? (value as any).annotations.length
+							? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+								(value as any).annotations.length
 							: 0
 				}))
 			});
