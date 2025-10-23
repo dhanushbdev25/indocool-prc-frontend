@@ -1,18 +1,6 @@
 import { useState } from 'react';
-import {
-	Box,
-	Typography,
-	Button,
-	Avatar,
-	Chip,
-	IconButton
-} from '@mui/material';
-import {
-	ArrowBack,
-	ArrowForward,
-	CheckCircle,
-	PlayArrow
-} from '@mui/icons-material';
+import { Box, Typography, Button, Avatar, Chip, IconButton } from '@mui/material';
+import { ArrowBack, ArrowForward, CheckCircle, PlayArrow } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../types/execution.types';
 import RawMaterialsStep from './steps/RawMaterialsStep';
 import BomStep from './steps/BomStep';
@@ -81,7 +69,7 @@ const StepDetailView = ({
 				stepGroupId: step.stepGroup!.id,
 				prcTemplateStepId: step.prcTemplateStepId
 			});
-			
+
 			// After successful completion, check if we should advance to next sub-step
 			if (currentSubStepIndex < subSteps.length - 1) {
 				// Go to next sub-step
@@ -141,11 +129,11 @@ const StepDetailView = ({
 	};
 
 	const canGoPreviousSubStep = isSequenceGroup ? currentSubStepIndex > 0 : canGoPrevious;
-	
+
 	// For sequence groups, check if we can go to next sub-step OR if all steps are filled (to go to preview)
-	const canGoNextSubStep = isSequenceGroup ? 
-		(currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled()) : 
-		canGoNext;
+	const canGoNextSubStep = isSequenceGroup
+		? currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled()
+		: canGoNext;
 
 	const renderStepContent = () => {
 		if (isSequenceGroup && currentSubStep) {
@@ -179,11 +167,7 @@ const StepDetailView = ({
 			};
 
 			return (
-				<SequenceStep
-					step={subStepTimelineStep}
-					executionData={executionData}
-					onStepComplete={handleSubStepComplete}
-				/>
+				<SequenceStep step={subStepTimelineStep} executionData={executionData} onStepComplete={handleSubStepComplete} />
 			);
 		}
 
@@ -290,7 +274,18 @@ const StepDetailView = ({
 								}}
 							/>
 						</Box>
-						<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', textAlign: 'right', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+						<Typography
+							variant="body2"
+							sx={{
+								color: '#666',
+								fontSize: '0.875rem',
+								textAlign: 'right',
+								maxWidth: '200px',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap'
+							}}
+						>
 							{currentSubStep?.parameterDescription}
 						</Typography>
 					</Box>
@@ -298,9 +293,7 @@ const StepDetailView = ({
 			)}
 
 			{/* Step Content */}
-			<Box sx={{ flex: 1, overflow: 'auto' }}>
-				{renderStepContent()}
-			</Box>
+			<Box sx={{ flex: 1, overflow: 'auto' }}>{renderStepContent()}</Box>
 		</Box>
 	);
 };

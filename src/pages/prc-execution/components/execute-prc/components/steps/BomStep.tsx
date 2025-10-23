@@ -108,7 +108,9 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 									</Typography>
 								</TableCell>
 								<TableCell sx={{ py: 1 }}>
-									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{item.description}</Typography>
+									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+										{item.description}
+									</Typography>
 								</TableCell>
 								<TableCell sx={{ py: 1 }}>
 									<Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.875rem' }}>

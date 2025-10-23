@@ -112,7 +112,9 @@ const RawMaterialsStep = ({ step, executionData, onStepComplete }: RawMaterialsS
 									</Typography>
 								</TableCell>
 								<TableCell sx={{ py: 1 }}>
-									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{item.name}</Typography>
+									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+										{item.name}
+									</Typography>
 								</TableCell>
 								<TableCell sx={{ py: 1 }}>
 									<Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.875rem' }}>
@@ -120,7 +122,9 @@ const RawMaterialsStep = ({ step, executionData, onStepComplete }: RawMaterialsS
 									</Typography>
 								</TableCell>
 								<TableCell sx={{ py: 1 }}>
-									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{item.uom}</Typography>
+									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+										{item.uom}
+									</Typography>
 								</TableCell>
 								<TableCell sx={{ py: 1 }}>
 									<TextField

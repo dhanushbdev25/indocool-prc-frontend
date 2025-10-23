@@ -213,18 +213,22 @@ const StepPreview = ({
 			// Handle inspection data - show as detailed inspection report table
 			const inspectionParams = previewData.inspectionParameters || [];
 			const inspectionMeta = previewData.inspectionMetadata;
-			
+
 			// Debug logging for inspection preview
 			console.log('🖼️ INSPECTION_PREVIEW_DEBUG:', {
 				previewData,
 				data: previewData.data,
 				dataKeys: Object.keys(previewData.data),
-				filteredKeys: Object.keys(previewData.data).filter(key => key !== 'data' && key !== 'startTime' && key !== 'endTime'),
+				filteredKeys: Object.keys(previewData.data).filter(
+					key => key !== 'data' && key !== 'startTime' && key !== 'endTime'
+				),
 				inspectionParams,
 				inspectionMeta,
-				parameterCount: Object.keys(previewData.data).filter(key => key !== 'data' && key !== 'startTime' && key !== 'endTime').length
+				parameterCount: Object.keys(previewData.data).filter(
+					key => key !== 'data' && key !== 'startTime' && key !== 'endTime'
+				).length
 			});
-			
+
 			return (
 				<Box>
 					{/* Inspection Metadata Header */}
@@ -268,7 +272,9 @@ const StepPreview = ({
 					)}
 
 					<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
-						Inspection Report ({Object.keys(data).filter(key => key !== 'data' && key !== 'startTime' && key !== 'endTime').length} parameters)
+						Inspection Report (
+						{Object.keys(data).filter(key => key !== 'data' && key !== 'startTime' && key !== 'endTime').length}{' '}
+						parameters)
 					</Typography>
 					<TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
 						<Table size="small" stickyHeader>
@@ -284,301 +290,344 @@ const StepPreview = ({
 								</TableRow>
 							</TableHead>
 							<TableBody>
-								{Object.entries(data).filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime').map(([parameterId, parameterData], index) => {
-									// Find the corresponding inspection parameter metadata
-									const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
-									
-									// Handle different data structures
-									let displayValue = '';
-									let hasAnnotations = false;
-									let isMultiColumn = false;
-									let ctqStatus = paramMeta?.ctq || false;
-									let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
-									let parameterType = paramMeta?.type || 'text';
-									let specification = paramMeta?.specification || 'N/A';
+								{Object.entries(data)
+									.filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime')
+									.map(([parameterId, parameterData], index) => {
+										// Find the corresponding inspection parameter metadata
+										const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
 
-									if (typeof parameterData === 'object' && parameterData !== null) {
-										// Handle object structure: { "value": "1", "annotations": [...] }
-										const paramObj = parameterData as Record<string, unknown>;
-										
-										// Check for annotations
-										if (paramObj.annotations && Array.isArray(paramObj.annotations)) {
-											hasAnnotations = true;
-										}
+										// Handle different data structures
+										let displayValue = '';
+										let hasAnnotations = false;
+										let isMultiColumn = false;
+										let ctqStatus = paramMeta?.ctq || false;
+										let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
+										let parameterType = paramMeta?.type || 'text';
+										let specification = paramMeta?.specification || 'N/A';
 
-										// Handle value
-										if (paramObj.value) {
-											if (typeof paramObj.value === 'object' && paramObj.value !== null) {
-												// Multi-column data: { "value": { "Date": "213", "Name": "1" } }
-												isMultiColumn = true;
-												const valueObj = paramObj.value as Record<string, unknown>;
-												displayValue = Object.entries(valueObj)
-													.map(([col, val]) => `${col}: ${val}`)
-													.join(', ');
-											} else {
-												// Single value
-												displayValue = String(paramObj.value);
+										if (typeof parameterData === 'object' && parameterData !== null) {
+											// Handle object structure: { "value": "1", "annotations": [...] }
+											const paramObj = parameterData as Record<string, unknown>;
+
+											// Check for annotations
+											if (paramObj.annotations && Array.isArray(paramObj.annotations)) {
+												hasAnnotations = true;
 											}
-										}
-									} else {
-										// Simple string/number value
-										displayValue = String(parameterData);
-									}
 
-									return (
-										<TableRow
-											key={parameterId}
-											sx={{
-												'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
-												'&:hover': { backgroundColor: '#f0f0f0' }
-											}}
-										>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												<Typography variant="body2" sx={{ fontWeight: 500 }}>
-													{index + 1}
-												</Typography>
-											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', maxWidth: 200 }}>
-												<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+											// Handle value
+											if (paramObj.value) {
+												if (typeof paramObj.value === 'object' && paramObj.value !== null) {
+													// Multi-column data: { "value": { "Date": "213", "Name": "1" } }
+													isMultiColumn = true;
+													const valueObj = paramObj.value as Record<string, unknown>;
+													displayValue = Object.entries(valueObj)
+														.map(([col, val]) => `${col}: ${val}`)
+														.join(', ');
+												} else {
+													// Single value
+													displayValue = String(paramObj.value);
+												}
+											}
+										} else {
+											// Simple string/number value
+											displayValue = String(parameterData);
+										}
+
+										return (
+											<TableRow
+												key={parameterId}
+												sx={{
+													'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
+													'&:hover': { backgroundColor: '#f0f0f0' }
+												}}
+											>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													<Typography variant="body2" sx={{ fontWeight: 500 }}>
+														{index + 1}
+													</Typography>
+												</TableCell>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem', maxWidth: 200 }}>
+													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+														<Typography
+															variant="body2"
+															sx={{
+																fontWeight: 500,
+																overflow: 'hidden',
+																textOverflow: 'ellipsis',
+																whiteSpace: 'nowrap'
+															}}
+															title={parameterName}
+														>
+															{parameterName}
+														</Typography>
+														{hasAnnotations && (
+															<Chip
+																label="Images"
+																size="small"
+																sx={{
+																	backgroundColor: '#e3f2fd',
+																	color: '#1976d2',
+																	fontSize: '0.6rem',
+																	height: 16,
+																	'& .MuiChip-label': { px: 0.5 }
+																}}
+															/>
+														)}
+														{isMultiColumn && (
+															<Chip
+																label="Multi"
+																size="small"
+																sx={{
+																	backgroundColor: '#f3e5f5',
+																	color: '#7b1fa2',
+																	fontSize: '0.6rem',
+																	height: 16,
+																	'& .MuiChip-label': { px: 0.5 }
+																}}
+															/>
+														)}
+														{paramMeta?.files && paramMeta.files.length > 0 && (
+															<Chip
+																label={`${paramMeta.files.length} files`}
+																size="small"
+																sx={{
+																	backgroundColor: '#e8f5e8',
+																	color: '#4caf50',
+																	fontSize: '0.6rem',
+																	height: 16,
+																	'& .MuiChip-label': { px: 0.5 }
+																}}
+															/>
+														)}
+													</Box>
+												</TableCell>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{parameterType}</TableCell>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+														{isMultiColumn ? (
+															<Chip
+																label={displayValue}
+																size="small"
+																sx={{
+																	backgroundColor: '#f3e5f5',
+																	color: '#7b1fa2',
+																	fontSize: '0.7rem',
+																	height: 20,
+																	maxWidth: 200,
+																	'& .MuiChip-label': {
+																		overflow: 'hidden',
+																		textOverflow: 'ellipsis',
+																		whiteSpace: 'nowrap'
+																	}
+																}}
+																title={displayValue}
+															/>
+														) : (
+															<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+																{displayValue}
+															</Typography>
+														)}
+													</Box>
+												</TableCell>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													{ctqStatus && (
+														<Chip
+															label="CTQ"
+															size="small"
+															sx={{
+																backgroundColor: '#fff3e0',
+																color: '#f57c00',
+																fontSize: '0.7rem',
+																height: 20
+															}}
+														/>
+													)}
+												</TableCell>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666', maxWidth: 150 }}>
 													<Typography
 														variant="body2"
 														sx={{
-															fontWeight: 500,
 															overflow: 'hidden',
 															textOverflow: 'ellipsis',
 															whiteSpace: 'nowrap'
 														}}
-														title={parameterName}
+														title={specification}
 													>
-														{parameterName}
+														{specification}
 													</Typography>
-													{hasAnnotations && (
-														<Chip
-															label="Images"
-															size="small"
-															sx={{
-																backgroundColor: '#e3f2fd',
-																color: '#1976d2',
-																fontSize: '0.6rem',
-																height: 16,
-																'& .MuiChip-label': { px: 0.5 }
-															}}
-														/>
-													)}
-													{isMultiColumn && (
-														<Chip
-															label="Multi"
-															size="small"
-															sx={{
-																backgroundColor: '#f3e5f5',
-																color: '#7b1fa2',
-																fontSize: '0.6rem',
-																height: 16,
-																'& .MuiChip-label': { px: 0.5 }
-															}}
-														/>
-													)}
-													{paramMeta?.files && paramMeta.files.length > 0 && (
-														<Chip
-															label={`${paramMeta.files.length} files`}
-															size="small"
-															sx={{
-																backgroundColor: '#e8f5e8',
-																color: '#4caf50',
-																fontSize: '0.6rem',
-																height: 16,
-																'& .MuiChip-label': { px: 0.5 }
-															}}
-														/>
-													)}
-												</Box>
-											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
-												{parameterType}
-											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-													{isMultiColumn ? (
-														<Chip
-															label={displayValue}
-															size="small"
-															sx={{
-																backgroundColor: '#f3e5f5',
-																color: '#7b1fa2',
-																fontSize: '0.7rem',
-																height: 20,
-																maxWidth: 200,
-																'& .MuiChip-label': {
-																	overflow: 'hidden',
-																	textOverflow: 'ellipsis',
-																	whiteSpace: 'nowrap'
-																}
-															}}
-															title={displayValue}
-														/>
-													) : (
-														<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-															{displayValue}
-														</Typography>
-													)}
-												</Box>
-											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												{ctqStatus && (
-													<Chip
-														label="CTQ"
-														size="small"
+												</TableCell>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													<Box
 														sx={{
-															backgroundColor: '#fff3e0',
-															color: '#f57c00',
-															fontSize: '0.7rem',
-															height: 20
+															display: 'flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															width: 24,
+															height: 24,
+															borderRadius: '50%',
+															backgroundColor: '#e8f5e8'
 														}}
-													/>
-												)}
-											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666', maxWidth: 150 }}>
-												<Typography
-													variant="body2"
-													sx={{
-														overflow: 'hidden',
-														textOverflow: 'ellipsis',
-														whiteSpace: 'nowrap'
-													}}
-													title={specification}
-												>
-													{specification}
-												</Typography>
-											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												<Box
-													sx={{
-														display: 'flex',
-														alignItems: 'center',
-														justifyContent: 'center',
-														width: 24,
-														height: 24,
-														borderRadius: '50%',
-														backgroundColor: '#e8f5e8'
-													}}
-												>
-													<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
-												</Box>
-											</TableCell>
-										</TableRow>
-									);
-								})}
+													>
+														<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+													</Box>
+												</TableCell>
+											</TableRow>
+										);
+									})}
 							</TableBody>
 						</Table>
 					</TableContainer>
 
 					{/* Image Annotations Section */}
-					{Object.entries(data).filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime').some(([_, parameterData]) => 
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						typeof parameterData === 'object' && parameterData !== null && 'annotations' in parameterData && Array.isArray((parameterData as any).annotations) && 
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(parameterData as any).annotations.length > 0
-					) && (
+					{Object.entries(data)
+						.filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime')
+						.some(
+							([_, parameterData]) =>
+								typeof parameterData === 'object' &&
+								parameterData !== null &&
+								'annotations' in parameterData &&
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								Array.isArray((parameterData as any).annotations) &&
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								(parameterData as any).annotations.length > 0
+						) && (
 						<Box sx={{ mt: 2 }}>
 							<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 								Image Annotations
 							</Typography>
-							{Object.entries(data).filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime').map(([parameterId, parameterData]) => {
-								// Find the corresponding inspection parameter metadata
-								const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
-								
-								if (typeof parameterData === 'object' && parameterData !== null && 'annotations' in parameterData) {
-									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-									const annotations = (parameterData as any).annotations;
-									if (Array.isArray(annotations) && annotations.length > 0) {
-										return (
-											<Box key={parameterId} sx={{ mb: 2 }}>
-												<Paper variant="outlined" sx={{ p: 2 }}>
-													<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: '#1976d2' }}>
-														{paramMeta?.parameterName || `Parameter ${parameterId}`}
-													</Typography>
-													{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-													{annotations.map((annotation: any, annotationIndex: number) => {
-														// Find the original filename by matching the generated filename
-														const originalFileName = paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.originalFileName || annotation.imageFileName;
-														
-														return (
-															<Box key={annotationIndex} sx={{ mb: 2, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-																<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-																	<ImageIcon color="primary" fontSize="small" />
-																	<Typography variant="body2" sx={{ fontWeight: 500, color: '#333' }}>
-																		{originalFileName}
-																	</Typography>
-																<Chip 
-																	label={`${annotation.regions?.length || 0} annotations`}
-																	size="small"
-																	sx={{ 
-																		backgroundColor: '#e3f2fd', 
-																		color: '#1976d2',
-																		fontSize: '0.7rem',
-																		height: 20
+							{Object.entries(data)
+								.filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime')
+								.map(([parameterId, parameterData]) => {
+									// Find the corresponding inspection parameter metadata
+									const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
+
+									if (typeof parameterData === 'object' && parameterData !== null && 'annotations' in parameterData) {
+										// eslint-disable-next-line @typescript-eslint/no-explicit-any
+										const annotations = (parameterData as any).annotations;
+										if (Array.isArray(annotations) && annotations.length > 0) {
+											return (
+												<Box key={parameterId} sx={{ mb: 2 }}>
+													<Paper variant="outlined" sx={{ p: 2 }}>
+														<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: '#1976d2' }}>
+															{paramMeta?.parameterName || `Parameter ${parameterId}`}
+														</Typography>
+														{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+														{annotations.map((annotation: any, annotationIndex: number) => {
+															// Find the original filename by matching the generated filename
+															const originalFileName =
+																paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)
+																	?.originalFileName || annotation.imageFileName;
+
+															return (
+																<Box
+																	key={annotationIndex}
+																	sx={{
+																		mb: 2,
+																		p: 1.5,
+																		backgroundColor: '#f8f9fa',
+																		borderRadius: 1,
+																		border: '1px solid #e9ecef'
 																	}}
-																/>
-															</Box>
-															
-															{/* Display annotation regions */}
-															{annotation.regions && annotation.regions.length > 0 && (
-																<Box sx={{ mt: 1 }}>
-																	<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
-																		Annotation Details:
-																	</Typography>
-																	{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-																	{annotation.regions.map((region: any, regionIndex: number) => (
-																		<Box key={regionIndex} sx={{ mt: 0.5, p: 1, backgroundColor: '#fff', borderRadius: 0.5, border: '1px solid #e0e0e0' }}>
-																			<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-																				<Chip 
-																					label={region.type}
-																					size="small"
-																					sx={{ 
-																						backgroundColor: region.type === 'point' ? '#e8f5e8' : '#fff3e0',
-																						color: region.type === 'point' ? '#4caf50' : '#f57c00',
-																						fontSize: '0.6rem',
-																						height: 16
+																>
+																	<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+																		<ImageIcon color="primary" fontSize="small" />
+																		<Typography variant="body2" sx={{ fontWeight: 500, color: '#333' }}>
+																			{originalFileName}
+																		</Typography>
+																		<Chip
+																			label={`${annotation.regions?.length || 0} annotations`}
+																			size="small"
+																			sx={{
+																				backgroundColor: '#e3f2fd',
+																				color: '#1976d2',
+																				fontSize: '0.7rem',
+																				height: 20
+																			}}
+																		/>
+																	</Box>
+
+																	{/* Display annotation regions */}
+																	{annotation.regions && annotation.regions.length > 0 && (
+																		<Box sx={{ mt: 1 }}>
+																			<Typography
+																				variant="caption"
+																				sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}
+																			>
+																				Annotation Details:
+																			</Typography>
+																			{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+																			{annotation.regions.map((region: any, regionIndex: number) => (
+																				<Box
+																					key={regionIndex}
+																					sx={{
+																						mt: 0.5,
+																						p: 1,
+																						backgroundColor: '#fff',
+																						borderRadius: 0.5,
+																						border: '1px solid #e0e0e0'
 																					}}
-																				/>
-																				<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
-																					ID: {region.id}
-																				</Typography>
-																			</Box>
-																			{region.comment && (
-																				<Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#333', fontStyle: 'italic' }}>
-																					"{region.comment}"
-																				</Typography>
-																			)}
-																			{region.type === 'point' && (
-																				<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}>
-																					Position: ({region.x}, {region.y})
-																				</Typography>
-																			)}
-																			{region.type === 'polygon' && region.points && (
-																				<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}>
-																					Points: {region.points.length} vertices
-																				</Typography>
-																			)}
-																			{region.cls && (
-																				<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}>
-																					Class: {region.cls}
-																				</Typography>
-																			)}
+																				>
+																					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+																						<Chip
+																							label={region.type}
+																							size="small"
+																							sx={{
+																								backgroundColor: region.type === 'point' ? '#e8f5e8' : '#fff3e0',
+																								color: region.type === 'point' ? '#4caf50' : '#f57c00',
+																								fontSize: '0.6rem',
+																								height: 16
+																							}}
+																						/>
+																						<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
+																							ID: {region.id}
+																						</Typography>
+																					</Box>
+																					{region.comment && (
+																						<Typography
+																							variant="body2"
+																							sx={{ fontSize: '0.8rem', color: '#333', fontStyle: 'italic' }}
+																						>
+																							"{region.comment}"
+																						</Typography>
+																					)}
+																					{region.type === 'point' && (
+																						<Typography
+																							variant="caption"
+																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
+																						>
+																							Position: ({region.x}, {region.y})
+																						</Typography>
+																					)}
+																					{region.type === 'polygon' && region.points && (
+																						<Typography
+																							variant="caption"
+																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
+																						>
+																							Points: {region.points.length} vertices
+																						</Typography>
+																					)}
+																					{region.cls && (
+																						<Typography
+																							variant="caption"
+																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
+																						>
+																							Class: {region.cls}
+																						</Typography>
+																					)}
+																				</Box>
+																			))}
 																		</Box>
-																	))}
+																	)}
 																</Box>
-															)}
-														</Box>
-														);
-													})}
-												</Paper>
-											</Box>
-										);
+															);
+														})}
+													</Paper>
+												</Box>
+											);
+										}
 									}
-								}
-								return null;
-							})}
+									return null;
+								})}
 						</Box>
 					)}
 
@@ -606,10 +655,13 @@ const StepPreview = ({
 									With Images
 								</Typography>
 								<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
-								{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-								{Object.values(data).filter((param: any) => 
-									typeof param === 'object' && param?.annotations && Array.isArray(param.annotations)
-								).length}
+									{
+										Object.values(data).filter(
+											// eslint-disable-next-line @typescript-eslint/no-explicit-any
+											(param: any) =>
+												typeof param === 'object' && param?.annotations && Array.isArray(param.annotations)
+										).length
+									}
 								</Typography>
 							</Grid>
 							<Grid size={{ xs: 6, sm: 3 }}>
@@ -617,16 +669,19 @@ const StepPreview = ({
 									Total Annotations
 								</Typography>
 								<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
-								{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-								{Object.values(data).reduce((total: number, param: any) => {
-									if (typeof param === 'object' && param?.annotations && Array.isArray(param.annotations)) {
-										// eslint-disable-next-line @typescript-eslint/no-explicit-any
-										return total + param.annotations.reduce((annotationTotal: number, annotation: any) => {
-											return annotationTotal + (annotation.regions?.length || 0);
-										}, 0);
-									}
-									return total;
-								}, 0)}
+									{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+									{Object.values(data).reduce((total: number, param: any) => {
+										if (typeof param === 'object' && param?.annotations && Array.isArray(param.annotations)) {
+											return (
+												total +
+												// eslint-disable-next-line @typescript-eslint/no-explicit-any
+												param.annotations.reduce((annotationTotal: number, annotation: any) => {
+													return annotationTotal + (annotation.regions?.length || 0);
+												}, 0)
+											);
+										}
+										return total;
+									}, 0)}
 								</Typography>
 							</Grid>
 						</Grid>
@@ -666,7 +721,8 @@ const StepPreview = ({
 					</Avatar>
 					<Box>
 						<Typography variant="h6" sx={{ fontWeight: 600, fontSize: '1.1rem' }}>
-							Step {previewData.stepNumber} - {previewData.type === 'inspection' ? 'Inspection Report' : 'Measurement Report'}
+							Step {previewData.stepNumber} -{' '}
+							{previewData.type === 'inspection' ? 'Inspection Report' : 'Measurement Report'}
 						</Typography>
 						<Typography variant="caption" sx={{ color: 'text.secondary' }}>
 							{previewData.title}
@@ -684,10 +740,13 @@ const StepPreview = ({
 						startIcon={<Check />}
 						size="small"
 					>
-						{productionApproved 
-							? (previewData.type === 'inspection' ? 'Inspection Approved' : 'Production Approved')
-							: (previewData.type === 'inspection' ? 'Approve Inspection' : 'Approve Production')
-						}
+						{productionApproved
+							? previewData.type === 'inspection'
+								? 'Inspection Approved'
+								: 'Production Approved'
+							: previewData.type === 'inspection'
+								? 'Approve Inspection'
+								: 'Approve Production'}
 					</Button>
 					{previewData.ctq && (
 						<Button

@@ -26,9 +26,14 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 			// This is a step group - we need to extract the sub-step data from formData
 			// The formData should contain the stepId and stepGroupId
 			if (formData.stepId && formData.stepGroupId) {
-			// Extract the actual data value, excluding the metadata
-			const { stepId: _stepId, stepGroupId: _stepGroupId, prcTemplateStepId: _prcTemplateStepId, ...actualData } = formData;
-				
+				// Extract the actual data value, excluding the metadata
+				const {
+					stepId: _stepId,
+					stepGroupId: _stepGroupId,
+					prcTemplateStepId: _prcTemplateStepId,
+					...actualData
+				} = formData;
+
 				return {
 					[step.prcTemplateStepId.toString()]: {
 						[formData.stepGroupId.toString()]: {

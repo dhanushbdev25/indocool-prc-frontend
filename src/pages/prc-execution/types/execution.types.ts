@@ -125,26 +125,26 @@ export interface TimelineStep {
 	// For sequence step groups
 	stepGroup?: StepGroup;
 	prcTemplateStepId?: number;
-		// For individual sequence steps (when within a step group)
-		stepData?: {
-			prcTemplateStepId: number;
-			stepGroupId?: number; // Only for sequence steps
-			stepId?: number; // Only for sequence steps
-			stepType?: string; // Measurement, Check, Operation, Inspection (only for sequence steps)
-			targetValueType?: string; // range, exact value, ok/not ok (only for sequence steps)
-			uom?: string; // Only for sequence steps
-			minValue?: string; // Only for sequence steps
-			maxValue?: string; // Only for sequence steps
-			minimumAcceptanceValue?: string; // Only for sequence steps
-			maximumAcceptanceValue?: string; // Only for sequence steps
-			multipleMeasurements?: boolean; // Only for sequence steps
-			multipleMeasurementMaxCount?: number; // Only for sequence steps
-			notes?: string; // Only for sequence steps
-			parameterDescription?: string; // Only for sequence steps
-			evaluationMethod?: string; // Only for sequence steps
-			allowAttachments?: boolean; // Only for sequence steps
-			stepNumber?: number; // Only for sequence steps
-		};
+	// For individual sequence steps (when within a step group)
+	stepData?: {
+		prcTemplateStepId: number;
+		stepGroupId?: number; // Only for sequence steps
+		stepId?: number; // Only for sequence steps
+		stepType?: string; // Measurement, Check, Operation, Inspection (only for sequence steps)
+		targetValueType?: string; // range, exact value, ok/not ok (only for sequence steps)
+		uom?: string; // Only for sequence steps
+		minValue?: string; // Only for sequence steps
+		maxValue?: string; // Only for sequence steps
+		minimumAcceptanceValue?: string; // Only for sequence steps
+		maximumAcceptanceValue?: string; // Only for sequence steps
+		multipleMeasurements?: boolean; // Only for sequence steps
+		multipleMeasurementMaxCount?: number; // Only for sequence steps
+		notes?: string; // Only for sequence steps
+		parameterDescription?: string; // Only for sequence steps
+		evaluationMethod?: string; // Only for sequence steps
+		allowAttachments?: boolean; // Only for sequence steps
+		stepNumber?: number; // Only for sequence steps
+	};
 	// For inspection steps
 	inspectionParameters?: Array<{
 		id: number;

@@ -58,8 +58,11 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				} else if (typeof actualData === 'object' && actualData !== null) {
 					// Handle object data (like { value: "ok" })
 					if ('value' in actualData) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						return { formData: { value: (actualData as any).value.toString() }, measurements: [{ id: '1', value: '' }] };
+						return {
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							formData: { value: (actualData as any).value.toString() },
+							measurements: [{ id: '1', value: '' }]
+						};
 					}
 				}
 			}
@@ -82,12 +85,12 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	}
 
 	// Check if this specific sub-step is already filled
-	const isSubStepFilled = initialData && (
-		(initialData.formData && Object.keys(initialData.formData).length > 0) ||
-		(initialData.measurements && initialData.measurements.some(m => m.value && m.value.trim() !== ''))
-	);
+	const isSubStepFilled =
+		initialData &&
+		((initialData.formData && Object.keys(initialData.formData).length > 0) ||
+			(initialData.measurements && initialData.measurements.some(m => m.value && m.value.trim() !== '')));
 	const isReadOnly = step.status === 'completed' || isSubStepFilled;
-	
+
 	// Debug logging
 	console.log('SequenceStep Debug:', {
 		stepId: step.stepData?.stepId,
@@ -232,10 +235,10 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 								error={!!errors[`measurement_${measurement.id}`]}
 								helperText={errors[`measurement_${measurement.id}`]}
 								sx={{ flex: 1 }}
-								inputProps={{ 
-									min: stepData.minValue ? parseFloat(stepData.minValue) : 0, 
+								inputProps={{
+									min: stepData.minValue ? parseFloat(stepData.minValue) : 0,
 									max: stepData.maxValue ? parseFloat(stepData.maxValue) : undefined,
-									step: 0.01 
+									step: 0.01
 								}}
 								disabled={isReadOnly}
 							/>
@@ -271,10 +274,10 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					error={!!errors.value}
 					helperText={errors.value}
 					fullWidth
-					inputProps={{ 
-						min: stepData.minValue ? parseFloat(stepData.minValue) : 0, 
+					inputProps={{
+						min: stepData.minValue ? parseFloat(stepData.minValue) : 0,
 						max: stepData.maxValue ? parseFloat(stepData.maxValue) : undefined,
-						step: 0.01 
+						step: 0.01
 					}}
 					disabled={isReadOnly}
 				/>
@@ -396,7 +399,8 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 			{/* CTQ Warning */}
 			{step.ctq && stepData.minValue && stepData.maxValue && (
 				<Alert severity="warning" sx={{ mb: 2, py: 1 }}>
-					This is a Critical to Quality (CTQ) parameter. Values outside the acceptable range may require supervisor approval.
+					This is a Critical to Quality (CTQ) parameter. Values outside the acceptable range may require supervisor
+					approval.
 				</Alert>
 			)}
 

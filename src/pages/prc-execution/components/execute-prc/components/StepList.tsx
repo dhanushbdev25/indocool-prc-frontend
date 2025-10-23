@@ -73,137 +73,139 @@ const StepList = ({ steps, currentStepIndex, onStepClick }: StepListProps) => {
 								cursor: isStepClickable(step, index) ? 'pointer' : 'default',
 								opacity: isStepClickable(step, index) ? 1 : 0.6,
 								border: index === currentStepIndex ? '2px solid #2196f3' : '1px solid #e0e0e0',
-								'&:hover': isStepClickable(step, index) ? {
-									boxShadow: 2,
-									transform: 'translateY(-1px)',
-									transition: 'all 0.2s ease-in-out'
-								} : {}
+								'&:hover': isStepClickable(step, index)
+									? {
+											boxShadow: 2,
+											transform: 'translateY(-1px)',
+											transition: 'all 0.2s ease-in-out'
+										}
+									: {}
 							}}
 							onClick={() => isStepClickable(step, index) && onStepClick(index)}
 						>
-						<CardContent sx={{ p: 2 }}>
-							<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
-								{/* Step Icon */}
-								<Avatar
-									sx={{
-										width: 40,
-										height: 40,
-										backgroundColor: 'white',
-										border: `2px solid ${getStepColor(step, index)}`,
-										flexShrink: 0
-									}}
-								>
-									{getStepIcon(step, index)}
-								</Avatar>
+							<CardContent sx={{ p: 2 }}>
+								<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+									{/* Step Icon */}
+									<Avatar
+										sx={{
+											width: 40,
+											height: 40,
+											backgroundColor: 'white',
+											border: `2px solid ${getStepColor(step, index)}`,
+											flexShrink: 0
+										}}
+									>
+										{getStepIcon(step, index)}
+									</Avatar>
 
-								{/* Step Content */}
-								<Box sx={{ flex: 1, minWidth: 0 }}>
-									<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+									{/* Step Content */}
+									<Box sx={{ flex: 1, minWidth: 0 }}>
+										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+											<Typography
+												variant="body2"
+												sx={{
+													fontWeight: 600,
+													color: isStepClickable(step, index) ? '#333' : '#999'
+												}}
+											>
+												Step {step.stepNumber}
+											</Typography>
+											{step.ctq && (
+												<Chip
+													label="CTQ"
+													size="small"
+													sx={{
+														backgroundColor: '#fff3e0',
+														color: '#f57c00',
+														fontSize: '0.625rem',
+														height: 16
+													}}
+												/>
+											)}
+										</Box>
+
+										<Typography
+											variant="body1"
+											sx={{
+												fontWeight: 500,
+												color: isStepClickable(step, index) ? '#333' : '#999',
+												mb: 0.5
+											}}
+										>
+											{step.title}
+										</Typography>
+
 										<Typography
 											variant="body2"
 											sx={{
-												fontWeight: 600,
-												color: isStepClickable(step, index) ? '#333' : '#999'
+												color: '#666',
+												mb: 1,
+												lineHeight: 1.4,
+												display: '-webkit-box',
+												WebkitLineClamp: 2,
+												WebkitBoxOrient: 'vertical',
+												overflow: 'hidden'
 											}}
 										>
-											Step {step.stepNumber}
+											{step.description}
 										</Typography>
-										{step.ctq && (
+
+										<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 											<Chip
-												label="CTQ"
+												label={getStepTypeLabel(step)}
 												size="small"
 												sx={{
-													backgroundColor: '#fff3e0',
-													color: '#f57c00',
+													backgroundColor: '#f5f5f5',
+													color: '#666',
 													fontSize: '0.625rem',
-													height: 16
+													height: 20
 												}}
 											/>
-										)}
+											{step.status === 'completed' && (
+												<Chip
+													label="Completed"
+													size="small"
+													sx={{
+														backgroundColor: '#e8f5e8',
+														color: '#4caf50',
+														fontSize: '0.625rem',
+														height: 20
+													}}
+												/>
+											)}
+											{step.status === 'in-progress' && (
+												<Chip
+													label="In Progress"
+													size="small"
+													sx={{
+														backgroundColor: '#e3f2fd',
+														color: '#2196f3',
+														fontSize: '0.625rem',
+														height: 20
+													}}
+												/>
+											)}
+										</Box>
 									</Box>
 
-									<Typography
-										variant="body1"
-										sx={{
-											fontWeight: 500,
-											color: isStepClickable(step, index) ? '#333' : '#999',
-											mb: 0.5
-										}}
-									>
-										{step.title}
-									</Typography>
-
-									<Typography
-										variant="body2"
-										sx={{
-											color: '#666',
-											mb: 1,
-											lineHeight: 1.4,
-											display: '-webkit-box',
-											WebkitLineClamp: 2,
-											WebkitBoxOrient: 'vertical',
-											overflow: 'hidden'
-										}}
-									>
-										{step.description}
-									</Typography>
-
-									<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-										<Chip
-											label={getStepTypeLabel(step)}
-											size="small"
+									{/* Clickable Arrow */}
+									{isStepClickable(step, index) && (
+										<IconButton
 											sx={{
-												backgroundColor: '#f5f5f5',
 												color: '#666',
-												fontSize: '0.625rem',
-												height: 20
-											}}
-										/>
-										{step.status === 'completed' && (
-											<Chip
-												label="Completed"
-												size="small"
-												sx={{
-													backgroundColor: '#e8f5e8',
-													color: '#4caf50',
-													fontSize: '0.625rem',
-													height: 20
-												}}
-											/>
-										)}
-										{step.status === 'in-progress' && (
-											<Chip
-												label="In Progress"
-												size="small"
-												sx={{
-													backgroundColor: '#e3f2fd',
+												'&:hover': {
 													color: '#2196f3',
-													fontSize: '0.625rem',
-													height: 20
-												}}
-											/>
-										)}
-									</Box>
+													backgroundColor: 'rgba(33, 150, 243, 0.04)'
+												}
+											}}
+										>
+											<ArrowForward />
+										</IconButton>
+									)}
 								</Box>
-
-								{/* Clickable Arrow */}
-								{isStepClickable(step, index) && (
-									<IconButton
-										sx={{
-											color: '#666',
-											'&:hover': {
-												color: '#2196f3',
-												backgroundColor: 'rgba(33, 150, 243, 0.04)'
-											}
-										}}
-									>
-										<ArrowForward />
-									</IconButton>
-								)}
-							</Box>
-						</CardContent>
-					</Card>
-				))}
+							</CardContent>
+						</Card>
+					))}
 				</Box>
 			</Box>
 		</Box>

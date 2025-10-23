@@ -44,7 +44,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
 	const [annotations, setAnnotations] = useState<ImageAnnotation[]>(existingAnnotations);
 	const [mode, setMode] = useState<AnnotationMode>('none');
-	
+
 	// Update annotations when existingAnnotations prop changes
 	useEffect(() => {
 		console.log('ImageAnnotator: Updating annotations from existingAnnotations prop:', existingAnnotations);
@@ -236,7 +236,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 		setCommentDialog(false);
 		setComment('');
 		setSelectedAnnotation(null);
-		
+
 		// Auto-save annotations when a new annotation is created
 		console.log('ImageAnnotator: Auto-saving annotations after creating new annotation:', updatedAnnotations);
 		onSave(updatedAnnotations);
@@ -260,7 +260,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 			}
 
 			setAnnotations(updatedAnnotations);
-			
+
 			// Auto-save annotations when an annotation is deleted
 			console.log('ImageAnnotator: Auto-saving annotations after deleting annotation:', updatedAnnotations);
 			onSave(updatedAnnotations);
