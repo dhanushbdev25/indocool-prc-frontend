@@ -13,7 +13,12 @@ const filterMeasurementSteps = (groupData: Record<string, unknown>): Array<[stri
 	const metadataFields = ['stepCompleted', 'productionApproved', 'ctqApproved'];
 	return Object.entries(groupData).filter(([stepId]) => !metadataFields.includes(stepId));
 };
-import { type TimelineStep, type ExecutionData, type FormData, type StepPreviewData } from '../../types/execution.types';
+import {
+	type TimelineStep,
+	type ExecutionData,
+	type FormData,
+	type StepPreviewData
+} from '../../types/execution.types';
 import ExecutionHeader from './components/ExecutionHeader';
 import StepList from './components/StepList';
 import StepDetailView from './components/StepDetailView';
@@ -51,9 +56,13 @@ const ExecutePrc = () => {
 			// Extract the actual data from the API response wrapper
 			const actualData = (executionData as { data: ExecutionData }).data;
 			const steps = buildTimelineSteps(actualData);
-			setTimelineSteps(steps);
-			// Initialize current aggregated data
-			setCurrentAggregatedData(actualData.prcAggregatedSteps || {});
+
+			// Use setTimeout to avoid setState in effect warning
+			setTimeout(() => {
+				setTimelineSteps(steps);
+				// Initialize current aggregated data
+				setCurrentAggregatedData(actualData.prcAggregatedSteps || {});
+			}, 0);
 		}
 	}, [executionData, isUpdateProgressLoading, isExecutionDataFetching]);
 
@@ -81,7 +90,7 @@ const ExecutePrc = () => {
 	// Handle step completion - save data and determine next action
 	const handleStepComplete = async (stepFormData: FormData): Promise<void> => {
 		if (!currentStep || !executionData) return;
-		
+
 		try {
 			const endTime = new Date().toISOString();
 			const startTime = stepStartTimeRef.current || endTime;
@@ -99,14 +108,11 @@ const ExecutePrc = () => {
 			const stepAggregatedData = buildAggregatedData(stepToProcess, stepFormData);
 			const stepTimingData = buildTimingData(stepToProcess, startTime, endTime);
 
-		// Merge with existing data using the most current aggregated data
-		const mergedAggregatedData = mergeAggregatedData(
-			getCurrentAggregatedData(),
-			stepAggregatedData
-		);
-		// Get current timing data from execution data
-		const actualData = (executionData as { data: ExecutionData }).data;
-		const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
+			// Merge with existing data using the most current aggregated data
+			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
+			// Get current timing data from execution data
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
 
 			// Save step data to backend
 			await updateProgress({
@@ -127,7 +133,7 @@ const ExecutePrc = () => {
 			if (currentStep.type === 'sequence' && currentStep.stepGroup) {
 				// Use the merged data that includes the current sub-step data
 				const allStepsFilled = areAllStepsInGroupFilled(currentStep, mergedAggregatedData);
-				
+
 				console.log('Sequence step completion check:', {
 					currentStep: currentStep,
 					mergedAggregatedData,
@@ -135,42 +141,48 @@ const ExecutePrc = () => {
 					stepGroupId: currentStep.stepGroup.id,
 					prcTemplateStepId: currentStep.prcTemplateStepId
 				});
-				
+
 				if (allStepsFilled) {
 					// All steps completed, show preview screen for sequence steps
 					// Extract actual measurement data from the group with context
-					const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId?.toString() || ''] as Record<string, unknown>;
+					const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId?.toString() || ''] as Record<
+						string,
+						unknown
+					>;
 					const groupData = stepGroupData?.[currentStep.stepGroup?.id.toString() || ''] as Record<string, unknown>;
-					
+
 					// Create detailed measurement data with context
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					const detailedMeasurements: any[] = [];
 					if (groupData) {
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						filterMeasurementSteps(groupData).forEach(([stepId, stepData]: [string, any]) => {
-								// Find the step definition to get context
-								const stepDefinition = currentStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
-								detailedMeasurements.push({
-									stepId: stepId,
-									value: stepData.value || stepData.data,
-									parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-									stepType: stepDefinition?.stepType || 'Unknown',
-									evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-									uom: stepDefinition?.uom || '',
-									notes: stepDefinition?.notes || '',
-									ctq: stepDefinition?.ctq || false,
-									stepNumber: stepDefinition?.stepNumber || 0
-								});
+							// Find the step definition to get context
+							const stepDefinition = currentStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
+							detailedMeasurements.push({
+								stepId: stepId,
+								value: stepData.value || stepData.data,
+								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
+								stepType: stepDefinition?.stepType || 'Unknown',
+								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
+								uom: stepDefinition?.uom || '',
+								notes: stepDefinition?.notes || '',
+								ctq: stepDefinition?.ctq || false,
+								stepNumber: stepDefinition?.stepNumber || 0
 							});
+						});
 					}
-					
+
 					// Load approval state from backend (look inside step group)
 					let productionApproved = false;
 					let ctqApproved = false;
 					let stepCompleted = false;
-					
+
 					if (currentStep.prcTemplateStepId && currentStep.stepGroup) {
-						const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId.toString()] as Record<string, unknown>;
+						const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId.toString()] as Record<
+							string,
+							unknown
+						>;
 						if (stepGroupData && stepGroupData[currentStep.stepGroup.id.toString()]) {
 							const groupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
 							productionApproved = groupData.productionApproved === true;
@@ -178,7 +190,7 @@ const ExecutePrc = () => {
 							stepCompleted = groupData.stepCompleted === true;
 						}
 					}
-					
+
 					const newPreviewData: StepPreviewData = {
 						stepNumber: currentStep.stepNumber,
 						title: currentStep.title,
@@ -209,14 +221,14 @@ const ExecutePrc = () => {
 				// Use the merged aggregated data that includes the current step's data
 				const prcTemplateStepId = currentStep.stepData?.prcTemplateStepId;
 				let stepData = {};
-				
+
 				console.log('🔍 INSPECTION_PREVIEW_DEBUG:', {
 					prcTemplateStepId,
 					mergedAggregatedData,
 					rawDataKeys: Object.keys(mergedAggregatedData),
 					currentStepStepData: currentStep.stepData
 				});
-				
+
 				if (mergedAggregatedData && prcTemplateStepId) {
 					// Get the inspection data from the merged aggregated data
 					const templateData = mergedAggregatedData[prcTemplateStepId.toString()] as Record<string, unknown>;
@@ -232,7 +244,7 @@ const ExecutePrc = () => {
 				let productionApproved = false;
 				let ctqApproved = false;
 				let stepCompleted = false;
-				
+
 				if (mergedAggregatedData && prcTemplateStepId) {
 					const templateData = mergedAggregatedData[prcTemplateStepId.toString()] as Record<string, unknown>;
 					if (templateData) {
@@ -277,7 +289,6 @@ const ExecutePrc = () => {
 		}
 	};
 
-
 	// Helper function to check if all steps in a sequence group are filled (but not necessarily approved)
 	const areAllStepsInGroupFilled = (step: TimelineStep, aggregatedData?: Record<string, unknown>): boolean => {
 		if (!step.stepGroup || !step.prcTemplateStepId) {
@@ -317,11 +328,10 @@ const ExecutePrc = () => {
 		return allStepsFilled;
 	};
 
-
 	// Handle approval actions
 	const handleApproveProduction = async () => {
 		if (!currentStep || !executionData || !previewData) return;
-		
+
 		try {
 			// Update the step with production approval
 			const updatedStep = { ...currentStep, productionApproved: true };
@@ -331,10 +341,10 @@ const ExecutePrc = () => {
 
 			// Use the helper function to get the most current aggregated data
 			const currentPrcAggregatedSteps = getCurrentAggregatedData();
-			
+
 			// Deep copy to avoid mutating the original data
 			const updatedPrcAggregatedSteps = JSON.parse(JSON.stringify(currentPrcAggregatedSteps));
-			
+
 			console.log('Before PRODUCTION approval update:', {
 				currentStep: currentStep,
 				currentPrcAggregatedSteps,
@@ -342,19 +352,22 @@ const ExecutePrc = () => {
 				stepGroupId: currentStep.stepGroup?.id,
 				prcTemplateStepId: currentStep.prcTemplateStepId
 			});
-			
+
 			if (currentStep.type === 'sequence' && currentStep.prcTemplateStepId && currentStep.stepGroup) {
 				// Handle sequence step groups
 				// Ensure the structure exists and preserve existing data
 				if (!updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()]) {
 					updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()] = {};
 				}
-				
-				const stepGroupData = updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()] as Record<string, unknown>;
+
+				const stepGroupData = updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()] as Record<
+					string,
+					unknown
+				>;
 				if (!stepGroupData[currentStep.stepGroup.id.toString()]) {
 					stepGroupData[currentStep.stepGroup.id.toString()] = {};
 				}
-				
+
 				// Preserve existing step data and add approval
 				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
 				stepGroupData[currentStep.stepGroup.id.toString()] = {
@@ -364,12 +377,12 @@ const ExecutePrc = () => {
 			} else if (currentStep.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
 				// Handle inspection steps
 				const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
-				
+
 				// Ensure the structure exists and preserve existing data
 				if (!updatedPrcAggregatedSteps[prcTemplateStepId.toString()]) {
 					updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {};
 				}
-				
+
 				// Preserve existing step data and add approval
 				const existingStepData = updatedPrcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
 				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {
@@ -377,9 +390,9 @@ const ExecutePrc = () => {
 					productionApproved: true
 				};
 			}
-			
+
 			console.log('After PRODUCTION approval update:', updatedPrcAggregatedSteps);
-			
+
 			await updateProgress({
 				id: executionId,
 				data: {
@@ -390,11 +403,11 @@ const ExecutePrc = () => {
 			// Update local state
 			setTimelineSteps(updatedSteps);
 			setCurrentAggregatedData(updatedPrcAggregatedSteps);
-			
+
 			console.log('PRODUCTION approval - Updated currentAggregatedData:', updatedPrcAggregatedSteps);
-			
+
 			// Update preview data to reflect the approval
-			setPreviewData(prev => prev ? { ...prev, productionApproved: true } : null);
+			setPreviewData(prev => (prev ? { ...prev, productionApproved: true } : null));
 		} catch (error) {
 			console.error('Failed to update production approval:', error);
 		}
@@ -402,7 +415,7 @@ const ExecutePrc = () => {
 
 	const handleApproveCTQ = async () => {
 		if (!currentStep || !executionData || !previewData) return;
-		
+
 		try {
 			// Update the step with CTQ approval
 			const updatedStep = { ...currentStep, ctqApproved: true };
@@ -412,10 +425,10 @@ const ExecutePrc = () => {
 
 			// Use the helper function to get the most current aggregated data
 			const currentPrcAggregatedSteps = getCurrentAggregatedData();
-			
+
 			// Deep copy to avoid mutating the original data
 			const updatedPrcAggregatedSteps = JSON.parse(JSON.stringify(currentPrcAggregatedSteps));
-			
+
 			console.log('Before CTQ approval update:', {
 				currentStep: currentStep,
 				currentPrcAggregatedSteps,
@@ -423,19 +436,22 @@ const ExecutePrc = () => {
 				stepGroupId: currentStep.stepGroup?.id,
 				prcTemplateStepId: currentStep.prcTemplateStepId
 			});
-			
+
 			if (currentStep.type === 'sequence' && currentStep.prcTemplateStepId && currentStep.stepGroup) {
 				// Handle sequence step groups
 				// Ensure the structure exists and preserve existing data
 				if (!updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()]) {
 					updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()] = {};
 				}
-				
-				const stepGroupData = updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()] as Record<string, unknown>;
+
+				const stepGroupData = updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()] as Record<
+					string,
+					unknown
+				>;
 				if (!stepGroupData[currentStep.stepGroup.id.toString()]) {
 					stepGroupData[currentStep.stepGroup.id.toString()] = {};
 				}
-				
+
 				// Preserve existing step data and add approval
 				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
 				stepGroupData[currentStep.stepGroup.id.toString()] = {
@@ -445,12 +461,12 @@ const ExecutePrc = () => {
 			} else if (currentStep.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
 				// Handle inspection steps
 				const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
-				
+
 				// Ensure the structure exists and preserve existing data
 				if (!updatedPrcAggregatedSteps[prcTemplateStepId.toString()]) {
 					updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {};
 				}
-				
+
 				// Preserve existing step data and add approval
 				const existingStepData = updatedPrcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
 				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {
@@ -458,9 +474,9 @@ const ExecutePrc = () => {
 					ctqApproved: true
 				};
 			}
-			
+
 			console.log('After CTQ approval update:', updatedPrcAggregatedSteps);
-			
+
 			await updateProgress({
 				id: executionId,
 				data: {
@@ -471,11 +487,11 @@ const ExecutePrc = () => {
 			// Update local state
 			setTimelineSteps(updatedSteps);
 			setCurrentAggregatedData(updatedPrcAggregatedSteps);
-			
+
 			console.log('CTQ approval - Updated currentAggregatedData:', updatedPrcAggregatedSteps);
-			
+
 			// Update preview data to reflect the approval
-			setPreviewData(prev => prev ? { ...prev, ctqApproved: true } : null);
+			setPreviewData(prev => (prev ? { ...prev, ctqApproved: true } : null));
 		} catch (error) {
 			console.error('Failed to update CTQ approval:', error);
 		}
@@ -484,7 +500,7 @@ const ExecutePrc = () => {
 	// Handle proceeding to next step after approvals
 	const handleProceedToNext = async () => {
 		if (!currentStep || !executionData) return;
-		
+
 		try {
 			const endTime = new Date().toISOString();
 			const startTime = stepStartTimeRef.current || endTime;
@@ -494,10 +510,7 @@ const ExecutePrc = () => {
 			const stepTimingData = buildTimingData(currentStep, startTime, endTime);
 
 			// Merge with existing data using the most current aggregated data
-			let mergedAggregatedData = mergeAggregatedData(
-				getCurrentAggregatedData(),
-				stepAggregatedData
-			);
+			let mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
 			// Get current timing data from execution data
 			const actualData = (executionData as { data: ExecutionData }).data;
 			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
@@ -506,17 +519,17 @@ const ExecutePrc = () => {
 			if (currentStep.type === 'sequence' && currentStep.stepGroup && currentStep.prcTemplateStepId) {
 				// Create a deep copy to avoid read-only property issues
 				mergedAggregatedData = JSON.parse(JSON.stringify(mergedAggregatedData));
-				
+
 				// Ensure the structure exists
 				if (!mergedAggregatedData[currentStep.prcTemplateStepId.toString()]) {
 					mergedAggregatedData[currentStep.prcTemplateStepId.toString()] = {};
 				}
-				
+
 				const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId.toString()] as Record<string, unknown>;
 				if (!stepGroupData[currentStep.stepGroup.id.toString()]) {
 					stepGroupData[currentStep.stepGroup.id.toString()] = {};
 				}
-				
+
 				// Preserve existing data and add stepCompleted flag
 				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
 				stepGroupData[currentStep.stepGroup.id.toString()] = {
@@ -527,14 +540,14 @@ const ExecutePrc = () => {
 				// Handle inspection steps
 				// Create a deep copy to avoid read-only property issues
 				mergedAggregatedData = JSON.parse(JSON.stringify(mergedAggregatedData));
-				
+
 				const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
-				
+
 				// Ensure the structure exists
 				if (!mergedAggregatedData[prcTemplateStepId.toString()]) {
 					mergedAggregatedData[prcTemplateStepId.toString()] = {};
 				}
-				
+
 				// Preserve existing data and add stepCompleted flag
 				const existingStepData = mergedAggregatedData[prcTemplateStepId.toString()] as Record<string, unknown>;
 				mergedAggregatedData[prcTemplateStepId.toString()] = {
@@ -563,10 +576,10 @@ const ExecutePrc = () => {
 				prcAggregatedSteps: mergedAggregatedData,
 				stepStartEndTime: mergedTimingData
 			};
-			
+
 			// Update current aggregated data state
 			setCurrentAggregatedData(mergedAggregatedData);
-			
+
 			// Rebuild timeline steps with updated execution data
 			const updatedTimelineSteps = buildTimelineSteps(updatedExecutionData);
 			setTimelineSteps(updatedTimelineSteps);
@@ -605,44 +618,50 @@ const ExecutePrc = () => {
 		// For sequence step groups, check if all steps are filled
 		if (targetStep.type === 'sequence' && targetStep.stepGroup) {
 			const allStepsFilled = areAllStepsInGroupFilled(targetStep);
-			
+
 			if (allStepsFilled) {
 				// All steps completed, show preview
 				setCurrentStepIndex(stepIndex);
-				
+
 				// Extract actual measurement data from the group with context
-				const stepGroupData = getCurrentAggregatedData()?.[targetStep.prcTemplateStepId?.toString() || ''] as Record<string, unknown>;
+				const stepGroupData = getCurrentAggregatedData()?.[targetStep.prcTemplateStepId?.toString() || ''] as Record<
+					string,
+					unknown
+				>;
 				const groupData = stepGroupData?.[targetStep.stepGroup?.id.toString() || ''] as Record<string, unknown>;
-				
+
 				// Create detailed measurement data with context
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				const detailedMeasurements: any[] = [];
 				if (groupData) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					filterMeasurementSteps(groupData).forEach(([stepId, stepData]: [string, any]) => {
-							// Find the step definition to get context
-							const stepDefinition = targetStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
-							detailedMeasurements.push({
-								stepId: stepId,
-								value: stepData.value || stepData.data,
-								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-								stepType: stepDefinition?.stepType || 'Unknown',
-								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-								uom: stepDefinition?.uom || '',
-								notes: stepDefinition?.notes || '',
-								ctq: stepDefinition?.ctq || false,
-								stepNumber: stepDefinition?.stepNumber || 0
-							});
+						// Find the step definition to get context
+						const stepDefinition = targetStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
+						detailedMeasurements.push({
+							stepId: stepId,
+							value: stepData.value || stepData.data,
+							parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
+							stepType: stepDefinition?.stepType || 'Unknown',
+							evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
+							uom: stepDefinition?.uom || '',
+							notes: stepDefinition?.notes || '',
+							ctq: stepDefinition?.ctq || false,
+							stepNumber: stepDefinition?.stepNumber || 0
 						});
+					});
 				}
-				
+
 				// Load approval state from backend (look inside step group)
 				let productionApproved = false;
 				let ctqApproved = false;
 				let stepCompleted = false;
-				
+
 				if (targetStep.prcTemplateStepId && targetStep.stepGroup) {
-					const stepGroupData = getCurrentAggregatedData()?.[targetStep.prcTemplateStepId.toString()] as Record<string, unknown>;
+					const stepGroupData = getCurrentAggregatedData()?.[targetStep.prcTemplateStepId.toString()] as Record<
+						string,
+						unknown
+					>;
 					if (stepGroupData && stepGroupData[targetStep.stepGroup.id.toString()]) {
 						const groupData = stepGroupData[targetStep.stepGroup.id.toString()] as Record<string, unknown>;
 						productionApproved = groupData.productionApproved === true;
@@ -650,7 +669,7 @@ const ExecutePrc = () => {
 						stepCompleted = groupData.stepCompleted === true;
 					}
 				}
-				
+
 				const newPreviewData: StepPreviewData = {
 					stepNumber: targetStep.stepNumber,
 					title: targetStep.title,
@@ -661,7 +680,7 @@ const ExecutePrc = () => {
 					ctqApproved: ctqApproved,
 					stepCompleted: stepCompleted
 				};
-				
+
 				setPreviewData(newPreviewData);
 				setCurrentView('preview');
 				return;
@@ -684,16 +703,16 @@ const ExecutePrc = () => {
 				if (stepData && Object.keys(stepData).length > 0) {
 					// Data is filled, show preview
 					setCurrentStepIndex(stepIndex);
-					
+
 					// Load approval state from backend
 					let productionApproved = false;
 					let ctqApproved = false;
 					let stepCompleted = false;
-					
+
 					productionApproved = stepData.productionApproved === true;
 					ctqApproved = !targetStep.ctq || stepData.ctqApproved === true;
 					stepCompleted = stepData.stepCompleted === true;
-					
+
 					const newPreviewData: StepPreviewData = {
 						stepNumber: targetStep.stepNumber,
 						title: targetStep.title,
@@ -706,7 +725,7 @@ const ExecutePrc = () => {
 						inspectionParameters: targetStep.inspectionParameters,
 						inspectionMetadata: targetStep.inspectionMetadata
 					};
-					
+
 					setPreviewData(newPreviewData);
 					setCurrentView('preview');
 					return;
@@ -738,7 +757,10 @@ const ExecutePrc = () => {
 
 			return productionApproved && stepCompleted && ctqApproved;
 		} else if (step.type === 'inspection' && step.stepData?.prcTemplateStepId) {
-			const stepData = getCurrentAggregatedData()?.[step.stepData.prcTemplateStepId.toString()] as Record<string, unknown>;
+			const stepData = getCurrentAggregatedData()?.[step.stepData.prcTemplateStepId.toString()] as Record<
+				string,
+				unknown
+			>;
 			if (!stepData || Object.keys(stepData).length === 0) return false;
 
 			const productionApproved = stepData.productionApproved === true;
@@ -838,87 +860,87 @@ const ExecutePrc = () => {
 	return (
 		<>
 			<Backdrop
-				sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }}
+				sx={{ color: '#fff', zIndex: theme => theme.zIndex.drawer + 1 }}
 				open={isExecutionDataLoading || isExecutionDataFetching || isUpdateProgressLoading}
 			>
 				<CircularProgress color="inherit" />
 			</Backdrop>
-		<Box
-			sx={{
-				height: 'calc(100vh - 64px - 38px)', // Subtract header height + padding + border
-				display: 'flex',
-				flexDirection: 'column',
-				overflow: 'hidden',
-				margin: -3, // Counter the MainLayout padding
-				p: 3, // Add our own padding
-				boxSizing: 'border-box' // Ensure padding is included in height calculation
-			}}
-		>
-			{/* Header */}
-			<ExecutionHeader
-				executionData={actualExecutionData}
-				currentStep={currentStep}
-				totalSteps={timelineSteps.length}
-			/>
+			<Box
+				sx={{
+					height: 'calc(100vh - 64px - 38px)', // Subtract header height + padding + border
+					display: 'flex',
+					flexDirection: 'column',
+					overflow: 'hidden',
+					margin: -3, // Counter the MainLayout padding
+					p: 3, // Add our own padding
+					boxSizing: 'border-box' // Ensure padding is included in height calculation
+				}}
+			>
+				{/* Header */}
+				<ExecutionHeader
+					executionData={actualExecutionData}
+					currentStep={currentStep}
+					totalSteps={timelineSteps.length}
+				/>
 
-			{/* Main Content */}
-			<Box sx={{ flex: 1, overflow: 'hidden' }}>
-				{currentView === 'list' && (
-					<Box sx={{ display: 'flex', height: '100%' }}>
-						{/* Step List */}
-						<Box sx={{ flex: 1, borderRight: '1px solid #e0e0e0' }}>
-							<StepList
-						steps={timelineSteps}
-						currentStepIndex={currentStepIndex}
-						onStepClick={handleStepNavigation}
-					/>
-				</Box>
-						{/* Quick Stats */}
-						<Box sx={{ width: '300px', overflowY: 'auto' }}>
-							<ExecutionQuickStats
+				{/* Main Content */}
+				<Box sx={{ flex: 1, overflow: 'hidden' }}>
+					{currentView === 'list' && (
+						<Box sx={{ display: 'flex', height: '100%' }}>
+							{/* Step List */}
+							<Box sx={{ flex: 1, borderRight: '1px solid #e0e0e0' }}>
+								<StepList
+									steps={timelineSteps}
+									currentStepIndex={currentStepIndex}
+									onStepClick={handleStepNavigation}
+								/>
+							</Box>
+							{/* Quick Stats */}
+							<Box sx={{ width: '300px', overflowY: 'auto' }}>
+								<ExecutionQuickStats
+									executionData={actualExecutionData}
+									currentStep={currentStep}
+									totalSteps={timelineSteps.length}
+								/>
+							</Box>
+						</Box>
+					)}
+
+					{currentView === 'detail' && currentStep && (
+						<StepDetailView
+							step={currentStep}
 							executionData={actualExecutionData}
-								currentStep={currentStep}
-								totalSteps={timelineSteps.length}
+							onBackToList={handleBackToList}
+							onPreviousStep={() => {
+								if (currentStepIndex > 0) {
+									setCurrentStepIndex(prev => prev - 1);
+								}
+							}}
+							onNextStep={() => {
+								if (currentStepIndex < timelineSteps.length - 1) {
+									setCurrentStepIndex(prev => prev + 1);
+								}
+							}}
+							onStepComplete={handleStepComplete}
+							canGoPrevious={currentStepIndex > 0}
+							canGoNext={currentStepIndex < timelineSteps.length - 1}
 						/>
-					</Box>
+					)}
+
+					{currentView === 'preview' && previewData && (
+						<Box sx={{ height: '100%', overflowY: 'auto' }}>
+							<StepPreview
+								previewData={previewData}
+								onBackToStep={handleBackToStep}
+								onApproveProduction={handleApproveProduction}
+								onApproveCTQ={handleApproveCTQ}
+								onProceedToNext={handleProceedToNext}
+								onBackToStepGroup={currentStep?.type === 'sequence' ? handleBackToStepGroup : undefined}
+							/>
+						</Box>
+					)}
 				</Box>
-				)}
-
-				{currentView === 'detail' && currentStep && (
-					<StepDetailView
-						step={currentStep}
-						executionData={actualExecutionData}
-						onBackToList={handleBackToList}
-						onPreviousStep={() => {
-							if (currentStepIndex > 0) {
-								setCurrentStepIndex(prev => prev - 1);
-							}
-						}}
-						onNextStep={() => {
-							if (currentStepIndex < timelineSteps.length - 1) {
-								setCurrentStepIndex(prev => prev + 1);
-							}
-						}}
-						onStepComplete={handleStepComplete}
-						canGoPrevious={currentStepIndex > 0}
-						canGoNext={currentStepIndex < timelineSteps.length - 1}
-					/>
-				)}
-
-				{currentView === 'preview' && previewData && (
-					<Box sx={{ height: '100%', overflowY: 'auto' }}>
-						<StepPreview
-							previewData={previewData}
-							onBackToStep={handleBackToStep}
-							onApproveProduction={handleApproveProduction}
-							onApproveCTQ={handleApproveCTQ}
-							onProceedToNext={handleProceedToNext}
-							onBackToStepGroup={currentStep?.type === 'sequence' ? handleBackToStepGroup : undefined}
-						/>
-					</Box>
-				)}
 			</Box>
-		</Box>
 		</>
 	);
 };

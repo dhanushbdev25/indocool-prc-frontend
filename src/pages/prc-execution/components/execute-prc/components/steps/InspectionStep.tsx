@@ -74,7 +74,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						// Handle the current storage structure: { "30": { "value": "1", "annotations": [...] } }
 						const paramFormData: Record<string, unknown> = {};
 						let hasAnnotations = false;
-						
+
 						Object.entries(parameterData).forEach(([columnName, value]) => {
 							if (columnName === 'annotations' && Array.isArray(value)) {
 								// Handle annotations
@@ -91,14 +91,18 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 									Object.entries(actualValue as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
 										const key = `${parameterId}_${subColumnName}`;
 										newFormData[key] = String(subValue);
-										console.log(`Loading double-nested multi-column data: ${parameterId}.value.value.${subColumnName} -> ${key} = ${subValue}`);
+										console.log(
+											`Loading double-nested multi-column data: ${parameterId}.value.value.${subColumnName} -> ${key} = ${subValue}`
+										);
 									});
 								} else {
 									// Single nesting case: { "value": { "Date": "213" } }
 									Object.entries(value as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
 										const key = `${parameterId}_${subColumnName}`;
 										newFormData[key] = String(subValue);
-										console.log(`Loading single-nested multi-column data: ${parameterId}.value.${subColumnName} -> ${key} = ${subValue}`);
+										console.log(
+											`Loading single-nested multi-column data: ${parameterId}.value.${subColumnName} -> ${key} = ${subValue}`
+										);
 									});
 								}
 							} else if (columnName === 'value') {
@@ -107,11 +111,15 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								if (actualValue !== undefined) {
 									// Double nesting case: { "value": { "value": "1" } }
 									paramFormData.value = String(actualValue);
-									console.log(`Loading double-nested single value data: ${parameterId}.value.value -> ${parameterId} = ${actualValue}`);
+									console.log(
+										`Loading double-nested single value data: ${parameterId}.value.value -> ${parameterId} = ${actualValue}`
+									);
 								} else {
 									// Single nesting case: { "value": "1" }
 									paramFormData.value = String(value);
-									console.log(`Loading single-nested single value data: ${parameterId}.value -> ${parameterId} = ${value}`);
+									console.log(
+										`Loading single-nested single value data: ${parameterId}.value -> ${parameterId} = ${value}`
+									);
 								}
 							} else {
 								// Handle direct column data (fallback)
@@ -120,7 +128,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								console.log(`Loading direct column data: ${parameterId}.${columnName} -> ${key} = ${value}`);
 							}
 						});
-						
+
 						// If this parameter has annotations or a value, store it as an object
 						if (hasAnnotations || paramFormData.value !== undefined) {
 							newFormData[parameterId] = paramFormData;
@@ -148,7 +156,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			}
 		}
 		return {};
-	}, [executionData.prcAggregatedSteps, step.stepData?.prcTemplateStepId, step.inspectionParameters]);
+	}, [executionData.prcAggregatedSteps, step.stepData, step.inspectionParameters]);
 
 	const [formData, setFormData] = useState<FormData>(initialFormData);
 
@@ -157,7 +165,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		console.log('Initializing form data and annotations:', initialFormData);
 		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setFormData(initialFormData);
-		
+
 		// Initialize annotations from form data
 		if (initialFormData.annotations && Array.isArray(initialFormData.annotations)) {
 			console.log('Loading annotations from initialFormData.annotations:', initialFormData.annotations);
@@ -197,10 +205,10 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		// For single value parameters, use just the parameter ID as key
 		// For multi-column parameters, use parameterId_columnName format
 		const key = columnName === 'value' ? parameterId.toString() : `${parameterId}_${columnName}`;
-		
+
 		setFormData(prev => {
 			const newFormData = { ...prev };
-			
+
 			if (columnName === 'value') {
 				// For single value parameters, check if we already have an object structure
 				const existingValue = newFormData[parameterId.toString()];
@@ -220,7 +228,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				// For multi-column parameters, use the flat structure
 				newFormData[key] = value;
 			}
-			
+
 			return newFormData;
 		});
 
@@ -240,7 +248,10 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			const filtered = prev.filter(
 				ann =>
 					!step.inspectionParameters?.find(
-						param => param.id === parameterId && Array.isArray(param.files) && param.files.some(file => file.fileName === ann.imageFileName)
+						param =>
+							param.id === parameterId &&
+							Array.isArray(param.files) &&
+							param.files.some(file => file.fileName === ann.imageFileName)
 					)
 			);
 			// Add new annotations
@@ -256,7 +267,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				newFormData[parameterId.toString()] = {};
 			}
 			(newFormData[parameterId.toString()] as Record<string, unknown>).annotations = newAnnotations;
-			
+
 			console.log('Updated formData with annotations:', newFormData);
 			console.log('Annotations being saved for parameter', parameterId, ':', newAnnotations);
 			return newFormData;
@@ -290,7 +301,10 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 	const getAnnotationCount = (parameterId: number) => {
 		return annotations.filter(ann =>
 			step.inspectionParameters?.find(
-				param => param.id === parameterId && Array.isArray(param.files) && param.files.some(file => file.fileName === ann.imageFileName)
+				param =>
+					param.id === parameterId &&
+					Array.isArray(param.files) &&
+					param.files.some(file => file.fileName === ann.imageFileName)
 			)
 		).length;
 	};
@@ -318,7 +332,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				const key = param.id.toString();
 				const paramData = formData[key];
 				let value: string;
-				
+
 				// Extract value from object structure or use direct value
 				if (typeof paramData === 'object' && paramData !== null && 'value' in paramData) {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -326,7 +340,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				} else {
 					value = String(paramData || '');
 				}
-				
+
 				if (!value || value.trim() === '') {
 					newErrors[key] = 'Value is required';
 				} else if (param.type === 'number') {
@@ -381,7 +395,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			step.inspectionParameters?.forEach(param => {
 				if (Array.isArray(param.files) && param.files.length > 0) {
 					const parameterAnnotations = annotations.filter(ann =>
-						param.files.some(file => file.fileName === ann.imageFileName)
+						param.files?.some(file => file.fileName === ann.imageFileName)
 					);
 
 					console.log(`Parameter ${param.id} annotations:`, parameterAnnotations);
@@ -393,7 +407,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						}
 
 						const paramData = nestedData[param.id.toString()] as Record<string, unknown>;
-						
+
 						// Only add annotations if they don't already exist
 						if (!paramData.annotations) {
 							paramData.annotations = parameterAnnotations;
@@ -406,17 +420,24 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			console.log('Submitting data:', nestedData);
 			console.log('Data structure analysis:', {
 				formDataKeys: Object.keys(formData),
-				formDataTypes: Object.entries(formData).map(([key, value]) => ({ key, type: typeof value, isObject: typeof value === 'object' })),
+				formDataTypes: Object.entries(formData).map(([key, value]) => ({
+					key,
+					type: typeof value,
+					isObject: typeof value === 'object'
+				})),
 				nestedDataKeys: Object.keys(nestedData),
-				nestedDataStructure: Object.entries(nestedData).map(([key, value]) => ({ 
-					key, 
-					type: typeof value, 
+				nestedDataStructure: Object.entries(nestedData).map(([key, value]) => ({
+					key,
+					type: typeof value,
 					hasValue: typeof value === 'object' && value !== null && 'value' in value,
 					hasAnnotations: typeof value === 'object' && value !== null && 'annotations' in value,
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					valueType: typeof value === 'object' && value !== null ? typeof (value as any).value : 'N/A',
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					annotationsCount: typeof value === 'object' && value !== null && Array.isArray((value as any).annotations) ? (value as any).annotations.length : 0
+					annotationsCount:
+						typeof value === 'object' && value !== null && Array.isArray((value as any).annotations)
+							? (value as any).annotations.length
+							: 0
 				}))
 			});
 			onStepComplete(nestedData as FormData);
@@ -501,9 +522,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 							return (
 								<>
-									<TableRow 
-										key={param.id} 
-										sx={{ 
+									<TableRow
+										key={param.id}
+										sx={{
 											'&:hover': { backgroundColor: '#f8f9fa' },
 											'&:nth-of-type(odd)': { backgroundColor: '#fafafa' }
 										}}
@@ -519,14 +540,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											</Typography>
 										</TableCell>
 										<TableCell>
-											{param.ctq && (
-												<Chip 
-													label="CTQ" 
-													size="small" 
-													color="warning" 
-													sx={{ fontSize: '0.75rem' }}
-												/>
-											)}
+											{param.ctq && <Chip label="CTQ" size="small" color="warning" sx={{ fontSize: '0.75rem' }} />}
 										</TableCell>
 										<TableCell>
 											{hasMultipleColumns ? (
@@ -566,7 +580,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 														min: 0,
 														step: param.type === 'number' ? 0.01 : undefined
 													}}
-													sx={{ 
+													sx={{
 														minWidth: 120,
 														'& .MuiOutlinedInput-root': {
 															height: '40px'
@@ -580,26 +594,29 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 													<CameraAlt color="primary" fontSize="small" />
 													<Typography variant="caption" sx={{ color: '#666' }}>
-														{Array.isArray(param.files) ? param.files.length : 0} file{Array.isArray(param.files) && param.files.length !== 1 ? 's' : ''}
+														{Array.isArray(param.files) ? param.files.length : 0} file
+														{Array.isArray(param.files) && param.files.length !== 1 ? 's' : ''}
 													</Typography>
 													{annotationCount > 0 && (
-														<Chip 
-															label={annotationCount} 
-															size="small" 
-															color="primary" 
+														<Chip
+															label={annotationCount}
+															size="small"
+															color="primary"
 															sx={{ fontSize: '0.7rem', height: 20 }}
 														/>
 													)}
 												</Box>
 											) : (
-												<Typography variant="caption" sx={{ color: '#999' }}>No images</Typography>
+												<Typography variant="caption" sx={{ color: '#999' }}>
+													No images
+												</Typography>
 											)}
 										</TableCell>
 										<TableCell>
 											<Tooltip title={param.specification} arrow>
-												<Typography 
-													variant="caption" 
-													sx={{ 
+												<Typography
+													variant="caption"
+													sx={{
 														color: '#666',
 														display: '-webkit-box',
 														WebkitLineClamp: 2,
@@ -627,7 +644,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											</Box>
 										</TableCell>
 									</TableRow>
-									
+
 									{/* Expandable Multi-Column Row */}
 									{hasMultipleColumns && (
 										<TableRow key={`${param.id}-multicolumn`}>
@@ -637,7 +654,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 														<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2 }}>
 															{param.parameterName} - Multiple Fields
 														</Typography>
-														
+
 														<Grid container spacing={2}>
 															{param.columns?.map(column => {
 																const key = `${param.id}_${column.name}`;
@@ -677,7 +694,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											</TableCell>
 										</TableRow>
 									)}
-									
+
 									{/* Expandable Image Annotation Row */}
 									{hasImages && (
 										<TableRow key={`${param.id}-annotations`}>
@@ -690,28 +707,45 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																Image Annotation for {param.parameterName}
 															</Typography>
 														</Box>
-														
+
 														{/* Attached Files Info */}
-														<Box sx={{ mb: 2, p: 1, backgroundColor: '#e3f2fd', borderRadius: 0.5, border: '1px solid #bbdefb' }}>
-															<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
+														<Box
+															sx={{
+																mb: 2,
+																p: 1,
+																backgroundColor: '#e3f2fd',
+																borderRadius: 0.5,
+																border: '1px solid #bbdefb'
+															}}
+														>
+															<Typography
+																variant="caption"
+																sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}
+															>
 																Attached Files
 															</Typography>
 															<Box sx={{ mt: 0.5 }}>
-																{Array.isArray(param.files) && param.files.map((file, fileIndex) => (
-																	<Box key={fileIndex} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-																		<Typography variant="body2" sx={{ fontSize: '0.875rem', color: '#1565c0' }}>
-																			📎 {file.originalFileName}
-																		</Typography>
-																	</Box>
-																))}
+																{Array.isArray(param.files) &&
+																	param.files.map((file, fileIndex) => (
+																		<Box
+																			key={fileIndex}
+																			sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}
+																		>
+																			<Typography variant="body2" sx={{ fontSize: '0.875rem', color: '#1565c0' }}>
+																				📎 {file.originalFileName}
+																			</Typography>
+																		</Box>
+																	))}
 															</Box>
 														</Box>
 
 														<ImageAnnotator
 															images={Array.isArray(param.files) ? param.files : []}
 															existingAnnotations={(() => {
-																const filteredAnnotations = annotations.filter(ann =>
-																	Array.isArray(param.files) && param.files.some(file => file.fileName === ann.imageFileName)
+																const filteredAnnotations = annotations.filter(
+																	ann =>
+																		Array.isArray(param.files) &&
+																		param.files.some(file => file.fileName === ann.imageFileName)
 																);
 																console.log(`Filtering annotations for parameter ${param.id}:`, {
 																	allAnnotations: annotations,
