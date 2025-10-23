@@ -78,49 +78,51 @@ const RawMaterialsStep = ({ step, executionData, onStepComplete }: RawMaterialsS
 	};
 
 	return (
-		<Box sx={{ p: 3, backgroundColor: 'white' }}>
-			{/* Step Header */}
-			<Box sx={{ mb: 3 }}>
-				<Typography variant="h5" sx={{ fontWeight: 600, color: '#333', mb: 1 }}>
+		<Box sx={{ p: 2, backgroundColor: 'white' }}>
+			{/* Compact Step Header */}
+			<Box sx={{ mb: 2 }}>
+				<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', mb: 0.5, lineHeight: 1.3 }}>
 					{step.title}
 				</Typography>
-				<Typography variant="body2" sx={{ color: '#666' }}>
-					{step.description}
-				</Typography>
+				{step.description && step.description !== step.title && (
+					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+						{step.description}
+					</Typography>
+				)}
 			</Box>
 
 			{/* Materials Table */}
-			<TableContainer component={Paper} sx={{ mb: 3 }}>
-				<Table>
+			<TableContainer component={Paper} sx={{ mb: 2 }}>
+				<Table size="small">
 					<TableHead>
 						<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-							<TableCell sx={{ fontWeight: 600 }}>Material Code</TableCell>
-							<TableCell sx={{ fontWeight: 600 }}>Material Name</TableCell>
-							<TableCell sx={{ fontWeight: 600 }}>Required Qty</TableCell>
-							<TableCell sx={{ fontWeight: 600 }}>UOM</TableCell>
-							<TableCell sx={{ fontWeight: 600 }}>Actual Qty Used</TableCell>
+							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Material Code</TableCell>
+							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Material Name</TableCell>
+							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Required Qty</TableCell>
+							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>UOM</TableCell>
+							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Actual Qty Used</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
 						{step.items?.map(item => (
 							<TableRow key={item.id}>
-								<TableCell>
-									<Typography variant="body2" sx={{ fontWeight: 500 }}>
+								<TableCell sx={{ py: 1 }}>
+									<Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.875rem' }}>
 										{item.description}
 									</Typography>
 								</TableCell>
-								<TableCell>
-									<Typography variant="body2">{item.name}</Typography>
+								<TableCell sx={{ py: 1 }}>
+									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{item.name}</Typography>
 								</TableCell>
-								<TableCell>
-									<Typography variant="body2" sx={{ fontWeight: 500 }}>
+								<TableCell sx={{ py: 1 }}>
+									<Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.875rem' }}>
 										{item.quantity}
 									</Typography>
 								</TableCell>
-								<TableCell>
-									<Typography variant="body2">{item.uom}</Typography>
+								<TableCell sx={{ py: 1 }}>
+									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>{item.uom}</Typography>
 								</TableCell>
-								<TableCell>
+								<TableCell sx={{ py: 1 }}>
 									<TextField
 										size="small"
 										type="number"
@@ -141,14 +143,14 @@ const RawMaterialsStep = ({ step, executionData, onStepComplete }: RawMaterialsS
 
 			{/* Validation Alert */}
 			{Object.keys(errors).length > 0 && (
-				<Alert severity="error" sx={{ mb: 3 }}>
+				<Alert severity="error" sx={{ mb: 2, py: 1 }}>
 					Please fill in all required fields with valid values.
 				</Alert>
 			)}
 
 			{/* Submit Button */}
 			{!isReadOnly && (
-				<Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+				<Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 1 }}>
 					<Button
 						variant="contained"
 						onClick={handleSubmit}
@@ -159,7 +161,7 @@ const RawMaterialsStep = ({ step, executionData, onStepComplete }: RawMaterialsS
 							}
 						}}
 					>
-						Complete Step
+						Complete step
 					</Button>
 				</Box>
 			)}

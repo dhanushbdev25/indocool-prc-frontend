@@ -38,12 +38,18 @@ type AnnotationMode = 'none' | 'point' | 'polygon';
 const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	images,
 	existingAnnotations = [],
-	onSave: _onSave,
+	onSave,
 	readOnly = false
 }) => {
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
 	const [annotations, setAnnotations] = useState<ImageAnnotation[]>(existingAnnotations);
 	const [mode, setMode] = useState<AnnotationMode>('none');
+	
+	// Update annotations when existingAnnotations prop changes
+	useEffect(() => {
+		console.log('ImageAnnotator: Updating annotations from existingAnnotations prop:', existingAnnotations);
+		setAnnotations(existingAnnotations);
+	}, [existingAnnotations]);
 	const [isDrawing, setIsDrawing] = useState(false);
 	const [currentPolygon, setCurrentPolygon] = useState<[number, number][]>([]);
 	const [selectedAnnotation, setSelectedAnnotation] = useState<AnnotationRegion | null>(null);
@@ -230,7 +236,11 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 		setCommentDialog(false);
 		setComment('');
 		setSelectedAnnotation(null);
-	}, [selectedAnnotation, comment, currentImage, currentImageUrl, getCurrentImageAnnotations, annotations]);
+		
+		// Auto-save annotations when a new annotation is created
+		console.log('ImageAnnotator: Auto-saving annotations after creating new annotation:', updatedAnnotations);
+		onSave(updatedAnnotations);
+	}, [selectedAnnotation, comment, currentImage, currentImageUrl, getCurrentImageAnnotations, annotations, onSave]);
 
 	// Delete annotation
 	const handleDeleteAnnotation = useCallback(
@@ -250,18 +260,22 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 			}
 
 			setAnnotations(updatedAnnotations);
+			
+			// Auto-save annotations when an annotation is deleted
+			console.log('ImageAnnotator: Auto-saving annotations after deleting annotation:', updatedAnnotations);
+			onSave(updatedAnnotations);
 		},
-		[currentImage, getCurrentImageAnnotations, annotations, currentImageUrl]
+		[currentImage, getCurrentImageAnnotations, annotations, currentImageUrl, onSave]
 	);
 
-	// Save all annotations (removed save button but keep function for future use)
-	// const handleSaveAll = useCallback(() => {
-	// 	onSave(annotations);
-	// }, [annotations, onSave]);
+	// Save all annotations
+	const handleSaveAll = useCallback(() => {
+		console.log('ImageAnnotator: Saving annotations:', annotations);
+		onSave(annotations);
+	}, [annotations, onSave]);
 
 	// Reset drawing state when mode changes
 	useEffect(() => {
-		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setIsDrawing(false);
 
 		setCurrentPolygon([]);
@@ -492,6 +506,15 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 								onClick={() => setMode(mode === 'polygon' ? 'none' : 'polygon')}
 							>
 								Polygon
+							</Button>
+							<Button
+								variant="contained"
+								size="small"
+								startIcon={<CheckCircle />}
+								onClick={handleSaveAll}
+								color="primary"
+							>
+								Save Annotations
 							</Button>
 						</>
 					)}

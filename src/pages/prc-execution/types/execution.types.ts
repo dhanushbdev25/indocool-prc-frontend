@@ -26,6 +26,84 @@ export interface ImageAnnotation {
 	regions: AnnotationRegion[];
 }
 
+export interface StepGroup {
+	id: number;
+	processName: string;
+	processDescription: string;
+	steps: Array<{
+		id: number;
+		ctq: boolean;
+		stepType: string;
+		targetValueType: string;
+		uom: string;
+		minValue?: string;
+		maxValue?: string;
+		minimumAcceptanceValue?: string;
+		maximumAcceptanceValue?: string;
+		multipleMeasurements: boolean;
+		multipleMeasurementMaxCount?: number;
+		notes: string;
+		parameterDescription: string;
+		evaluationMethod: string;
+		allowAttachments: boolean;
+		stepNumber: number;
+		version: number;
+		isLatest: boolean;
+		createdAt: string;
+		updatedAt: string;
+		processStepGroupId: number;
+	}>;
+}
+
+export interface StepPreviewData {
+	stepNumber: number;
+	title: string;
+	type: 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
+	ctq: boolean;
+	data: Record<string, unknown> | unknown[];
+	productionApproved: boolean;
+	ctqApproved: boolean;
+	stepCompleted: boolean;
+	// Additional metadata for inspection steps
+	inspectionParameters?: Array<{
+		id: number;
+		parameterName: string;
+		type: string;
+		ctq: boolean;
+		role: string;
+		columns: Array<{
+			name: string;
+			type: string;
+			defaultValue?: string;
+			tolerance?: string;
+		}>;
+		specification: string;
+		order: number;
+		tolerance?: string;
+		files?: Array<{
+			fileName: string;
+			filePath: string;
+			originalFileName: string;
+		}>;
+		version: number;
+		isLatest: boolean;
+		createdAt: string;
+		updatedAt: string;
+		inspectionId: number;
+	}>;
+	inspectionMetadata?: {
+		id: number;
+		type: string;
+		status: string;
+		version: number;
+		isLatest: boolean;
+		createdAt: string;
+		updatedAt: string;
+		inspectionId: string;
+		inspectionName: string;
+	};
+}
+
 export interface TimelineStep {
 	stepNumber: number;
 	type: 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
@@ -33,6 +111,8 @@ export interface TimelineStep {
 	description: string;
 	status: 'completed' | 'in-progress' | 'pending';
 	ctq: boolean;
+	productionApproved?: boolean;
+	ctqApproved?: boolean;
 	// For raw materials/bom
 	items?: Array<{
 		id: number;
@@ -42,22 +122,29 @@ export interface TimelineStep {
 		description?: string;
 		materialType?: string;
 	}>;
-	// For sequence steps
-	stepData?: {
-		prcTemplateStepId: number;
-		stepGroupId?: number; // Only for sequence steps
-		stepId?: number; // Only for sequence steps
-		stepType?: string; // Measurement, Check, Operation, Inspection (only for sequence steps)
-		targetValueType?: string; // range, exact value, ok/not ok (only for sequence steps)
-		uom?: string; // Only for sequence steps
-		minValue?: string; // Only for sequence steps
-		maxValue?: string; // Only for sequence steps
-		multipleMeasurements?: boolean; // Only for sequence steps
-		notes?: string; // Only for sequence steps
-		parameterDescription?: string; // Only for sequence steps
-		evaluationMethod?: string; // Only for sequence steps
-		allowAttachments?: boolean; // Only for sequence steps
-	};
+	// For sequence step groups
+	stepGroup?: StepGroup;
+	prcTemplateStepId?: number;
+		// For individual sequence steps (when within a step group)
+		stepData?: {
+			prcTemplateStepId: number;
+			stepGroupId?: number; // Only for sequence steps
+			stepId?: number; // Only for sequence steps
+			stepType?: string; // Measurement, Check, Operation, Inspection (only for sequence steps)
+			targetValueType?: string; // range, exact value, ok/not ok (only for sequence steps)
+			uom?: string; // Only for sequence steps
+			minValue?: string; // Only for sequence steps
+			maxValue?: string; // Only for sequence steps
+			minimumAcceptanceValue?: string; // Only for sequence steps
+			maximumAcceptanceValue?: string; // Only for sequence steps
+			multipleMeasurements?: boolean; // Only for sequence steps
+			multipleMeasurementMaxCount?: number; // Only for sequence steps
+			notes?: string; // Only for sequence steps
+			parameterDescription?: string; // Only for sequence steps
+			evaluationMethod?: string; // Only for sequence steps
+			allowAttachments?: boolean; // Only for sequence steps
+			stepNumber?: number; // Only for sequence steps
+		};
 	// For inspection steps
 	inspectionParameters?: Array<{
 		id: number;
@@ -73,12 +160,30 @@ export interface TimelineStep {
 		}>;
 		specification: string;
 		order: number;
+		tolerance?: string;
 		files?: Array<{
 			fileName: string;
 			filePath: string;
 			originalFileName: string;
 		}>;
+		version: number;
+		isLatest: boolean;
+		createdAt: string;
+		updatedAt: string;
+		inspectionId: number;
 	}>;
+	// For inspection metadata
+	inspectionMetadata?: {
+		id: number;
+		type: string;
+		status: string;
+		version: number;
+		isLatest: boolean;
+		createdAt: string;
+		updatedAt: string;
+		inspectionId: string;
+		inspectionName: string;
+	};
 }
 
 export interface ExecutionData {
