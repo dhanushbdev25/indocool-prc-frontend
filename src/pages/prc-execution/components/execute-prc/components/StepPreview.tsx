@@ -18,8 +18,10 @@ import {
 	Paper,
 	Grid
 } from '@mui/material';
-import { ArrowBack, CheckCircle, Visibility, Check, ArrowForward, Image as ImageIcon } from '@mui/icons-material';
+import { ArrowBack, CheckCircle, Visibility, Check, ArrowForward } from '@mui/icons-material';
 import { type StepPreviewData } from '../../../types/execution.types';
+import ImageDisplay from './ImageDisplay';
+import { debugDataTransformation } from '../../../utils/dataTransformers';
 
 interface StepPreviewProps {
 	previewData: StepPreviewData;
@@ -64,7 +66,128 @@ const StepPreview = ({
 	const canProceed = productionApproved && (!previewData.ctq || ctqApproved) && !previewData.stepCompleted;
 
 	const renderDataSummary = () => {
-		const { data } = previewData;
+		let { data } = previewData;
+
+		// Transform data if it's in the new nested format
+		if (previewData.type === 'inspection' && typeof data === 'object' && data !== null) {
+			console.log('🔍 StepPreview: Processing inspection data...', data);
+
+			// Check if data has the nested structure (prcAggregatedSteps format)
+			const dataKeys = Object.keys(data);
+			console.log('🔍 StepPreview: Data keys:', dataKeys);
+
+			// Check if any parameter has annotations in object format instead of array format
+			const needsTransformation = dataKeys.some(key => {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const value = (data as any)[key];
+				if (typeof value === 'object' && value !== null && 'annotations' in value) {
+					const annotations = value.annotations;
+					// Check if annotations is an object instead of an array
+					return typeof annotations === 'object' && annotations !== null && !Array.isArray(annotations);
+				}
+				return false;
+			});
+
+			if (needsTransformation) {
+				console.log('🔄 StepPreview: Detected object-based annotations, transforming...', data);
+
+				// Transform the data to convert object-based annotations to arrays
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const transformedData: Record<string, any> = {};
+
+				Object.entries(data).forEach(([key, value]) => {
+					// Skip system parameters
+					if (['stepCompleted', 'productionApproved', 'ctqApproved'].includes(key)) {
+						return;
+					}
+
+					if (typeof value === 'object' && value !== null) {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						const transformedParam: any = {};
+
+						// Copy value if it exists
+						if ('value' in value) {
+							transformedParam.value = value.value;
+						}
+
+						// Transform annotations from object to array
+						if ('annotations' in value && value.annotations) {
+							const annotations = value.annotations;
+							if (typeof annotations === 'object' && !Array.isArray(annotations)) {
+								// Convert object to array and transform regions within each annotation
+								transformedParam.annotations = Object.keys(annotations)
+									.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+									.map(key => {
+										// eslint-disable-next-line @typescript-eslint/no-explicit-any
+										const annotation = (annotations as any)[key];
+										if (typeof annotation === 'object' && annotation !== null) {
+											const transformedAnnotation = { ...annotation };
+
+											// Transform regions from object to array
+											if ('regions' in annotation && annotation.regions) {
+												const regions = annotation.regions;
+												if (typeof regions === 'object' && !Array.isArray(regions)) {
+													// Convert regions object to array
+													transformedAnnotation.regions = Object.keys(regions)
+														.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+														.map(regionKey => {
+															// eslint-disable-next-line @typescript-eslint/no-explicit-any
+															const region = (regions as any)[regionKey];
+															if (typeof region === 'object' && region !== null) {
+																const transformedRegion = { ...region };
+
+																// Transform points from object to array
+																if ('points' in region && region.points) {
+																	const points = region.points;
+																	if (typeof points === 'object' && !Array.isArray(points)) {
+																		// Convert points object to array
+																		transformedRegion.points = Object.keys(points)
+																			.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
+																			.map(pointKey => {
+																				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+																				const point = (points as any)[pointKey];
+																				if (
+																					typeof point === 'object' &&
+																					point !== null &&
+																					'0' in point &&
+																					'1' in point
+																				) {
+																					return [point['0'], point['1']];
+																				}
+																				return [0, 0];
+																			});
+																	}
+																}
+
+																return transformedRegion;
+															}
+															return region;
+														});
+												}
+											}
+
+											return transformedAnnotation;
+										}
+										return annotation;
+									});
+							} else {
+								transformedParam.annotations = annotations;
+							}
+						}
+
+						// Only add if there's actual data
+						if (Object.keys(transformedParam).length > 0) {
+							transformedData[key] = transformedParam;
+						}
+					}
+				});
+
+				data = transformedData;
+				debugDataTransformation(previewData.data, data, 'StepPreview');
+			} else {
+				console.log('ℹ️ StepPreview: Data appears to be in expected format already');
+			}
+		}
 
 		if (previewData.type === 'sequence') {
 			// Handle sequence data - show as compact report table
@@ -273,7 +396,17 @@ const StepPreview = ({
 
 					<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 						Inspection Report (
-						{Object.keys(data).filter(key => key !== 'data' && key !== 'startTime' && key !== 'endTime').length}{' '}
+						{
+							Object.keys(data).filter(
+								key =>
+									key !== 'data' &&
+									key !== 'startTime' &&
+									key !== 'endTime' &&
+									key !== 'stepCompleted' &&
+									key !== 'productionApproved' &&
+									key !== 'ctqApproved'
+							).length
+						}{' '}
 						parameters)
 					</Typography>
 					<TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
@@ -291,7 +424,15 @@ const StepPreview = ({
 							</TableHead>
 							<TableBody>
 								{Object.entries(data)
-									.filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime')
+									.filter(
+										([key]) =>
+											key !== 'data' &&
+											key !== 'startTime' &&
+											key !== 'endTime' &&
+											key !== 'stepCompleted' &&
+											key !== 'productionApproved' &&
+											key !== 'ctqApproved'
+									)
 									.map(([parameterId, parameterData], index) => {
 										// Find the corresponding inspection parameter metadata
 										const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
@@ -480,7 +621,15 @@ const StepPreview = ({
 
 					{/* Image Annotations Section */}
 					{Object.entries(data)
-						.filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime')
+						.filter(
+							([key]) =>
+								key !== 'data' &&
+								key !== 'startTime' &&
+								key !== 'endTime' &&
+								key !== 'stepCompleted' &&
+								key !== 'productionApproved' &&
+								key !== 'ctqApproved'
+						)
 						.some(
 							([_, parameterData]) =>
 								typeof parameterData === 'object' &&
@@ -496,7 +645,15 @@ const StepPreview = ({
 								Image Annotations
 							</Typography>
 							{Object.entries(data)
-								.filter(([key]) => key !== 'data' && key !== 'startTime' && key !== 'endTime')
+								.filter(
+									([key]) =>
+										key !== 'data' &&
+										key !== 'startTime' &&
+										key !== 'endTime' &&
+										key !== 'stepCompleted' &&
+										key !== 'productionApproved' &&
+										key !== 'ctqApproved'
+								)
 								.map(([parameterId, parameterData]) => {
 									// Find the corresponding inspection parameter metadata
 									const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
@@ -504,6 +661,14 @@ const StepPreview = ({
 									if (typeof parameterData === 'object' && parameterData !== null && 'annotations' in parameterData) {
 										// eslint-disable-next-line @typescript-eslint/no-explicit-any
 										const annotations = (parameterData as any).annotations;
+										console.log('🖼️ StepPreview: Processing annotations for parameter:', {
+											parameterId,
+											parameterData,
+											annotations,
+											isArray: Array.isArray(annotations),
+											length: annotations?.length
+										});
+
 										if (Array.isArray(annotations) && annotations.length > 0) {
 											return (
 												<Box key={parameterId} sx={{ mb: 2 }}>
@@ -518,6 +683,24 @@ const StepPreview = ({
 																paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)
 																	?.originalFileName || annotation.imageFileName;
 
+															// Construct image URL - use annotation.imageUrl if available, otherwise construct from filePath
+															let imageUrl =
+																annotation.imageUrl ||
+																`${process.env.API_BASE_URL_PRE_AUTH}${paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath || ''}`;
+
+															// Normalize URL - replace backslashes with forward slashes
+															imageUrl = imageUrl.replace(/\\/g, '/');
+
+															console.log('🖼️ StepPreview: Image URL construction:', {
+																parameterId,
+																annotationIndex,
+																annotation,
+																paramMeta,
+																imageUrl,
+																annotationImageUrl: annotation.imageUrl,
+																constructedUrl: `${process.env.API_BASE_URL_PRE_AUTH}${paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath || ''}`
+															});
+
 															return (
 																<Box
 																	key={annotationIndex}
@@ -529,24 +712,20 @@ const StepPreview = ({
 																		border: '1px solid #e9ecef'
 																	}}
 																>
-																	<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-																		<ImageIcon color="primary" fontSize="small" />
-																		<Typography variant="body2" sx={{ fontWeight: 500, color: '#333' }}>
-																			{originalFileName}
-																		</Typography>
-																		<Chip
-																			label={`${annotation.regions?.length || 0} annotations`}
-																			size="small"
-																			sx={{
-																				backgroundColor: '#e3f2fd',
-																				color: '#1976d2',
-																				fontSize: '0.7rem',
-																				height: 20
-																			}}
+																	{/* Image Display with Annotations */}
+																	<Box sx={{ mb: 2 }}>
+																		<ImageDisplay
+																			key={`${parameterId}-${annotationIndex}-${annotation.imageFileName}`}
+																			imageUrl={imageUrl}
+																			imageFileName={annotation.imageFileName}
+																			originalFileName={originalFileName}
+																			annotations={annotation.regions || []}
+																			readOnly={true}
+																			showAnnotations={true}
 																		/>
 																	</Box>
 
-																	{/* Display annotation regions */}
+																	{/* Display annotation regions details */}
 																	{annotation.regions && annotation.regions.length > 0 && (
 																		<Box sx={{ mt: 1 }}>
 																			<Typography
@@ -639,7 +818,17 @@ const StepPreview = ({
 									Total Parameters
 								</Typography>
 								<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
-									{Object.keys(data).filter(key => key !== 'data' && key !== 'startTime' && key !== 'endTime').length}
+									{
+										Object.keys(data).filter(
+											key =>
+												key !== 'data' &&
+												key !== 'startTime' &&
+												key !== 'endTime' &&
+												key !== 'stepCompleted' &&
+												key !== 'productionApproved' &&
+												key !== 'ctqApproved'
+										).length
+									}
 								</Typography>
 							</Grid>
 							<Grid size={{ xs: 6, sm: 3 }}>

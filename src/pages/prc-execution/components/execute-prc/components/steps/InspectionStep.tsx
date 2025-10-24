@@ -26,6 +26,7 @@ import {
 	type ImageAnnotation
 } from '../../../../types/execution.types';
 import ImageAnnotator from '../ImageAnnotator';
+import { transformPrcAggregatedData, debugDataTransformation } from '../../../../utils/dataTransformers';
 
 interface InspectionStepProps {
 	step: TimelineStep;
@@ -65,11 +66,19 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			}
 
 			if (existingData && typeof existingData === 'object') {
+				// Transform data if it's in the new nested format
+				console.log('🔄 InspectionStep: Processing existing data...', existingData);
+				const transformedData = transformPrcAggregatedData({ temp: existingData });
+				debugDataTransformation(existingData, transformedData, 'InspectionStep');
+
+				// Use transformed data if available, otherwise use original
+				const dataToProcess = Object.keys(transformedData).length > 0 ? transformedData : existingData;
+
 				// Convert the nested structure to flat form data
 				const newFormData: FormData = {};
 				const extractedAnnotations: ImageAnnotation[] = [];
 
-				Object.entries(existingData).forEach(([parameterId, parameterData]) => {
+				Object.entries(dataToProcess).forEach(([parameterId, parameterData]) => {
 					if (typeof parameterData === 'object' && parameterData !== null) {
 						// Handle the current storage structure: { "30": { "value": "1", "annotations": [...] } }
 						const paramFormData: Record<string, unknown> = {};
