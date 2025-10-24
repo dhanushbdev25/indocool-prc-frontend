@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Stage, Layer, Image as KonvaImage, Circle, Line, Group } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Circle, Line, Group, Text } from 'react-konva';
 import type Konva from 'konva';
 import {
 	Box,
@@ -152,29 +152,46 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 
 			return (
 				<Group key={index}>
-					{/* Outer glow effect */}
-					<Circle
-						x={x}
-						y={y}
-						radius={10}
-						fill="rgba(244, 67, 54, 0.15)"
-						stroke="rgba(244, 67, 54, 0.3)"
-						strokeWidth={1}
-					/>
-					{/* Main badge circle */}
-					<Circle
-						x={x}
-						y={y}
-						radius={8}
-						fill="#f44336"
-						stroke="#ffffff"
-						strokeWidth={2}
-						shadowColor="rgba(0, 0, 0, 0.3)"
-						shadowBlur={4}
-						shadowOffset={{ x: 1, y: 1 }}
-					/>
-					{/* Inner highlight */}
-					<Circle x={x} y={y} radius={4} fill="#ffffff" opacity={0.9} />
+					{/* Professional annotation marker */}
+					<Group>
+						{/* Outer glow effect */}
+						<Circle
+							x={x}
+							y={y}
+							radius={10}
+							fill="rgba(244, 67, 54, 0.15)"
+							stroke="rgba(244, 67, 54, 0.3)"
+							strokeWidth={1}
+						/>
+						{/* Main badge circle */}
+						<Circle
+							x={x}
+							y={y}
+							radius={9}
+							fill="white"
+							stroke="#f44336"
+							strokeWidth={2}
+							shadowColor="rgba(0,0,0,0.25)"
+							shadowBlur={3}
+							shadowOffset={{ x: 0, y: 1 }}
+							shadowOpacity={0.4}
+						/>
+						{/* Inner highlight */}
+						<Circle x={x} y={y} radius={7} fill="rgba(255,255,255,0.8)" stroke="none" />
+						{/* Number text positioned slightly away from center */}
+						<Text
+							x={x + 12}
+							y={y - 8}
+							text={`${index + 1}`}
+							fontSize={12}
+							fontWeight="bold"
+							fill="#f44336"
+							align="center"
+							verticalAlign="middle"
+							width={18}
+							height={12}
+						/>
+					</Group>
 				</Group>
 			);
 		} else if (annotation.type === 'polygon' && annotation.points.length > 0) {
@@ -188,6 +205,10 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 					return coord * canvasSize.height;
 				}
 			});
+
+			// Calculate center point for numbering
+			const centerX = points.filter((_, i) => i % 2 === 0).reduce((sum, x) => sum + x, 0) / (points.length / 2);
+			const centerY = points.filter((_, i) => i % 2 === 1).reduce((sum, y) => sum + y, 0) / (points.length / 2);
 
 			return (
 				<Group key={index}>
@@ -222,6 +243,19 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 							/>
 						);
 					})}
+					{/* Number text positioned at polygon center */}
+					<Text
+						x={centerX + 12}
+						y={centerY - 8}
+						text={`${index + 1}`}
+						fontSize={12}
+						fontWeight="bold"
+						fill="#f44336"
+						align="center"
+						verticalAlign="middle"
+						width={18}
+						height={12}
+					/>
 				</Group>
 			);
 		}

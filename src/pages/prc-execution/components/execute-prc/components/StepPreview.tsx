@@ -747,6 +747,20 @@ const StepPreview = ({
 																					}}
 																				>
 																					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+																						{/* Annotation number badge */}
+																						<Chip
+																							label={`${regionIndex + 1}`}
+																							size="small"
+																							sx={{
+																								backgroundColor: '#f44336',
+																								color: 'white',
+																								fontSize: '0.6rem',
+																								fontWeight: 'bold',
+																								height: 16,
+																								minWidth: 20,
+																								'& .MuiChip-label': { px: 0.5 }
+																							}}
+																						/>
 																						<Chip
 																							label={region.type}
 																							size="small"
