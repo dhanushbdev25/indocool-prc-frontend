@@ -15,7 +15,7 @@ export const processStepSchema = z.object({
 	maximumAcceptanceValue: z.string().nullable(),
 	multipleMeasurements: z.boolean(),
 	multipleMeasurementMaxCount: z.number().nullable(),
-	uom: z.string(),
+	uom: z.string().optional(),
 	ctq: z.boolean(),
 	allowAttachments: z.boolean(),
 	notes: z.string(),
@@ -30,6 +30,7 @@ export const processStepGroupSchema = z.object({
 	isLatest: z.boolean(),
 	processName: z.string(),
 	processDescription: z.string(),
+	sequenceTiming: z.number(),
 	createdAt: z.string(),
 	updatedAt: z.string(),
 	steps: z.array(processStepSchema)
@@ -79,7 +80,7 @@ export const processStepRequestSchema = z.object({
 	maximumAcceptanceValue: z.number().nullable(),
 	multipleMeasurements: z.boolean(),
 	multipleMeasurementMaxCount: z.number().nullable(),
-	uom: z.string(),
+	uom: z.string().optional(),
 	ctq: z.boolean(),
 	allowAttachments: z.boolean(),
 	notes: z.string()
@@ -88,6 +89,7 @@ export const processStepRequestSchema = z.object({
 export const processStepGroupRequestSchema = z.object({
 	processName: z.string(),
 	processDescription: z.string(),
+	sequenceTiming: z.number(),
 	processSteps: z.array(processStepRequestSchema)
 });
 

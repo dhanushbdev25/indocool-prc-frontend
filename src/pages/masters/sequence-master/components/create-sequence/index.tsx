@@ -18,6 +18,22 @@ import {
 
 const steps = ['Basic Information', 'Step Groups & Steps', 'Review & Submit'];
 
+// Helper function to convert time string (HH:MM) to seconds
+const convertTimeToSeconds = (timeString: string): number => {
+	if (!timeString) return 0;
+	const [hours, minutes] = timeString.split(':').map(Number);
+	return (hours * 60 + minutes) * 60; // Convert to seconds
+};
+
+// Helper function to convert seconds to time string (HH:MM)
+const convertSecondsToTime = (seconds: number): string => {
+	if (!seconds || seconds === 0) return '00:01'; // Default to 1 minute
+	const totalMinutes = Math.floor(seconds / 60);
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
 const CreateSequence = () => {
 	const navigate = useNavigate();
 	const { id } = useParams();
@@ -115,6 +131,7 @@ const CreateSequence = () => {
 				processStepGroups: sequenceData.detail.stepGroups.map(group => ({
 					processName: group.processName,
 					processDescription: group.processDescription,
+					sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60), // Convert seconds to HH:MM
 					processSteps: group.steps.map(step => ({
 						parameterDescription: step.parameterDescription,
 						stepNumber: step.stepNumber,
@@ -207,6 +224,7 @@ const CreateSequence = () => {
 					processStepGroups: (data.processStepGroups || []).map(group => ({
 						processName: group.processName,
 						processDescription: group.processDescription,
+						sequenceTiming: convertTimeToSeconds(group.sequenceTiming),
 						processSteps: (group.processSteps || []).map((step, stepIndex) => ({
 							parameterDescription: step.parameterDescription,
 							stepNumber: stepIndex + 1, // Auto-calculate step number

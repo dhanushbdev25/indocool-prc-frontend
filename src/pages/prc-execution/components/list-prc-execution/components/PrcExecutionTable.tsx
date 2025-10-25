@@ -67,6 +67,23 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 	const columns = useMemo<MRT_ColumnDef<PrcExecutionData>[]>(
 		() => [
 			{
+				accessorKey: 'id',
+				header: 'ID',
+				size: 80,
+				Cell: ({ row }) => (
+					<Typography
+						variant="body2"
+						sx={{
+							fontWeight: 600,
+							color: '#1976d2',
+							fontSize: '0.875rem'
+						}}
+					>
+						#{row.original.id}
+					</Typography>
+				)
+			},
+			{
 				accessorKey: 'partNumber',
 				header: 'Part Number',
 				size: 200,

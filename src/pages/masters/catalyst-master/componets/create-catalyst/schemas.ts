@@ -54,11 +54,7 @@ export const catalystConfigurationSchema = yup
 				const num = Number(value);
 				return !isNaN(num) && num > 0;
 			}),
-		gelcoatLabel: yup
-			.string()
-			.required('Gelcoat label is required')
-			.min(3, 'Gelcoat label must be at least 3 characters')
-			.max(100, 'Gelcoat label must be less than 100 characters'),
+		gelcoatLabel: yup.string().optional().max(100, 'Gelcoat label must be less than 100 characters'),
 		minResinDosage: yup
 			.string()
 			.required('Minimum resin dosage is required')
@@ -75,11 +71,24 @@ export const catalystConfigurationSchema = yup
 				const num = Number(value);
 				return !isNaN(num) && num > 0;
 			}),
-		resinLabel: yup
+		resinLabel: yup.string().optional().max(100, 'Resin label must be less than 100 characters'),
+		minTopCoat: yup
 			.string()
-			.required('Resin label is required')
-			.min(3, 'Resin label must be at least 3 characters')
-			.max(100, 'Resin label must be less than 100 characters'),
+			.required('Minimum top coat is required')
+			.test('is-valid-number', 'Minimum top coat must be a valid number > 0', value => {
+				if (!value) return false;
+				const num = Number(value);
+				return !isNaN(num) && num > 0;
+			}),
+		maxTopCoat: yup
+			.string()
+			.required('Maximum top coat is required')
+			.test('is-valid-number', 'Maximum top coat must be a valid number > 0', value => {
+				if (!value) return false;
+				const num = Number(value);
+				return !isNaN(num) && num > 0;
+			}),
+		topCoatLabel: yup.string().optional().max(100, 'Top coat label must be less than 100 characters'),
 		blockCatalystMixing: yup.boolean(),
 		requestSupervisorApproval: yup.boolean(),
 		createdAt: yup.string().optional(),
@@ -94,7 +103,9 @@ export const catalystConfigurationSchema = yup
 			minGelcoat,
 			maxGelcoat,
 			minResinDosage,
-			maxResinDosage
+			maxResinDosage,
+			minTopCoat,
+			maxTopCoat
 		} = value;
 
 		const minTemp = Number(minTemperature);
@@ -105,8 +116,10 @@ export const catalystConfigurationSchema = yup
 		const maxGel = Number(maxGelcoat);
 		const minResin = Number(minResinDosage);
 		const maxResin = Number(maxResinDosage);
+		const minTop = Number(minTopCoat);
+		const maxTop = Number(maxTopCoat);
 
-		if (minTemp > maxTemp || minHum > maxHum || minGel > maxGel || minResin > maxResin) {
+		if (minTemp > maxTemp || minHum > maxHum || minGel > maxGel || minResin > maxResin || minTop > maxTop) {
 			return this.createError({
 				path: 'minTemperature',
 				message: 'Minimum values must be less than or equal to maximum values'
@@ -160,6 +173,9 @@ export const defaultCatalystConfiguration: CatalystConfigurationFormData = {
 	minResinDosage: '',
 	maxResinDosage: '',
 	resinLabel: '',
+	minTopCoat: '',
+	maxTopCoat: '',
+	topCoatLabel: '',
 	blockCatalystMixing: false,
 	requestSupervisorApproval: false
 };

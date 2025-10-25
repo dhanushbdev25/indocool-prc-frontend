@@ -217,6 +217,46 @@ const ViewCatalystConfiguration = ({ configurations }: ViewCatalystConfiguration
 								</Paper>
 							</Grid>
 
+							{/* Top Coat Settings */}
+							<Grid size={{ xs: 12 }}>
+								<Box sx={{ display: 'flex', alignItems: 'center', mb: 2, mt: 2 }}>
+									<PaletteIcon sx={{ mr: 1, color: '#673ab7' }} />
+									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555' }}>
+										Top Coat Settings
+									</Typography>
+								</Box>
+							</Grid>
+							<Grid size={{ xs: 6 }}>
+								<Paper sx={{ p: 2, backgroundColor: '#f3e5f5', border: '1px solid #673ab7' }}>
+									<Typography variant="caption" sx={{ color: '#512da8', fontWeight: 600 }}>
+										MIN TOP COAT
+									</Typography>
+									<Typography variant="h6" sx={{ color: '#512da8', fontWeight: 600 }}>
+										{config.minTopCoat ? `${config.minTopCoat}%` : 'N/A'}
+									</Typography>
+								</Paper>
+							</Grid>
+							<Grid size={{ xs: 6 }}>
+								<Paper sx={{ p: 2, backgroundColor: '#e8eaf6', border: '1px solid #3f51b5' }}>
+									<Typography variant="caption" sx={{ color: '#283593', fontWeight: 600 }}>
+										MAX TOP COAT
+									</Typography>
+									<Typography variant="h6" sx={{ color: '#283593', fontWeight: 600 }}>
+										{config.maxTopCoat ? `${config.maxTopCoat}%` : 'N/A'}
+									</Typography>
+								</Paper>
+							</Grid>
+							<Grid size={{ xs: 12 }}>
+								<Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #6c757d' }}>
+									<Typography variant="caption" sx={{ color: '#495057', fontWeight: 600 }}>
+										TOP COAT LABEL
+									</Typography>
+									<Typography variant="body1" sx={{ color: '#495057', fontWeight: 500 }}>
+										{config.topCoatLabel || 'N/A'}
+									</Typography>
+								</Paper>
+							</Grid>
+
 							{/* Safety Settings */}
 							<Grid size={{ xs: 12 }}>
 								<Box sx={{ display: 'flex', alignItems: 'center', mb: 2, mt: 2 }}>

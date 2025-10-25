@@ -302,7 +302,6 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											{...field}
 											fullWidth
 											label="Gelcoat Label"
-											required
 											placeholder="e.g., Standard Gelcoat Mix"
 											error={!!fieldErrors?.gelcoatLabel}
 											helperText={(fieldErrors?.gelcoatLabel as { message?: string })?.message}
@@ -367,10 +366,73 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											{...field}
 											fullWidth
 											label="Resin Label"
-											required
 											placeholder="e.g., General Purpose Resin"
 											error={!!fieldErrors?.resinLabel}
 											helperText={(fieldErrors?.resinLabel as { message?: string })?.message}
+											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+										/>
+									)}
+								/>
+							</Grid>
+
+							{/* Top Coat Settings */}
+							<Grid size={{ xs: 12 }}>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555' }}>
+									Top Coat Settings
+								</Typography>
+							</Grid>
+							<Grid size={{ xs: 6 }}>
+								<Controller
+									name={`catalystConfiguration.${index}.minTopCoat`}
+									control={control}
+									render={({ field }) => (
+										<TextField
+											{...field}
+											fullWidth
+											label="Min Top Coat"
+											type="number"
+											required
+											placeholder="e.g., 0.5"
+											slotProps={{ htmlInput: { step: '0.1' } }}
+											error={!!fieldErrors?.minTopCoat}
+											helperText={(fieldErrors?.minTopCoat as { message?: string })?.message}
+											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+										/>
+									)}
+								/>
+							</Grid>
+							<Grid size={{ xs: 6 }}>
+								<Controller
+									name={`catalystConfiguration.${index}.maxTopCoat`}
+									control={control}
+									render={({ field }) => (
+										<TextField
+											{...field}
+											fullWidth
+											label="Max Top Coat"
+											type="number"
+											required
+											placeholder="e.g., 1.0"
+											slotProps={{ htmlInput: { step: '0.1' } }}
+											error={!!fieldErrors?.maxTopCoat}
+											helperText={(fieldErrors?.maxTopCoat as { message?: string })?.message}
+											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+										/>
+									)}
+								/>
+							</Grid>
+							<Grid size={{ xs: 12 }}>
+								<Controller
+									name={`catalystConfiguration.${index}.topCoatLabel`}
+									control={control}
+									render={({ field }) => (
+										<TextField
+											{...field}
+											fullWidth
+											label="Top Coat Label"
+											placeholder="e.g., Premium Top Coat Finish"
+											error={!!fieldErrors?.topCoatLabel}
+											helperText={(fieldErrors?.topCoatLabel as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}

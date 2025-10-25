@@ -19,7 +19,8 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 				name: material.materialName,
 				quantity: material.quantity,
 				uom: material.uom,
-				description: material.materialCode
+				description: material.materialCode,
+				batching: material.batching
 			}))
 		});
 	}
@@ -103,6 +104,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 								id: stepGroup.id,
 								processName: stepGroup.processName,
 								processDescription: stepGroup.processDescription,
+								sequenceTiming: stepGroup.sequenceTiming,
 								steps: stepGroup.steps.map(step => ({
 									...step,
 									minValue: step.minValue,
@@ -272,7 +274,7 @@ function isSequenceStepGroupCompleted(
 	if (stepGroupData && stepGroupData[stepGroupId.toString()]) {
 		const groupData = stepGroupData[stepGroupId.toString()] as Record<string, unknown>;
 		productionApproved = groupData.productionApproved === true;
-		ctqApproved = !ctq || groupData.ctqApproved === true; // Only require CTQ approval if step is CTQ
+		ctqApproved = !ctq || groupData.ctqApproved === true || groupData.partialCtqApprove === true; // Only require CTQ approval if step is CTQ
 		stepCompleted = groupData.stepCompleted === true;
 	}
 
@@ -308,7 +310,7 @@ function isSequenceStepGroupReadyForCompletion(
 	if (stepGroupData && stepGroupData[stepGroupId.toString()]) {
 		const groupData = stepGroupData[stepGroupId.toString()] as Record<string, unknown>;
 		productionApproved = groupData.productionApproved === true;
-		ctqApproved = !ctq || groupData.ctqApproved === true;
+		ctqApproved = !ctq || groupData.ctqApproved === true || groupData.partialCtqApprove === true;
 	}
 
 	return productionApproved && ctqApproved;
@@ -332,7 +334,7 @@ function isInspectionStepCompleted(
 
 	// Look for approval flags in the step data
 	productionApproved = stepData.productionApproved === true;
-	ctqApproved = !ctq || stepData.ctqApproved === true; // Only require CTQ approval if step is CTQ
+	ctqApproved = !ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true; // Only require CTQ approval if step is CTQ
 	stepCompleted = stepData.stepCompleted === true;
 
 	// A step is considered completed only when both productionApproved and stepCompleted are set to true
@@ -356,7 +358,7 @@ function isInspectionStepReadyForCompletion(
 
 	// Look for approval flags in the step data
 	productionApproved = stepData.productionApproved === true;
-	ctqApproved = !ctq || stepData.ctqApproved === true; // Only require CTQ approval if step is CTQ
+	ctqApproved = !ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true; // Only require CTQ approval if step is CTQ
 
 	return productionApproved && ctqApproved;
 }

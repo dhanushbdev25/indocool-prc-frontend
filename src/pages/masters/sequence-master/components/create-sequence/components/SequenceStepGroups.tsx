@@ -45,6 +45,7 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 		appendStepGroup({
 			processName: '',
 			processDescription: '',
+			sequenceTiming: '00:01',
 			processSteps: [
 				{
 					parameterDescription: '',
@@ -265,6 +266,39 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 									placeholder="e.g., Mixing and preparing gelcoat with proper viscosity"
 									helperText={errors.processStepGroups?.[groupIndex]?.processDescription?.message}
 									error={!!errors.processStepGroups?.[groupIndex]?.processDescription}
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: '8px',
+											backgroundColor: 'white'
+										}
+									}}
+								/>
+							)}
+						/>
+					</Grid>
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name={`processStepGroups.${groupIndex}.sequenceTiming`}
+							control={control}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									fullWidth
+									label="Expected Duration"
+									required
+									type="time"
+									placeholder="HH:MM"
+									helperText={
+										errors.processStepGroups?.[groupIndex]?.sequenceTiming?.message ||
+										'Enter expected duration in HH:MM format'
+									}
+									error={!!errors.processStepGroups?.[groupIndex]?.sequenceTiming}
+									InputLabelProps={{
+										shrink: true
+									}}
+									inputProps={{
+										step: 60 // 1 minute steps
+									}}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px',

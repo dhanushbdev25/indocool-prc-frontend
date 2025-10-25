@@ -15,6 +15,9 @@ export interface CatalystConfigurationData {
 	minResinDosage: string;
 	maxResinDosage: string;
 	resinLabel: string;
+	minTopCoat: string;
+	maxTopCoat: string;
+	topCoatLabel: string;
 	blockCatalystMixing: boolean;
 	requestSupervisorApproval: boolean;
 	createdAt?: string;

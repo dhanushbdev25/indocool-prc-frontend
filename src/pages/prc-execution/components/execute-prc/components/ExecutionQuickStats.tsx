@@ -5,10 +5,9 @@ import { type ExecutionData, type TimelineStep } from '../../../types/execution.
 interface ExecutionQuickStatsProps {
 	executionData: ExecutionData;
 	currentStep: TimelineStep | undefined;
-	totalSteps: number;
 }
 
-const ExecutionQuickStats = ({ executionData, currentStep, totalSteps }: ExecutionQuickStatsProps) => {
+const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStatsProps) => {
 	const formatDuration = (durationMs: number) => {
 		const hours = Math.floor(durationMs / 3600000);
 		const minutes = Math.floor((durationMs % 3600000) / 60000);
@@ -31,19 +30,19 @@ const ExecutionQuickStats = ({ executionData, currentStep, totalSteps }: Executi
 			<Card sx={{ mb: 2 }}>
 				<CardContent sx={{ p: 2 }}>
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-						<CheckCircle sx={{ color: getProgressColor(executionData.stepsCompleted, totalSteps) }} />
+						<CheckCircle sx={{ color: getProgressColor(executionData.stepsCompleted, executionData.totalSteps) }} />
 						<Typography variant="body2" sx={{ fontWeight: 500 }}>
 							Steps Completed
 						</Typography>
 					</Box>
 					<Typography
 						variant="h4"
-						sx={{ fontWeight: 600, color: getProgressColor(executionData.stepsCompleted, totalSteps) }}
+						sx={{ fontWeight: 600, color: getProgressColor(executionData.stepsCompleted, executionData.totalSteps) }}
 					>
 						{executionData.stepsCompleted}
 					</Typography>
 					<Typography variant="caption" sx={{ color: '#666' }}>
-						of {totalSteps} total steps
+						of {executionData.totalSteps} total steps
 					</Typography>
 				</CardContent>
 			</Card>
@@ -145,7 +144,7 @@ const ExecutionQuickStats = ({ executionData, currentStep, totalSteps }: Executi
 				</Typography>
 				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
 					<Chip
-						label={`${executionData.stepsCompleted}/${totalSteps} Steps`}
+						label={`${executionData.stepsCompleted}/${executionData.totalSteps} Steps`}
 						size="small"
 						sx={{ backgroundColor: '#e3f2fd', color: '#1976d2' }}
 					/>

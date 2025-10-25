@@ -35,15 +35,13 @@ export const prcTemplateFormSchema = yup.object({
 	version: yup.number().required('Version is required').min(1, 'Version must be at least 1'),
 	isLatest: yup.boolean().default(true),
 	isActive: yup.boolean().default(true),
-	prcTemplateSteps: yup
-		.array(prcTemplateStepSchema)
-		.min(1, 'At least one step is required')
-		.test('unique-sequence', 'Step sequence numbers must be unique', function (steps) {
-			if (!steps) return true;
-			const sequences = steps.map(step => step.sequence);
-			const uniqueSequences = new Set(sequences);
-			return sequences.length === uniqueSequences.size;
-		}),
+	prcTemplateSteps: yup.array(prcTemplateStepSchema).min(1, 'At least one step is required'),
+	// .test('unique-sequence', 'Step sequence numbers must be unique', function (steps) {
+	// 	if (!steps) return true;
+	// 	const sequences = steps.map(step => step.sequence);
+	// 	const uniqueSequences = new Set(sequences);
+	// 	return sequences.length === uniqueSequences.size;
+	// }),
 	createdAt: yup.string().optional(),
 	updatedAt: yup.string().optional()
 });
@@ -91,13 +89,11 @@ export const basicInfoSchema = yup.object({
 });
 
 export const templateStepsSchema = yup.object({
-	prcTemplateSteps: yup
-		.array(prcTemplateStepSchema)
-		.min(1, 'At least one step is required')
-		.test('unique-sequence', 'Step sequence numbers must be unique', function (steps) {
-			if (!steps) return true;
-			const sequences = steps.map(step => step.sequence);
-			const uniqueSequences = new Set(sequences);
-			return sequences.length === uniqueSequences.size;
-		})
+	prcTemplateSteps: yup.array(prcTemplateStepSchema).min(1, 'At least one step is required')
+	// .test('unique-sequence', 'Step sequence numbers must be unique', function (steps) {
+	// 	if (!steps) return true;
+	// 	const sequences = steps.map(step => step.sequence);
+	// 	const uniqueSequences = new Set(sequences);
+	// 	return sequences.length === uniqueSequences.size;
+	// })
 });

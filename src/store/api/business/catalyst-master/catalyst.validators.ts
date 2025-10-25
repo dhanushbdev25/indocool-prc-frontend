@@ -17,6 +17,9 @@ export const catalystConfigurationSchema = z.object({
 	minResinDosage: z.string(),
 	maxResinDosage: z.string(),
 	resinLabel: z.string(),
+	minTopCoat: z.string().nullable(),
+	maxTopCoat: z.string().nullable(),
+	topCoatLabel: z.string().nullable(),
 	blockCatalystMixing: z.boolean(),
 	requestSupervisorApproval: z.boolean(),
 	createdAt: z.string(),
@@ -71,6 +74,9 @@ export const catalystConfigurationRequestSchema = z.object({
 	minResinDosage: z.number(),
 	maxResinDosage: z.number(),
 	resinLabel: z.string(),
+	minTopCoat: z.number(),
+	maxTopCoat: z.number(),
+	topCoatLabel: z.string(),
 	blockCatalystMixing: z.boolean(),
 	requestSupervisorApproval: z.boolean()
 });

@@ -247,7 +247,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									fullWidth
 									label="Layup Type"
 									placeholder="e.g., PPCORE CSM"
-									helperText="Material layup type (optional)"
+									helperText="Material layup type "
 									error={!!errors.layupType}
 									sx={{
 										'& .MuiOutlinedInput-root': {
@@ -270,8 +270,31 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									fullWidth
 									label="Model"
 									placeholder="e.g., RHD (Exterior)"
-									helperText="Part model or variant (optional)"
+									helperText="Part model or variant "
 									error={!!errors.model}
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: '8px'
+										}
+									}}
+								/>
+							)}
+						/>
+					</Grid>
+
+					{/* SAP Reference Number */}
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name="sapReferenceNumber"
+							control={control}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									fullWidth
+									label="SAP Reference Number"
+									placeholder="e.g., SAP-12345"
+									helperText="SAP system reference number "
+									error={!!errors.sapReferenceNumber}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'

@@ -15,9 +15,16 @@ import {
 	CardContent,
 	IconButton,
 	Divider,
-	Collapse
+	Collapse,
+	FormLabel,
+	RadioGroup,
+	Radio
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
@@ -596,6 +603,85 @@ const ParameterColumns = memo(
 								<Grid size={{ xs: 12, sm: 2 }}>
 									{(() => {
 										const columnType = memoizedColumnTypes?.[columnIndex]?.type || 'text';
+
+										if (columnType === 'datetime') {
+											return (
+												<Controller
+													name={`inspectionParameters.${parameterIndex}.columns.${columnIndex}.defaultValue`}
+													control={control as Control<InspectionFormData>}
+													render={({ field }) => (
+														<LocalizationProvider dateAdapter={AdapterDayjs}>
+															<DateTimePicker
+																label="Default Value"
+																value={field.value ? dayjs(field.value) : null}
+																onChange={newValue => {
+																	const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																	field.onChange(formattedValue);
+																}}
+																slotProps={{
+																	textField: {
+																		fullWidth: true,
+																		size: 'small',
+																		helperText: 'Default datetime value',
+																		sx: {
+																			'& .MuiOutlinedInput-root': {
+																				borderRadius: '6px',
+																				backgroundColor: 'white'
+																			}
+																		}
+																	}
+																}}
+															/>
+														</LocalizationProvider>
+													)}
+												/>
+											);
+										}
+
+										if (columnType === 'ok/not ok') {
+											return (
+												<Controller
+													name={`inspectionParameters.${parameterIndex}.columns.${columnIndex}.defaultValue`}
+													control={control as Control<InspectionFormData>}
+													render={({ field }) => (
+														<FormControl component="fieldset" fullWidth>
+															<FormLabel component="legend" sx={{ fontSize: '0.75rem', color: '#666', mb: 0.5 }}>
+																Default Value
+															</FormLabel>
+															<RadioGroup
+																row
+																value={field.value || ''}
+																onChange={e => field.onChange(e.target.value)}
+																sx={{ gap: 1 }}
+															>
+																<FormControlLabel
+																	value="ok"
+																	control={<Radio size="small" color="success" />}
+																	label="OK"
+																	sx={{
+																		'& .MuiFormControlLabel-label': {
+																			fontSize: '0.75rem',
+																			color: field.value === 'ok' ? '#2e7d32' : '#666'
+																		}
+																	}}
+																/>
+																<FormControlLabel
+																	value="not ok"
+																	control={<Radio size="small" color="error" />}
+																	label="Not OK"
+																	sx={{
+																		'& .MuiFormControlLabel-label': {
+																			fontSize: '0.75rem',
+																			color: field.value === 'not ok' ? '#d32f2f' : '#666'
+																		}
+																	}}
+																/>
+															</RadioGroup>
+														</FormControl>
+													)}
+												/>
+											);
+										}
 
 										return (
 											<Controller

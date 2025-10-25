@@ -37,8 +37,16 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 				return '#2196f3';
 			case 'text':
 				return '#4caf50';
-			case 'image':
+			case 'boolean':
 				return '#ff9800';
+			case 'files':
+				return '#9c27b0';
+			case 'table':
+				return '#607d8b';
+			case 'ok/not ok':
+				return '#f44336';
+			case 'datetime':
+				return '#795548';
 			default:
 				return '#666';
 		}

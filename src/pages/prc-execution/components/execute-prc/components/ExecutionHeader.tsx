@@ -6,13 +6,12 @@ import { type ExecutionData, type TimelineStep } from '../../../types/execution.
 interface ExecutionHeaderProps {
 	executionData: ExecutionData;
 	currentStep: TimelineStep | undefined;
-	totalSteps: number;
 }
 
-const ExecutionHeader = ({ executionData, currentStep, totalSteps }: ExecutionHeaderProps) => {
+const ExecutionHeader = ({ executionData, currentStep }: ExecutionHeaderProps) => {
 	const navigate = useNavigate();
 
-	const progressPercentage = Math.round((executionData.stepsCompleted / totalSteps) * 100);
+	const progressPercentage = Math.round((executionData.stepsCompleted / executionData.totalSteps) * 100);
 
 	const getProgressColor = (progress: number) => {
 		if (progress >= 100) return '#4caf50';
@@ -81,7 +80,7 @@ const ExecutionHeader = ({ executionData, currentStep, totalSteps }: ExecutionHe
 						</Typography>
 					</Box>
 					<Typography variant="caption" sx={{ color: '#666' }}>
-						{executionData.stepsCompleted} of {totalSteps} steps completed
+						{executionData.stepsCompleted} of {executionData.totalSteps} steps completed
 					</Typography>
 				</Box>
 

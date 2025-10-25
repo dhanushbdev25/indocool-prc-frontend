@@ -7,6 +7,7 @@ export const rawMaterialFormSchema = yup.object({
 	materialCode: yup.string().required('Material code is required'),
 	quantity: yup.string().required('Quantity is required'),
 	uom: yup.string().required('UOM is required'),
+	batching: yup.boolean().default(false),
 	version: yup.number().default(1),
 	isLatest: yup.boolean().default(true)
 });
@@ -98,6 +99,7 @@ export const partMasterFormSchema = yup.object({
 	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
 	layupType: yup.string().max(100, 'Layup type must be less than 100 characters').optional(),
 	model: yup.string().max(100, 'Model must be less than 100 characters').optional(),
+	sapReferenceNumber: yup.string().max(50, 'SAP reference number must be less than 50 characters').optional(),
 	version: yup.number().default(1),
 	isLatest: yup.boolean().default(true),
 	catalyst: yup.number().optional(),
@@ -127,6 +129,7 @@ export const defaultRawMaterial: RawMaterialFormData = {
 	materialCode: '',
 	quantity: '',
 	uom: '',
+	batching: false,
 	version: 1,
 	isLatest: true
 };
@@ -178,6 +181,7 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	notes: '',
 	layupType: '',
 	model: '',
+	sapReferenceNumber: '',
 	version: 1,
 	isLatest: true,
 	catalyst: undefined,
@@ -212,7 +216,8 @@ export const generalInfoSchema = yup.object({
 		.max(200, 'Description must be less than 200 characters'),
 	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
 	layupType: yup.string().max(100, 'Layup type must be less than 100 characters').optional(),
-	model: yup.string().max(100, 'Model must be less than 100 characters').optional()
+	model: yup.string().max(100, 'Model must be less than 100 characters').optional(),
+	sapReferenceNumber: yup.string().max(50, 'SAP reference number must be less than 50 characters').optional()
 });
 
 export const rawMaterialsSchema = yup.object({

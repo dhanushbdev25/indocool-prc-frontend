@@ -176,20 +176,23 @@ const ModernTopBar = ({ onMenuToggle, drawerOpen }: ModernTopBarProps) => {
 							sx={{
 								p: 0,
 								'&:hover': {
-									transform: 'scale(1.05)'
+									'& .MuiAvatar-root': {
+										backgroundColor: '#374151'
+									}
 								},
-								transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
+								transition: 'all 0.15s ease'
 							}}
 						>
 							<Avatar
 								sx={{
 									width: { xs: 32, md: 36 },
 									height: { xs: 32, md: 36 },
-									backgroundColor: '#6366f1',
-									fontSize: '0.875rem',
-									fontWeight: 600,
-									border: '2px solid #ffffff',
-									boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
+									backgroundColor: '#6b7280',
+									fontSize: { xs: '0.8rem', md: '0.9rem' },
+									fontWeight: 500,
+									color: '#ffffff',
+									border: '1px solid rgba(0, 0, 0, 0.08)',
+									transition: 'all 0.15s ease'
 								}}
 							>
 								{userInfo.name.charAt(0).toUpperCase()}
@@ -223,9 +226,11 @@ const ModernTopBar = ({ onMenuToggle, drawerOpen }: ModernTopBarProps) => {
 										sx={{
 											width: 48,
 											height: 48,
-											backgroundColor: '#6366f1',
-											fontSize: '1.125rem',
-											fontWeight: 600
+											backgroundColor: '#6b7280',
+											fontSize: '1.1rem',
+											fontWeight: 500,
+											color: '#ffffff',
+											border: '1px solid rgba(0, 0, 0, 0.08)'
 										}}
 									>
 										{userInfo.name.charAt(0).toUpperCase()}

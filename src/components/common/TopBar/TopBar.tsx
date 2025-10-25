@@ -190,23 +190,30 @@ const TopBar = () => {
 					)}
 
 					{/* User Profile */}
-					<Tooltip title="User Profile">
+					<Tooltip title="Account Settings">
 						<IconButton
 							size="large"
 							onClick={handleProfileMenuOpen}
 							sx={{
-								color: theme.palette.text.primary,
+								p: 0,
 								'&:hover': {
-									backgroundColor: theme.palette.action.hover
-								}
+									'& .MuiAvatar-root': {
+										backgroundColor: '#374151'
+									}
+								},
+								transition: 'all 0.15s ease'
 							}}
 						>
 							<Avatar
 								sx={{
 									width: 32,
 									height: 32,
-									backgroundColor: theme.palette.primary.main,
-									fontSize: '0.875rem'
+									backgroundColor: '#6b7280',
+									fontSize: '0.8rem',
+									fontWeight: 500,
+									color: '#ffffff',
+									border: '1px solid rgba(0, 0, 0, 0.08)',
+									transition: 'all 0.15s ease'
 								}}
 							>
 								{userInfo.name.charAt(0).toUpperCase()}

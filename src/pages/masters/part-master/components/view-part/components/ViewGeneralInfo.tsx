@@ -151,6 +151,19 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 					</Grid>
 				)}
 
+				{partMaster.sapReferenceNumber && (
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Box sx={{ mb: 2 }}>
+							<Typography variant="body2" sx={{ color: '#666', fontWeight: 500, mb: 0.5 }}>
+								SAP Reference Number
+							</Typography>
+							<Typography variant="body1" sx={{ color: '#333' }}>
+								{partMaster.sapReferenceNumber}
+							</Typography>
+						</Box>
+					</Grid>
+				)}
+
 				<Grid size={{ xs: 12, md: 6 }}>
 					<Box sx={{ mb: 2 }}>
 						<Typography variant="body2" sx={{ color: '#666', fontWeight: 500, mb: 0.5 }}>

@@ -152,6 +152,9 @@ const CreateCatalyst = () => {
 				minResinDosage: Number(config.minResinDosage),
 				maxResinDosage: Number(config.maxResinDosage),
 				resinLabel: config.resinLabel,
+				minTopCoat: Number(config.minTopCoat),
+				maxTopCoat: Number(config.maxTopCoat),
+				topCoatLabel: config.topCoatLabel,
 				blockCatalystMixing: config.blockCatalystMixing ?? false,
 				requestSupervisorApproval: config.requestSupervisorApproval ?? false
 			}));

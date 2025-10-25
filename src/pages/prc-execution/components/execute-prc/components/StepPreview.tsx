@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
 	Box,
 	Typography,
@@ -16,9 +16,24 @@ import {
 	TableHead,
 	TableRow,
 	Paper,
-	Grid
+	Grid,
+	TextField,
+	ButtonGroup,
+	Menu,
+	MenuItem,
+	Collapse
 } from '@mui/material';
-import { ArrowBack, CheckCircle, Visibility, Check, ArrowForward } from '@mui/icons-material';
+import {
+	ArrowBack,
+	CheckCircle,
+	Visibility,
+	Check,
+	ArrowForward,
+	AccessTime,
+	ArrowDropDown,
+	ExpandMore,
+	ExpandLess
+} from '@mui/icons-material';
 import { type StepPreviewData } from '../../../types/execution.types';
 import ImageDisplay from './ImageDisplay';
 import { debugDataTransformation } from '../../../utils/dataTransformers';
@@ -28,7 +43,8 @@ interface StepPreviewProps {
 	onBackToStep: () => void;
 	onApproveProduction: () => void;
 	onApproveCTQ: () => void;
-	onProceedToNext: () => void;
+	onPartialApproveCTQ: () => void;
+	onProceedToNext: (timingExceededRemarks?: string) => void;
 	onBackToStepGroup?: () => void;
 }
 
@@ -37,11 +53,37 @@ const StepPreview = ({
 	onBackToStep,
 	onApproveProduction,
 	onApproveCTQ,
+	onPartialApproveCTQ,
 	onProceedToNext,
 	onBackToStepGroup
 }: StepPreviewProps) => {
 	const [productionApproved, setProductionApproved] = useState(previewData.productionApproved || false);
 	const [ctqApproved, setCtqApproved] = useState(previewData.ctqApproved || false);
+	const [expandedMultiValueParams, setExpandedMultiValueParams] = useState<Set<string>>(new Set());
+	const [partialCtqApproved, setPartialCtqApproved] = useState(previewData.partialCtqApprove || false);
+
+	const toggleMultiValueParam = (parameterId: string) => {
+		setExpandedMultiValueParams(prev => {
+			const newSet = new Set(prev);
+			if (newSet.has(parameterId)) {
+				newSet.delete(parameterId);
+			} else {
+				newSet.add(parameterId);
+			}
+			return newSet;
+		});
+	};
+	const [timingExceededRemarks, setTimingExceededRemarks] = useState('');
+	const [ctqMenuAnchor, setCtqMenuAnchor] = useState<null | HTMLElement>(null);
+	const [ctqApprovalMode, setCtqApprovalMode] = useState<'full' | 'partial'>('full');
+
+	// Helper function to format seconds to HH:MM:SS
+	const formatSecondsToTime = (seconds: number): string => {
+		const hours = Math.floor(seconds / 3600);
+		const mins = Math.floor((seconds % 3600) / 60);
+		const secs = Math.round(seconds % 60);
+		return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+	};
 
 	// Debug logging
 	console.log('StepPreview Debug:', {
@@ -59,11 +101,38 @@ const StepPreview = ({
 	};
 
 	const handleApproveCTQ = () => {
-		setCtqApproved(true);
-		onApproveCTQ();
+		if (ctqApprovalMode === 'full') {
+			setCtqApproved(true);
+			onApproveCTQ();
+		} else {
+			setPartialCtqApproved(true);
+			onPartialApproveCTQ();
+		}
 	};
 
-	const canProceed = productionApproved && (!previewData.ctq || ctqApproved) && !previewData.stepCompleted;
+	const handleCtqMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+		setCtqMenuAnchor(event.currentTarget);
+	};
+
+	const handleCtqMenuClose = () => {
+		setCtqMenuAnchor(null);
+	};
+
+	const handleSelectFullApproval = () => {
+		setCtqApprovalMode('full');
+		setCtqMenuAnchor(null);
+	};
+
+	const handleSelectPartialApproval = () => {
+		setCtqApprovalMode('partial');
+		setCtqMenuAnchor(null);
+	};
+
+	const canProceed =
+		productionApproved &&
+		(!previewData.ctq || ctqApproved || partialCtqApproved) &&
+		!previewData.stepCompleted &&
+		(!previewData.timingExceeded || timingExceededRemarks.trim().length > 0);
 
 	const renderDataSummary = () => {
 		let { data } = previewData;
@@ -97,7 +166,7 @@ const StepPreview = ({
 
 				Object.entries(data).forEach(([key, value]) => {
 					// Skip system parameters
-					if (['stepCompleted', 'productionApproved', 'ctqApproved'].includes(key)) {
+					if (['stepCompleted', 'productionApproved', 'ctqApproved', 'partialCtqApprove'].includes(key)) {
 						return;
 					}
 
@@ -193,6 +262,74 @@ const StepPreview = ({
 			// Handle sequence data - show as compact report table
 			return (
 				<Box>
+					{/* Timing Exceeded Warning */}
+					{previewData.timingExceeded && (
+						<Box sx={{ mb: 2 }}>
+							<Alert
+								severity="warning"
+								sx={{
+									mb: 1,
+									border: '1px solid #ff9800',
+									backgroundColor: '#fff8e1',
+									'& .MuiAlert-icon': {
+										color: '#f57c00'
+									}
+								}}
+								icon={<AccessTime sx={{ fontSize: 20 }} />}
+							>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#e65100' }}>
+										Timing Exceeded
+									</Typography>
+									<Chip
+										label={`+${Math.round((previewData.actualDuration || 0) - (previewData.expectedDuration || 0))}s`}
+										size="small"
+										sx={{
+											backgroundColor: '#ff5722',
+											color: 'white',
+											fontSize: '0.7rem',
+											fontWeight: 600,
+											height: 20
+										}}
+									/>
+								</Box>
+								<Typography variant="body2" sx={{ color: '#bf360c', fontSize: '0.875rem' }}>
+									<strong>{formatSecondsToTime(previewData.actualDuration || 0)}</strong> actual vs{' '}
+									<strong>{formatSecondsToTime(previewData.expectedDuration || 0)}</strong> expected
+								</Typography>
+							</Alert>
+							<TextField
+								fullWidth
+								multiline
+								rows={2}
+								label="Reason for delay"
+								placeholder="Brief explanation for the timing delay..."
+								value={
+									previewData.stepCompleted
+										? previewData.timingExceededRemarks || 'No reason provided'
+										: timingExceededRemarks
+								}
+								onChange={e => setTimingExceededRemarks(e.target.value)}
+								required={!previewData.stepCompleted}
+								disabled={previewData.stepCompleted}
+								sx={{
+									mt: 2,
+									'& .MuiOutlinedInput-root': {
+										borderColor: !previewData.stepCompleted && !timingExceededRemarks.trim() ? '#f44336' : '#e0e0e0',
+										'&:hover .MuiOutlinedInput-notchedOutline': {
+											borderColor: !previewData.stepCompleted && !timingExceededRemarks.trim() ? '#f44336' : '#1976d2'
+										},
+										'&.Mui-disabled': {
+											backgroundColor: '#f5f5f5',
+											color: '#666'
+										}
+									}
+								}}
+								error={!previewData.stepCompleted && !timingExceededRemarks.trim()}
+								helperText={'Required to proceed'}
+							/>
+						</Box>
+					)}
 					<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 						Measurement Report ({Array.isArray(data) ? data.length : 0} measurements)
 					</Typography>
@@ -268,7 +405,8 @@ const StepPreview = ({
 														/>
 													) : (
 														<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-															{measurement.value} {measurement.uom && measurement.uom !== 'None' ? measurement.uom : ''}
+															{Array.isArray(measurement.value) ? measurement.value.join(', ') : measurement.value}{' '}
+															{measurement.uom && measurement.uom !== 'None' ? measurement.uom : ''}
 														</Typography>
 													)}
 												</Box>
@@ -462,157 +600,265 @@ const StepPreview = ({
 													isMultiColumn = true;
 													const valueObj = paramObj.value as Record<string, unknown>;
 													displayValue = Object.entries(valueObj)
-														.map(([col, val]) => `${col}: ${val}`)
+														.map(([col, val]) => {
+															// Format values based on parameter type
+															if (parameterType === 'ok/not ok') {
+																return `${col}: ${val === 'ok' ? 'OK' : val === 'not ok' ? 'Not OK' : val}`;
+															} else if (parameterType === 'datetime') {
+																return `${col}: ${val}`;
+															}
+															return `${col}: ${val}`;
+														})
 														.join(', ');
 												} else {
 													// Single value
-													displayValue = String(paramObj.value);
+													const value = String(paramObj.value);
+													if (parameterType === 'ok/not ok') {
+														displayValue = value === 'ok' ? 'OK' : value === 'not ok' ? 'Not OK' : value;
+													} else {
+														displayValue = value;
+													}
 												}
 											}
 										} else {
 											// Simple string/number value
-											displayValue = String(parameterData);
+											const value = String(parameterData);
+											if (parameterType === 'ok/not ok') {
+												displayValue = value === 'ok' ? 'OK' : value === 'not ok' ? 'Not OK' : value;
+											} else {
+												displayValue = value;
+											}
 										}
 
 										return (
-											<TableRow
-												key={parameterId}
-												sx={{
-													'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
-													'&:hover': { backgroundColor: '#f0f0f0' }
-												}}
-											>
-												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-													<Typography variant="body2" sx={{ fontWeight: 500 }}>
-														{index + 1}
-													</Typography>
-												</TableCell>
-												<TableCell sx={{ py: 1, fontSize: '0.8rem', maxWidth: 200 }}>
-													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-														<Typography
-															variant="body2"
-															sx={{
-																fontWeight: 500,
-																overflow: 'hidden',
-																textOverflow: 'ellipsis',
-																whiteSpace: 'nowrap'
-															}}
-															title={parameterName}
-														>
-															{parameterName}
-														</Typography>
-														{hasAnnotations && (
-															<Chip
-																label="Images"
-																size="small"
+											<React.Fragment key={parameterId}>
+												{/* Main Row */}
+												<TableRow
+													sx={{
+														'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
+														'&:hover': { backgroundColor: '#f0f0f0' },
+														cursor: isMultiColumn ? 'pointer' : 'default'
+													}}
+													onClick={isMultiColumn ? () => toggleMultiValueParam(parameterId) : undefined}
+												>
+													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+														<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+															{isMultiColumn && (
+																<IconButton size="small" sx={{ p: 0.25 }}>
+																	{expandedMultiValueParams.has(parameterId) ? <ExpandLess /> : <ExpandMore />}
+																</IconButton>
+															)}
+															<Typography variant="body2" sx={{ fontWeight: 500 }}>
+																{index + 1}
+															</Typography>
+														</Box>
+													</TableCell>
+													<TableCell sx={{ py: 1, fontSize: '0.8rem', maxWidth: 200 }}>
+														<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+															<Typography
+																variant="body2"
 																sx={{
-																	backgroundColor: '#e3f2fd',
-																	color: '#1976d2',
-																	fontSize: '0.6rem',
-																	height: 16,
-																	'& .MuiChip-label': { px: 0.5 }
+																	fontWeight: 500,
+																	overflow: 'hidden',
+																	textOverflow: 'ellipsis',
+																	whiteSpace: 'nowrap'
 																}}
-															/>
-														)}
-														{isMultiColumn && (
-															<Chip
-																label="Multi"
-																size="small"
-																sx={{
-																	backgroundColor: '#f3e5f5',
-																	color: '#7b1fa2',
-																	fontSize: '0.6rem',
-																	height: 16,
-																	'& .MuiChip-label': { px: 0.5 }
-																}}
-															/>
-														)}
-														{paramMeta?.files && paramMeta.files.length > 0 && (
-															<Chip
-																label={`${paramMeta.files.length} files`}
-																size="small"
-																sx={{
-																	backgroundColor: '#e8f5e8',
-																	color: '#4caf50',
-																	fontSize: '0.6rem',
-																	height: 16,
-																	'& .MuiChip-label': { px: 0.5 }
-																}}
-															/>
-														)}
-													</Box>
-												</TableCell>
-												<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{parameterType}</TableCell>
-												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+																title={parameterName}
+															>
+																{parameterName}
+															</Typography>
+															{hasAnnotations && (
+																<Chip
+																	label="Images"
+																	size="small"
+																	sx={{
+																		backgroundColor: '#e3f2fd',
+																		color: '#1976d2',
+																		fontSize: '0.6rem',
+																		height: 16,
+																		'& .MuiChip-label': { px: 0.5 }
+																	}}
+																/>
+															)}
+															{isMultiColumn && (
+																<Chip
+																	label="Multi"
+																	size="small"
+																	sx={{
+																		backgroundColor: '#f3e5f5',
+																		color: '#7b1fa2',
+																		fontSize: '0.6rem',
+																		height: 16,
+																		'& .MuiChip-label': { px: 0.5 }
+																	}}
+																/>
+															)}
+															{paramMeta?.files && paramMeta.files.length > 0 && (
+																<Chip
+																	label={`${paramMeta.files.length} files`}
+																	size="small"
+																	sx={{
+																		backgroundColor: '#e8f5e8',
+																		color: '#4caf50',
+																		fontSize: '0.6rem',
+																		height: 16,
+																		'& .MuiChip-label': { px: 0.5 }
+																	}}
+																/>
+															)}
+														</Box>
+													</TableCell>
+													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{parameterType}</TableCell>
+													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 														{isMultiColumn ? (
-															<Chip
-																label={displayValue}
-																size="small"
-																sx={{
-																	backgroundColor: '#f3e5f5',
-																	color: '#7b1fa2',
-																	fontSize: '0.7rem',
-																	height: 20,
-																	maxWidth: 200,
-																	'& .MuiChip-label': {
-																		overflow: 'hidden',
-																		textOverflow: 'ellipsis',
-																		whiteSpace: 'nowrap'
-																	}
-																}}
-																title={displayValue}
-															/>
+															<Typography variant="body2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
+																{
+																	Object.keys(
+																		(parameterData as Record<string, unknown>).value as Record<string, unknown>
+																	).length
+																}{' '}
+																fields
+															</Typography>
 														) : (
 															<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
 																{displayValue}
 															</Typography>
 														)}
-													</Box>
-												</TableCell>
-												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-													{ctqStatus && (
-														<Chip
-															label="CTQ"
-															size="small"
+													</TableCell>
+													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+														{ctqStatus && (
+															<Chip
+																label="CTQ"
+																size="small"
+																sx={{
+																	backgroundColor: '#fff3e0',
+																	color: '#f57c00',
+																	fontSize: '0.7rem',
+																	height: 20
+																}}
+															/>
+														)}
+													</TableCell>
+													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666', maxWidth: 150 }}>
+														<Typography
+															variant="body2"
 															sx={{
-																backgroundColor: '#fff3e0',
-																color: '#f57c00',
-																fontSize: '0.7rem',
-																height: 20
+																overflow: 'hidden',
+																textOverflow: 'ellipsis',
+																whiteSpace: 'nowrap'
 															}}
-														/>
-													)}
-												</TableCell>
-												<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666', maxWidth: 150 }}>
-													<Typography
-														variant="body2"
-														sx={{
-															overflow: 'hidden',
-															textOverflow: 'ellipsis',
-															whiteSpace: 'nowrap'
-														}}
-														title={specification}
-													>
-														{specification}
-													</Typography>
-												</TableCell>
-												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-													<Box
-														sx={{
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															width: 24,
-															height: 24,
-															borderRadius: '50%',
-															backgroundColor: '#e8f5e8'
-														}}
-													>
-														<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
-													</Box>
-												</TableCell>
-											</TableRow>
+															title={specification}
+														>
+															{specification}
+														</Typography>
+													</TableCell>
+													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+														<Box
+															sx={{
+																display: 'flex',
+																alignItems: 'center',
+																justifyContent: 'center',
+																width: 24,
+																height: 24,
+																borderRadius: '50%',
+																backgroundColor: '#e8f5e8'
+															}}
+														>
+															<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+														</Box>
+													</TableCell>
+												</TableRow>
+
+												{/* Collapsible Detail Row for Multi-Column Parameters */}
+												{isMultiColumn && (
+													<TableRow>
+														<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+															<Collapse in={expandedMultiValueParams.has(parameterId)} timeout="auto" unmountOnExit>
+																<Box
+																	sx={{
+																		p: 2,
+																		backgroundColor: '#f8f9fa',
+																		border: '1px solid #e0e0e0',
+																		borderRadius: 1,
+																		m: 1
+																	}}
+																>
+																	<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#333' }}>
+																		{parameterName} - Detailed Values
+																	</Typography>
+																	<TableContainer component={Paper} variant="outlined">
+																		<Table size="small">
+																			<TableHead>
+																				<TableRow sx={{ backgroundColor: '#fafafa' }}>
+																					{paramMeta?.columns?.map(column => (
+																						<TableCell
+																							key={column.name}
+																							sx={{
+																								fontWeight: 600,
+																								fontSize: '0.75rem',
+																								py: 0.5,
+																								px: 1,
+																								borderRight: '1px solid #e0e0e0'
+																							}}
+																						>
+																							{column.name}
+																						</TableCell>
+																					))}
+																				</TableRow>
+																			</TableHead>
+																			<TableBody>
+																				<TableRow>
+																					{paramMeta?.columns?.map(column => {
+																						const value = (
+																							(parameterData as Record<string, unknown>).value as Record<
+																								string,
+																								unknown
+																							>
+																						)[column.name];
+																						const formattedValue =
+																							column.type === 'ok/not ok'
+																								? value === 'ok'
+																									? 'OK'
+																									: value === 'not ok'
+																										? 'Not OK'
+																										: String(value)
+																								: String(value);
+
+																						return (
+																							<TableCell
+																								key={column.name}
+																								sx={{
+																									fontSize: '0.75rem',
+																									py: 0.5,
+																									px: 1,
+																									borderRight: '1px solid #e0e0e0',
+																									maxWidth: 150
+																								}}
+																							>
+																								<Typography
+																									variant="body2"
+																									sx={{
+																										overflow: 'hidden',
+																										textOverflow: 'ellipsis',
+																										whiteSpace: 'nowrap'
+																									}}
+																									title={formattedValue}
+																								>
+																									{formattedValue}
+																								</Typography>
+																							</TableCell>
+																						);
+																					})}
+																				</TableRow>
+																			</TableBody>
+																		</Table>
+																	</TableContainer>
+																</Box>
+															</Collapse>
+														</TableCell>
+													</TableRow>
+												)}
+											</React.Fragment>
 										);
 									})}
 							</TableBody>
@@ -783,6 +1029,20 @@ const StepPreview = ({
 																							"{region.comment}"
 																						</Typography>
 																					)}
+																					{region.category && (
+																						<Box sx={{ mt: 0.5 }}>
+																							<Chip
+																								label={region.category}
+																								size="small"
+																								sx={{
+																									backgroundColor: '#e3f2fd',
+																									color: '#1976d2',
+																									fontSize: '0.6rem',
+																									height: 18
+																								}}
+																							/>
+																						</Box>
+																					)}
 																					{region.type === 'point' && (
 																						<Typography
 																							variant="caption"
@@ -952,21 +1212,57 @@ const StepPreview = ({
 								: 'Approve Production'}
 					</Button>
 					{previewData.ctq && (
-						<Button
-							variant={ctqApproved ? 'outlined' : 'contained'}
-							color={ctqApproved ? 'success' : 'warning'}
-							onClick={handleApproveCTQ}
-							disabled={ctqApproved}
-							startIcon={<Check />}
-							size="small"
-						>
-							{ctqApproved ? 'CTQ Approved' : 'Approve CTQ'}
-						</Button>
+						<>
+							<ButtonGroup variant={ctqApproved || partialCtqApproved ? 'outlined' : 'contained'} size="small">
+								<Button
+									color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
+									onClick={handleApproveCTQ}
+									disabled={ctqApproved || partialCtqApproved}
+									startIcon={<Check />}
+								>
+									{ctqApproved
+										? 'CTQ Approved'
+										: partialCtqApproved
+											? 'Partially Approved'
+											: ctqApprovalMode === 'partial'
+												? 'Partially CTQ Approve'
+												: 'CTQ Approve'}
+								</Button>
+								<Button
+									color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
+									onClick={handleCtqMenuOpen}
+									disabled={ctqApproved || partialCtqApproved}
+									sx={{ minWidth: 'auto', px: 1 }}
+								>
+									<ArrowDropDown />
+								</Button>
+							</ButtonGroup>
+							<Menu
+								anchorEl={ctqMenuAnchor}
+								open={Boolean(ctqMenuAnchor)}
+								onClose={handleCtqMenuClose}
+								anchorOrigin={{
+									vertical: 'bottom',
+									horizontal: 'left'
+								}}
+								transformOrigin={{
+									vertical: 'top',
+									horizontal: 'left'
+								}}
+							>
+								<MenuItem onClick={handleSelectFullApproval} selected={ctqApprovalMode === 'full'}>
+									CTQ Approve
+								</MenuItem>
+								<MenuItem onClick={handleSelectPartialApproval} selected={ctqApprovalMode === 'partial'}>
+									Partially CTQ Approve
+								</MenuItem>
+							</Menu>
+						</>
 					)}
 					<Button
 						variant="contained"
 						color="success"
-						onClick={onProceedToNext}
+						onClick={() => onProceedToNext(timingExceededRemarks)}
 						disabled={!canProceed}
 						startIcon={previewData.stepCompleted ? <CheckCircle /> : <ArrowForward />}
 						size="small"
@@ -1004,7 +1300,7 @@ const StepPreview = ({
 			</Card>
 
 			{/* CTQ Warning */}
-			{previewData.ctq && !ctqApproved && (
+			{previewData.ctq && !ctqApproved && !partialCtqApproved && (
 				<Alert severity="warning" sx={{ mb: 2 }}>
 					This is a Critical to Quality (CTQ) step. Both Production and CTQ approvals are required to proceed.
 				</Alert>

@@ -186,3 +186,65 @@ export function mergeTimingData(
 	// Same logic as mergeAggregatedData but for timing
 	return mergeAggregatedData(existingData, newData);
 }
+
+// New function to build approval action timing data
+export function buildApprovalActionTimingData(
+	step: TimelineStep,
+	actionType: 'productionApproved' | 'ctqApproved' | 'stepCompleted',
+	timestamp: string
+): Record<string, unknown> {
+	if (step.type === 'rawMaterials') {
+		return {
+			rawMaterials: {
+				[actionType]: timestamp
+			}
+		};
+	}
+
+	if (step.type === 'bom') {
+		return {
+			bom: {
+				[actionType]: timestamp
+			}
+		};
+	}
+
+	if (step.type === 'sequence') {
+		if (step.stepData) {
+			// Individual sequence step within a step group
+			const { prcTemplateStepId, stepGroupId, stepId } = step.stepData;
+
+			return {
+				[prcTemplateStepId.toString()]: {
+					[stepGroupId?.toString() || '']: {
+						[stepId?.toString() || '']: {
+							[actionType]: timestamp
+						}
+					}
+				}
+			};
+		} else if (step.stepGroup && step.prcTemplateStepId) {
+			// Step group approval timing
+			return {
+				[step.prcTemplateStepId.toString()]: {
+					[step.stepGroup.id.toString()]: {
+						[actionType]: timestamp
+					}
+				}
+			};
+		}
+	}
+
+	if (step.type === 'inspection' && step.stepData) {
+		// Build structure: { "82": { [actionType]: timestamp } }
+		const prcTemplateStepId = step.stepData.prcTemplateStepId;
+
+		return {
+			[prcTemplateStepId.toString()]: {
+				[actionType]: timestamp
+			}
+		};
+	}
+
+	return {};
+}

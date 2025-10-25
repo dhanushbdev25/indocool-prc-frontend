@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Alert, CircularProgress, Backdrop } from '@mui/material';
 import {
@@ -6,11 +6,17 @@ import {
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
 import { buildTimelineSteps } from '../../utils/buildTimelineSteps';
-import { buildAggregatedData, buildTimingData, mergeAggregatedData, mergeTimingData } from '../../utils/dataBuilders';
+import {
+	buildAggregatedData,
+	buildTimingData,
+	mergeAggregatedData,
+	mergeTimingData,
+	buildApprovalActionTimingData
+} from '../../utils/dataBuilders';
 
 // Utility function to filter out metadata fields from step data
 const filterMeasurementSteps = (groupData: Record<string, unknown>): Array<[string, unknown]> => {
-	const metadataFields = ['stepCompleted', 'productionApproved', 'ctqApproved'];
+	const metadataFields = ['stepCompleted', 'productionApproved', 'ctqApproved', 'partialCtqApprove'];
 	return Object.entries(groupData).filter(([stepId]) => !metadataFields.includes(stepId));
 };
 import {
@@ -70,7 +76,7 @@ const ExecutePrc = () => {
 	const currentStep = timelineSteps[currentStepIndex];
 
 	// Helper function to get the most current aggregated data
-	const getCurrentAggregatedData = (): Record<string, unknown> => {
+	const getCurrentAggregatedData = useCallback((): Record<string, unknown> => {
 		// If we have currentAggregatedData state, use it
 		if (Object.keys(currentAggregatedData).length > 0) {
 			return currentAggregatedData;
@@ -78,6 +84,60 @@ const ExecutePrc = () => {
 		// Otherwise, fall back to execution data
 		const actualData = (executionData as { data: ExecutionData })?.data;
 		return actualData?.prcAggregatedSteps || {};
+	}, [currentAggregatedData, executionData]);
+
+	// Helper function to check if timing data already exists for a step
+	const hasExistingTimingData = (step: TimelineStep, formData?: FormData): boolean => {
+		if (!executionData) return false;
+
+		const actualData = (executionData as { data: ExecutionData }).data;
+		const existingTimingData = actualData.stepStartEndTime as Record<string, unknown>;
+
+		if (!existingTimingData) return false;
+
+		if (step.type === 'rawMaterials') {
+			return existingTimingData.rawMaterials !== undefined;
+		}
+
+		if (step.type === 'bom') {
+			return existingTimingData.bom !== undefined;
+		}
+
+		if (step.type === 'sequence') {
+			// For sequence steps, we need to check using the step information
+			let prcTemplateStepId: number;
+			let stepGroupId: number;
+			let stepId: number;
+
+			if (step.stepData) {
+				// Use stepData if available
+				prcTemplateStepId = step.stepData.prcTemplateStepId;
+				stepGroupId = step.stepData.stepGroupId || 0;
+				stepId = step.stepData.stepId || 0;
+			} else if (formData) {
+				// Fall back to formData if stepData is not available
+				prcTemplateStepId = (formData.prcTemplateStepId as number) || step.prcTemplateStepId || 0;
+				stepGroupId = (formData.stepGroupId as number) || step.stepGroup?.id || 0;
+				stepId = (formData.stepId as number) || 0;
+			} else {
+				return false;
+			}
+
+			const stepTiming = existingTimingData[prcTemplateStepId.toString()] as Record<string, unknown>;
+			if (stepTiming) {
+				const groupTiming = stepTiming[stepGroupId.toString()] as Record<string, unknown>;
+				if (groupTiming) {
+					return groupTiming[stepId.toString()] !== undefined;
+				}
+			}
+		}
+
+		if (step.type === 'inspection' && step.stepData) {
+			const prcTemplateStepId = step.stepData.prcTemplateStepId;
+			return existingTimingData[prcTemplateStepId.toString()] !== undefined;
+		}
+
+		return false;
 	};
 
 	// Initialize step start time when step changes
@@ -86,6 +146,70 @@ const ExecutePrc = () => {
 			stepStartTimeRef.current = new Date().toISOString();
 		}
 	}, [currentStep]);
+
+	// Simple function to initialize step start time when clicking on step group card
+	const initializeStepStartTime = () => {
+		stepStartTimeRef.current = new Date().toISOString();
+		console.log('🕐 Initialized start time for step group:', stepStartTimeRef.current);
+	};
+
+	// Update preview data timing when execution data changes (after API refetch)
+	useEffect(() => {
+		if (
+			executionData &&
+			currentView === 'preview' &&
+			previewData &&
+			previewData.type === 'sequence' &&
+			currentStep?.stepGroup
+		) {
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const timingResult = calculateStepGroupTiming(
+				currentStep,
+				actualData.stepStartEndTime as Record<string, unknown>
+			);
+
+			// Get timing exceeded remarks from the step group data
+			let timingExceededRemarks = '';
+			if (currentStep.prcTemplateStepId && currentStep.stepGroup) {
+				const stepGroupData = getCurrentAggregatedData()?.[currentStep.prcTemplateStepId.toString()] as Record<
+					string,
+					unknown
+				>;
+				if (stepGroupData && stepGroupData[currentStep.stepGroup.id.toString()]) {
+					const groupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
+					timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
+				}
+			}
+
+			// Only update if timing values have changed
+			if (
+				previewData.timingExceeded !== timingResult.timingExceeded ||
+				previewData.actualDuration !== timingResult.actualDuration ||
+				previewData.expectedDuration !== timingResult.expectedDuration ||
+				previewData.timingExceededRemarks !== timingExceededRemarks
+			) {
+				setPreviewData(prev =>
+					prev
+						? {
+								...prev,
+								timingExceeded: timingResult.timingExceeded,
+								actualDuration: timingResult.actualDuration,
+								expectedDuration: timingResult.expectedDuration,
+								timingExceededRemarks: timingExceededRemarks
+							}
+						: null
+				);
+			}
+		}
+	}, [
+		executionData,
+		currentView,
+		previewData?.type,
+		currentStep?.stepGroup?.id,
+		currentStep,
+		getCurrentAggregatedData,
+		previewData
+	]);
 
 	// Handle step completion - save data and determine next action
 	const handleStepComplete = async (stepFormData: FormData): Promise<void> => {
@@ -98,15 +222,45 @@ const ExecutePrc = () => {
 			// For sequence steps, we need to create a proper step object with stepData
 			let stepToProcess = currentStep;
 			if (currentStep.type === 'sequence' && currentStep.stepGroup && currentStep.prcTemplateStepId) {
-				// We need to get the current sub-step data from the StepDetailView
-				// For now, we'll use the step group data and let the data builder handle it
-				// The actual sub-step data will be passed through the formData
-				stepToProcess = currentStep;
+				// Extract step information from formData to create proper stepData structure
+				const stepId = stepFormData.stepId as number;
+				const stepGroupId = stepFormData.stepGroupId as number;
+				const prcTemplateStepId = stepFormData.prcTemplateStepId as number;
+
+				// Create a proper step object with stepData for timing data building
+				stepToProcess = {
+					...currentStep,
+					stepData: {
+						prcTemplateStepId: prcTemplateStepId || currentStep.prcTemplateStepId || 0,
+						stepGroupId: stepGroupId || currentStep.stepGroup?.id,
+						stepId: stepId
+					}
+				};
 			}
 
 			// Build aggregated data for this step
 			const stepAggregatedData = buildAggregatedData(stepToProcess, stepFormData);
-			const stepTimingData = buildTimingData(stepToProcess, startTime, endTime);
+
+			// Only build timing data if it doesn't already exist for this step
+			let stepTimingData = {};
+			const hasExisting = hasExistingTimingData(stepToProcess, stepFormData);
+			console.log('Timing data check:', {
+				stepType: stepToProcess.type,
+				hasExisting,
+				stepToProcess: stepToProcess.stepData ? stepToProcess.stepData : 'No stepData',
+				formData: {
+					stepId: stepFormData.stepId,
+					stepGroupId: stepFormData.stepGroupId,
+					prcTemplateStepId: stepFormData.prcTemplateStepId
+				}
+			});
+
+			if (!hasExisting) {
+				stepTimingData = buildTimingData(stepToProcess, startTime, endTime);
+				console.log('Built timing data:', stepTimingData);
+			} else {
+				console.log('Timing data already exists, skipping build');
+			}
 
 			// Merge with existing data using the most current aggregated data
 			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
@@ -122,6 +276,9 @@ const ExecutePrc = () => {
 					stepStartEndTime: mergedTimingData
 				}
 			}).unwrap();
+
+			// Reset step start time after completion
+			stepStartTimeRef.current = null;
 
 			// Update current aggregated data state
 			setCurrentAggregatedData(mergedAggregatedData);
@@ -186,8 +343,28 @@ const ExecutePrc = () => {
 						if (stepGroupData && stepGroupData[currentStep.stepGroup.id.toString()]) {
 							const groupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
 							productionApproved = groupData.productionApproved === true;
-							ctqApproved = groupData.ctqApproved === true;
+							ctqApproved = groupData.ctqApproved === true || groupData.partialCtqApprove === true;
 							stepCompleted = groupData.stepCompleted === true;
+						}
+					}
+
+					// Calculate timing for this step group
+					const actualData = (executionData as { data: ExecutionData }).data;
+					const timingResult = calculateStepGroupTiming(
+						currentStep,
+						actualData.stepStartEndTime as Record<string, unknown>
+					);
+
+					// Get timing exceeded remarks from the step group data
+					let timingExceededRemarks = '';
+					if (currentStep.prcTemplateStepId && currentStep.stepGroup) {
+						const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId.toString()] as Record<
+							string,
+							unknown
+						>;
+						if (stepGroupData && stepGroupData[currentStep.stepGroup.id.toString()]) {
+							const groupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
+							timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
 						}
 					}
 
@@ -199,7 +376,11 @@ const ExecutePrc = () => {
 						data: detailedMeasurements,
 						productionApproved: productionApproved,
 						ctqApproved: ctqApproved,
-						stepCompleted: stepCompleted
+						stepCompleted: stepCompleted,
+						timingExceeded: timingResult.timingExceeded,
+						actualDuration: timingResult.actualDuration,
+						expectedDuration: timingResult.expectedDuration,
+						timingExceededRemarks: timingExceededRemarks
 					};
 
 					console.log('Creating preview data for completed sequence group:', {
@@ -249,7 +430,8 @@ const ExecutePrc = () => {
 					const templateData = mergedAggregatedData[prcTemplateStepId.toString()] as Record<string, unknown>;
 					if (templateData) {
 						productionApproved = templateData.productionApproved === true;
-						ctqApproved = !currentStep.ctq || templateData.ctqApproved === true;
+						ctqApproved =
+							!currentStep.ctq || templateData.ctqApproved === true || templateData.partialCtqApprove === true;
 						stepCompleted = templateData.stepCompleted === true;
 					}
 				}
@@ -281,8 +463,18 @@ const ExecutePrc = () => {
 				setPreviewData(newPreviewData);
 				setCurrentView('preview');
 			} else {
-				// For raw materials and BOM, go directly to next step
-				handleProceedToNext();
+				// For raw materials and BOM, go directly to next step without additional save
+				// The data has already been saved above, no need to call handleProceedToNext
+				// which would trigger another unnecessary save API call
+
+				// Move to next step
+				if (currentStepIndex < timelineSteps.length - 1) {
+					setCurrentStepIndex(prev => prev + 1);
+					setCurrentView('list');
+				} else {
+					// All steps completed
+					navigate('/prc-execution');
+				}
 			}
 		} catch (error) {
 			console.error('Failed to save step data:', error);
@@ -328,11 +520,100 @@ const ExecutePrc = () => {
 		return allStepsFilled;
 	};
 
+	// Helper function to calculate step group timing
+	const calculateStepGroupTiming = (
+		step: TimelineStep,
+		stepStartEndTime: Record<string, unknown>
+	): { timingExceeded: boolean; actualDuration: number; expectedDuration: number } => {
+		if (!step.stepGroup || !step.prcTemplateStepId || !step.stepGroup.sequenceTiming) {
+			return { timingExceeded: false, actualDuration: 0, expectedDuration: 0 };
+		}
+
+		const prcTemplateStepId = step.prcTemplateStepId.toString();
+		const stepGroupId = step.stepGroup.id.toString();
+
+		console.log('🕐 Calculating timing for step group:', {
+			prcTemplateStepId,
+			stepGroupId,
+			expectedDuration: step.stepGroup.sequenceTiming,
+			stepStartEndTime
+		});
+
+		// Get timing data for this step group
+		const templateTimingData = stepStartEndTime[prcTemplateStepId] as Record<string, unknown>;
+		if (!templateTimingData) {
+			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
+		}
+
+		const groupTimingData = templateTimingData[stepGroupId] as Record<string, unknown>;
+		if (!groupTimingData) {
+			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
+		}
+
+		// Calculate total active work time by summing individual step durations
+		let totalActiveDuration = 0;
+		let stepsWithTiming = 0;
+
+		step.stepGroup.steps.forEach(subStep => {
+			const stepTiming = groupTimingData[subStep.id.toString()] as { startTime: string; endTime: string } | undefined;
+			if (stepTiming) {
+				const startTime = new Date(stepTiming.startTime);
+				const endTime = new Date(stepTiming.endTime);
+
+				// Calculate individual step duration in seconds
+				const stepDurationMs = endTime.getTime() - startTime.getTime();
+				const stepDuration = Math.round((stepDurationMs / 1000) * 10) / 10; // Round to 1 decimal place
+
+				totalActiveDuration += stepDuration;
+				stepsWithTiming++;
+
+				console.log(`🕐 Step ${subStep.id} timing:`, {
+					startTime: startTime.toISOString(),
+					endTime: endTime.toISOString(),
+					duration: stepDuration
+				});
+			}
+		});
+
+		if (stepsWithTiming === 0) {
+			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
+		}
+
+		// Keep expected duration in seconds
+		const expectedDuration = step.stepGroup.sequenceTiming;
+		const timingExceeded = totalActiveDuration > expectedDuration;
+
+		console.log('🕐 Optimized timing calculation result:', {
+			prcTemplateStepId,
+			stepGroupId,
+			totalActiveDuration,
+			expectedDuration,
+			timingExceeded,
+			stepsWithTiming,
+			calculationMethod: 'sum_of_individual_step_durations'
+		});
+
+		return { timingExceeded, actualDuration: totalActiveDuration, expectedDuration };
+	};
+
 	// Handle approval actions
 	const handleApproveProduction = async () => {
 		if (!currentStep || !executionData || !previewData) return;
 
 		try {
+			// Record the timestamp when approve production button was clicked
+			const approvalTimestamp = new Date().toISOString();
+
+			// Build approval action timing data
+			const approvalTimingData = buildApprovalActionTimingData(currentStep, 'productionApproved', approvalTimestamp);
+
+			// Get current timing data from execution data
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const mergedApprovalTimingData = mergeTimingData(
+				actualData.stepStartEndTime as Record<string, unknown>,
+				approvalTimingData
+			);
+
 			// Update the step with production approval
 			const updatedStep = { ...currentStep, productionApproved: true };
 			// Update the timeline steps array
@@ -350,7 +631,9 @@ const ExecutePrc = () => {
 				currentPrcAggregatedSteps,
 				updatedPrcAggregatedSteps,
 				stepGroupId: currentStep.stepGroup?.id,
-				prcTemplateStepId: currentStep.prcTemplateStepId
+				prcTemplateStepId: currentStep.prcTemplateStepId,
+				approvalTimestamp,
+				approvalTimingData
 			});
 
 			if (currentStep.type === 'sequence' && currentStep.prcTemplateStepId && currentStep.stepGroup) {
@@ -396,7 +679,8 @@ const ExecutePrc = () => {
 			await updateProgress({
 				id: executionId,
 				data: {
-					prcAggregatedSteps: updatedPrcAggregatedSteps
+					prcAggregatedSteps: updatedPrcAggregatedSteps,
+					stepStartEndTime: mergedApprovalTimingData
 				}
 			}).unwrap();
 
@@ -417,6 +701,19 @@ const ExecutePrc = () => {
 		if (!currentStep || !executionData || !previewData) return;
 
 		try {
+			// Record the timestamp when approve CTQ button was clicked
+			const approvalTimestamp = new Date().toISOString();
+
+			// Build approval action timing data
+			const approvalTimingData = buildApprovalActionTimingData(currentStep, 'ctqApproved', approvalTimestamp);
+
+			// Get current timing data from execution data
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const mergedApprovalTimingData = mergeTimingData(
+				actualData.stepStartEndTime as Record<string, unknown>,
+				approvalTimingData
+			);
+
 			// Update the step with CTQ approval
 			const updatedStep = { ...currentStep, ctqApproved: true };
 			// Update the timeline steps array
@@ -434,7 +731,9 @@ const ExecutePrc = () => {
 				currentPrcAggregatedSteps,
 				updatedPrcAggregatedSteps,
 				stepGroupId: currentStep.stepGroup?.id,
-				prcTemplateStepId: currentStep.prcTemplateStepId
+				prcTemplateStepId: currentStep.prcTemplateStepId,
+				approvalTimestamp,
+				approvalTimingData
 			});
 
 			if (currentStep.type === 'sequence' && currentStep.prcTemplateStepId && currentStep.stepGroup) {
@@ -480,7 +779,8 @@ const ExecutePrc = () => {
 			await updateProgress({
 				id: executionId,
 				data: {
-					prcAggregatedSteps: updatedPrcAggregatedSteps
+					prcAggregatedSteps: updatedPrcAggregatedSteps,
+					stepStartEndTime: mergedApprovalTimingData
 				}
 			}).unwrap();
 
@@ -497,23 +797,141 @@ const ExecutePrc = () => {
 		}
 	};
 
+	const handlePartialApproveCTQ = async () => {
+		if (!currentStep || !executionData || !previewData) return;
+
+		try {
+			// Record the timestamp when partial approve CTQ button was clicked
+			const approvalTimestamp = new Date().toISOString();
+
+			// Build approval action timing data
+			const approvalTimingData = buildApprovalActionTimingData(currentStep, 'ctqApproved', approvalTimestamp);
+
+			// Get current timing data from execution data
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const mergedApprovalTimingData = mergeTimingData(
+				actualData.stepStartEndTime as Record<string, unknown>,
+				approvalTimingData
+			);
+
+			// Update the step with partial CTQ approval
+			const updatedStep = { ...currentStep, partialCtqApprove: true };
+			// Update the timeline steps array
+			const updatedSteps = [...timelineSteps];
+			updatedSteps[currentStepIndex] = updatedStep;
+
+			// Use the helper function to get the most current aggregated data
+			const currentPrcAggregatedSteps = getCurrentAggregatedData();
+
+			// Deep copy to avoid mutating the original data
+			const updatedPrcAggregatedSteps = JSON.parse(JSON.stringify(currentPrcAggregatedSteps));
+
+			console.log('Before partial CTQ approval update:', {
+				currentStep: currentStep,
+				currentPrcAggregatedSteps,
+				updatedPrcAggregatedSteps,
+				stepGroupId: currentStep.stepGroup?.id,
+				prcTemplateStepId: currentStep.prcTemplateStepId,
+				approvalTimestamp,
+				approvalTimingData
+			});
+
+			if (currentStep.type === 'sequence' && currentStep.prcTemplateStepId && currentStep.stepGroup) {
+				// Handle sequence step groups
+				// Ensure the structure exists and preserve existing data
+				if (!updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()]) {
+					updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()] = {};
+				}
+
+				const stepGroupData = updatedPrcAggregatedSteps[currentStep.prcTemplateStepId.toString()] as Record<
+					string,
+					unknown
+				>;
+				if (!stepGroupData[currentStep.stepGroup.id.toString()]) {
+					stepGroupData[currentStep.stepGroup.id.toString()] = {};
+				}
+
+				// Preserve existing step data and add partial approval
+				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
+				stepGroupData[currentStep.stepGroup.id.toString()] = {
+					...existingGroupData,
+					partialCtqApprove: true
+				};
+			} else if (currentStep.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
+				// Handle inspection steps
+				const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
+
+				// Ensure the structure exists and preserve existing data
+				if (!updatedPrcAggregatedSteps[prcTemplateStepId.toString()]) {
+					updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {};
+				}
+
+				// Preserve existing step data and add partial approval
+				const existingStepData = updatedPrcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
+				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {
+					...existingStepData,
+					partialCtqApprove: true
+				};
+			}
+
+			console.log('After partial CTQ approval update:', updatedPrcAggregatedSteps);
+
+			await updateProgress({
+				id: executionId,
+				data: {
+					prcAggregatedSteps: updatedPrcAggregatedSteps,
+					stepStartEndTime: mergedApprovalTimingData
+				}
+			}).unwrap();
+
+			// Update local state
+			setTimelineSteps(updatedSteps);
+			setCurrentAggregatedData(updatedPrcAggregatedSteps);
+
+			console.log('Partial CTQ approval - Updated currentAggregatedData:', updatedPrcAggregatedSteps);
+
+			// Update preview data to reflect the partial approval
+			setPreviewData(prev => (prev ? { ...prev, partialCtqApprove: true } : null));
+		} catch (error) {
+			console.error('Failed to update partial CTQ approval:', error);
+		}
+	};
+
 	// Handle proceeding to next step after approvals
-	const handleProceedToNext = async () => {
+	const handleProceedToNext = async (timingExceededRemarks?: string) => {
 		if (!currentStep || !executionData) return;
 
 		try {
 			const endTime = new Date().toISOString();
 			const startTime = stepStartTimeRef.current || endTime;
 
+			// Record the timestamp when complete step button was clicked
+			const stepCompletionTimestamp = new Date().toISOString();
+
+			// Build approval action timing data for step completion
+			const stepCompletionTimingData = buildApprovalActionTimingData(
+				currentStep,
+				'stepCompleted',
+				stepCompletionTimestamp
+			);
+
 			// Build aggregated data for this step
 			const stepAggregatedData = previewData ? buildAggregatedData(currentStep, previewData.data as FormData) : {};
-			const stepTimingData = buildTimingData(currentStep, startTime, endTime);
+
+			// Only build timing data if it doesn't already exist for this step
+			let stepTimingData = {};
+			if (!hasExistingTimingData(currentStep, previewData?.data as FormData)) {
+				stepTimingData = buildTimingData(currentStep, startTime, endTime);
+			}
 
 			// Merge with existing data using the most current aggregated data
 			let mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
 			// Get current timing data from execution data
 			const actualData = (executionData as { data: ExecutionData }).data;
-			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
+			let mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
+
+			// Merge step completion timing data
+			mergedTimingData = mergeTimingData(mergedTimingData, stepCompletionTimingData);
 
 			// For sequence step groups and inspection steps, mark the step as completed
 			if (currentStep.type === 'sequence' && currentStep.stepGroup && currentStep.prcTemplateStepId) {
@@ -530,12 +948,22 @@ const ExecutePrc = () => {
 					stepGroupData[currentStep.stepGroup.id.toString()] = {};
 				}
 
-				// Preserve existing data and add stepCompleted flag
+				// Preserve existing data and add stepCompleted flag and timing metadata
 				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
-				stepGroupData[currentStep.stepGroup.id.toString()] = {
+				const timingMetadata: Record<string, unknown> = {
 					...existingGroupData,
 					stepCompleted: true
 				};
+
+				// Add timing exceeded metadata if applicable
+				if (previewData?.timingExceeded) {
+					timingMetadata.timingExceeded = true;
+					if (timingExceededRemarks) {
+						timingMetadata.timingExceededRemarks = timingExceededRemarks;
+					}
+				}
+
+				stepGroupData[currentStep.stepGroup.id.toString()] = timingMetadata;
 			} else if (currentStep.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
 				// Handle inspection steps
 				// Create a deep copy to avoid read-only property issues
@@ -558,7 +986,9 @@ const ExecutePrc = () => {
 
 			console.log('handleProceedToNext - Data being sent:', {
 				prcAggregatedSteps: mergedAggregatedData,
-				stepStartEndTime: mergedTimingData
+				stepStartEndTime: mergedTimingData,
+				stepCompletionTimestamp,
+				stepCompletionTimingData
 			});
 
 			// Update backend with completed step data
@@ -569,6 +999,9 @@ const ExecutePrc = () => {
 					stepStartEndTime: mergedTimingData
 				}
 			}).unwrap();
+
+			// Reset step start time after completion
+			stepStartTimeRef.current = null;
 
 			// Update local state - rebuild timeline steps with updated data
 			const updatedExecutionData = {
@@ -617,6 +1050,9 @@ const ExecutePrc = () => {
 
 		// For sequence step groups, check if all steps are filled
 		if (targetStep.type === 'sequence' && targetStep.stepGroup) {
+			// Initialize start time when clicking on sequence step group
+			initializeStepStartTime();
+
 			const allStepsFilled = areAllStepsInGroupFilled(targetStep);
 
 			if (allStepsFilled) {
@@ -665,8 +1101,28 @@ const ExecutePrc = () => {
 					if (stepGroupData && stepGroupData[targetStep.stepGroup.id.toString()]) {
 						const groupData = stepGroupData[targetStep.stepGroup.id.toString()] as Record<string, unknown>;
 						productionApproved = groupData.productionApproved === true;
-						ctqApproved = groupData.ctqApproved === true;
+						ctqApproved = groupData.ctqApproved === true || groupData.partialCtqApprove === true;
 						stepCompleted = groupData.stepCompleted === true;
+					}
+				}
+
+				// Calculate timing for the step group
+				const actualData = (executionData as { data: ExecutionData }).data;
+				const timingResult = calculateStepGroupTiming(
+					targetStep,
+					actualData.stepStartEndTime as Record<string, unknown>
+				);
+
+				// Get timing exceeded remarks from the step group data
+				let timingExceededRemarks = '';
+				if (targetStep.prcTemplateStepId && targetStep.stepGroup) {
+					const stepGroupData = getCurrentAggregatedData()?.[targetStep.prcTemplateStepId.toString()] as Record<
+						string,
+						unknown
+					>;
+					if (stepGroupData && stepGroupData[targetStep.stepGroup.id.toString()]) {
+						const groupData = stepGroupData[targetStep.stepGroup.id.toString()] as Record<string, unknown>;
+						timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
 					}
 				}
 
@@ -678,7 +1134,11 @@ const ExecutePrc = () => {
 					data: detailedMeasurements,
 					productionApproved: productionApproved,
 					ctqApproved: ctqApproved,
-					stepCompleted: stepCompleted
+					stepCompleted: stepCompleted,
+					timingExceeded: timingResult.timingExceeded,
+					actualDuration: timingResult.actualDuration,
+					expectedDuration: timingResult.expectedDuration,
+					timingExceededRemarks: timingExceededRemarks
 				};
 
 				setPreviewData(newPreviewData);
@@ -710,7 +1170,7 @@ const ExecutePrc = () => {
 					let stepCompleted = false;
 
 					productionApproved = stepData.productionApproved === true;
-					ctqApproved = !targetStep.ctq || stepData.ctqApproved === true;
+					ctqApproved = !targetStep.ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true;
 					stepCompleted = stepData.stepCompleted === true;
 
 					const newPreviewData: StepPreviewData = {
@@ -752,7 +1212,7 @@ const ExecutePrc = () => {
 			if (!groupData) return false;
 
 			const productionApproved = groupData.productionApproved === true;
-			const ctqApproved = !step.ctq || groupData.ctqApproved === true;
+			const ctqApproved = !step.ctq || groupData.ctqApproved === true || groupData.partialCtqApprove === true;
 			const stepCompleted = groupData.stepCompleted === true;
 
 			return productionApproved && stepCompleted && ctqApproved;
@@ -764,7 +1224,7 @@ const ExecutePrc = () => {
 			if (!stepData || Object.keys(stepData).length === 0) return false;
 
 			const productionApproved = stepData.productionApproved === true;
-			const ctqApproved = !step.ctq || stepData.ctqApproved === true;
+			const ctqApproved = !step.ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true;
 			const stepCompleted = stepData.stepCompleted === true;
 
 			return productionApproved && stepCompleted && ctqApproved;
@@ -877,11 +1337,7 @@ const ExecutePrc = () => {
 				}}
 			>
 				{/* Header */}
-				<ExecutionHeader
-					executionData={actualExecutionData}
-					currentStep={currentStep}
-					totalSteps={timelineSteps.length}
-				/>
+				<ExecutionHeader executionData={actualExecutionData} currentStep={currentStep} />
 
 				{/* Main Content */}
 				<Box sx={{ flex: 1, overflow: 'hidden' }}>
@@ -897,11 +1353,7 @@ const ExecutePrc = () => {
 							</Box>
 							{/* Quick Stats */}
 							<Box sx={{ width: '300px', overflowY: 'auto' }}>
-								<ExecutionQuickStats
-									executionData={actualExecutionData}
-									currentStep={currentStep}
-									totalSteps={timelineSteps.length}
-								/>
+								<ExecutionQuickStats executionData={actualExecutionData} currentStep={currentStep} />
 							</Box>
 						</Box>
 					)}
@@ -934,6 +1386,7 @@ const ExecutePrc = () => {
 								onBackToStep={handleBackToStep}
 								onApproveProduction={handleApproveProduction}
 								onApproveCTQ={handleApproveCTQ}
+								onPartialApproveCTQ={handlePartialApproveCTQ}
 								onProceedToNext={handleProceedToNext}
 								onBackToStepGroup={currentStep?.type === 'sequence' ? handleBackToStepGroup : undefined}
 							/>

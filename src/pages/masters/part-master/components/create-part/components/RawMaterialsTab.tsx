@@ -20,12 +20,21 @@ import {
 	DialogTitle,
 	DialogContent,
 	DialogActions,
-	Alert
+	Alert,
+	FormControlLabel,
+	Switch
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 import { useFieldArray, Control, FieldErrors } from 'react-hook-form';
 import { PartMasterFormData, defaultRawMaterial } from '../schemas';
 import { uomOptions } from '../../../../sequence-master/components/create-sequence/types';
+
+// Material code options
+const materialCodeOptions = [
+	{ value: 'Gelcoat', label: 'Gelcoat' },
+	{ value: 'Resin', label: 'Resin' },
+	{ value: 'Others', label: 'Others' }
+];
 
 interface RawMaterialsTabProps {
 	control: Control<PartMasterFormData>;
@@ -36,6 +45,8 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [editingIndex, setEditingIndex] = useState<number | null>(null);
 	const [formData, setFormData] = useState(defaultRawMaterial);
+	const [selectedMaterialCodeType, setSelectedMaterialCodeType] = useState<string>('');
+	const [customMaterialCode, setCustomMaterialCode] = useState<string>('');
 
 	const { fields, append, remove, update } = useFieldArray({
 		control,
@@ -46,9 +57,20 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 		if (index !== undefined) {
 			setEditingIndex(index);
 			setFormData(fields[index]);
+			// Initialize material code type based on existing material code
+			const existingCode = fields[index].materialCode;
+			if (materialCodeOptions.some(option => option.value === existingCode)) {
+				setSelectedMaterialCodeType(existingCode);
+				setCustomMaterialCode('');
+			} else {
+				setSelectedMaterialCodeType('Others');
+				setCustomMaterialCode(existingCode);
+			}
 		} else {
 			setEditingIndex(null);
 			setFormData(defaultRawMaterial);
+			setSelectedMaterialCodeType('');
+			setCustomMaterialCode('');
 		}
 		setDialogOpen(true);
 	};
@@ -57,13 +79,22 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 		setDialogOpen(false);
 		setEditingIndex(null);
 		setFormData(defaultRawMaterial);
+		setSelectedMaterialCodeType('');
+		setCustomMaterialCode('');
 	};
 
 	const handleSave = () => {
+		// Set the material code based on selection
+		const finalMaterialCode = selectedMaterialCodeType === 'Others' ? customMaterialCode : selectedMaterialCodeType;
+		const updatedFormData = {
+			...formData,
+			materialCode: finalMaterialCode
+		};
+
 		if (editingIndex !== null) {
-			update(editingIndex, formData);
+			update(editingIndex, updatedFormData);
 		} else {
-			append(formData);
+			append(updatedFormData);
 		}
 		handleCloseDialog();
 	};
@@ -76,6 +107,20 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 		setFormData(prev => ({
 			...prev,
 			[field]: value
+		}));
+	};
+
+	const handleMaterialCodeTypeChange = (value: string) => {
+		setSelectedMaterialCodeType(value);
+		if (value !== 'Others') {
+			setCustomMaterialCode('');
+		}
+	};
+
+	const handleBatchingChange = (checked: boolean) => {
+		setFormData(prev => ({
+			...prev,
+			batching: checked
 		}));
 	};
 
@@ -133,6 +178,7 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 									<TableCell sx={{ fontWeight: 600, color: '#333' }}>Material Code</TableCell>
 									<TableCell sx={{ fontWeight: 600, color: '#333' }}>Quantity</TableCell>
 									<TableCell sx={{ fontWeight: 600, color: '#333' }}>UOM</TableCell>
+									<TableCell sx={{ fontWeight: 600, color: '#333' }}>Batching</TableCell>
 									<TableCell sx={{ fontWeight: 600, color: '#333', width: 120 }}>Actions</TableCell>
 								</TableRow>
 							</TableHead>
@@ -143,6 +189,7 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 										<TableCell sx={{ color: '#666' }}>{field.materialCode}</TableCell>
 										<TableCell sx={{ color: '#666' }}>{field.quantity}</TableCell>
 										<TableCell sx={{ color: '#666' }}>{field.uom}</TableCell>
+										<TableCell sx={{ color: '#666' }}>{field.batching ? 'Yes' : 'No'}</TableCell>
 										<TableCell>
 											<Box sx={{ display: 'flex', gap: 1 }}>
 												<IconButton size="small" onClick={() => handleOpenDialog(index)} sx={{ color: '#1976d2' }}>
@@ -186,23 +233,45 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 							}}
 						/>
 
-						<TextField
-							fullWidth
-							label="Material Code"
-							value={formData.materialCode}
-							onChange={e => handleInputChange('materialCode', e.target.value)}
-							placeholder="e.g., AL-6061-3MM"
-							required
-							sx={{
-								'& .MuiOutlinedInput-root': {
+						<FormControl fullWidth>
+							<InputLabel>Material Code</InputLabel>
+							<Select
+								value={selectedMaterialCodeType}
+								onChange={e => handleMaterialCodeTypeChange(e.target.value)}
+								label="Material Code"
+								required
+								sx={{
 									borderRadius: '8px'
-								}
-							}}
-						/>
+								}}
+							>
+								{materialCodeOptions.map(option => (
+									<MenuItem key={option.value} value={option.value}>
+										{option.label}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+
+						{selectedMaterialCodeType === 'Others' && (
+							<TextField
+								fullWidth
+								label="Custom Material Code"
+								value={customMaterialCode}
+								onChange={e => setCustomMaterialCode(e.target.value)}
+								placeholder="Enter custom material code"
+								required
+								sx={{
+									'& .MuiOutlinedInput-root': {
+										borderRadius: '8px'
+									}
+								}}
+							/>
+						)}
 
 						<TextField
 							fullWidth
 							label="Quantity"
+							type="number"
 							value={formData.quantity}
 							onChange={e => handleInputChange('quantity', e.target.value)}
 							placeholder="e.g., 2.5"
@@ -231,6 +300,18 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 								))}
 							</Select>
 						</FormControl>
+
+						<FormControlLabel
+							control={
+								<Switch
+									checked={formData.batching}
+									onChange={e => handleBatchingChange(e.target.checked)}
+									color="primary"
+								/>
+							}
+							label="Batching"
+							sx={{ alignSelf: 'flex-start', mt: 1 }}
+						/>
 					</Box>
 				</DialogContent>
 
@@ -241,7 +322,13 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 					<Button
 						onClick={handleSave}
 						variant="contained"
-						disabled={!formData.materialName || !formData.materialCode || !formData.quantity || !formData.uom}
+						disabled={
+							!formData.materialName ||
+							!selectedMaterialCodeType ||
+							(selectedMaterialCodeType === 'Others' && !customMaterialCode) ||
+							!formData.quantity ||
+							!formData.uom
+						}
 						sx={{
 							textTransform: 'none',
 							backgroundColor: '#1976d2',

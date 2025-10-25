@@ -16,8 +16,17 @@ import {
 	Chip,
 	IconButton,
 	Collapse,
-	Tooltip
+	Tooltip,
+	FormControl,
+	FormLabel,
+	RadioGroup,
+	FormControlLabel,
+	Radio
 } from '@mui/material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 import { Image, ExpandMore, ExpandLess, CameraAlt } from '@mui/icons-material';
 import {
 	type TimelineStep,
@@ -334,6 +343,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						if (isNaN(numValue)) {
 							newErrors[key] = `${column.name} must be a valid number`;
 						}
+					} else if (column.type === 'ok/not ok') {
+						if (value !== 'ok' && value !== 'not ok') {
+							newErrors[key] = `${column.name} must be either OK or Not OK`;
+						}
+					} else if (column.type === 'datetime') {
+						if (!value || !String(value).trim()) {
+							newErrors[key] = `${column.name} is required`;
+						}
 					}
 				});
 			} else {
@@ -356,6 +373,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					const numValue = parseFloat(value);
 					if (isNaN(numValue)) {
 						newErrors[key] = 'Value must be a valid number';
+					}
+				} else if (param.type === 'ok/not ok') {
+					if (value !== 'ok' && value !== 'not ok') {
+						newErrors[key] = 'Value must be either OK or Not OK';
+					}
+				} else if (param.type === 'datetime') {
+					if (!value || !value.trim()) {
+						newErrors[key] = 'Value is required';
 					}
 				}
 			}
@@ -569,34 +594,111 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 												</Box>
 											) : (
 												// Single value parameter
-												<TextField
-													label="Value"
-													type={param.type === 'number' ? 'number' : 'text'}
-													value={(() => {
-														const paramData = formData[param.id.toString()];
+												(() => {
+													const paramData = formData[param.id.toString()];
+													const currentValue = (() => {
 														if (typeof paramData === 'object' && paramData !== null && 'value' in paramData) {
 															// eslint-disable-next-line @typescript-eslint/no-explicit-any
 															return String((paramData as any).value || '');
 														}
 														return String(paramData || '');
-													})()}
-													onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
-													error={!!errors[param.id.toString()]}
-													helperText={errors[param.id.toString()]}
-													size="small"
-													disabled={isReadOnly}
-													variant="outlined"
-													inputProps={{
-														min: 0,
-														step: param.type === 'number' ? 0.01 : undefined
-													}}
-													sx={{
-														minWidth: 120,
-														'& .MuiOutlinedInput-root': {
-															height: '40px'
-														}
-													}}
-												/>
+													})();
+
+													// Handle different parameter types
+													if (param.type === 'ok/not ok') {
+														return (
+															<FormControl component="fieldset" disabled={isReadOnly}>
+																<FormLabel component="legend" sx={{ fontSize: '0.875rem', color: '#666', mb: 1 }}>
+																	Select Result
+																</FormLabel>
+																<RadioGroup
+																	row
+																	value={currentValue}
+																	onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
+																	sx={{ gap: 2 }}
+																>
+																	<FormControlLabel
+																		value="ok"
+																		control={<Radio size="small" color="success" />}
+																		label="OK"
+																		sx={{
+																			'& .MuiFormControlLabel-label': {
+																				fontSize: '0.875rem',
+																				color: currentValue === 'ok' ? '#2e7d32' : '#666'
+																			}
+																		}}
+																	/>
+																	<FormControlLabel
+																		value="not ok"
+																		control={<Radio size="small" color="error" />}
+																		label="Not OK"
+																		sx={{
+																			'& .MuiFormControlLabel-label': {
+																				fontSize: '0.875rem',
+																				color: currentValue === 'not ok' ? '#d32f2f' : '#666'
+																			}
+																		}}
+																	/>
+																</RadioGroup>
+															</FormControl>
+														);
+													}
+
+													if (param.type === 'datetime') {
+														return (
+															<LocalizationProvider dateAdapter={AdapterDayjs}>
+																<DateTimePicker
+																	label="Value"
+																	value={currentValue ? dayjs(currentValue) : null}
+																	onChange={newValue => {
+																		const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																		handleParameterChange(param.id, 'value', formattedValue);
+																	}}
+																	disabled={isReadOnly}
+																	slotProps={{
+																		textField: {
+																			size: 'small',
+																			error: !!errors[param.id.toString()],
+																			helperText: errors[param.id.toString()],
+																			variant: 'outlined',
+																			sx: {
+																				minWidth: 200,
+																				'& .MuiOutlinedInput-root': {
+																					height: '40px'
+																				}
+																			}
+																		}
+																	}}
+																/>
+															</LocalizationProvider>
+														);
+													}
+
+													// Default text/number input
+													return (
+														<TextField
+															label="Value"
+															type={param.type === 'number' ? 'number' : 'text'}
+															value={currentValue}
+															onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
+															error={!!errors[param.id.toString()]}
+															helperText={errors[param.id.toString()]}
+															size="small"
+															disabled={isReadOnly}
+															variant="outlined"
+															inputProps={{
+																min: 0,
+																step: param.type === 'number' ? 0.01 : undefined
+															}}
+															sx={{
+																minWidth: 120,
+																'& .MuiOutlinedInput-root': {
+																	height: '40px'
+																}
+															}}
+														/>
+													);
+												})()
 											)}
 										</TableCell>
 										<TableCell>
@@ -668,23 +770,93 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 														<Grid container spacing={2}>
 															{param.columns?.map(column => {
 																const key = `${param.id}_${column.name}`;
+																const currentValue = String(formData[key] || '');
+
 																return (
 																	<Grid key={column.name} size={{ xs: 12, sm: 6, md: 4 }}>
-																		<TextField
-																			label={column.name}
-																			type={column.type === 'number' ? 'number' : 'text'}
-																			value={String(formData[key] || '')}
-																			onChange={e => handleParameterChange(param.id, column.name, e.target.value)}
-																			error={!!errors[key]}
-																			helperText={errors[key]}
-																			fullWidth
-																			disabled={isReadOnly}
-																			variant="outlined"
-																			inputProps={{
-																				min: 0,
-																				step: column.type === 'number' ? 0.01 : undefined
-																			}}
-																		/>
+																		{column.type === 'ok/not ok' ? (
+																			<Box>
+																				<Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
+																					{column.name}
+																				</Typography>
+																				<FormControl component="fieldset" disabled={isReadOnly}>
+																					<RadioGroup
+																						row
+																						value={currentValue}
+																						onChange={e => handleParameterChange(param.id, column.name, e.target.value)}
+																						sx={{ gap: 1 }}
+																					>
+																						<FormControlLabel
+																							value="ok"
+																							control={<Radio size="small" color="success" />}
+																							label="OK"
+																							sx={{
+																								'& .MuiFormControlLabel-label': {
+																									fontSize: '0.75rem',
+																									color: currentValue === 'ok' ? '#2e7d32' : '#666'
+																								}
+																							}}
+																						/>
+																						<FormControlLabel
+																							value="not ok"
+																							control={<Radio size="small" color="error" />}
+																							label="Not OK"
+																							sx={{
+																								'& .MuiFormControlLabel-label': {
+																									fontSize: '0.75rem',
+																									color: currentValue === 'not ok' ? '#d32f2f' : '#666'
+																								}
+																							}}
+																						/>
+																					</RadioGroup>
+																				</FormControl>
+																				{errors[key] && (
+																					<Typography
+																						variant="caption"
+																						color="error"
+																						sx={{ mt: 0.5, display: 'block' }}
+																					>
+																						{errors[key]}
+																					</Typography>
+																				)}
+																			</Box>
+																		) : column.type === 'datetime' ? (
+																			<LocalizationProvider dateAdapter={AdapterDayjs}>
+																				<DateTimePicker
+																					label={column.name}
+																					value={currentValue ? dayjs(currentValue) : null}
+																					onChange={newValue => {
+																						const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																						handleParameterChange(param.id, column.name, formattedValue);
+																					}}
+																					disabled={isReadOnly}
+																					slotProps={{
+																						textField: {
+																							fullWidth: true,
+																							error: !!errors[key],
+																							helperText: errors[key],
+																							variant: 'outlined'
+																						}
+																					}}
+																				/>
+																			</LocalizationProvider>
+																		) : (
+																			<TextField
+																				label={column.name}
+																				type={column.type === 'number' ? 'number' : 'text'}
+																				value={currentValue}
+																				onChange={e => handleParameterChange(param.id, column.name, e.target.value)}
+																				error={!!errors[key]}
+																				helperText={errors[key]}
+																				fullWidth
+																				disabled={isReadOnly}
+																				variant="outlined"
+																				inputProps={{
+																					min: 0,
+																					step: column.type === 'number' ? 0.01 : undefined
+																				}}
+																			/>
+																		)}
 																		{column.defaultValue && (
 																			<Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
 																				Default: {column.defaultValue}

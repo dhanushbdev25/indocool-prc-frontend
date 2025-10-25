@@ -19,6 +19,7 @@ export interface PartData {
 	customer: string;
 	customerName: string;
 	description: string;
+	sapReferenceNumber?: string;
 	version: number;
 	totalRawMaterials: number;
 	totalBOM: number;

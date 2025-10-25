@@ -3,7 +3,6 @@ import {
 	Box,
 	Paper,
 	Typography,
-	Grid,
 	Chip,
 	FormControl,
 	InputLabel,
@@ -14,14 +13,24 @@ import {
 	OutlinedInput,
 	Alert,
 	CircularProgress,
-	Skeleton
+	Skeleton,
+	Accordion,
+	AccordionSummary,
+	AccordionDetails
 } from '@mui/material';
-import { Image as ImageIcon, Link as LinkIcon } from '@mui/icons-material';
+import { Image as ImageIcon, Link as LinkIcon, ExpandMore as ExpandMoreIcon } from '@mui/icons-material';
 import { Control, UseFormSetValue, useWatch } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import { InspectionParameter } from '../types';
 import { useFetchPrcTemplateInspectionsQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import { ImageItem } from '../../../../../../hooks/useImageGallery';
+
+interface GroupedInspection {
+	inspectionId: number;
+	inspectionName: string;
+	inspectionType: string;
+	parameters: InspectionParameter[];
+}
 
 interface ImageMappingSectionProps {
 	control: Control<PartMasterFormData>;
@@ -30,7 +39,7 @@ interface ImageMappingSectionProps {
 }
 
 const ImageMappingSection = ({ control, setValue, gallery }: ImageMappingSectionProps) => {
-	const [inspectionParameters, setInspectionParameters] = useState<InspectionParameter[]>([]);
+	const [groupedInspections, setGroupedInspections] = useState<GroupedInspection[]>([]);
 
 	// Watch form values
 	const prcTemplate = useWatch({ control, name: 'prcTemplate' });
@@ -42,7 +51,7 @@ const ImageMappingSection = ({ control, setValue, gallery }: ImageMappingSection
 		{ skip: !prcTemplate }
 	);
 
-	// Extract inspection parameters from PRC template data
+	// Extract and group inspection parameters from PRC template data
 	useEffect(() => {
 		if (prcTemplateData?.detail?.prcTemplateSteps) {
 			// Find all inspection steps in the PRC template
@@ -51,12 +60,14 @@ const ImageMappingSection = ({ control, setValue, gallery }: ImageMappingSection
 			);
 
 			if (inspectionSteps.length > 0) {
-				// Collect inspection parameters from ALL inspection steps
-				const allParams: InspectionParameter[] = [];
+				// Group inspection parameters by inspection
+				const groupedData: GroupedInspection[] = [];
 
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				inspectionSteps.forEach((inspectionStep: any) => {
-					if (inspectionStep.data?.inspectionParameters) {
+					if (inspectionStep.data?.inspection && inspectionStep.data?.inspectionParameters) {
+						const inspection = inspectionStep.data.inspection;
+
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						const stepParams = inspectionStep.data.inspectionParameters.map((param: any) => ({
 							id: param.id || 0,
@@ -69,22 +80,27 @@ const ImageMappingSection = ({ control, setValue, gallery }: ImageMappingSection
 							ctq: param.ctq
 						}));
 
-						allParams.push(...stepParams);
+						groupedData.push({
+							inspectionId: inspection.id,
+							inspectionName: inspection.inspectionName,
+							inspectionType: inspection.type,
+							parameters: stepParams
+						});
 					}
 				});
 
 				// Use setTimeout to avoid setState in effect
 				setTimeout(() => {
-					setInspectionParameters(allParams);
+					setGroupedInspections(groupedData);
 				}, 0);
 			} else {
 				setTimeout(() => {
-					setInspectionParameters([]);
+					setGroupedInspections([]);
 				}, 0);
 			}
 		} else {
 			setTimeout(() => {
-				setInspectionParameters([]);
+				setGroupedInspections([]);
 			}, 0);
 		}
 	}, [prcTemplateData]);
@@ -200,7 +216,7 @@ const ImageMappingSection = ({ control, setValue, gallery }: ImageMappingSection
 		);
 	}
 
-	if (inspectionParameters.length === 0) {
+	if (groupedInspections.length === 0) {
 		return (
 			<Paper sx={{ p: 3, mt: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
 				<Alert severity="info">No inspection parameters found for the selected PRC template.</Alert>
@@ -226,87 +242,103 @@ const ImageMappingSection = ({ control, setValue, gallery }: ImageMappingSection
 				</Alert>
 			)}
 
-			<Grid container spacing={3}>
-				{inspectionParameters.map(parameter => {
-					const mappedImages = getMappedImagesForParameter(parameter.id);
-
-					return (
-						<Grid size={{ xs: 12 }} key={parameter.id}>
-							<Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
-								<Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-									<Typography variant="subtitle1" sx={{ fontWeight: 600, mr: 2 }}>
-										{parameter.parameterName}
-									</Typography>
-									{parameter.ctq && <Chip label="CTQ" size="small" color="error" variant="outlined" />}
-									<Chip label={parameter.role} size="small" color="primary" variant="outlined" sx={{ ml: 1 }} />
-								</Box>
-
-								{parameter.specification && (
-									<Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-										Specification: {parameter.specification}
-									</Typography>
-								)}
-
-								<FormControl fullWidth size="small">
-									<InputLabel>Select Images</InputLabel>
-									<Select
-										multiple
-										value={mappedImages}
-										onChange={e => {
-											const value = e.target.value as string[];
-											handleImageMappingChange(parameter.id, value);
-										}}
-										input={<OutlinedInput label="Select Images" />}
-										renderValue={selected => (
-											<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-												{(selected as string[]).map(value => {
-													const imageItem = gallery.find(item => item.image === value);
-													return (
-														<Chip
-															key={value}
-															label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
-															size="small"
-														/>
-													);
-												})}
-											</Box>
-										)}
-									>
-										{gallery.map(imageItem => (
-											<MenuItem key={imageItem.id} value={imageItem.image}>
-												<Checkbox checked={mappedImages.indexOf(imageItem.image) > -1} />
-												<ListItemText primary={imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`} />
-											</MenuItem>
-										))}
-									</Select>
-								</FormControl>
-
-								{mappedImages.length > 0 && (
-									<Box sx={{ mt: 2 }}>
-										<Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-											Mapped Images:
-										</Typography>
-										<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-											{mappedImages.map(filePath => {
-												const imageItem = gallery.find(item => item.image === filePath);
-												return (
-													<Chip
-														key={filePath}
-														icon={<ImageIcon />}
-														label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
-														variant="outlined"
-														size="small"
-													/>
-												);
-											})}
-										</Box>
-									</Box>
-								)}
+			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+				{groupedInspections.map(inspection => (
+					<Accordion key={inspection.inspectionId} defaultExpanded>
+						<AccordionSummary expandIcon={<ExpandMoreIcon />}>
+							<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+								<Typography variant="h6" sx={{ fontWeight: 600, mr: 2 }}>
+									{inspection.inspectionName}
+								</Typography>
+								<Chip label={inspection.inspectionType} size="small" color="secondary" variant="outlined" />
 							</Box>
-						</Grid>
-					);
-				})}
-			</Grid>
+						</AccordionSummary>
+						<AccordionDetails>
+							<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+								{inspection.parameters.map(parameter => {
+									const mappedImages = getMappedImagesForParameter(parameter.id);
+
+									return (
+										<Box key={parameter.id} sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
+											<Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+												<Typography variant="subtitle1" sx={{ fontWeight: 600, mr: 2 }}>
+													{parameter.parameterName}
+												</Typography>
+												{parameter.ctq && <Chip label="CTQ" size="small" color="error" variant="outlined" />}
+												<Chip label={parameter.role} size="small" color="primary" variant="outlined" sx={{ ml: 1 }} />
+											</Box>
+
+											{parameter.specification && (
+												<Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+													Specification: {parameter.specification}
+												</Typography>
+											)}
+
+											<FormControl fullWidth size="small">
+												<InputLabel>Select Images</InputLabel>
+												<Select
+													multiple
+													value={mappedImages}
+													onChange={e => {
+														const value = e.target.value as string[];
+														handleImageMappingChange(parameter.id, value);
+													}}
+													input={<OutlinedInput label="Select Images" />}
+													renderValue={selected => (
+														<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+															{(selected as string[]).map(value => {
+																const imageItem = gallery.find(item => item.image === value);
+																return (
+																	<Chip
+																		key={value}
+																		label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
+																		size="small"
+																	/>
+																);
+															})}
+														</Box>
+													)}
+												>
+													{gallery.map(imageItem => (
+														<MenuItem key={imageItem.id} value={imageItem.image}>
+															<Checkbox checked={mappedImages.indexOf(imageItem.image) > -1} />
+															<ListItemText
+																primary={imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`}
+															/>
+														</MenuItem>
+													))}
+												</Select>
+											</FormControl>
+
+											{mappedImages.length > 0 && (
+												<Box sx={{ mt: 2 }}>
+													<Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+														Mapped Images:
+													</Typography>
+													<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+														{mappedImages.map(filePath => {
+															const imageItem = gallery.find(item => item.image === filePath);
+															return (
+																<Chip
+																	key={filePath}
+																	icon={<ImageIcon />}
+																	label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
+																	variant="outlined"
+																	size="small"
+																/>
+															);
+														})}
+													</Box>
+												</Box>
+											)}
+										</Box>
+									);
+								})}
+							</Box>
+						</AccordionDetails>
+					</Accordion>
+				))}
+			</Box>
 		</Paper>
 	);
 };

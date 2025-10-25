@@ -109,7 +109,7 @@ export function transformPrcAggregatedData(prcAggregatedSteps: Record<string, an
 				console.log(`🔄 Processing parameterId: ${parameterId}`, parameterData);
 
 				// Skip system parameters
-				if (['stepCompleted', 'productionApproved', 'ctqApproved'].includes(parameterId)) {
+				if (['stepCompleted', 'productionApproved', 'ctqApproved', 'partialCtqApprove'].includes(parameterId)) {
 					console.log(`⏭️ Skipping system parameter: ${parameterId}`);
 					return;
 				}

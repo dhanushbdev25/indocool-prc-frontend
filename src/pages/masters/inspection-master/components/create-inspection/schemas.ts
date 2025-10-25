@@ -7,19 +7,26 @@ export const columnSchema = yup.object({
 		.required('Column name is required')
 		.min(2, 'Column name must be at least 2 characters')
 		.max(50, 'Column name must be less than 50 characters'),
-	type: yup.string().required('Column type is required').oneOf(['text', 'number', 'boolean'], 'Invalid column type'),
+	type: yup
+		.string()
+		.required('Column type is required')
+		.oneOf(['text', 'number', 'boolean', 'ok/not ok', 'datetime'], 'Invalid column type'),
 	defaultValue: yup.mixed().when('type', {
-		is: 'number',
-		then: schema =>
-			schema
-				.transform(value => {
-					if (value === '' || value === null || value === undefined) return undefined;
-					const num = Number(value);
-					return isNaN(num) ? undefined : num;
-				})
-				.test('is-number', 'Default value must be a valid number', value => {
-					return value === undefined || typeof value === 'number';
-				}),
+		is: (val: string) => val === 'number' || val === 'datetime',
+		then: schema => {
+			if (schema.parent?.type === 'number') {
+				return schema
+					.transform(value => {
+						if (value === '' || value === null || value === undefined) return undefined;
+						const num = Number(value);
+						return isNaN(num) ? undefined : num;
+					})
+					.test('is-number', 'Default value must be a valid number', value => {
+						return value === undefined || typeof value === 'number';
+					});
+			}
+			return yup.string().optional();
+		},
 		otherwise: () => yup.string().max(100, 'Default value must be less than 100 characters').optional()
 	}),
 	tolerance: yup.mixed().when('type', {
@@ -92,7 +99,7 @@ export const inspectionParameterSchema = yup.object({
 	type: yup
 		.string()
 		.required('Parameter type is required')
-		.oneOf(['text', 'number', 'boolean', 'files', 'table'], 'Invalid parameter type'),
+		.oneOf(['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime'], 'Invalid parameter type'),
 	files: filesSchema.optional(),
 	columns: yup.array(columnSchema).min(0, 'Columns array cannot be negative'),
 	role: yup
@@ -233,12 +240,16 @@ export const parameterTypeOptions = [
 	{ value: 'number', label: 'Number' },
 	{ value: 'boolean', label: 'Boolean' },
 	{ value: 'files', label: 'Files' },
-	{ value: 'table', label: 'Table' }
+	{ value: 'table', label: 'Table' },
+	{ value: 'ok/not ok', label: 'Ok/Not Ok' },
+	{ value: 'datetime', label: 'Date & Time' }
 ];
 
 // Column type options
 export const columnTypeOptions = [
 	{ value: 'text', label: 'Text' },
 	{ value: 'number', label: 'Number' },
-	{ value: 'boolean', label: 'Boolean' }
+	{ value: 'boolean', label: 'Boolean' },
+	{ value: 'ok/not ok', label: 'Ok/Not Ok' },
+	{ value: 'datetime', label: 'Date & Time' }
 ];

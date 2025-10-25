@@ -187,6 +187,7 @@ const transformFormDataToApiRequest = (
 			notes: formData.notes || '',
 			layupType: formData.layupType || '',
 			model: formData.model || '',
+			sapReferenceNumber: formData.sapReferenceNumber || '',
 			version: formData.version || 1,
 			isLatest: formData.isLatest ?? true,
 			catalyst: formData.catalyst,
@@ -327,6 +328,7 @@ const CreatePart = () => {
 				notes: partMaster.notes || '',
 				layupType: partMaster.layupType || '',
 				model: partMaster.model || '',
+				sapReferenceNumber: partMaster.sapReferenceNumber || '',
 				version: partMaster.version,
 				isLatest: partMaster.isLatest,
 				catalyst: partMaster.catalyst || undefined,
@@ -337,6 +339,7 @@ const CreatePart = () => {
 					materialCode: rm.materialCode,
 					quantity: rm.quantity,
 					uom: rm.uom,
+					batching: rm.batching,
 					version: rm.version,
 					isLatest: rm.isLatest
 				})),

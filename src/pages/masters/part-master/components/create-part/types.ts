@@ -45,6 +45,7 @@ export interface ExtendedPartMasterFormData {
 	notes?: string;
 	layupType?: string;
 	model?: string;
+	sapReferenceNumber?: string;
 	version: number;
 	isLatest: boolean;
 	catalyst?: number;

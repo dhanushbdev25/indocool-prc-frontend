@@ -8,6 +8,7 @@ export interface AnnotationPoint {
 	y: number;
 	cls: string;
 	comment: string;
+	category?: string;
 }
 
 export interface AnnotationPolygon {
@@ -16,6 +17,7 @@ export interface AnnotationPolygon {
 	points: Array<[number, number]>;
 	cls: string;
 	comment: string;
+	category?: string;
 }
 
 export type AnnotationRegion = AnnotationPoint | AnnotationPolygon;
@@ -30,6 +32,7 @@ export interface StepGroup {
 	id: number;
 	processName: string;
 	processDescription: string;
+	sequenceTiming?: number;
 	steps: Array<{
 		id: number;
 		ctq: boolean;
@@ -63,7 +66,12 @@ export interface StepPreviewData {
 	data: Record<string, unknown> | unknown[];
 	productionApproved: boolean;
 	ctqApproved: boolean;
+	partialCtqApprove?: boolean;
 	stepCompleted: boolean;
+	timingExceeded?: boolean;
+	actualDuration?: number;
+	expectedDuration?: number;
+	timingExceededRemarks?: string;
 	// Additional metadata for inspection steps
 	inspectionParameters?: Array<{
 		id: number;
@@ -113,6 +121,7 @@ export interface TimelineStep {
 	ctq: boolean;
 	productionApproved?: boolean;
 	ctqApproved?: boolean;
+	partialCtqApprove?: boolean;
 	// For raw materials/bom
 	items?: Array<{
 		id: number;
@@ -121,6 +130,7 @@ export interface TimelineStep {
 		uom: string;
 		description?: string;
 		materialType?: string;
+		batching?: boolean;
 	}>;
 	// For sequence step groups
 	stepGroup?: StepGroup;
@@ -239,6 +249,7 @@ export interface ExecutionData {
 		materialName: string;
 		quantity: string;
 		uom: string;
+		batching: boolean;
 	}>;
 	bom?: Array<{
 		id: number;
@@ -282,6 +293,9 @@ export interface FormData {
 export interface StepTiming {
 	startTime: string;
 	endTime: string;
+	productionApproved?: string; // Timestamp when approve production button was clicked
+	ctqApproved?: string; // Timestamp when approve CTQ button was clicked
+	stepCompleted?: string; // Timestamp when complete step button was clicked
 }
 
 export interface AggregatedData {

@@ -18,7 +18,8 @@ import {
 	PlaylistAdd as StepIcon,
 	AttachFile as AttachFileIcon,
 	Assessment as AssessmentIcon,
-	Straighten as StraightenIcon
+	Straighten as StraightenIcon,
+	AccessTime as AccessTimeIcon
 } from '@mui/icons-material';
 import {
 	type ProcessStepGroup,
@@ -197,19 +198,21 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 						)}
 
 						{/* UOM */}
-						<Grid size={{ xs: 12, md: 6 }}>
-							<Box>
-								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
-									Unit of Measurement
-								</Typography>
-								<Box sx={{ display: 'flex', alignItems: 'center' }}>
-									<StraightenIcon sx={{ mr: 1, color: '#1976d2', fontSize: '1.2rem' }} />
-									<Typography variant="body2" sx={{ color: '#333', fontWeight: 500 }}>
-										{step.uom}
+						{step.uom && (
+							<Grid size={{ xs: 12, md: 6 }}>
+								<Box>
+									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
+										Unit of Measurement
 									</Typography>
+									<Box sx={{ display: 'flex', alignItems: 'center' }}>
+										<StraightenIcon sx={{ mr: 1, color: '#1976d2', fontSize: '1.2rem' }} />
+										<Typography variant="body2" sx={{ color: '#333', fontWeight: 500 }}>
+											{step.uom}
+										</Typography>
+									</Box>
 								</Box>
-							</Box>
-						</Grid>
+							</Grid>
+						)}
 
 						{/* Multiple Measurements */}
 						<Grid size={{ xs: 12, md: 6 }}>
@@ -331,6 +334,17 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 							</Typography>
 						</Box>
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+							<Chip
+								icon={<AccessTimeIcon sx={{ fontSize: '0.875rem' }} />}
+								label={`${stepGroup.sequenceTiming || '00:00'}`}
+								size="small"
+								sx={{
+									backgroundColor: '#e8f5e8',
+									color: '#2e7d32',
+									fontSize: '0.75rem',
+									height: '24px'
+								}}
+							/>
 							<Chip
 								label={`${stepGroup.steps?.length || 0} steps`}
 								size="small"

@@ -12,7 +12,11 @@ import {
 	DialogContent,
 	DialogActions,
 	Chip,
-	Paper
+	Paper,
+	FormControl,
+	InputLabel,
+	Select,
+	MenuItem
 } from '@mui/material';
 import { Add, Delete, ZoomIn, ZoomOut, PanTool, CheckCircle, Cancel } from '@mui/icons-material';
 import {
@@ -35,6 +39,18 @@ interface ImageAnnotatorProps {
 
 type AnnotationMode = 'none' | 'point' | 'polygon';
 
+// Defect categories for annotations
+const DEFECT_CATEGORIES = [
+	'Surface Defect',
+	'Dimensional Defect',
+	'Material Defect',
+	'Assembly Defect',
+	'Functional Defect',
+	'Cosmetic Defect',
+	'Structural Defect',
+	'Other'
+];
+
 const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	images,
 	existingAnnotations = [],
@@ -55,6 +71,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	const [selectedAnnotation, setSelectedAnnotation] = useState<AnnotationRegion | null>(null);
 	const [commentDialog, setCommentDialog] = useState(false);
 	const [comment, setComment] = useState('');
+	const [category, setCategory] = useState('');
 	const [imageLoaded, setImageLoaded] = useState(false);
 	const [imageError, setImageError] = useState(false);
 	const [_imageSize, setImageSize] = useState({ width: 0, height: 0 }); // Keep for future use
@@ -161,7 +178,8 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 					x: x / canvasSize.width,
 					y: y / canvasSize.height,
 					cls: 'defect',
-					comment: ''
+					comment: '',
+					category: ''
 				};
 				setSelectedAnnotation(newAnnotation);
 				setCommentDialog(true);
@@ -181,7 +199,8 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 								([px, py]) => [px / canvasSize.width, py / canvasSize.height] as [number, number]
 							),
 							cls: 'inspection-area',
-							comment: ''
+							comment: '',
+							category: ''
 						};
 						setSelectedAnnotation(newAnnotation);
 						setCommentDialog(true);
@@ -207,7 +226,8 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 				id: `polygon-${Date.now()}`,
 				points: currentPolygon.map(([x, y]) => [x / canvasSize.width, y / canvasSize.height] as [number, number]),
 				cls: 'inspection-area',
-				comment: ''
+				comment: '',
+				category: ''
 			};
 			setSelectedAnnotation(newAnnotation);
 			setCommentDialog(true);
@@ -217,11 +237,11 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 		[readOnly, mode, isDrawing, currentPolygon, canvasSize]
 	);
 
-	// Save annotation with comment
+	// Save annotation with comment and category
 	const handleSaveAnnotation = useCallback(() => {
 		if (!selectedAnnotation || !currentImage) return;
 
-		const updatedAnnotation = { ...selectedAnnotation, comment };
+		const updatedAnnotation = { ...selectedAnnotation, comment, category };
 		const currentImageAnnotations = getCurrentImageAnnotations();
 		const updatedRegions = [...currentImageAnnotations, updatedAnnotation];
 
@@ -235,12 +255,22 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 		setAnnotations(updatedAnnotations);
 		setCommentDialog(false);
 		setComment('');
+		setCategory('');
 		setSelectedAnnotation(null);
 
 		// Auto-save annotations when a new annotation is created
 		console.log('ImageAnnotator: Auto-saving annotations after creating new annotation:', updatedAnnotations);
 		onSave(updatedAnnotations);
-	}, [selectedAnnotation, comment, currentImage, currentImageUrl, getCurrentImageAnnotations, annotations, onSave]);
+	}, [
+		selectedAnnotation,
+		comment,
+		category,
+		currentImage,
+		currentImageUrl,
+		getCurrentImageAnnotations,
+		annotations,
+		onSave
+	]);
 
 	// Delete annotation
 	const handleDeleteAnnotation = useCallback(
@@ -671,8 +701,26 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 										<Typography variant="body2" sx={{ fontWeight: 500 }}>
 											{annotation.type === 'point' ? 'Point' : 'Polygon'} • {annotation.cls}
 										</Typography>
+										{annotation.category && (
+											<Chip
+												label={annotation.category}
+												size="small"
+												sx={{
+													backgroundColor: '#e3f2fd',
+													color: '#1976d2',
+													fontSize: '0.625rem',
+													height: '20px',
+													mt: 0.5,
+													mr: 1
+												}}
+											/>
+										)}
 										{annotation.comment && (
-											<Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+											<Typography
+												variant="caption"
+												color="text.secondary"
+												sx={{ fontStyle: 'italic', display: 'block', mt: 0.5 }}
+											>
 												"{annotation.comment}"
 											</Typography>
 										)}
@@ -695,18 +743,32 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 
 			{/* Comment Dialog */}
 			<Dialog open={commentDialog} onClose={() => setCommentDialog(false)} maxWidth="sm" fullWidth>
-				<DialogTitle>Add Comment to Annotation</DialogTitle>
+				<DialogTitle>Add Details to Annotation</DialogTitle>
 				<DialogContent>
+					<FormControl fullWidth margin="dense" required>
+						<InputLabel>Defect Category</InputLabel>
+						<Select
+							value={category}
+							onChange={e => setCategory(e.target.value)}
+							label="Defect Category"
+							variant="outlined"
+						>
+							{DEFECT_CATEGORIES.map(cat => (
+								<MenuItem key={cat} value={cat}>
+									{cat}
+								</MenuItem>
+							))}
+						</Select>
+					</FormControl>
 					<TextField
-						autoFocus
 						margin="dense"
-						label="Comment"
+						label="Description"
 						fullWidth
 						multiline
 						rows={3}
 						value={comment}
 						onChange={e => setComment(e.target.value)}
-						placeholder="Add a comment..."
+						placeholder="Add a description..."
 						variant="outlined"
 					/>
 				</DialogContent>
@@ -714,7 +776,12 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 					<Button onClick={() => setCommentDialog(false)} startIcon={<Cancel />}>
 						Cancel
 					</Button>
-					<Button onClick={handleSaveAnnotation} variant="contained" startIcon={<CheckCircle />}>
+					<Button
+						onClick={handleSaveAnnotation}
+						variant="contained"
+						startIcon={<CheckCircle />}
+						disabled={!category.trim()}
+					>
 						Save Annotation
 					</Button>
 				</DialogActions>

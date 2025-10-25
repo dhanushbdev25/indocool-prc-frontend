@@ -205,11 +205,38 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	const renderInput = () => {
 		if (stepData.targetValueType === 'ok/not ok') {
 			return (
-				<FormControl component="fieldset">
-					<FormLabel component="legend">Result</FormLabel>
-					<RadioGroup value={formData.value || ''} onChange={e => handleValueChange(e.target.value)}>
-						<FormControlLabel value="ok" control={<Radio />} label="OK" />
-						<FormControlLabel value="not ok" control={<Radio />} label="Not OK" />
+				<FormControl component="fieldset" disabled={isReadOnly}>
+					<FormLabel component="legend" sx={{ fontSize: '0.875rem', color: '#666', mb: 1 }}>
+						Select Result
+					</FormLabel>
+					<RadioGroup
+						row
+						value={formData.value || ''}
+						onChange={e => handleValueChange(e.target.value)}
+						sx={{ gap: 2 }}
+					>
+						<FormControlLabel
+							value="ok"
+							control={<Radio size="small" color="success" />}
+							label="OK"
+							sx={{
+								'& .MuiFormControlLabel-label': {
+									fontSize: '0.875rem',
+									color: formData.value === 'ok' ? '#2e7d32' : '#666'
+								}
+							}}
+						/>
+						<FormControlLabel
+							value="not ok"
+							control={<Radio size="small" color="error" />}
+							label="Not OK"
+							sx={{
+								'& .MuiFormControlLabel-label': {
+									fontSize: '0.875rem',
+									color: formData.value === 'not ok' ? '#d32f2f' : '#666'
+								}
+							}}
+						/>
 					</RadioGroup>
 				</FormControl>
 			);

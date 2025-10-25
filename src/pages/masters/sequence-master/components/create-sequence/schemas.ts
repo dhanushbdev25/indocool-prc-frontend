@@ -54,10 +54,7 @@ export const processStepSchema = yup
 						.min(1, 'Maximum count must be at least 1'),
 				otherwise: schema => schema.nullable()
 			}),
-		uom: yup
-			.string()
-			.required('Unit of measurement is required')
-			.max(20, 'Unit of measurement must be less than 20 characters'),
+		uom: yup.string().optional().max(20, 'Unit of measurement must be less than 20 characters'),
 		ctq: yup.boolean(),
 		allowAttachments: yup.boolean(),
 		notes: yup.string().max(500, 'Notes must be less than 500 characters').optional()
@@ -98,6 +95,16 @@ export const processStepGroupSchema = yup.object({
 		.required('Process description is required')
 		.min(10, 'Process description must be at least 10 characters')
 		.max(500, 'Process description must be less than 500 characters'),
+	sequenceTiming: yup
+		.string()
+		.required('Expected duration is required')
+		.matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter a valid time format (HH:MM)')
+		.test('min-duration', 'Duration must be at least 1 minute', function (value) {
+			if (!value) return false;
+			const [hours, minutes] = value.split(':').map(Number);
+			const totalMinutes = hours * 60 + minutes;
+			return totalMinutes >= 1;
+		}),
 	processSteps: yup
 		.array(processStepSchema)
 		.test('unique-step-numbers', 'Step numbers must be unique within each group', function (steps) {
@@ -162,6 +169,7 @@ export const defaultProcessStep: ProcessStepFormData = {
 export const defaultProcessStepGroup: ProcessStepGroupFormData = {
 	processName: '',
 	processDescription: '',
+	sequenceTiming: '00:01',
 	processSteps: []
 };
 

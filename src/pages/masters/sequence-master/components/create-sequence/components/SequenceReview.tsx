@@ -19,7 +19,8 @@ import {
 import {
 	ExpandMore as ExpandMoreIcon,
 	CheckCircle as CheckCircleIcon,
-	Cancel as CancelIcon
+	Cancel as CancelIcon,
+	AccessTime as AccessTimeIcon
 } from '@mui/icons-material';
 import { useWatch } from 'react-hook-form';
 import { SequenceReviewProps } from '../types';
@@ -152,6 +153,17 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 										{stepGroup.processDescription || 'No description provided'}
 									</Typography>
 								</Box>
+								<Box sx={{ mb: 2 }}>
+									<Typography variant="body2" sx={{ color: '#666', mb: 1 }}>
+										Expected Duration
+									</Typography>
+									<Box sx={{ display: 'flex', alignItems: 'center' }}>
+										<AccessTimeIcon sx={{ mr: 1, color: '#2e7d32', fontSize: '1.2rem' }} />
+										<Typography variant="body1" sx={{ fontWeight: 500 }}>
+											{stepGroup.sequenceTiming || '00:00'}
+										</Typography>
+									</Box>
+								</Box>
 
 								{stepGroup.processSteps && stepGroup.processSteps.length > 0 && (
 									<TableContainer>
@@ -203,7 +215,7 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 																</Typography>
 															)}
 														</TableCell>
-														<TableCell>{step.uom}</TableCell>
+														<TableCell>{step.uom || 'N/A'}</TableCell>
 														<TableCell>
 															<Chip
 																icon={step.ctq ? <CheckCircleIcon /> : <CancelIcon />}
