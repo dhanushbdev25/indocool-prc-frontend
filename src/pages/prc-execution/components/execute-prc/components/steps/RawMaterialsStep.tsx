@@ -35,7 +35,10 @@ const RawMaterialsStep = ({ step, executionData, onStepComplete }: RawMaterialsS
 			(step.status === 'completed' || step.status === 'in-progress') &&
 			executionData.prcAggregatedSteps?.rawMaterials
 		) {
-			setFormData(executionData.prcAggregatedSteps.rawMaterials as FormData);
+			// Use setTimeout to avoid synchronous setState in effect
+			setTimeout(() => {
+				setFormData(executionData.prcAggregatedSteps.rawMaterials as FormData);
+			}, 0);
 		}
 	}, [step.status, executionData.prcAggregatedSteps]);
 
