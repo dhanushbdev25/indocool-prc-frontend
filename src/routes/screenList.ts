@@ -13,9 +13,9 @@ import {
 
 // Lazy-loaded components
 export const imports = {
-	catalystMaster: Loadable(lazy(() => import('../pages/masters/catalyst-master/componets/list-catalyst'))),
-	createCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/componets/create-catalyst'))),
-	viewCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/componets/view-catalyst'))),
+	catalystMaster: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/list-catalyst'))),
+	createCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/create-catalyst'))),
+	viewCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/view-catalyst'))),
 	sequenceMaster: Loadable(lazy(() => import('../pages/masters/sequence-master/components/list-sequence'))),
 	createSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/create-sequence'))),
 	viewSequence: Loadable(lazy(() => import('../pages/masters/sequence-master/components/view-sequence'))),

@@ -6,7 +6,37 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 	}
 
 	if (step.type === 'bom') {
-		return { bom: formData };
+		// Handle catalyst mixing data structure using material ID hierarchy
+		// Structure: { materialId: { order: { data } } }
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const simplifiedData: Record<string, Record<string, any>> = {};
+
+		if (formData.entries && Array.isArray(formData.entries)) {
+			formData.entries.forEach(entry => {
+				// Use materialId and order directly from entry
+				const materialId = entry.materialId.toString();
+				const order = entry.order || 0;
+
+				// Initialize material group if not exists
+				if (!simplifiedData[materialId]) {
+					simplifiedData[materialId] = {};
+				}
+
+				// Store data under order key
+				simplifiedData[materialId][order.toString()] = {
+					calculatedMax: entry.calculatedMax,
+					calculatedMin: entry.calculatedMin,
+					catalystQuantity: entry.catalystQuantity,
+					validationStatus: entry.validationStatus,
+					humidity: entry.humidity,
+					temperature: entry.temperature,
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					acknowledged: (formData as any).acknowledgments?.[entry.id] || false
+				};
+			});
+		}
+
+		return { bom: simplifiedData };
 	}
 
 	if (step.type === 'sequence') {

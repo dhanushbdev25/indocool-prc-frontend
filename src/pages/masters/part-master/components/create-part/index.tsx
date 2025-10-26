@@ -22,7 +22,6 @@ import { Save, Cancel, Close as CloseIcon } from '@mui/icons-material';
 import Swal from 'sweetalert2';
 import GeneralInfo from './components/GeneralInfo';
 import RawMaterialsTab from './components/RawMaterialsTab';
-import BOMTab from './components/BOMTab';
 import TechnicalDataTab from './components/TechnicalDataTab';
 import LinkedMastersTab from './components/LinkedMastersTab';
 import { partMasterFormSchema, defaultPartMasterFormData } from './schemas';
@@ -314,7 +313,7 @@ const CreatePart = () => {
 	// Load data for edit mode when API data is available
 	useEffect(() => {
 		if (isEditMode && isFetchSuccess && partData && customersData) {
-			const { partMaster, rawMaterials, bom, drilling, cutting } = partData.detail;
+			const { partMaster, rawMaterials, drilling, cutting } = partData.detail;
 
 			const formData: PartMasterFormData = {
 				id: partMaster.id,
@@ -340,17 +339,17 @@ const CreatePart = () => {
 					quantity: rm.quantity,
 					uom: rm.uom,
 					batching: rm.batching,
+					splitting: rm.splitting,
+					splittingConfiguration: rm.splittingConfiguration
+						? rm.splittingConfiguration.map(split => ({
+								order: split.order,
+								splitQuantity: String(split.splitQuantity)
+							}))
+						: null,
 					version: rm.version,
 					isLatest: rm.isLatest
 				})),
-				bom: bom.map(b => ({
-					id: b.id,
-					materialType: b.materialType,
-					description: b.description,
-					bomQuantity: b.bomQuantity,
-					version: b.version,
-					isLatest: b.isLatest
-				})),
+				bom: [], // BOM is no longer used
 				drilling: drilling.map(d => ({
 					id: d.id,
 					characteristics: d.characteristics,
@@ -564,9 +563,8 @@ const CreatePart = () => {
 						<Tabs value={activeTab} onChange={handleTabChange} aria-label="part tabs">
 							<Tab label="General Info" id="part-tab-0" aria-controls="part-tabpanel-0" />
 							<Tab label="Raw Materials" id="part-tab-1" aria-controls="part-tabpanel-1" />
-							<Tab label="BOM" id="part-tab-2" aria-controls="part-tabpanel-2" />
-							<Tab label="Technical Data" id="part-tab-3" aria-controls="part-tabpanel-3" />
-							<Tab label="Linked Masters" id="part-tab-4" aria-controls="part-tabpanel-4" />
+							<Tab label="Technical Data" id="part-tab-2" aria-controls="part-tabpanel-2" />
+							<Tab label="Linked Masters" id="part-tab-3" aria-controls="part-tabpanel-3" />
 						</Tabs>
 					</Box>
 
@@ -584,12 +582,9 @@ const CreatePart = () => {
 						<RawMaterialsTab control={control} errors={errors} />
 					</TabPanel>
 					<TabPanel value={activeTab} index={2}>
-						<BOMTab control={control} errors={errors} />
-					</TabPanel>
-					<TabPanel value={activeTab} index={3}>
 						<TechnicalDataTab control={control} errors={errors} />
 					</TabPanel>
-					<TabPanel value={activeTab} index={4}>
+					<TabPanel value={activeTab} index={3}>
 						<LinkedMastersTab control={control} errors={errors} setValue={setValue} gallery={gallery} />
 					</TabPanel>
 				</Paper>

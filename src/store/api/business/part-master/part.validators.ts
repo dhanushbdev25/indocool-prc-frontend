@@ -7,22 +7,20 @@ export const rawMaterialSchema = z.object({
 	materialName: z.string().min(1, 'Material name is required'),
 	materialCode: z.string().min(1, 'Material code is required'),
 	quantity: z.string().min(1, 'Quantity is required'),
-	batching: z.boolean().default(false),
 	uom: z.string().min(1, 'UOM is required'),
 	version: z.number().default(1),
 	isLatest: z.boolean().default(true),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional()
-});
-
-export const bomSchema = z.object({
-	id: z.number().optional(),
-	partId: z.number().optional(),
-	materialType: z.string().min(1, 'Material type is required'),
-	description: z.string().min(1, 'Description is required'),
-	bomQuantity: z.string().min(1, 'BOM quantity is required'),
-	version: z.number().default(1),
-	isLatest: z.boolean().default(true),
+	batching: z.boolean().default(false),
+	splitting: z.boolean().default(false),
+	splittingConfiguration: z
+		.array(
+			z.object({
+				order: z.number(),
+				splitQuantity: z.union([z.string(), z.number()]).transform(val => String(val))
+			})
+		)
+		.nullable()
+		.optional(),
 	createdAt: z.string().optional(),
 	updatedAt: z.string().optional()
 });
@@ -118,7 +116,6 @@ export const customerComboSchema = z.object({
 export const partDetailSchema = z.object({
 	partMaster: partMasterSchema,
 	rawMaterials: z.array(rawMaterialSchema),
-	bom: z.array(bomSchema),
 	drilling: z.array(drillingSchema),
 	cutting: z.array(cuttingSchema),
 	files: z.array(partDrawingSchema).nullable().optional().default([]),
@@ -166,7 +163,6 @@ export const createPartRequestSchema = z.object({
 	data: z.object({
 		partMaster: partMasterSchema.omit({ id: true, createdAt: true, updatedAt: true, customerName: true }),
 		rawMaterials: z.array(rawMaterialSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-		bom: z.array(bomSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
 		drilling: z.array(drillingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
 		cutting: z.array(cuttingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true }))
 	})
@@ -177,7 +173,6 @@ export const updatePartRequestSchema = z.object({
 	data: z.object({
 		partMaster: partMasterSchema.omit({ createdAt: true, updatedAt: true, customerName: true }),
 		rawMaterials: z.array(rawMaterialSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-		bom: z.array(bomSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
 		drilling: z.array(drillingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
 		cutting: z.array(cuttingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true }))
 	})
@@ -186,14 +181,12 @@ export const updatePartRequestSchema = z.object({
 export const deletePartRequestSchema = z.object({
 	partMaster: partMasterSchema.omit({ createdAt: true, updatedAt: true, customerName: true }),
 	rawMaterials: z.array(rawMaterialSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-	bom: z.array(bomSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
 	drilling: z.array(drillingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
 	cutting: z.array(cuttingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true }))
 });
 
 // Type exports
 export type RawMaterial = z.infer<typeof rawMaterialSchema>;
-export type BOM = z.infer<typeof bomSchema>;
 export type Drilling = z.infer<typeof drillingSchema>;
 export type Cutting = z.infer<typeof cuttingSchema>;
 export type PartDrawing = z.infer<typeof partDrawingSchema>;

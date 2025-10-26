@@ -11,7 +11,6 @@ import {
 	type DeletePartRequest,
 	type PartMaster,
 	type RawMaterial,
-	type BOM,
 	type Drilling,
 	type Cutting
 } from '../../../../../store/api/business/part-master/part.validators';
@@ -37,7 +36,8 @@ const ListPart = () => {
 				(item: {
 					partMaster: PartMaster;
 					rawMaterials: RawMaterial[];
-					bom: BOM[];
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					bom?: any[]; // BOM might still be in API response but we ignore it
 					drilling: Drilling[];
 					cutting: Cutting[];
 				}) => item.partMaster.id !== undefined
@@ -46,7 +46,8 @@ const ListPart = () => {
 				(item: {
 					partMaster: PartMaster;
 					rawMaterials: RawMaterial[];
-					bom: BOM[];
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					bom?: any[]; // BOM might still be in API response but we ignore it
 					drilling: Drilling[];
 					cutting: Cutting[];
 				}) => ({
@@ -59,7 +60,6 @@ const ListPart = () => {
 					description: item.partMaster.description,
 					version: item.partMaster.version,
 					totalRawMaterials: item.rawMaterials.length,
-					totalBOM: item.bom.length,
 					totalDrilling: item.drilling.length,
 					totalCutting: item.cutting.length,
 					createdAt: item.partMaster.createdAt || '',
@@ -143,13 +143,7 @@ const ListPart = () => {
 						version: rm.version,
 						isLatest: rm.isLatest
 					})),
-					bom: fullPartDetail.bom.map(b => ({
-						materialType: b.materialType,
-						description: b.description,
-						bomQuantity: b.bomQuantity,
-						version: b.version,
-						isLatest: b.isLatest
-					})),
+					bom: [], // BOM is no longer used
 					drilling: fullPartDetail.drilling.map(d => ({
 						characteristics: d.characteristics,
 						specification: d.specification,

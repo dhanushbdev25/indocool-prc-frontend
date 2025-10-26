@@ -57,6 +57,7 @@ export const processStepSchema = yup
 		uom: yup.string().optional().max(20, 'Unit of measurement must be less than 20 characters'),
 		ctq: yup.boolean(),
 		allowAttachments: yup.boolean(),
+		responsiblePerson: yup.boolean(),
 		notes: yup.string().max(500, 'Notes must be less than 500 characters').optional()
 	})
 	.test('min-max-validation', 'Minimum value must be less than or equal to maximum value', function (value) {
@@ -163,6 +164,7 @@ export const defaultProcessStep: ProcessStepFormData = {
 	uom: '',
 	ctq: false,
 	allowAttachments: false,
+	responsiblePerson: false,
 	notes: ''
 };
 

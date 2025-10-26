@@ -162,7 +162,8 @@ const StepDetailView = ({
 					parameterDescription: currentSubStep.parameterDescription,
 					evaluationMethod: currentSubStep.evaluationMethod,
 					allowAttachments: currentSubStep.allowAttachments,
-					stepNumber: currentSubStep.stepNumber
+					stepNumber: currentSubStep.stepNumber,
+					responsiblePerson: currentSubStep.responsiblePerson
 				}
 			};
 

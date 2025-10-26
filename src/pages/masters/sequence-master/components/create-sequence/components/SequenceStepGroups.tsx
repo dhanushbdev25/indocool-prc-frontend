@@ -60,6 +60,7 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 					uom: '',
 					ctq: false,
 					allowAttachments: false,
+					responsiblePerson: false,
 					notes: ''
 				}
 			]
@@ -666,16 +667,25 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 								/>
 							</Grid>
 
-							{/* CTQ and Allow Attachments */}
+							{/* CTQ, Allow Attachments, and Responsible Person */}
 							<Grid size={{ xs: 12, md: 6 }}>
-								<Box sx={{ display: 'flex', gap: 2 }}>
+								<Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
 									<Controller
 										name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.ctq`}
 										control={control}
 										render={({ field }) => (
 											<FormControlLabel
 												control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
-												label="CTQ"
+												label={
+													<Box>
+														<Typography variant="body1" sx={{ fontWeight: 500 }}>
+															Critical to Quality (CTQ)
+														</Typography>
+														<Typography variant="caption" sx={{ color: '#666' }}>
+															Mark this parameter as critical for quality control
+														</Typography>
+													</Box>
+												}
 											/>
 										)}
 									/>
@@ -686,6 +696,16 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 											<FormControlLabel
 												control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
 												label="Allow Attachments"
+											/>
+										)}
+									/>
+									<Controller
+										name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.responsiblePerson`}
+										control={control}
+										render={({ field }) => (
+											<FormControlLabel
+												control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
+												label="Get Responsible Person"
 											/>
 										)}
 									/>

@@ -3,7 +3,6 @@ import { Box, Paper, Typography, Button, Alert, Skeleton } from '@mui/material';
 import { ArrowBack, Edit } from '@mui/icons-material';
 import ViewGeneralInfo from './components/ViewGeneralInfo';
 import ViewRawMaterials from './components/ViewRawMaterials';
-import ViewBOM from './components/ViewBOM';
 import ViewTechnicalData from './components/ViewTechnicalData';
 import ViewLinkedMasters from './components/ViewLinkedMasters';
 import { useFetchPartByIdQuery } from '../../../../../store/api/business/part-master/part.api';
@@ -73,7 +72,7 @@ const ViewPart = () => {
 		);
 	}
 
-	const { partMaster, rawMaterials, bom, drilling, cutting } = partData.detail;
+	const { partMaster, rawMaterials, drilling, cutting } = partData.detail;
 
 	return (
 		<Box sx={{ minHeight: '100vh' }}>
@@ -115,7 +114,6 @@ const ViewPart = () => {
 				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 					<ViewGeneralInfo partMaster={partMaster} files={partData?.detail?.files || undefined} />
 					<ViewRawMaterials rawMaterials={rawMaterials} />
-					<ViewBOM bom={bom} />
 					<ViewTechnicalData drilling={drilling} cutting={cutting} />
 					<ViewLinkedMasters partMaster={partMaster} />
 				</Box>

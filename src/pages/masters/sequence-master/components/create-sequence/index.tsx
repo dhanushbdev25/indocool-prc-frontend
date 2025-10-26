@@ -145,6 +145,7 @@ const CreateSequence = () => {
 						uom: step.uom,
 						ctq: step.ctq,
 						allowAttachments: step.allowAttachments,
+						responsiblePerson: step.responsiblePerson,
 						notes: step.notes
 					}))
 				})),
@@ -238,6 +239,7 @@ const CreateSequence = () => {
 							uom: step.uom,
 							ctq: step.ctq ?? false,
 							allowAttachments: step.allowAttachments ?? false,
+							responsiblePerson: step.responsiblePerson ?? false,
 							notes: step.notes || ''
 						}))
 					}))

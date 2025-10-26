@@ -177,6 +177,7 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 													<TableCell>UOM</TableCell>
 													<TableCell>CTQ</TableCell>
 													<TableCell>Attachments</TableCell>
+													<TableCell>Get Responsible Person</TableCell>
 												</TableRow>
 											</TableHead>
 											<TableBody>
@@ -238,6 +239,21 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 																size="small"
 																sx={{
 																	backgroundColor: step.allowAttachments ? '#4caf50' : '#9e9e9e',
+																	color: 'white',
+																	fontSize: '0.75rem',
+																	'& .MuiChip-icon': {
+																		color: 'white'
+																	}
+																}}
+															/>
+														</TableCell>
+														<TableCell>
+															<Chip
+																icon={step.responsiblePerson ? <CheckCircleIcon /> : <CancelIcon />}
+																label={step.responsiblePerson ? 'Yes' : 'No'}
+																size="small"
+																sx={{
+																	backgroundColor: step.responsiblePerson ? '#4caf50' : '#9e9e9e',
 																	color: 'white',
 																	fontSize: '0.75rem',
 																	'& .MuiChip-icon': {

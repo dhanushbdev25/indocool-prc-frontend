@@ -25,22 +25,29 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 		});
 	}
 
-	// Step 2: BOM
+	// Step 2: Catalyst Mixing (formerly BOM)
 	if (executionData.bom && executionData.bom.length > 0) {
 		const isCompleted = executionData.prcAggregatedSteps?.bom !== undefined;
 		steps.push({
 			stepNumber: stepNumber++,
 			type: 'bom',
-			title: 'BOM Validation',
-			description: 'Validate bill of materials quantities',
+			title: 'Catalyst Mixing',
+			description: 'Configure catalyst mixing based on temperature, humidity, and material quantities',
 			status: isCompleted ? 'completed' : 'pending',
 			ctq: false,
 			items: executionData.bom.map(bom => ({
 				id: bom.id,
-				name: bom.description,
-				quantity: bom.bomQuantity,
-				uom: '', // BOM doesn't have UOM in the API response
-				description: bom.materialType
+				name: bom.materialName,
+				quantity: bom.quantity,
+				splitQuantity: bom.splitQuantity,
+				uom: bom.uom,
+				description: bom.materialCode,
+				materialType: bom.materialCode,
+				materialCode: bom.materialCode,
+				materialName: bom.materialName,
+				order: bom.order,
+				splitting: bom.splitting,
+				splittingConfiguration: bom.splittingConfiguration
 			}))
 		});
 	}
@@ -116,7 +123,8 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 									isLatest: true,
 									createdAt: new Date().toISOString(),
 									updatedAt: new Date().toISOString(),
-									processStepGroupId: stepGroup.id
+									processStepGroupId: stepGroup.id,
+									responsiblePerson: step.responsiblePerson
 								}))
 							}
 						});

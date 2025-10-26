@@ -101,7 +101,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Drawing Revision"
 									type="number"
 									placeholder="e.g., 2"
-									helperText="Drawing revision number (auto-incremented by backend)"
+									helperText="Drawing revision number "
 									error={!!errors.drawingRevision}
 									slotProps={{
 										htmlInput: {
@@ -131,7 +131,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Part Revision"
 									type="number"
 									placeholder="e.g., 3"
-									helperText="Part revision number (auto-incremented by backend)"
+									helperText="Part revision number "
 									error={!!errors.partRevision}
 									slotProps={{
 										htmlInput: {

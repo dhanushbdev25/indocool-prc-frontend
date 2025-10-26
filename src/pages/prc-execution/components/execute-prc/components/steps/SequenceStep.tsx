@@ -11,7 +11,10 @@ import {
 	FormControlLabel,
 	Radio,
 	Grid,
-	IconButton
+	IconButton,
+	Select,
+	MenuItem,
+	InputLabel
 } from '@mui/material';
 import { Add, Delete } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
@@ -28,7 +31,13 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	// Compute initial data from existing data
 	const initialData = useMemo(() => {
 		const stepData = step.stepData;
-		if (!stepData) return { formData: {}, measurements: [{ id: '1', value: '' }] };
+		const defaultResponsiblePersonData = { role: 'l1' as const, employeeName: '', employeeCode: '' };
+		if (!stepData)
+			return {
+				formData: {},
+				measurements: [{ id: '1', value: '' }],
+				responsiblePersonData: defaultResponsiblePersonData
+			};
 		if (executionData.prcAggregatedSteps) {
 			const existingData =
 				stepData.stepGroupId && stepData.stepId
@@ -45,38 +54,69 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					actualData = (existingData as any).data;
 				}
 
+				// Extract responsible person data if it exists (at the same level as data)
+				let responsiblePersonData: { role: 'l1' | 'l2' | 'l3' | 'l4'; employeeName: string; employeeCode: string } =
+					defaultResponsiblePersonData;
+				if (typeof existingData === 'object' && existingData !== null) {
+					// Check for responsible person data at the same level as data
+					if ('employeeName' in existingData && 'employeeCode' in existingData && 'role' in existingData) {
+						const role = existingData.role as string;
+						const validRole = ['l1', 'l2', 'l3', 'l4'].includes(role) ? (role as 'l1' | 'l2' | 'l3' | 'l4') : 'l1';
+						responsiblePersonData = {
+							role: validRole,
+							employeeName: (existingData.employeeName as string) || '',
+							employeeCode: (existingData.employeeCode as string) || ''
+						};
+					}
+				}
+
 				if (stepData.multipleMeasurements && Array.isArray(actualData)) {
 					// Load multiple measurements from array
 					const loadedMeasurements = actualData.map((value: string | number, index: number) => ({
 						id: (index + 1).toString(),
 						value: value.toString()
 					}));
-					return { formData: {}, measurements: loadedMeasurements };
+					return { formData: {}, measurements: loadedMeasurements, responsiblePersonData };
 				} else if (typeof actualData === 'string' || typeof actualData === 'number') {
 					// Load single value directly
-					return { formData: { value: actualData.toString() }, measurements: [{ id: '1', value: '' }] };
+					return {
+						formData: { value: actualData.toString() },
+						measurements: [{ id: '1', value: '' }],
+						responsiblePersonData
+					};
 				} else if (typeof actualData === 'object' && actualData !== null) {
 					// Handle object data (like { value: "ok" })
 					if ('value' in actualData) {
 						return {
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							formData: { value: (actualData as any).value.toString() },
-							measurements: [{ id: '1', value: '' }]
+							measurements: [{ id: '1', value: '' }],
+							responsiblePersonData
 						};
 					}
 				}
 			}
 		}
-		return { formData: {}, measurements: [{ id: '1', value: '' }] };
+		return {
+			formData: {},
+			measurements: [{ id: '1', value: '' }],
+			responsiblePersonData: defaultResponsiblePersonData
+		};
 	}, [executionData.prcAggregatedSteps, step]);
 
 	const [formData, setFormData] = useState<FormData>(initialData.formData);
 	const [measurements, setMeasurements] = useState<Array<{ id: string; value: string }>>(initialData.measurements);
+	const [responsiblePersonData, setResponsiblePersonData] = useState<{
+		role: 'l1' | 'l2' | 'l3' | 'l4';
+		employeeName: string;
+		employeeCode: string;
+	}>(initialData.responsiblePersonData);
 
 	// Update form data when initial data changes
 	useEffect(() => {
 		setFormData(initialData.formData);
 		setMeasurements(initialData.measurements);
+		setResponsiblePersonData(initialData.responsiblePersonData);
 	}, [initialData]);
 
 	const stepData = step.stepData;
@@ -127,6 +167,21 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	const removeMeasurement = (measurementId: string) => {
 		if (measurements.length > 1) {
 			setMeasurements(prev => prev.filter(m => m.id !== measurementId));
+		}
+	};
+
+	const handleResponsiblePersonChange = (field: 'role' | 'employeeName' | 'employeeCode', value: string) => {
+		setResponsiblePersonData(prev => ({
+			...prev,
+			[field]: value
+		}));
+
+		// Clear error when user starts typing
+		if (errors[`responsiblePerson_${field}`]) {
+			setErrors(prev => ({
+				...prev,
+				[`responsiblePerson_${field}`]: ''
+			}));
 		}
 	};
 
@@ -182,6 +237,19 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 			}
 		}
 
+		// Validate responsible person data if required
+		if (stepData.responsiblePerson) {
+			if (!responsiblePersonData.role) {
+				newErrors.responsiblePerson_role = 'Role is required';
+			}
+			if (!responsiblePersonData.employeeName || responsiblePersonData.employeeName.trim() === '') {
+				newErrors.responsiblePerson_employeeName = 'Employee name is required';
+			}
+			if (!responsiblePersonData.employeeCode || responsiblePersonData.employeeCode.trim() === '') {
+				newErrors.responsiblePerson_employeeCode = 'Employee code is required';
+			}
+		}
+
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
@@ -198,7 +266,22 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				submitData = String(formData.value);
 			}
 
-			onStepComplete({ data: submitData });
+			// Prepare form data with responsible person data at the same level as data
+			const formDataToSubmit: FormData = {
+				data: submitData,
+				stepId: stepData.stepId,
+				stepGroupId: stepData.stepGroupId,
+				prcTemplateStepId: stepData.prcTemplateStepId
+			};
+
+			// Add responsible person data at the same level as data if required
+			if (stepData.responsiblePerson) {
+				formDataToSubmit.employeeName = responsiblePersonData.employeeName;
+				formDataToSubmit.employeeCode = responsiblePersonData.employeeCode;
+				formDataToSubmit.role = responsiblePersonData.role;
+			}
+
+			onStepComplete(formDataToSubmit);
 		}
 	};
 
@@ -422,6 +505,60 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				</Typography>
 				{renderInput()}
 			</Box>
+
+			{/* Responsible Person Section */}
+			{stepData.responsiblePerson && (
+				<Box sx={{ mb: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+					<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 1.5, fontSize: '1rem' }}>
+						Responsible Person Details
+					</Typography>
+					<Grid container spacing={2}>
+						<Grid size={{ xs: 12, sm: 4 }}>
+							<FormControl fullWidth error={!!errors.responsiblePerson_role}>
+								<InputLabel>Role</InputLabel>
+								<Select
+									value={responsiblePersonData.role}
+									onChange={e => handleResponsiblePersonChange('role', e.target.value)}
+									label="Role"
+									disabled={isReadOnly}
+								>
+									<MenuItem value="l1">L1</MenuItem>
+									<MenuItem value="l2">L2</MenuItem>
+									<MenuItem value="l3">L3</MenuItem>
+									<MenuItem value="l4">L4</MenuItem>
+								</Select>
+								{errors.responsiblePerson_role && (
+									<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+										{errors.responsiblePerson_role}
+									</Typography>
+								)}
+							</FormControl>
+						</Grid>
+						<Grid size={{ xs: 12, sm: 4 }}>
+							<TextField
+								fullWidth
+								label="Employee Name"
+								value={responsiblePersonData.employeeName}
+								onChange={e => handleResponsiblePersonChange('employeeName', e.target.value)}
+								error={!!errors.responsiblePerson_employeeName}
+								helperText={errors.responsiblePerson_employeeName}
+								disabled={isReadOnly}
+							/>
+						</Grid>
+						<Grid size={{ xs: 12, sm: 4 }}>
+							<TextField
+								fullWidth
+								label="Employee Code"
+								value={responsiblePersonData.employeeCode}
+								onChange={e => handleResponsiblePersonChange('employeeCode', e.target.value)}
+								error={!!errors.responsiblePerson_employeeCode}
+								helperText={errors.responsiblePerson_employeeCode}
+								disabled={isReadOnly}
+							/>
+						</Grid>
+					</Grid>
+				</Box>
+			)}
 
 			{/* CTQ Warning */}
 			{step.ctq && stepData.minValue && stepData.maxValue && (

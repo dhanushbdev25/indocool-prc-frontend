@@ -55,6 +55,7 @@ export interface StepGroup {
 		createdAt: string;
 		updatedAt: string;
 		processStepGroupId: number;
+		responsiblePerson?: boolean;
 	}>;
 }
 
@@ -127,10 +128,20 @@ export interface TimelineStep {
 		id: number;
 		name: string;
 		quantity: string;
+		splitQuantity?: string;
 		uom: string;
 		description?: string;
 		materialType?: string;
 		batching?: boolean;
+		// Additional fields for BOM/catalyst mixing
+		materialCode?: string;
+		materialName?: string;
+		order?: number;
+		splitting?: boolean;
+		splittingConfiguration?: Array<{
+			order: number;
+			splitQuantity: string;
+		}> | null;
 	}>;
 	// For sequence step groups
 	stepGroup?: StepGroup;
@@ -154,6 +165,7 @@ export interface TimelineStep {
 		evaluationMethod?: string; // Only for sequence steps
 		allowAttachments?: boolean; // Only for sequence steps
 		stepNumber?: number; // Only for sequence steps
+		responsiblePerson?: boolean; // Only for sequence steps
 	};
 	// For inspection steps
 	inspectionParameters?: Array<{
@@ -253,21 +265,48 @@ export interface ExecutionData {
 	}>;
 	bom?: Array<{
 		id: number;
-		description: string;
-		materialType: string;
-		bomQuantity: string;
+		uom: string;
+		order: number;
+		partId: number;
+		version: number;
+		batching: boolean;
+		isLatest: boolean;
+		quantity: string;
+		createdAt: string;
+		splitting: boolean;
+		updatedAt: string;
+		materialCode: string;
+		materialName: string;
+		splitQuantity: string;
+		splittingConfiguration: Array<{
+			order: number;
+			splitQuantity: string;
+		}> | null;
 	}>;
 	prcAggregatedSteps?: Record<string, unknown>;
 	stepStartEndTime?: Record<string, unknown>;
 	catalystData?: {
 		catalyst: {
 			id: number;
+			status: string;
 			chartId: string;
+			version: number;
+			isLatest: boolean;
 			chartSupplier: string;
 			notes: string;
+			mekpDensity: string;
+			isActive: boolean;
+			createdBy: number | null;
+			updatedBy: number | null;
+			createdAt: string;
+			updatedAt: string;
 		};
 		catalystConfiguration: Array<{
 			id: number;
+			catalystId: number;
+			chartId: string;
+			version: number;
+			isLatest: boolean;
 			minTemperature: string;
 			maxTemperature: string;
 			minHumidity: string;
@@ -278,8 +317,13 @@ export interface ExecutionData {
 			minResinDosage: string;
 			maxResinDosage: string;
 			resinLabel: string;
+			minTopCoat: string;
+			maxTopCoat: string;
+			topCoatLabel: string;
 			blockCatalystMixing: boolean;
 			requestSupervisorApproval: boolean;
+			createdAt: string;
+			updatedAt: string;
 		}>;
 	};
 }
@@ -288,6 +332,37 @@ export interface FormData {
 	[key: string]: unknown;
 	// Support for annotation data
 	annotations?: ImageAnnotation[];
+	// Support for responsible person data
+	responsiblePersonData?: {
+		role: 'l1' | 'l2' | 'l3' | 'l4';
+		employeeName: string;
+		employeeCode: string;
+	};
+}
+
+// Catalyst mixing specific types
+export interface CatalystMixingEntry {
+	id: string; // Unique identifier for this entry
+	materialId: number; // Material ID for hierarchy lookup
+	materialCode: string;
+	materialName: string;
+	quantity: string;
+	uom: string;
+	order?: number; // For split materials
+	isSplit: boolean;
+	temperature: string;
+	humidity: string;
+	catalystQuantity: string;
+	calculatedMin: number;
+	calculatedMax: number;
+	validationStatus: 'Accepted' | 'Lesser' | 'Greater';
+	acknowledged: boolean;
+	blocked: boolean;
+	requiresSupervisorApproval: boolean;
+}
+
+export interface CatalystMixingFormData {
+	entries: CatalystMixingEntry[];
 }
 
 export interface StepTiming {

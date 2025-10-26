@@ -1,17 +1,16 @@
 import { Box, Typography, LinearProgress, Chip, Button } from '@mui/material';
 import { ArrowBack, Pause, Escalator } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { type ExecutionData, type TimelineStep } from '../../../types/execution.types';
+import { type ExecutionData } from '../../../types/execution.types';
 
 interface ExecutionHeaderProps {
 	executionData: ExecutionData;
-	currentStep: TimelineStep | undefined;
 }
 
-const ExecutionHeader = ({ executionData, currentStep }: ExecutionHeaderProps) => {
+const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 	const navigate = useNavigate();
 
-	const progressPercentage = Math.round((executionData.stepsCompleted / executionData.totalSteps) * 100);
+	const progressPercentage = executionData.progress;
 
 	const getProgressColor = (progress: number) => {
 		if (progress >= 100) return '#4caf50';
@@ -102,18 +101,6 @@ const ExecutionHeader = ({ executionData, currentStep }: ExecutionHeaderProps) =
 						size="small"
 						sx={{ backgroundColor: '#e3f2fd', color: '#1976d2' }}
 					/>
-
-					{/* Current Step Status */}
-					{currentStep && (
-						<Chip
-							label={currentStep.status === 'in-progress' ? 'In Progress' : 'Completed'}
-							size="small"
-							sx={{
-								backgroundColor: currentStep.status === 'in-progress' ? '#e3f2fd' : '#e8f5e8',
-								color: currentStep.status === 'in-progress' ? '#1976d2' : '#2e7d32'
-							}}
-						/>
-					)}
 				</Box>
 
 				{/* Action Buttons */}

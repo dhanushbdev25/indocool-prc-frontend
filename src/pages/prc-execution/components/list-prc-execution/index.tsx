@@ -21,6 +21,7 @@ const ListPrcExecution = () => {
 	const {
 		data: prcExecutionData,
 		isLoading: isPrcExecutionDataLoading,
+		isFetching: isPrcExecutionDataFetching,
 		refetch: refetchPrcExecutions
 	} = useFetchPrcExecutionsQuery();
 
@@ -102,7 +103,7 @@ const ListPrcExecution = () => {
 	};
 
 	// Show loading state with skeleton
-	if (isPrcExecutionDataLoading) {
+	if (isPrcExecutionDataLoading || isPrcExecutionDataFetching) {
 		return (
 			<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
 				<PrcExecutionHeader onCreateClick={handleCreateClick} />

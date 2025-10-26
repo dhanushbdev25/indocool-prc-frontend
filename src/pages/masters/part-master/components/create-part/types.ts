@@ -51,7 +51,6 @@ export interface ExtendedPartMasterFormData {
 	catalyst?: number;
 	prcTemplate?: number;
 	rawMaterials: RawMaterialFormData[];
-	bom: BOMFormData[];
 	drilling: DrillingFormData[];
 	cutting: CuttingFormData[];
 	createdAt?: string;
@@ -68,15 +67,12 @@ export interface RawMaterialFormData {
 	materialCode: string;
 	quantity: string;
 	uom: string;
-	version: number;
-	isLatest: boolean;
-}
-
-export interface BOMFormData {
-	id?: number;
-	materialType: string;
-	description: string;
-	bomQuantity: string;
+	batching: boolean;
+	splitting: boolean;
+	splittingConfiguration: Array<{
+		order: number;
+		splitQuantity: string;
+	}> | null;
 	version: number;
 	isLatest: boolean;
 }
@@ -120,11 +116,6 @@ export interface GeneralInfoProps {
 }
 
 export interface RawMaterialsTabProps {
-	control: Control<PartMasterFormData>;
-	errors: FieldErrors<PartMasterFormData>;
-}
-
-export interface BOMTabProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
 }

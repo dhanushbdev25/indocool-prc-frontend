@@ -37,6 +37,7 @@ import {
 import { type StepPreviewData } from '../../../types/execution.types';
 import ImageDisplay from './ImageDisplay';
 import { debugDataTransformation } from '../../../utils/dataTransformers';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 
 interface StepPreviewProps {
 	previewData: StepPreviewData;
@@ -57,6 +58,10 @@ const StepPreview = ({
 	onProceedToNext,
 	onBackToStepGroup
 }: StepPreviewProps) => {
+	const { currentRole } = useCurrentRole();
+	const canApproveProduction = currentRole.id === 1 || currentRole.id === 2;
+	const canApproveCTQ = currentRole.id === 1 || currentRole.id === 3;
+
 	const [productionApproved, setProductionApproved] = useState(previewData.productionApproved || false);
 	const [ctqApproved, setCtqApproved] = useState(previewData.ctqApproved || false);
 	const [expandedMultiValueParams, setExpandedMultiValueParams] = useState<Set<string>>(new Set());
@@ -254,7 +259,7 @@ const StepPreview = ({
 				data = transformedData;
 				debugDataTransformation(previewData.data, data, 'StepPreview');
 			} else {
-				console.log('ℹ️ StepPreview: Data appears to be in expected format already');
+				console.log('StepPreview: Data appears to be in expected format already');
 			}
 		}
 
@@ -303,7 +308,7 @@ const StepPreview = ({
 								multiline
 								rows={2}
 								label="Reason for delay"
-								placeholder="Brief explanation for the timing delay..."
+								placeholder="Brief explanation for the timing delay"
 								value={
 									previewData.stepCompleted
 										? previewData.timingExceededRemarks || 'No reason provided'
@@ -462,6 +467,53 @@ const StepPreview = ({
 										<Typography variant="caption" sx={{ color: '#333', ml: 0.5 }}>
 											{measurement.notes}
 										</Typography>
+									</Box>
+								))}
+						</Box>
+					)}
+
+					{/* Responsible Person Information */}
+					{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+					{Array.isArray(data) && data.some((m: any) => m.employeeName && m.employeeCode && m.role) && (
+						<Box sx={{ mt: 2 }}>
+							<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: '#333' }}>
+								Responsible Person Details:
+							</Typography>
+							{data
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								.filter((m: any) => m.employeeName && m.employeeCode && m.role)
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								.map((measurement: any, index: number) => (
+									<Box
+										key={index}
+										sx={{ mb: 1.5, p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}
+									>
+										<Grid container spacing={2}>
+											<Grid size={{ xs: 12, sm: 4 }}>
+												<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
+													Role
+												</Typography>
+												<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#1565c0' }}>
+													{measurement.role?.toUpperCase()}
+												</Typography>
+											</Grid>
+											<Grid size={{ xs: 12, sm: 4 }}>
+												<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
+													Employee Name
+												</Typography>
+												<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#1565c0' }}>
+													{measurement.employeeName}
+												</Typography>
+											</Grid>
+											<Grid size={{ xs: 12, sm: 4 }}>
+												<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
+													Employee Code
+												</Typography>
+												<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#1565c0' }}>
+													{measurement.employeeCode}
+												</Typography>
+											</Grid>
+										</Grid>
 									</Box>
 								))}
 						</Box>
@@ -1199,7 +1251,9 @@ const StepPreview = ({
 						variant={productionApproved ? 'outlined' : 'contained'}
 						color={productionApproved ? 'success' : 'primary'}
 						onClick={handleApproveProduction}
-						disabled={productionApproved}
+						disabled={
+							productionApproved || (!canApproveProduction && !(previewData.type === 'inspection' && canApproveCTQ))
+						}
 						startIcon={<Check />}
 						size="small"
 					>
@@ -1217,7 +1271,7 @@ const StepPreview = ({
 								<Button
 									color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
 									onClick={handleApproveCTQ}
-									disabled={ctqApproved || partialCtqApproved}
+									disabled={ctqApproved || partialCtqApproved || !canApproveCTQ}
 									startIcon={<Check />}
 								>
 									{ctqApproved
@@ -1231,7 +1285,7 @@ const StepPreview = ({
 								<Button
 									color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
 									onClick={handleCtqMenuOpen}
-									disabled={ctqApproved || partialCtqApproved}
+									disabled={ctqApproved || partialCtqApproved || !canApproveCTQ}
 									sx={{ minWidth: 'auto', px: 1 }}
 								>
 									<ArrowDropDown />

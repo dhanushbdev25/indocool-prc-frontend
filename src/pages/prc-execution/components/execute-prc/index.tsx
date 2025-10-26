@@ -1337,7 +1337,7 @@ const ExecutePrc = () => {
 				}}
 			>
 				{/* Header */}
-				<ExecutionHeader executionData={actualExecutionData} currentStep={currentStep} />
+				<ExecutionHeader executionData={actualExecutionData} />
 
 				{/* Main Content */}
 				<Box sx={{ flex: 1, overflow: 'hidden' }}>

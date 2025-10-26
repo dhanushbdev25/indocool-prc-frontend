@@ -8,16 +8,21 @@ export const rawMaterialFormSchema = yup.object({
 	quantity: yup.string().required('Quantity is required'),
 	uom: yup.string().required('UOM is required'),
 	batching: yup.boolean().default(false),
-	version: yup.number().default(1),
-	isLatest: yup.boolean().default(true)
-});
-
-// BOM validation schema
-export const bomFormSchema = yup.object({
-	id: yup.mixed().optional(), // Allow both numbers and strings (UUIDs)
-	materialType: yup.string().required('Material type is required'),
-	description: yup.string().required('Description is required'),
-	bomQuantity: yup.string().required('BOM quantity is required'),
+	splitting: yup.boolean().default(false),
+	splittingConfiguration: yup
+		.array(
+			yup.object({
+				order: yup.number().required(),
+				splitQuantity: yup
+					.mixed()
+					.test('is-string-or-number', 'Split quantity must be a string or number', function (value) {
+						return typeof value === 'string' || typeof value === 'number';
+					})
+					.transform(value => String(value))
+			})
+		)
+		.nullable()
+		.optional(),
 	version: yup.number().default(1),
 	isLatest: yup.boolean().default(true)
 });
@@ -105,7 +110,6 @@ export const partMasterFormSchema = yup.object({
 	catalyst: yup.number().optional(),
 	prcTemplate: yup.number().optional(),
 	rawMaterials: yup.array(rawMaterialFormSchema).default([]),
-	bom: yup.array(bomFormSchema).default([]),
 	drilling: yup.array(drillingFormSchema).default([]),
 	cutting: yup.array(cuttingFormSchema).default([]),
 	files: yup.array(partDrawingSchema).default([]),
@@ -116,7 +120,6 @@ export const partMasterFormSchema = yup.object({
 
 // Type definitions
 export type RawMaterialFormData = yup.InferType<typeof rawMaterialFormSchema>;
-export type BOMFormData = yup.InferType<typeof bomFormSchema>;
 export type DrillingFormData = yup.InferType<typeof drillingFormSchema>;
 export type CuttingFormData = yup.InferType<typeof cuttingFormSchema>;
 export type PartDrawingFormData = yup.InferType<typeof partDrawingSchema>;
@@ -130,14 +133,8 @@ export const defaultRawMaterial: RawMaterialFormData = {
 	quantity: '',
 	uom: '',
 	batching: false,
-	version: 1,
-	isLatest: true
-};
-
-export const defaultBOM: BOMFormData = {
-	materialType: '',
-	description: '',
-	bomQuantity: '',
+	splitting: false,
+	splittingConfiguration: null,
 	version: 1,
 	isLatest: true
 };
@@ -187,7 +184,6 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	catalyst: undefined,
 	prcTemplate: undefined,
 	rawMaterials: [],
-	bom: [],
 	drilling: [],
 	cutting: [],
 	files: [],
@@ -222,10 +218,6 @@ export const generalInfoSchema = yup.object({
 
 export const rawMaterialsSchema = yup.object({
 	rawMaterials: yup.array(rawMaterialFormSchema)
-});
-
-export const bomSchema = yup.object({
-	bom: yup.array(bomFormSchema)
 });
 
 export const technicalDataSchema = yup.object({

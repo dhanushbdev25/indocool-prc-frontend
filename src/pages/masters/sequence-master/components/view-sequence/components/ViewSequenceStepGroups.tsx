@@ -249,7 +249,7 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
 									Additional Options
 								</Typography>
-								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
 									{step.allowAttachments && (
 										<Chip
 											icon={<AttachFileIcon sx={{ fontSize: '0.875rem' }} />}
@@ -257,6 +257,19 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 											size="small"
 											sx={{
 												backgroundColor: '#4caf50',
+												color: 'white',
+												fontSize: '0.75rem',
+												height: '24px'
+											}}
+										/>
+									)}
+									{step.responsiblePerson && (
+										<Chip
+											icon={<AssessmentIcon sx={{ fontSize: '0.875rem' }} />}
+											label="Get Responsible Person"
+											size="small"
+											sx={{
+												backgroundColor: '#2196f3',
 												color: 'white',
 												fontSize: '0.75rem',
 												height: '24px'

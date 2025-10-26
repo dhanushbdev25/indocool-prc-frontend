@@ -46,22 +46,12 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 	};
 
 	const calculateProgress = (execution: PrcExecutionData) => {
-		// Convert progress to number if it's a string
+		// Use the progress value directly from API response
 		const progressValue =
 			typeof execution.progress === 'string' ? parseInt(execution.progress) || 0 : execution.progress;
 
-		// If progress is already a percentage (0-100), use it directly
-		if (progressValue <= 100) {
-			return progressValue;
-		}
-
-		// If progress is a raw value, calculate percentage based on total steps
-		if (execution.totalSteps && execution.totalSteps > 0) {
-			return Math.min(100, Math.round((execution.stepsCompleted / execution.totalSteps) * 100));
-		}
-
-		// Fallback: if no totalSteps, assume progress is a raw value and cap at 100
-		return Math.min(100, progressValue);
+		// Ensure progress is within valid range (0-100)
+		return Math.min(100, Math.max(0, progressValue));
 	};
 
 	const columns = useMemo<MRT_ColumnDef<PrcExecutionData>[]>(

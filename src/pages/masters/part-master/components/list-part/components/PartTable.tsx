@@ -22,7 +22,6 @@ export interface PartData {
 	sapReferenceNumber?: string;
 	version: number;
 	totalRawMaterials: number;
-	totalBOM: number;
 	totalDrilling: number;
 	totalCutting: number;
 	createdAt: string;
@@ -216,7 +215,7 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 				Cell: ({ row }) => (
 					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
 						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-							RM: {row.original.totalRawMaterials} | BOM: {row.original.totalBOM}
+							RM: {row.original.totalRawMaterials}
 						</Typography>
 						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
 							Drill: {row.original.totalDrilling} | Cut: {row.original.totalCutting}
