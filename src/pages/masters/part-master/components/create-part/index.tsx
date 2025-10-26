@@ -349,7 +349,6 @@ const CreatePart = () => {
 					version: rm.version,
 					isLatest: rm.isLatest
 				})),
-				bom: [], // BOM is no longer used
 				drilling: drilling.map(d => ({
 					id: d.id,
 					characteristics: d.characteristics,

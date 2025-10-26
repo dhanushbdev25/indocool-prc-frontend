@@ -70,7 +70,13 @@ const CreateCatalyst = () => {
 				notes: catalystData.detail.catalyst.notes || '',
 				mekpDensity: catalystData.detail.catalyst.mekpDensity,
 				isActive: catalystData.detail.catalyst.status === 'ACTIVE',
-				catalystConfiguration: catalystData.detail.catalystConfiguration,
+				catalystConfiguration: catalystData.detail.catalystConfiguration.map(config => ({
+					...config,
+					gelcoatLabel: config.gelcoatLabel || '',
+					topCoatLabel: config.topCoatLabel || '',
+					minTopCoat: config.minTopCoat || '',
+					maxTopCoat: config.maxTopCoat || ''
+				})),
 				createdAt: catalystData.detail.catalyst.createdAt,
 				updatedAt: catalystData.detail.catalyst.updatedAt
 			};
@@ -152,9 +158,9 @@ const CreateCatalyst = () => {
 				minResinDosage: Number(config.minResinDosage),
 				maxResinDosage: Number(config.maxResinDosage),
 				resinLabel: config.resinLabel,
-				minTopCoat: Number(config.minTopCoat),
-				maxTopCoat: Number(config.maxTopCoat),
-				topCoatLabel: config.topCoatLabel,
+				minTopCoat: config.minTopCoat ? Number(config.minTopCoat) : 0,
+				maxTopCoat: config.maxTopCoat ? Number(config.maxTopCoat) : 0,
+				topCoatLabel: config.topCoatLabel || '',
 				blockCatalystMixing: config.blockCatalystMixing ?? false,
 				requestSupervisorApproval: config.requestSupervisorApproval ?? false
 			}));

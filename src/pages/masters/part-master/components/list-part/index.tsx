@@ -141,7 +141,10 @@ const ListPart = () => {
 						quantity: rm.quantity,
 						uom: rm.uom,
 						version: rm.version,
-						isLatest: rm.isLatest
+						isLatest: rm.isLatest,
+						batching: rm.batching || false,
+						splitting: rm.splitting || false,
+						splittingConfiguration: rm.splittingConfiguration || null
 					})),
 					bom: [], // BOM is no longer used
 					drilling: fullPartDetail.drilling.map(d => ({

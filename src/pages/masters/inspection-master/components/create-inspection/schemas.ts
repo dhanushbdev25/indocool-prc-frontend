@@ -13,8 +13,8 @@ export const columnSchema = yup.object({
 		.oneOf(['text', 'number', 'boolean', 'ok/not ok', 'datetime'], 'Invalid column type'),
 	defaultValue: yup.mixed().when('type', {
 		is: (val: string) => val === 'number' || val === 'datetime',
-		then: schema => {
-			if (schema.parent?.type === 'number') {
+		then: (schema, { parent }) => {
+			if (parent?.type === 'number') {
 				return schema
 					.transform(value => {
 						if (value === '' || value === null || value === undefined) return undefined;

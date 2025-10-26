@@ -113,6 +113,7 @@ const ListSequence = () => {
 						processStepGroups: fullSequenceDetail.stepGroups.map(stepGroup => ({
 							processName: stepGroup.processName,
 							processDescription: stepGroup.processDescription,
+							sequenceTiming: stepGroup.sequenceTiming || 0,
 							processSteps: stepGroup.steps.map(step => ({
 								parameterDescription: step.parameterDescription,
 								stepNumber: step.stepNumber,

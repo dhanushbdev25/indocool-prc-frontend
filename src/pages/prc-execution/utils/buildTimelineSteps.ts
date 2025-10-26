@@ -111,7 +111,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 								id: stepGroup.id,
 								processName: stepGroup.processName,
 								processDescription: stepGroup.processDescription,
-								sequenceTiming: stepGroup.sequenceTiming,
+								sequenceTiming: stepGroup.sequenceTiming || 0,
 								steps: stepGroup.steps.map(step => ({
 									...step,
 									minValue: step.minValue,
@@ -124,7 +124,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 									createdAt: new Date().toISOString(),
 									updatedAt: new Date().toISOString(),
 									processStepGroupId: stepGroup.id,
-									responsiblePerson: step.responsiblePerson
+									responsiblePerson: step.responsiblePerson || ''
 								}))
 							}
 						});

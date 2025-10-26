@@ -613,7 +613,7 @@ const ParameterColumns = memo(
 														<LocalizationProvider dateAdapter={AdapterDayjs}>
 															<DateTimePicker
 																label="Default Value"
-																value={field.value ? dayjs(field.value) : null}
+																value={field.value ? dayjs(field.value as string) : null}
 																onChange={newValue => {
 																	const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
 																	field.onChange(formattedValue);

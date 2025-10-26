@@ -105,6 +105,9 @@ const ListCatalyst = () => {
 						minResinDosage: parseFloat(config.minResinDosage),
 						maxResinDosage: parseFloat(config.maxResinDosage),
 						resinLabel: config.resinLabel,
+						minTopCoat: config.minTopCoat ? parseFloat(config.minTopCoat) : 0,
+						maxTopCoat: config.maxTopCoat ? parseFloat(config.maxTopCoat) : 0,
+						topCoatLabel: config.topCoatLabel || '',
 						blockCatalystMixing: config.blockCatalystMixing,
 						requestSupervisorApproval: config.requestSupervisorApproval
 					}))
