@@ -18,6 +18,7 @@ export const processStepSchema = z.object({
 	uom: z.string().optional(),
 	ctq: z.boolean(),
 	allowAttachments: z.boolean(),
+	responsiblePerson: z.boolean(),
 	notes: z.string(),
 	createdAt: z.string(),
 	updatedAt: z.string()
@@ -83,6 +84,7 @@ export const processStepRequestSchema = z.object({
 	uom: z.string().optional(),
 	ctq: z.boolean(),
 	allowAttachments: z.boolean(),
+	responsiblePerson: z.boolean(),
 	notes: z.string()
 });
 
