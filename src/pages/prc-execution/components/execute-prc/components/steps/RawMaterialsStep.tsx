@@ -37,7 +37,7 @@ const RawMaterialsStep = ({ step, executionData, onStepComplete }: RawMaterialsS
 		) {
 			// Use setTimeout to avoid synchronous setState in effect
 			setTimeout(() => {
-				setFormData(executionData.prcAggregatedSteps.rawMaterials as FormData);
+				setFormData(executionData.prcAggregatedSteps?.rawMaterials as FormData);
 			}, 0);
 		}
 	}, [step.status, executionData.prcAggregatedSteps]);
