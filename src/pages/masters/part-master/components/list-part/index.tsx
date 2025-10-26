@@ -146,7 +146,6 @@ const ListPart = () => {
 						splitting: rm.splitting || false,
 						splittingConfiguration: rm.splittingConfiguration || null
 					})),
-					bom: [], // BOM is no longer used
 					drilling: fullPartDetail.drilling.map(d => ({
 						characteristics: d.characteristics,
 						specification: d.specification,

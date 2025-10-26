@@ -154,7 +154,7 @@ const CreateCatalyst = () => {
 				maxHumidity: Number(config.maxHumidity),
 				minGelcoat: Number(config.minGelcoat),
 				maxGelcoat: Number(config.maxGelcoat),
-				gelcoatLabel: config.gelcoatLabel,
+				gelcoatLabel: config.gelcoatLabel || '',
 				minResinDosage: Number(config.minResinDosage),
 				maxResinDosage: Number(config.maxResinDosage),
 				resinLabel: config.resinLabel,
