@@ -157,7 +157,7 @@ const CreateCatalyst = () => {
 				gelcoatLabel: config.gelcoatLabel || '',
 				minResinDosage: Number(config.minResinDosage),
 				maxResinDosage: Number(config.maxResinDosage),
-				resinLabel: config.resinLabel,
+				resinLabel: config.resinLabel || '',
 				minTopCoat: config.minTopCoat ? Number(config.minTopCoat) : 0,
 				maxTopCoat: config.maxTopCoat ? Number(config.maxTopCoat) : 0,
 				topCoatLabel: config.topCoatLabel || '',
