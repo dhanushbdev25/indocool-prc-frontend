@@ -55,7 +55,7 @@ export default defineConfig({
 					// Authentication
 					'auth-vendor': ['@azure/msal-browser', '@azure/msal-react'],
 					// Utilities
-					'utils-vendor': ['axios', 'dayjs', 'sweetalert2'],
+					'utils-vendor': ['dayjs', 'sweetalert2'],
 					// UI components
 					'ui-vendor': ['react-icons', 'react-loader-spinner']
 				},
@@ -112,7 +112,6 @@ export default defineConfig({
 			'@reduxjs/toolkit',
 			'react-redux',
 			'react-hook-form',
-			'axios',
 			'dayjs'
 		],
 		exclude: ['@azure/msal-browser', '@azure/msal-react']
