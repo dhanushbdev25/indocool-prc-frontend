@@ -140,12 +140,12 @@ const CreateSequence = () => {
 						targetValueType: step.targetValueType,
 						minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
 						maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
-						multipleMeasurements: step.multipleMeasurements,
+						multipleMeasurements: step.multipleMeasurements ?? false,
 						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
 						uom: step.uom,
-						ctq: step.ctq,
-						allowAttachments: step.allowAttachments,
-						responsiblePerson: step.responsiblePerson,
+						ctq: step.ctq ?? false,
+						allowAttachments: step.allowAttachments ?? false,
+						responsiblePerson: step.responsiblePerson ?? false,
 						notes: step.notes
 					}))
 				})),
