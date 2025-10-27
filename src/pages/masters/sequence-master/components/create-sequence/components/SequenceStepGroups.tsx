@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
 	Box,
 	Paper,
@@ -41,6 +41,8 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 		name: 'processStepGroups'
 	});
 
+	const [expandedGroups, setExpandedGroups] = useState<number[]>(() => stepGroupFields.map((_, index) => index));
+
 	const addStepGroup = () => {
 		appendStepGroup({
 			processName: '',
@@ -65,6 +67,12 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 				}
 			]
 		});
+	};
+
+	const handleAccordionToggle = (groupIndex: number) => {
+		setExpandedGroups(prev =>
+			prev.includes(groupIndex) ? prev.filter(index => index !== groupIndex) : [...prev, groupIndex]
+		);
 	};
 
 	return (
@@ -96,7 +104,8 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 			{stepGroupFields.map((stepGroup, groupIndex) => (
 				<Accordion
 					key={stepGroup.id}
-					defaultExpanded
+					expanded={expandedGroups.includes(groupIndex)}
+					onChange={() => handleAccordionToggle(groupIndex)}
 					sx={{
 						mb: 3,
 						borderRadius: '12px',
@@ -106,11 +115,13 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 					}}
 				>
 					<AccordionSummary
+						component="div"
 						expandIcon={<ExpandMoreIcon />}
 						sx={{
 							backgroundColor: '#f8f9fa',
 							borderRadius: '12px 12px 0 0',
-							'&.Mui-expanded': { borderRadius: '12px 12px 0 0' }
+							'&.Mui-expanded': { borderRadius: '12px 12px 0 0' },
+							cursor: 'pointer'
 						}}
 					>
 						<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
@@ -123,6 +134,7 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 							<Box sx={{ ml: 'auto', mr: 2 }}>
 								<IconButton
 									size="small"
+									data-delete-button
 									onClick={e => {
 										e.stopPropagation();
 										removeStepGroup(groupIndex);

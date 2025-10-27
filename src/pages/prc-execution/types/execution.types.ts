@@ -283,7 +283,9 @@ export interface ExecutionData {
 			splitQuantity: string;
 		}> | null;
 	}>;
-	prcAggregatedSteps?: Record<string, unknown>;
+	prcAggregatedSteps?: Record<string, unknown> & {
+		stepApprovedBy?: Record<string, unknown>;
+	};
 	stepStartEndTime?: Record<string, unknown>;
 	catalystData?: {
 		catalyst: {
@@ -373,7 +375,16 @@ export interface StepTiming {
 	stepCompleted?: string; // Timestamp when complete step button was clicked
 }
 
+export interface StepApprovalBy {
+	dataEnteredBy?: number; // User ID who entered/completed the step data
+	productionApprovedBy?: number; // User ID who approved production
+	ctqApprovedBy?: number; // User ID who approved CTQ
+	stepCompletedBy?: number; // User ID who completed the step
+}
+
 export interface AggregatedData {
-	prcAggregatedSteps: Record<string, unknown>;
+	prcAggregatedSteps: Record<string, unknown> & {
+		stepApprovedBy?: Record<string, unknown>;
+	};
 	stepStartEndTime: Record<string, unknown>;
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Alert, CircularProgress, Backdrop } from '@mui/material';
+import { useCurrentRole } from '../../../../hooks/useCurrentRole';
 import {
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation
@@ -11,7 +12,9 @@ import {
 	buildTimingData,
 	mergeAggregatedData,
 	mergeTimingData,
-	buildApprovalActionTimingData
+	buildApprovalActionTimingData,
+	buildUserApprovalData,
+	mergeUserApprovalData
 } from '../../utils/dataBuilders';
 
 // Utility function to filter out metadata fields from step data
@@ -37,6 +40,7 @@ const ExecutePrc = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const executionId = id ? parseInt(id, 10) : 0;
+	const { userInfo } = useCurrentRole();
 
 	// State management
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -262,17 +266,28 @@ const ExecutePrc = () => {
 				console.log('Timing data already exists, skipping build');
 			}
 
+			// Build user approval data for data entry
+			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
+
 			// Merge with existing data using the most current aggregated data
 			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
 			// Get current timing data from execution data
 			const actualData = (executionData as { data: ExecutionData }).data;
 			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
+			// Merge user approval data
+			const mergedUserApprovalData = mergeUserApprovalData(
+				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
+				userApprovalData
+			);
 
 			// Save step data to backend
 			await updateProgress({
 				id: executionId,
 				data: {
-					prcAggregatedSteps: mergedAggregatedData,
+					prcAggregatedSteps: {
+						...mergedAggregatedData,
+						stepApprovedBy: mergedUserApprovalData
+					},
 					stepStartEndTime: mergedTimingData
 				}
 			}).unwrap();
@@ -607,11 +622,19 @@ const ExecutePrc = () => {
 			// Build approval action timing data
 			const approvalTimingData = buildApprovalActionTimingData(currentStep, 'productionApproved', approvalTimestamp);
 
+			// Build user approval data for production approval
+			const userApprovalData = buildUserApprovalData(currentStep, 'productionApprovedBy', userInfo.id);
+
 			// Get current timing data from execution data
 			const actualData = (executionData as { data: ExecutionData }).data;
 			const mergedApprovalTimingData = mergeTimingData(
 				actualData.stepStartEndTime as Record<string, unknown>,
 				approvalTimingData
+			);
+			// Merge user approval data
+			const mergedUserApprovalData = mergeUserApprovalData(
+				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
+				userApprovalData
 			);
 
 			// Update the step with production approval
@@ -679,7 +702,10 @@ const ExecutePrc = () => {
 			await updateProgress({
 				id: executionId,
 				data: {
-					prcAggregatedSteps: updatedPrcAggregatedSteps,
+					prcAggregatedSteps: {
+						...updatedPrcAggregatedSteps,
+						stepApprovedBy: mergedUserApprovalData
+					},
 					stepStartEndTime: mergedApprovalTimingData
 				}
 			}).unwrap();
@@ -707,11 +733,19 @@ const ExecutePrc = () => {
 			// Build approval action timing data
 			const approvalTimingData = buildApprovalActionTimingData(currentStep, 'ctqApproved', approvalTimestamp);
 
+			// Build user approval data for CTQ approval
+			const userApprovalData = buildUserApprovalData(currentStep, 'ctqApprovedBy', userInfo.id);
+
 			// Get current timing data from execution data
 			const actualData = (executionData as { data: ExecutionData }).data;
 			const mergedApprovalTimingData = mergeTimingData(
 				actualData.stepStartEndTime as Record<string, unknown>,
 				approvalTimingData
+			);
+			// Merge user approval data
+			const mergedUserApprovalData = mergeUserApprovalData(
+				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
+				userApprovalData
 			);
 
 			// Update the step with CTQ approval
@@ -779,7 +813,10 @@ const ExecutePrc = () => {
 			await updateProgress({
 				id: executionId,
 				data: {
-					prcAggregatedSteps: updatedPrcAggregatedSteps,
+					prcAggregatedSteps: {
+						...updatedPrcAggregatedSteps,
+						stepApprovedBy: mergedUserApprovalData
+					},
 					stepStartEndTime: mergedApprovalTimingData
 				}
 			}).unwrap();
@@ -807,11 +844,19 @@ const ExecutePrc = () => {
 			// Build approval action timing data
 			const approvalTimingData = buildApprovalActionTimingData(currentStep, 'ctqApproved', approvalTimestamp);
 
+			// Build user approval data for partial CTQ approval
+			const userApprovalData = buildUserApprovalData(currentStep, 'ctqApprovedBy', userInfo.id);
+
 			// Get current timing data from execution data
 			const actualData = (executionData as { data: ExecutionData }).data;
 			const mergedApprovalTimingData = mergeTimingData(
 				actualData.stepStartEndTime as Record<string, unknown>,
 				approvalTimingData
+			);
+			// Merge user approval data
+			const mergedUserApprovalData = mergeUserApprovalData(
+				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
+				userApprovalData
 			);
 
 			// Update the step with partial CTQ approval
@@ -879,7 +924,10 @@ const ExecutePrc = () => {
 			await updateProgress({
 				id: executionId,
 				data: {
-					prcAggregatedSteps: updatedPrcAggregatedSteps,
+					prcAggregatedSteps: {
+						...updatedPrcAggregatedSteps,
+						stepApprovedBy: mergedUserApprovalData
+					},
 					stepStartEndTime: mergedApprovalTimingData
 				}
 			}).unwrap();
@@ -915,6 +963,9 @@ const ExecutePrc = () => {
 				stepCompletionTimestamp
 			);
 
+			// Build user approval data for step completion
+			const userApprovalData = buildUserApprovalData(currentStep, 'stepCompletedBy', userInfo.id);
+
 			// Build aggregated data for this step
 			const stepAggregatedData = previewData ? buildAggregatedData(currentStep, previewData.data as FormData) : {};
 
@@ -932,6 +983,11 @@ const ExecutePrc = () => {
 
 			// Merge step completion timing data
 			mergedTimingData = mergeTimingData(mergedTimingData, stepCompletionTimingData);
+			// Merge user approval data
+			const mergedUserApprovalData = mergeUserApprovalData(
+				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
+				userApprovalData
+			);
 
 			// For sequence step groups and inspection steps, mark the step as completed
 			if (currentStep.type === 'sequence' && currentStep.stepGroup && currentStep.prcTemplateStepId) {
@@ -985,7 +1041,10 @@ const ExecutePrc = () => {
 			}
 
 			console.log('handleProceedToNext - Data being sent:', {
-				prcAggregatedSteps: mergedAggregatedData,
+				prcAggregatedSteps: {
+					...mergedAggregatedData,
+					stepApprovedBy: mergedUserApprovalData
+				},
 				stepStartEndTime: mergedTimingData,
 				stepCompletionTimestamp,
 				stepCompletionTimingData
@@ -995,7 +1054,10 @@ const ExecutePrc = () => {
 			await updateProgress({
 				id: executionId,
 				data: {
-					prcAggregatedSteps: mergedAggregatedData,
+					prcAggregatedSteps: {
+						...mergedAggregatedData,
+						stepApprovedBy: mergedUserApprovalData
+					},
 					stepStartEndTime: mergedTimingData
 				}
 			}).unwrap();
@@ -1006,7 +1068,10 @@ const ExecutePrc = () => {
 			// Update local state - rebuild timeline steps with updated data
 			const updatedExecutionData = {
 				...actualData,
-				prcAggregatedSteps: mergedAggregatedData,
+				prcAggregatedSteps: {
+					...mergedAggregatedData,
+					stepApprovedBy: mergedUserApprovalData
+				},
 				stepStartEndTime: mergedTimingData
 			};
 

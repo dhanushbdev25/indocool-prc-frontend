@@ -278,3 +278,74 @@ export function buildApprovalActionTimingData(
 
 	return {};
 }
+
+// New function to build user approval data
+export function buildUserApprovalData(
+	step: TimelineStep,
+	actionType: 'dataEnteredBy' | 'productionApprovedBy' | 'ctqApprovedBy' | 'stepCompletedBy',
+	userId: number
+): Record<string, unknown> {
+	if (step.type === 'rawMaterials') {
+		return {
+			rawMaterials: {
+				[actionType]: userId
+			}
+		};
+	}
+
+	if (step.type === 'bom') {
+		return {
+			bom: {
+				[actionType]: userId
+			}
+		};
+	}
+
+	if (step.type === 'sequence') {
+		if (step.stepData) {
+			// Individual sequence step within a step group
+			const { prcTemplateStepId, stepGroupId, stepId } = step.stepData;
+
+			return {
+				[prcTemplateStepId.toString()]: {
+					[stepGroupId?.toString() || '']: {
+						[stepId?.toString() || '']: {
+							[actionType]: userId
+						}
+					}
+				}
+			};
+		} else if (step.stepGroup && step.prcTemplateStepId) {
+			// Step group approval
+			return {
+				[step.prcTemplateStepId.toString()]: {
+					[step.stepGroup.id.toString()]: {
+						[actionType]: userId
+					}
+				}
+			};
+		}
+	}
+
+	if (step.type === 'inspection' && step.stepData) {
+		// Build structure: { "82": { [actionType]: userId } }
+		const prcTemplateStepId = step.stepData.prcTemplateStepId;
+
+		return {
+			[prcTemplateStepId.toString()]: {
+				[actionType]: userId
+			}
+		};
+	}
+
+	return {};
+}
+
+// Function to merge user approval data
+export function mergeUserApprovalData(
+	existingData: Record<string, unknown> | undefined,
+	newData: Record<string, unknown>
+): Record<string, unknown> {
+	// Same logic as mergeAggregatedData but for user approval data
+	return mergeAggregatedData(existingData, newData);
+}

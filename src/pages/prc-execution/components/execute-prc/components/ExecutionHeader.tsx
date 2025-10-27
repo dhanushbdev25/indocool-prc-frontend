@@ -10,7 +10,16 @@ interface ExecutionHeaderProps {
 const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 	const navigate = useNavigate();
 
-	const progressPercentage = executionData.progress;
+	const calculateProgress = (execution: ExecutionData) => {
+		// Use the progress value directly from API response
+		const progressValue =
+			typeof execution.progress === 'string' ? parseInt(execution.progress) || 0 : execution.progress;
+
+		// Ensure progress is within valid range (0-100)
+		return Math.min(100, Math.max(0, progressValue));
+	};
+
+	const progressPercentage = calculateProgress(executionData);
 
 	const getProgressColor = (progress: number) => {
 		if (progress >= 100) return '#4caf50';

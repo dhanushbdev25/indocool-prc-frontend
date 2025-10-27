@@ -75,6 +75,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							parameterDescription: string;
 							evaluationMethod: string;
 							allowAttachments: boolean;
+							responsiblePerson?: boolean;
 						}>;
 						processName: string;
 						processDescription: string;
@@ -124,7 +125,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 									createdAt: new Date().toISOString(),
 									updatedAt: new Date().toISOString(),
 									processStepGroupId: stepGroup.id,
-									responsiblePerson: false // Default value since responsiblePerson is not available in step
+									responsiblePerson: step.responsiblePerson || false // Use actual responsiblePerson value from API response
 								}))
 							}
 						});
