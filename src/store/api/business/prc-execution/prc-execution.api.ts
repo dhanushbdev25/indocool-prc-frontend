@@ -4,7 +4,7 @@ import { baseQuery } from '../../baseApi';
 export const prcExecutionApi = createApi({
 	reducerPath: 'prcExecutionApi',
 	baseQuery,
-	tagTypes: ['PrcExecution', 'PartsCombo'],
+	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant'],
 	endpoints: builder => ({
 		// Fetch all PRC executions
 		fetchPrcExecutions: builder.query<unknown, void>({

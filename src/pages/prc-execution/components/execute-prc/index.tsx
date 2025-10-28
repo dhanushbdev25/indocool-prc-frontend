@@ -347,7 +347,12 @@ const ExecutePrc = () => {
 								uom: stepDefinition?.uom || '',
 								notes: stepDefinition?.notes || '',
 								ctq: stepDefinition?.ctq || false,
-								stepNumber: stepDefinition?.stepNumber || 0
+								stepNumber: stepDefinition?.stepNumber || 0,
+								responsiblePersons: [] as Array<{
+									role: string;
+									employeeName: string;
+									employeeCode: string;
+								}>
 							};
 
 							// Include responsible persons if they exist for this step
@@ -1175,7 +1180,12 @@ const ExecutePrc = () => {
 							uom: stepDefinition?.uom || '',
 							notes: stepDefinition?.notes || '',
 							ctq: stepDefinition?.ctq || false,
-							stepNumber: stepDefinition?.stepNumber || 0
+							stepNumber: stepDefinition?.stepNumber || 0,
+							responsiblePersons: [] as Array<{
+								role: string;
+								employeeName: string;
+								employeeCode: string;
+							}>
 						};
 
 						// Include responsible persons if they exist for this step
