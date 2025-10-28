@@ -8,11 +8,13 @@ import {
 	Assignment,
 	Build,
 	PlayArrow,
-	PlayCircleFilled
+	PlayCircleFilled,
+	Dashboard as DashboardIcon
 } from '@mui/icons-material';
 
 // Lazy-loaded components
 export const imports = {
+	dashboard: Loadable(lazy(() => import('../pages/dashboard/Dashboard'))),
 	catalystMaster: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/list-catalyst'))),
 	createCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/create-catalyst'))),
 	viewCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/view-catalyst'))),
@@ -58,6 +60,23 @@ export interface MainModuleConfig {
 // Main module configurations with hierarchical structure
 export const mainModuleConfigs: MainModuleConfig[] = [
 	{
+		text: 'Dashboard',
+		icon: DashboardIcon,
+		order: 0,
+		submodules: [
+			{
+				icon: DashboardIcon,
+				text: 'Analytics Dashboard',
+				path: 'dashboard',
+				element: imports.dashboard,
+				permission: 'LISTCATALYST', // Reuse existing permission for now
+				isInitial: true,
+				order: 1,
+				showInSidebar: true
+			}
+		]
+	},
+	{
 		text: 'Masters',
 		icon: Settings,
 		order: 1,
@@ -68,7 +87,6 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				path: 'catalyst-master',
 				element: imports.catalystMaster,
 				permission: 'LISTCATALYST',
-				isInitial: true,
 				order: 1,
 				showInSidebar: true
 			},
@@ -226,7 +244,6 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				path: 'prc-execution',
 				element: imports.prcExecution,
 				permission: 'EDITPROCESSSEQUENCE',
-				isInitial: true,
 				order: 1,
 				showInSidebar: true
 			},
