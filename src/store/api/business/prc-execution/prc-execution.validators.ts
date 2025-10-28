@@ -16,8 +16,19 @@ export interface PartsComboItem {
 	};
 }
 
+// Plant combo types
+export interface PlantComboItem {
+	label: string;
+	value: string;
+	data: Record<string, unknown>;
+}
+
 export interface PartsComboResponse {
 	data: PartsComboItem[];
+}
+
+export interface PlantComboResponse {
+	data: PlantComboItem[];
 }
 
 // PRC Execution types (flexible to handle dynamic data)
@@ -51,6 +62,10 @@ export interface PrcExecution {
 	createdAt: string;
 	updatedAt: string;
 	// Additional fields from API response
+	mouldingInspectionParentId: number;
+	mouldingInspectionId: number;
+	ctqMap: unknown;
+	sequenceIds: unknown;
 	prcCurrentTemplate?: unknown;
 	rawMaterials?: unknown[];
 	bom?: unknown[];
@@ -83,6 +98,7 @@ export interface CreatePrcExecutionRequest {
 		drawingNumber: string;
 		status: string;
 		prcTemplate: number;
+		plantCode: string;
 	};
 }
 

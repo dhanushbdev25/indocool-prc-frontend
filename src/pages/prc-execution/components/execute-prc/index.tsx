@@ -327,11 +327,18 @@ const ExecutePrc = () => {
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					const detailedMeasurements: any[] = [];
 					if (groupData) {
+						const filteredSteps = filterMeasurementSteps(groupData);
+						console.log('🔍 FilterMeasurementSteps result:', filteredSteps);
+						console.log('🔍 Full groupData for debugging:', groupData);
+
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						filterMeasurementSteps(groupData).forEach(([stepId, stepData]: [string, any]) => {
+						filteredSteps.forEach(([stepId, stepData]: [string, any]) => {
+							console.log(`🔍 Step ${stepId} data:`, stepData);
+							console.log(`🔍 Step ${stepId} has responsiblePersons:`, !!stepData.responsiblePersons);
+
 							// Find the step definition to get context
 							const stepDefinition = currentStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
-							detailedMeasurements.push({
+							const measurementData = {
 								stepId: stepId,
 								value: stepData.value || stepData.data,
 								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
@@ -341,7 +348,27 @@ const ExecutePrc = () => {
 								notes: stepDefinition?.notes || '',
 								ctq: stepDefinition?.ctq || false,
 								stepNumber: stepDefinition?.stepNumber || 0
-							});
+							};
+
+							// Include responsible persons if they exist for this step
+							// Check both direct responsiblePersons and nested structure
+							let responsiblePersons = null;
+							if (stepData.responsiblePersons && Array.isArray(stepData.responsiblePersons)) {
+								responsiblePersons = stepData.responsiblePersons;
+								console.log(`✅ Found direct responsiblePersons for step ${stepId}:`, responsiblePersons);
+							} else if (stepData.data && typeof stepData.data === 'object' && stepData.data.responsiblePersons) {
+								responsiblePersons = stepData.data.responsiblePersons;
+								console.log(`✅ Found nested responsiblePersons for step ${stepId}:`, responsiblePersons);
+							} else {
+								console.log(`❌ No responsiblePersons found for step ${stepId}`);
+								console.log(`🔍 Step data structure:`, JSON.stringify(stepData, null, 2));
+							}
+
+							if (responsiblePersons && Array.isArray(responsiblePersons)) {
+								measurementData.responsiblePersons = responsiblePersons;
+							}
+
+							detailedMeasurements.push(measurementData);
 						});
 					}
 
@@ -1139,7 +1166,7 @@ const ExecutePrc = () => {
 					filterMeasurementSteps(groupData).forEach(([stepId, stepData]: [string, any]) => {
 						// Find the step definition to get context
 						const stepDefinition = targetStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
-						detailedMeasurements.push({
+						const measurementData = {
 							stepId: stepId,
 							value: stepData.value || stepData.data,
 							parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
@@ -1149,7 +1176,26 @@ const ExecutePrc = () => {
 							notes: stepDefinition?.notes || '',
 							ctq: stepDefinition?.ctq || false,
 							stepNumber: stepDefinition?.stepNumber || 0
-						});
+						};
+
+						// Include responsible persons if they exist for this step
+						// Check both direct responsiblePersons and nested structure
+						let responsiblePersons = null;
+						if (stepData.responsiblePersons && Array.isArray(stepData.responsiblePersons)) {
+							responsiblePersons = stepData.responsiblePersons;
+							console.log(`✅ Found direct responsiblePersons for step ${stepId}:`, responsiblePersons);
+						} else if (stepData.data && typeof stepData.data === 'object' && stepData.data.responsiblePersons) {
+							responsiblePersons = stepData.data.responsiblePersons;
+							console.log(`✅ Found nested responsiblePersons for step ${stepId}:`, responsiblePersons);
+						} else {
+							console.log(`❌ No responsiblePersons found for step ${stepId}`);
+						}
+
+						if (responsiblePersons && Array.isArray(responsiblePersons)) {
+							measurementData.responsiblePersons = responsiblePersons;
+						}
+
+						detailedMeasurements.push(measurementData);
 					});
 				}
 

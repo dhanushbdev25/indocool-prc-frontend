@@ -81,42 +81,50 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 		const prcTemplateStepId = step.stepData.prcTemplateStepId;
 		const inspectionData: Record<string, unknown> = {};
 
-		// Group form data by parameter ID
+		// Process each parameter with simplified structure
 		for (const param of step.inspectionParameters) {
 			const paramData: Record<string, unknown> = {};
 
-			// Handle multi-column parameters
-			Object.entries(formData).forEach(([key, value]) => {
-				if (key.startsWith(`${param.id}_`)) {
-					const columnName = key.replace(`${param.id}_`, '');
-					paramData[columnName] = value;
-				} else if (key === param.id.toString()) {
-					// Single value parameter - extract the actual value from the object structure
-					if (typeof value === 'object' && value !== null && 'value' in value) {
-						// Extract the actual value from {value: 'q'} structure
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						paramData['value'] = (value as any).value;
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						console.log(`DataBuilder: Extracted value for parameter ${param.id}:`, (value as any).value);
-					} else {
-						// Direct value assignment
-						paramData['value'] = value;
-						console.log(`DataBuilder: Direct value for parameter ${param.id}:`, value);
+			if (param.columns && param.columns.length > 0) {
+				// Multi-column parameter: collect all column values
+				const valueObj: Record<string, unknown> = {};
+				param.columns.forEach(column => {
+					const key = `${param.id}_${column.name}`;
+					const value = formData[key];
+					if (value !== undefined && value !== null) {
+						valueObj[column.name] = value;
 					}
-				}
-			});
+				});
 
-			// Handle annotations for this parameter - check if annotations exist in formData for this parameter
+				if (Object.keys(valueObj).length > 0) {
+					paramData.value = valueObj;
+				}
+			} else {
+				// Single value parameter
+				const key = param.id.toString();
+				const formValue = formData[key];
+
+				if (typeof formValue === 'object' && formValue !== null) {
+					// Already in object format: { "value": "ok", "annotations": [...] }
+					paramData.value = (formValue as Record<string, unknown>).value;
+					if ((formValue as Record<string, unknown>).annotations) {
+						paramData.annotations = (formValue as Record<string, unknown>).annotations;
+					}
+				} else {
+					// Direct value
+					paramData.value = formValue;
+				}
+			}
+
+			// Handle annotations for this parameter
 			if (formData[param.id.toString()] && typeof formData[param.id.toString()] === 'object') {
 				const paramFormData = formData[param.id.toString()] as Record<string, unknown>;
 				if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
 					paramData.annotations = paramFormData.annotations;
-					console.log(`DataBuilder: Added annotations for parameter ${param.id}:`, paramFormData.annotations);
 				}
 			}
 
 			if (Object.keys(paramData).length > 0) {
-				// Store directly with parameter ID as key
 				inspectionData[param.id.toString()] = paramData;
 				console.log(`DataBuilder: Final paramData for parameter ${param.id}:`, paramData);
 			}
@@ -198,11 +206,79 @@ export function mergeAggregatedData(
 
 	for (const [key, value] of Object.entries(newData)) {
 		if (merged[key] && typeof merged[key] === 'object' && typeof value === 'object') {
-			// Recursively merge nested objects
-			merged[key] = mergeAggregatedData(merged[key] as Record<string, unknown>, value as Record<string, unknown>);
+			// Special handling for sequence step data to preserve responsiblePersons
+			if (isSequenceStepData(merged[key], value)) {
+				merged[key] = mergeSequenceStepData(merged[key] as Record<string, unknown>, value as Record<string, unknown>);
+			} else {
+				// Recursively merge nested objects
+				merged[key] = mergeAggregatedData(merged[key] as Record<string, unknown>, value as Record<string, unknown>);
+			}
 		} else {
 			// Overwrite or add new value
 			merged[key] = value;
+		}
+	}
+
+	return merged;
+}
+
+// Helper function to check if this is sequence step data
+function isSequenceStepData(existing: unknown, newData: unknown): boolean {
+	if (typeof existing !== 'object' || typeof newData !== 'object' || !existing || !newData) {
+		return false;
+	}
+
+	const existingObj = existing as Record<string, unknown>;
+	const newObj = newData as Record<string, unknown>;
+
+	// Check if both objects have numeric keys (stepGroupIds) with nested objects that have numeric keys (stepIds)
+	const existingKeys = Object.keys(existingObj);
+	const newKeys = Object.keys(newObj);
+
+	// If both have numeric keys and the nested objects also have numeric keys, this is likely sequence step data
+	return (
+		existingKeys.every(key => !isNaN(Number(key))) &&
+		newKeys.every(key => !isNaN(Number(key))) &&
+		existingKeys.length > 0 &&
+		newKeys.length > 0
+	);
+}
+
+// Helper function to merge sequence step data while preserving responsiblePersons
+function mergeSequenceStepData(
+	existing: Record<string, unknown>,
+	newData: Record<string, unknown>
+): Record<string, unknown> {
+	const merged = { ...existing };
+
+	for (const [stepGroupId, stepGroupData] of Object.entries(newData)) {
+		if (merged[stepGroupId] && typeof merged[stepGroupId] === 'object' && typeof stepGroupData === 'object') {
+			const existingGroup = merged[stepGroupId] as Record<string, unknown>;
+			const newGroup = stepGroupData as Record<string, unknown>;
+
+			// Merge step group data
+			const mergedGroup = { ...existingGroup };
+
+			for (const [stepId, stepData] of Object.entries(newGroup)) {
+				if (mergedGroup[stepId] && typeof mergedGroup[stepId] === 'object' && typeof stepData === 'object') {
+					const existingStep = mergedGroup[stepId] as Record<string, unknown>;
+					const newStep = stepData as Record<string, unknown>;
+
+					// Merge step data while preserving responsiblePersons
+					mergedGroup[stepId] = {
+						...existingStep,
+						...newStep,
+						// Preserve responsiblePersons from existing data if not in new data
+						responsiblePersons: newStep.responsiblePersons || existingStep.responsiblePersons
+					};
+				} else {
+					mergedGroup[stepId] = stepData;
+				}
+			}
+
+			merged[stepGroupId] = mergedGroup;
+		} else {
+			merged[stepGroupId] = stepGroupData;
 		}
 	}
 

@@ -38,14 +38,19 @@ import * as yup from 'yup';
 import { useFetchCustomersQuery } from '../../../../../store/api/business/part-master/part.api';
 import {
 	useFetchPartsByCustomerQuery,
-	useCreatePrcExecutionMutation
+	useCreatePrcExecutionMutation,
+	useFetchPlantsQuery
 } from '../../../../../store/api/business/prc-execution/prc-execution.api';
-import { type PartsComboItem } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
+import {
+	type PartsComboItem,
+	type PlantComboItem
+} from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 
 // Form validation schema
 const createPrcExecutionSchema = yup.object({
 	customer: yup.string().required('Customer is required'),
 	partId: yup.number().required('Part selection is required'),
+	plantCode: yup.string().required('Plant selection is required'),
 	productionSetId: yup.string().required('Production Set ID is required'),
 	mouldId: yup.string().required('Mould ID is required'),
 	date: yup.string().required('Date is required'),
@@ -71,15 +76,17 @@ const shiftOptions = [
 const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutionModalProps) => {
 	const [selectedPart, setSelectedPart] = useState<PartsComboItem | null>(null);
 	const [selectedCustomer, setSelectedCustomer] = useState<string>('');
+	const [selectedPlant, setSelectedPlant] = useState<PlantComboItem | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(dayjs());
 
-	// Fetch customers and parts data
+	// Fetch customers, parts, and plants data
 	const { data: customersData } = useFetchCustomersQuery();
 	const { data: partsData, isLoading: isPartsLoading } = useFetchPartsByCustomerQuery(
 		{ customerCode: selectedCustomer },
 		{ skip: !selectedCustomer }
 	);
+	const { data: plantsData } = useFetchPlantsQuery();
 
 	// API mutation
 	const [createPrcExecution, { isLoading: isCreating }] = useCreatePrcExecutionMutation();
@@ -97,6 +104,7 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 		defaultValues: {
 			customer: '',
 			partId: 0,
+			plantCode: '',
 			productionSetId: '',
 			mouldId: '',
 			date: new Date().toISOString().split('T')[0], // Today's date
@@ -114,6 +122,7 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 			reset();
 			setSelectedPart(null);
 			setSelectedCustomer('');
+			setSelectedPlant(null);
 			setSelectedDate(dayjs());
 		}
 	}, [open, reset]);
@@ -132,8 +141,15 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 		}
 	};
 
+	const handlePlantChange = (plant: PlantComboItem | null) => {
+		setSelectedPlant(plant);
+		if (plant) {
+			setValue('plantCode', plant.value);
+		}
+	};
+
 	const onSubmit: SubmitHandler<CreatePrcExecutionFormData> = async data => {
-		if (!selectedPart || !selectedDate) {
+		if (!selectedPart || !selectedDate || !selectedPlant) {
 			return;
 		}
 
@@ -155,7 +171,8 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 					remarks: data.remarks || '',
 					drawingNumber: selectedPart.data.drawingNumber,
 					status: 'ACTIVE', // Hardcoded as per requirements
-					prcTemplate: selectedPart.data.prcTemplate
+					prcTemplate: selectedPart.data.prcTemplate,
+					plantCode: data.plantCode
 				}
 			};
 
@@ -239,16 +256,16 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 									<FactoryIcon sx={{ color: '#666', mr: 2, fontSize: '1.25rem' }} />
 									<Box>
 										<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
-											Part & Customer Selection
+											Part, Customer & Plant Selection
 										</Typography>
 										<Typography variant="body2" sx={{ color: '#666' }}>
-											Choose the customer and part for this execution
+											Choose the customer, part, and plant for this execution
 										</Typography>
 									</Box>
 								</Box>
 
 								<Grid container spacing={3}>
-									<Grid size={{ xs: 12, md: 6 }}>
+									<Grid size={{ xs: 12, md: 4 }}>
 										<Controller
 											name="customer"
 											control={control}
@@ -277,7 +294,7 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 										/>
 									</Grid>
 
-									<Grid size={{ xs: 12, md: 6 }}>
+									<Grid size={{ xs: 12, md: 4 }}>
 										<Autocomplete
 											options={(partsData as { data?: PartsComboItem[] })?.data || []}
 											getOptionLabel={option => option.label}
@@ -304,6 +321,32 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 															{option.data.description}
 														</Typography>
 													</Box>
+												</li>
+											)}
+										/>
+									</Grid>
+
+									<Grid size={{ xs: 12, md: 4 }}>
+										<Autocomplete
+											options={(plantsData as { data?: PlantComboItem[] })?.data || []}
+											getOptionLabel={option => option.label}
+											value={selectedPlant}
+											onChange={(_, newValue) => handlePlantChange(newValue)}
+											disabled={isCreating || isSubmitting}
+											renderInput={params => (
+												<TextField
+													{...params}
+													label="Plant"
+													error={!!errors.plantCode}
+													helperText={errors.plantCode?.message || 'Select a plant for this execution'}
+													sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
+												/>
+											)}
+											renderOption={(props, option) => (
+												<li {...props}>
+													<Typography variant="body2" sx={{ fontWeight: 500 }}>
+														{option.label}
+													</Typography>
 												</li>
 											)}
 										/>
@@ -580,7 +623,7 @@ const CreatePrcExecutionModal = ({ open, onClose, onSuccess }: CreatePrcExecutio
 					<Button
 						onClick={handleSubmit(onSubmit)}
 						variant="contained"
-						disabled={isCreating || isSubmitting || !selectedPart}
+						disabled={isCreating || isSubmitting || !selectedPart || !selectedPlant}
 						startIcon={isSubmitting ? undefined : <PlayIcon />}
 						sx={{
 							backgroundColor: '#1976d2',

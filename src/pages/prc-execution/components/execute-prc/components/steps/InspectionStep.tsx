@@ -332,7 +332,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 		step.inspectionParameters?.forEach(param => {
 			if (param.columns && param.columns.length > 0) {
-				// Multi-column parameter
+				// Multi-column parameter - validate each column
 				param.columns.forEach(column => {
 					const key = `${param.id}_${column.name}`;
 					const value = formData[key];
@@ -392,62 +392,58 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 	const handleSubmit = () => {
 		if (validateForm()) {
-			// Convert flat form data to nested structure with annotations
+			// Convert form data to consistent nested structure
 			const nestedData: Record<string, unknown> = {};
 
-			Object.entries(formData).forEach(([key, value]) => {
-				if (key.includes('_')) {
-					// Multi-column parameter: "30_Date" -> { "30": { "value": { "Date": "2024-01-01" } } }
-					const [parameterId, columnName] = key.split('_');
-					if (!nestedData[parameterId]) {
-						nestedData[parameterId] = {};
-					}
-					if (!(nestedData[parameterId] as Record<string, unknown>).value) {
-						(nestedData[parameterId] as Record<string, unknown>).value = {};
-					}
-					((nestedData[parameterId] as Record<string, unknown>).value as Record<string, unknown>)[columnName] = value;
-					console.log(`Multi-column data: ${key} -> ${parameterId}.value.${columnName} = ${value}`);
-				} else if (key !== 'annotations') {
-					// Handle both single value parameters and parameter objects
-					if (typeof value === 'object' && value !== null) {
-						// This is a parameter object (could have value, annotations, or both)
-						// e.g., { "53": { "value": "q", "annotations": [...] } } or { "53": { "value": "q" } }
-						nestedData[key] = value;
-						console.log(`Parameter object: ${key} -> ${JSON.stringify(value)}`);
-					} else {
-						// Single column parameter: "30" -> { "30": { "value": "2" } }
-						if (!nestedData[key]) {
-							nestedData[key] = {};
+			// Process each parameter
+			step.inspectionParameters?.forEach(param => {
+				const paramData: Record<string, unknown> = {};
+
+				if (param.columns && param.columns.length > 0) {
+					// Multi-column parameter: store all column values in a value object
+					const valueObj: Record<string, unknown> = {};
+					param.columns.forEach(column => {
+						const key = `${param.id}_${column.name}`;
+						const value = formData[key];
+						if (value !== undefined && value !== null) {
+							valueObj[column.name] = value;
 						}
-						(nestedData[key] as Record<string, unknown>).value = value;
-						console.log(`Single column data: ${key} -> ${key}.value = ${value}`);
+					});
+
+					if (Object.keys(valueObj).length > 0) {
+						paramData.value = valueObj;
+					}
+
+					console.log(`Multi-column parameter ${param.id}:`, valueObj);
+				} else {
+					// Single value parameter
+					const key = param.id.toString();
+					const formValue = formData[key];
+
+					if (typeof formValue === 'object' && formValue !== null) {
+						// Already in object format: { "value": "ok", "annotations": [...] }
+						paramData.value = (formValue as Record<string, unknown>).value;
+						if ((formValue as Record<string, unknown>).annotations) {
+							paramData.annotations = (formValue as Record<string, unknown>).annotations;
+						}
+					} else {
+						// Direct value
+						paramData.value = formValue;
+					}
+
+					console.log(`Single value parameter ${param.id}:`, paramData.value);
+				}
+
+				// Add annotations if they exist for this parameter
+				if (formData[param.id.toString()] && typeof formData[param.id.toString()] === 'object') {
+					const paramFormData = formData[param.id.toString()] as Record<string, unknown>;
+					if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
+						paramData.annotations = paramFormData.annotations;
 					}
 				}
-			});
 
-			// Add annotations to each parameter that has images (for parameters that don't already have them)
-			step.inspectionParameters?.forEach(param => {
-				if (Array.isArray(param.files) && param.files.length > 0) {
-					const parameterAnnotations = annotations.filter(ann =>
-						param.files?.some(file => file.fileName === ann.imageFileName)
-					);
-
-					console.log(`Parameter ${param.id} annotations:`, parameterAnnotations);
-
-					if (parameterAnnotations.length > 0) {
-						// Ensure parameter structure exists
-						if (!nestedData[param.id.toString()]) {
-							nestedData[param.id.toString()] = {};
-						}
-
-						const paramData = nestedData[param.id.toString()] as Record<string, unknown>;
-
-						// Only add annotations if they don't already exist
-						if (!paramData.annotations) {
-							paramData.annotations = parameterAnnotations;
-							console.log(`Added annotations to parameter ${param.id}:`, parameterAnnotations);
-						}
-					}
+				if (Object.keys(paramData).length > 0) {
+					nestedData[param.id.toString()] = paramData;
 				}
 			});
 

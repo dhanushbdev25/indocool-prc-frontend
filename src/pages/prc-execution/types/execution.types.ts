@@ -238,6 +238,10 @@ export interface ExecutionData {
 	createdAt: string;
 	updatedAt: string;
 	// Additional fields from API response
+	mouldingInspectionParentId: number;
+	mouldingInspectionId: number;
+	ctqMap: unknown;
+	sequenceIds: unknown;
 	prcCurrentTemplate?: {
 		prcTemplate: {
 			id: number;
@@ -334,12 +338,19 @@ export interface FormData {
 	[key: string]: unknown;
 	// Support for annotation data
 	annotations?: ImageAnnotation[];
-	// Support for responsible person data
-	responsiblePersonData?: {
-		role: 'l1' | 'l2' | 'l3' | 'l4';
-		employeeName: string;
-		employeeCode: string;
-	};
+	// Support for responsible person data - now supports both single object (backward compatibility) and array
+	responsiblePersonData?:
+		| {
+				role: 'l1' | 'l2' | 'l3' | 'l4';
+				employeeName: string;
+				employeeCode: string;
+		  }
+		| Array<{
+				id: string;
+				role: 'l1' | 'l2' | 'l3' | 'l4';
+				employeeName: string;
+				employeeCode: string;
+		  }>;
 }
 
 // Catalyst mixing specific types

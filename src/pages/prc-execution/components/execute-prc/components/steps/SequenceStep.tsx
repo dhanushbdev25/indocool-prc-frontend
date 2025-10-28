@@ -31,7 +31,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	// Compute initial data from existing data
 	const initialData = useMemo(() => {
 		const stepData = step.stepData;
-		const defaultResponsiblePersonData = { role: 'l1' as const, employeeName: '', employeeCode: '' };
+		const defaultResponsiblePersonData = [{ id: '1', role: 'l1' as const, employeeName: '', employeeCode: '' }];
 		if (!stepData)
 			return {
 				formData: {},
@@ -55,18 +55,41 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				}
 
 				// Extract responsible person data if it exists (at the same level as data)
-				let responsiblePersonData: { role: 'l1' | 'l2' | 'l3' | 'l4'; employeeName: string; employeeCode: string } =
-					defaultResponsiblePersonData;
+				let responsiblePersonData: Array<{
+					id: string;
+					role: 'l1' | 'l2' | 'l3' | 'l4';
+					employeeName: string;
+					employeeCode: string;
+				}> = defaultResponsiblePersonData;
 				if (typeof existingData === 'object' && existingData !== null) {
 					// Check for responsible person data at the same level as data
 					if ('employeeName' in existingData && 'employeeCode' in existingData && 'role' in existingData) {
+						// Single object format (backward compatibility)
 						const role = existingData.role as string;
 						const validRole = ['l1', 'l2', 'l3', 'l4'].includes(role) ? (role as 'l1' | 'l2' | 'l3' | 'l4') : 'l1';
-						responsiblePersonData = {
-							role: validRole,
-							employeeName: (existingData.employeeName as string) || '',
-							employeeCode: (existingData.employeeCode as string) || ''
-						};
+						responsiblePersonData = [
+							{
+								id: '1',
+								role: validRole,
+								employeeName: (existingData.employeeName as string) || '',
+								employeeCode: (existingData.employeeCode as string) || ''
+							}
+						];
+					} else if ('responsiblePersons' in existingData && Array.isArray(existingData.responsiblePersons)) {
+						// Array format (new format)
+						responsiblePersonData = (
+							existingData.responsiblePersons as Array<{
+								id: string;
+								role: string;
+								employeeName: string;
+								employeeCode: string;
+							}>
+						).map((person, index) => ({
+							id: person.id || (index + 1).toString(),
+							role: ['l1', 'l2', 'l3', 'l4'].includes(person.role) ? (person.role as 'l1' | 'l2' | 'l3' | 'l4') : 'l1',
+							employeeName: person.employeeName || '',
+							employeeCode: person.employeeCode || ''
+						}));
 					}
 				}
 
@@ -106,11 +129,14 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 	const [formData, setFormData] = useState<FormData>(initialData.formData);
 	const [measurements, setMeasurements] = useState<Array<{ id: string; value: string }>>(initialData.measurements);
-	const [responsiblePersonData, setResponsiblePersonData] = useState<{
-		role: 'l1' | 'l2' | 'l3' | 'l4';
-		employeeName: string;
-		employeeCode: string;
-	}>(initialData.responsiblePersonData);
+	const [responsiblePersonData, setResponsiblePersonData] = useState<
+		Array<{
+			id: string;
+			role: 'l1' | 'l2' | 'l3' | 'l4';
+			employeeName: string;
+			employeeCode: string;
+		}>
+	>(initialData.responsiblePersonData);
 
 	// Update form data when initial data changes
 	useEffect(() => {
@@ -170,18 +196,32 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		}
 	};
 
-	const handleResponsiblePersonChange = (field: 'role' | 'employeeName' | 'employeeCode', value: string) => {
-		setResponsiblePersonData(prev => ({
-			...prev,
-			[field]: value
-		}));
+	const handleResponsiblePersonChange = (
+		personId: string,
+		field: 'role' | 'employeeName' | 'employeeCode',
+		value: string
+	) => {
+		setResponsiblePersonData(prev =>
+			prev.map(person => (person.id === personId ? { ...person, [field]: value } : person))
+		);
 
 		// Clear error when user starts typing
-		if (errors[`responsiblePerson_${field}`]) {
+		if (errors[`responsiblePerson_${personId}_${field}`]) {
 			setErrors(prev => ({
 				...prev,
-				[`responsiblePerson_${field}`]: ''
+				[`responsiblePerson_${personId}_${field}`]: ''
 			}));
+		}
+	};
+
+	const addResponsiblePerson = () => {
+		const newId = (responsiblePersonData.length + 1).toString();
+		setResponsiblePersonData(prev => [...prev, { id: newId, role: 'l1', employeeName: '', employeeCode: '' }]);
+	};
+
+	const removeResponsiblePerson = (personId: string) => {
+		if (responsiblePersonData.length > 1) {
+			setResponsiblePersonData(prev => prev.filter(person => person.id !== personId));
 		}
 	};
 
@@ -239,15 +279,19 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 		// Validate responsible person data if required
 		if (stepData.responsiblePerson) {
-			if (!responsiblePersonData.role) {
-				newErrors.responsiblePerson_role = 'Role is required';
-			}
-			if (!responsiblePersonData.employeeName || responsiblePersonData.employeeName.trim() === '') {
-				newErrors.responsiblePerson_employeeName = 'Employee name is required';
-			}
-			if (!responsiblePersonData.employeeCode || responsiblePersonData.employeeCode.trim() === '') {
-				newErrors.responsiblePerson_employeeCode = 'Employee code is required';
-			}
+			responsiblePersonData.forEach((person, index) => {
+				if (!person.role) {
+					newErrors[`responsiblePerson_${person.id}_role`] = `Role is required for person ${index + 1}`;
+				}
+				if (!person.employeeName || person.employeeName.trim() === '') {
+					newErrors[`responsiblePerson_${person.id}_employeeName`] =
+						`Employee name is required for person ${index + 1}`;
+				}
+				if (!person.employeeCode || person.employeeCode.trim() === '') {
+					newErrors[`responsiblePerson_${person.id}_employeeCode`] =
+						`Employee code is required for person ${index + 1}`;
+				}
+			});
 		}
 
 		setErrors(newErrors);
@@ -276,9 +320,12 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 			// Add responsible person data at the same level as data if required
 			if (stepData.responsiblePerson) {
-				formDataToSubmit.employeeName = responsiblePersonData.employeeName;
-				formDataToSubmit.employeeCode = responsiblePersonData.employeeCode;
-				formDataToSubmit.role = responsiblePersonData.role;
+				formDataToSubmit.responsiblePersons = responsiblePersonData.map(person => ({
+					id: person.id,
+					role: person.role,
+					employeeName: person.employeeName,
+					employeeCode: person.employeeCode
+				}));
 			}
 
 			onStepComplete(formDataToSubmit);
@@ -509,54 +556,88 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 			{/* Responsible Person Section */}
 			{stepData.responsiblePerson && (
 				<Box sx={{ mb: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-					<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', mb: 1.5, fontSize: '1rem' }}>
-						Responsible Person Details
-					</Typography>
-					<Grid container spacing={2}>
-						<Grid size={{ xs: 12, sm: 4 }}>
-							<FormControl fullWidth error={!!errors.responsiblePerson_role}>
-								<InputLabel>Role</InputLabel>
-								<Select
-									value={responsiblePersonData.role}
-									onChange={e => handleResponsiblePersonChange('role', e.target.value)}
-									label="Role"
-									disabled={isReadOnly}
-								>
-									<MenuItem value="l1">L1</MenuItem>
-									<MenuItem value="l2">L2</MenuItem>
-									<MenuItem value="l3">L3</MenuItem>
-									<MenuItem value="l4">L4</MenuItem>
-								</Select>
-								{errors.responsiblePerson_role && (
-									<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-										{errors.responsiblePerson_role}
-									</Typography>
+					<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+						<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', fontSize: '1rem' }}>
+							Responsible Person Details
+						</Typography>
+						{!isReadOnly && (
+							<Button
+								variant="outlined"
+								size="small"
+								startIcon={<Add />}
+								onClick={addResponsiblePerson}
+								sx={{
+									borderColor: '#1976d2',
+									color: '#1976d2',
+									'&:hover': { borderColor: '#1565c0', backgroundColor: '#e3f2fd' }
+								}}
+							>
+								Add Person
+							</Button>
+						)}
+					</Box>
+					{responsiblePersonData.map((person, index) => (
+						<Box
+							key={person.id}
+							sx={{ mb: 2, p: 2, backgroundColor: '#fff', borderRadius: 1, border: '1px solid #dee2e6' }}
+						>
+							<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+								<Typography variant="body2" sx={{ fontWeight: 600, color: '#666' }}>
+									Person {index + 1}
+								</Typography>
+								{!isReadOnly && responsiblePersonData.length > 1 && (
+									<IconButton size="small" onClick={() => removeResponsiblePerson(person.id)} sx={{ color: '#dc3545' }}>
+										<Delete fontSize="small" />
+									</IconButton>
 								)}
-							</FormControl>
-						</Grid>
-						<Grid size={{ xs: 12, sm: 4 }}>
-							<TextField
-								fullWidth
-								label="Employee Name"
-								value={responsiblePersonData.employeeName}
-								onChange={e => handleResponsiblePersonChange('employeeName', e.target.value)}
-								error={!!errors.responsiblePerson_employeeName}
-								helperText={errors.responsiblePerson_employeeName}
-								disabled={isReadOnly}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, sm: 4 }}>
-							<TextField
-								fullWidth
-								label="Employee Code"
-								value={responsiblePersonData.employeeCode}
-								onChange={e => handleResponsiblePersonChange('employeeCode', e.target.value)}
-								error={!!errors.responsiblePerson_employeeCode}
-								helperText={errors.responsiblePerson_employeeCode}
-								disabled={isReadOnly}
-							/>
-						</Grid>
-					</Grid>
+							</Box>
+							<Grid container spacing={2}>
+								<Grid size={{ xs: 12, sm: 4 }}>
+									<FormControl fullWidth error={!!errors[`responsiblePerson_${person.id}_role`]}>
+										<InputLabel>Role</InputLabel>
+										<Select
+											value={person.role}
+											onChange={e => handleResponsiblePersonChange(person.id, 'role', e.target.value)}
+											label="Role"
+											disabled={isReadOnly}
+										>
+											<MenuItem value="l1">L1</MenuItem>
+											<MenuItem value="l2">L2</MenuItem>
+											<MenuItem value="l3">L3</MenuItem>
+											<MenuItem value="l4">L4</MenuItem>
+										</Select>
+										{errors[`responsiblePerson_${person.id}_role`] && (
+											<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+												{errors[`responsiblePerson_${person.id}_role`]}
+											</Typography>
+										)}
+									</FormControl>
+								</Grid>
+								<Grid size={{ xs: 12, sm: 4 }}>
+									<TextField
+										fullWidth
+										label="Employee Name"
+										value={person.employeeName}
+										onChange={e => handleResponsiblePersonChange(person.id, 'employeeName', e.target.value)}
+										error={!!errors[`responsiblePerson_${person.id}_employeeName`]}
+										helperText={errors[`responsiblePerson_${person.id}_employeeName`]}
+										disabled={isReadOnly}
+									/>
+								</Grid>
+								<Grid size={{ xs: 12, sm: 4 }}>
+									<TextField
+										fullWidth
+										label="Employee Code"
+										value={person.employeeCode}
+										onChange={e => handleResponsiblePersonChange(person.id, 'employeeCode', e.target.value)}
+										error={!!errors[`responsiblePerson_${person.id}_employeeCode`]}
+										helperText={errors[`responsiblePerson_${person.id}_employeeCode`]}
+										disabled={isReadOnly}
+									/>
+								</Grid>
+							</Grid>
+						</Box>
+					))}
 				</Box>
 			)}
 

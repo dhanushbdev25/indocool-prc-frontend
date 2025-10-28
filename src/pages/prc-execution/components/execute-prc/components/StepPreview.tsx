@@ -473,51 +473,119 @@ const StepPreview = ({
 					)}
 
 					{/* Responsible Person Information */}
-					{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-					{Array.isArray(data) && data.some((m: any) => m.employeeName && m.employeeCode && m.role) && (
-						<Box sx={{ mt: 2 }}>
-							<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: '#333' }}>
-								Responsible Person Details:
-							</Typography>
-							{data
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								.filter((m: any) => m.employeeName && m.employeeCode && m.role)
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								.map((measurement: any, index: number) => (
-									<Box
-										key={index}
-										sx={{ mb: 1.5, p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}
-									>
-										<Grid container spacing={2}>
-											<Grid size={{ xs: 12, sm: 4 }}>
-												<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
-													Role
+					{(() => {
+						// Check for responsible person data in both array format and object format (backward compatibility)
+						interface ResponsiblePerson {
+							role: string;
+							employeeName: string;
+							employeeCode: string;
+						}
+
+						interface StepGroup {
+							stepId: string;
+							parameterDescription: string;
+							responsiblePersons: ResponsiblePerson[];
+						}
+
+						let responsiblePersons: StepGroup[] = [];
+
+						// For sequence type: Check if any measurement in the data array has responsiblePersons
+						if (Array.isArray(data)) {
+							// Group responsible persons by step
+							const stepGroups: Record<string, StepGroup> = {};
+
+							data.forEach((measurement: unknown, index: number) => {
+								const measurementData = measurement as Record<string, unknown>;
+								if (measurementData.responsiblePersons && Array.isArray(measurementData.responsiblePersons)) {
+									console.log(
+										`✅ Found responsiblePersons in measurement ${index}:`,
+										measurementData.responsiblePersons
+									);
+
+									const stepId = (measurementData.stepId as string) || `Step ${index + 1}`;
+									const parameterDescription =
+										(measurementData.parameterDescription as string) || `Parameter ${index + 1}`;
+
+									// Initialize step group if not exists
+									if (!stepGroups[stepId]) {
+										stepGroups[stepId] = {
+											stepId: stepId,
+											parameterDescription: parameterDescription,
+											responsiblePersons: []
+										};
+									}
+
+									// Add responsible persons to this step group
+									measurementData.responsiblePersons.forEach((person: unknown) => {
+										const personData = person as Record<string, unknown>;
+										stepGroups[stepId].responsiblePersons.push({
+											role: (personData.role as string) || '',
+											employeeName: (personData.employeeName as string) || '',
+											employeeCode: (personData.employeeCode as string) || ''
+										});
+									});
+								}
+							});
+
+							// Convert to array for rendering
+							responsiblePersons = Object.values(stepGroups);
+						}
+
+						return (
+							responsiblePersons.length > 0 && (
+								<Box sx={{ mt: 2 }}>
+									<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: '#333' }}>
+										Responsible Person Details:
+									</Typography>
+
+									{responsiblePersons.map((stepGroup: StepGroup, groupIndex: number) => (
+										<Box key={groupIndex} sx={{ mb: 2 }}>
+											{/* Step Header */}
+											<Box
+												sx={{
+													backgroundColor: '#f5f5f5',
+													p: 1.5,
+													borderRadius: '4px 4px 0 0',
+													border: '1px solid #e0e0e0',
+													borderBottom: 'none'
+												}}
+											>
+												<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', fontSize: '0.9rem' }}>
+													Step {stepGroup.stepId}: {stepGroup.parameterDescription}
 												</Typography>
-												<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#1565c0' }}>
-													{measurement.role?.toUpperCase()}
-												</Typography>
-											</Grid>
-											<Grid size={{ xs: 12, sm: 4 }}>
-												<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
-													Employee Name
-												</Typography>
-												<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#1565c0' }}>
-													{measurement.employeeName}
-												</Typography>
-											</Grid>
-											<Grid size={{ xs: 12, sm: 4 }}>
-												<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
-													Employee Code
-												</Typography>
-												<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#1565c0' }}>
-													{measurement.employeeCode}
-												</Typography>
-											</Grid>
-										</Grid>
-									</Box>
-								))}
-						</Box>
-					)}
+											</Box>
+
+											{/* Responsible Persons Table */}
+											<TableContainer
+												component={Paper}
+												variant="outlined"
+												sx={{ borderRadius: '0 0 4px 4px', borderTop: 'none' }}
+											>
+												<Table size="small">
+													<TableHead>
+														<TableRow sx={{ backgroundColor: '#fafafa' }}>
+															<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Role</TableCell>
+															<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Employee Name</TableCell>
+															<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Employee Code</TableCell>
+														</TableRow>
+													</TableHead>
+													<TableBody>
+														{stepGroup.responsiblePersons.map((person: ResponsiblePerson, personIndex: number) => (
+															<TableRow key={personIndex} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+																<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>{person.role?.toUpperCase()}</TableCell>
+																<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>{person.employeeName}</TableCell>
+																<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>{person.employeeCode}</TableCell>
+															</TableRow>
+														))}
+													</TableBody>
+												</Table>
+											</TableContainer>
+										</Box>
+									))}
+								</Box>
+							)
+						);
+					})()}
 				</Box>
 			);
 		}

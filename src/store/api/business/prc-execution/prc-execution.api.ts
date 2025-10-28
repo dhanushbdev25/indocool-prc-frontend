@@ -63,6 +63,15 @@ export const prcExecutionApi = createApi({
 				body: { data: data }
 			}),
 			invalidatesTags: (_, __, { id }) => [{ type: 'PrcExecution', id }]
+		}),
+
+		// Fetch plants for combo
+		fetchPlants: builder.query<unknown, void>({
+			query: () => ({
+				url: '/customer/plant',
+				method: 'GET'
+			}),
+			providesTags: ['Plant']
 		})
 	})
 });
@@ -73,5 +82,6 @@ export const {
 	useCreatePrcExecutionMutation,
 	useFetchPartsByCustomerQuery,
 	useFetchPrcExecutionDetailsQuery,
-	useUpdatePrcExecutionProgressMutation
+	useUpdatePrcExecutionProgressMutation,
+	useFetchPlantsQuery
 } = prcExecutionApi;
