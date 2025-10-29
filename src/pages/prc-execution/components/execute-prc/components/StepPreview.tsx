@@ -488,6 +488,7 @@ const StepPreview = ({
 						}
 
 						let responsiblePersons: StepGroup[] = [];
+						let displayResponsiblePersons: boolean = false;
 
 						// For sequence type: Check if any measurement in the data array has responsiblePersons
 						if (Array.isArray(data)) {
@@ -529,59 +530,67 @@ const StepPreview = ({
 
 							// Convert to array for rendering
 							responsiblePersons = Object.values(stepGroups);
+							displayResponsiblePersons =
+								responsiblePersons.filter(e => e?.responsiblePersons?.length)?.length > 0 ? true : false;
 						}
 
 						return (
-							responsiblePersons.length > 0 && (
+							displayResponsiblePersons && (
 								<Box sx={{ mt: 2 }}>
 									<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, color: '#333' }}>
 										Responsible Person Details:
 									</Typography>
 
-									{responsiblePersons.map((stepGroup: StepGroup, groupIndex: number) => (
-										<Box key={groupIndex} sx={{ mb: 2 }}>
-											{/* Step Header */}
-											<Box
-												sx={{
-													backgroundColor: '#f5f5f5',
-													p: 1.5,
-													borderRadius: '4px 4px 0 0',
-													border: '1px solid #e0e0e0',
-													borderBottom: 'none'
-												}}
-											>
-												<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', fontSize: '0.9rem' }}>
-													Step {stepGroup.stepId}: {stepGroup.parameterDescription}
-												</Typography>
-											</Box>
+									{responsiblePersons.map((stepGroup: StepGroup, groupIndex: number) =>
+										stepGroup.responsiblePersons.length ? (
+											<Box key={groupIndex} sx={{ mb: 2 }}>
+												{/* Step Header */}
+												<Box
+													sx={{
+														backgroundColor: '#f5f5f5',
+														p: 1.5,
+														borderRadius: '4px 4px 0 0',
+														border: '1px solid #e0e0e0',
+														borderBottom: 'none'
+													}}
+												>
+													<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', fontSize: '0.9rem' }}>
+														Step {stepGroup.stepId}: {stepGroup.parameterDescription}
+													</Typography>
+												</Box>
 
-											{/* Responsible Persons Table */}
-											<TableContainer
-												component={Paper}
-												variant="outlined"
-												sx={{ borderRadius: '0 0 4px 4px', borderTop: 'none' }}
-											>
-												<Table size="small">
-													<TableHead>
-														<TableRow sx={{ backgroundColor: '#fafafa' }}>
-															<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Role</TableCell>
-															<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Employee Name</TableCell>
-															<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Employee Code</TableCell>
-														</TableRow>
-													</TableHead>
-													<TableBody>
-														{stepGroup.responsiblePersons.map((person: ResponsiblePerson, personIndex: number) => (
-															<TableRow key={personIndex} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-																<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>{person.role?.toUpperCase()}</TableCell>
-																<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>{person.employeeName}</TableCell>
-																<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>{person.employeeCode}</TableCell>
+												{/* Responsible Persons Table */}
+												<TableContainer
+													component={Paper}
+													variant="outlined"
+													sx={{ borderRadius: '0 0 4px 4px', borderTop: 'none' }}
+												>
+													<Table size="small">
+														<TableHead>
+															<TableRow sx={{ backgroundColor: '#fafafa' }}>
+																<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Role</TableCell>
+																<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Employee Name</TableCell>
+																<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Employee Code</TableCell>
 															</TableRow>
-														))}
-													</TableBody>
-												</Table>
-											</TableContainer>
-										</Box>
-									))}
+														</TableHead>
+														<TableBody>
+															{stepGroup.responsiblePersons.map((person: ResponsiblePerson, personIndex: number) => (
+																<TableRow key={personIndex} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+																	<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>
+																		{person.role?.toUpperCase()}
+																	</TableCell>
+																	<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>{person.employeeName}</TableCell>
+																	<TableCell sx={{ fontSize: '0.875rem', py: 1 }}>{person.employeeCode}</TableCell>
+																</TableRow>
+															))}
+														</TableBody>
+													</Table>
+												</TableContainer>
+											</Box>
+										) : (
+											<></>
+										)
+									)}
 								</Box>
 							)
 						);
