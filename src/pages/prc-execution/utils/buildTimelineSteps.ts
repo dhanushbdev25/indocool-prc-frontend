@@ -79,6 +79,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						}>;
 						processName: string;
 						processDescription: string;
+						sequenceTiming: number;
 					}>;
 				};
 				if (sequenceData.stepGroups) {
@@ -112,7 +113,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 								id: stepGroup.id,
 								processName: stepGroup.processName,
 								processDescription: stepGroup.processDescription,
-								sequenceTiming: 0, // Default value since sequenceTiming is not available in stepGroup
+								sequenceTiming: stepGroup.sequenceTiming || 0, // Default value since sequenceTiming is not available in stepGroup
 								steps: stepGroup.steps.map(step => ({
 									...step,
 									minValue: step.minValue,
