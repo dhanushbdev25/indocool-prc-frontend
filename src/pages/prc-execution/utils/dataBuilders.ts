@@ -30,6 +30,7 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 					validationStatus: entry.validationStatus,
 					humidity: entry.humidity,
 					temperature: entry.temperature,
+					actualQuantity: entry.actualQuantity,
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					acknowledged: (formData as any).acknowledgments?.[entry.id] || false
 				};

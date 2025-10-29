@@ -190,6 +190,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 					isSplit: item.splitting || false,
 					temperature: '',
 					humidity: '',
+					actualQuantity: '',
 					catalystQuantity: '',
 					calculatedMin: 0,
 					calculatedMax: 0,
@@ -231,6 +232,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 							catalystQuantity: savedEntry.catalystQuantity || '',
 							validationStatus: savedEntry.validationStatus || 'Accepted',
 							humidity: savedEntry.humidity || '',
+							actualQuantity: savedEntry.actualQuantity || 0,
 							temperature: savedEntry.temperature || ''
 						};
 					}
@@ -265,7 +267,10 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 					const updatedEntry = { ...entry, [field]: value };
 
 					// Recalculate catalyst range if temperature or humidity changed
-					if ((field === 'temperature' || field === 'humidity') && executionData.catalystData?.catalystConfiguration) {
+					if (
+						(field === 'temperature' || field === 'humidity' || field === 'actualQuantity') &&
+						executionData.catalystData?.catalystConfiguration
+					) {
 						// Reset range values when temperature or humidity changes
 						updatedEntry.calculatedMin = 0;
 						updatedEntry.calculatedMax = 0;
@@ -600,7 +605,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 									<CardContent sx={{ p: 3 }}>
 										{/* Input Fields */}
 										<Grid container spacing={3}>
-											<Grid size={{ xs: 12, md: 4 }}>
+											<Grid size={{ xs: 12, md: 3 }}>
 												<Box sx={{ position: 'relative' }}>
 													<TextField
 														fullWidth
@@ -627,7 +632,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 												</Box>
 											</Grid>
 
-											<Grid size={{ xs: 12, md: 4 }}>
+											<Grid size={{ xs: 12, md: 3 }}>
 												<TextField
 													fullWidth
 													label="Humidity"
@@ -652,7 +657,27 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 												/>
 											</Grid>
 
-											<Grid size={{ xs: 12, md: 4 }}>
+											<Grid size={{ xs: 12, md: 3 }}>
+												<TextField
+													fullWidth
+													label="Actual Quantity"
+													type="number"
+													value={entry.actualQuantity}
+													onChange={e => handleInputChange(entry.id, 'actualQuantity', e.target.value)}
+													error={!!errors[`${entry.id}_actualQuantity`]}
+													helperText={errors[`${entry.id}_actualQuantity`] || 'Enter actual quantity'}
+													disabled={isReadOnly || entry.blocked}
+													InputProps={{
+														startAdornment: (
+															<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+																<ScienceIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+															</Box>
+														)
+													}}
+												/>
+											</Grid>
+
+											<Grid size={{ xs: 12, md: 3 }}>
 												<TextField
 													fullWidth
 													label="Catalyst Quantity"

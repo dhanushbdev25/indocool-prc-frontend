@@ -365,6 +365,7 @@ export interface CatalystMixingEntry {
 	isSplit: boolean;
 	temperature: string;
 	humidity: string;
+	actualQuantity: string;
 	catalystQuantity: string;
 	calculatedMin: number;
 	calculatedMax: number;
