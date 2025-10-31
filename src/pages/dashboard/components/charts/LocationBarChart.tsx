@@ -27,7 +27,7 @@ export const LocationBarChart = ({ data }: LocationBarChartProps) => {
 			chartType={chartType}
 			onChartTypeChange={handleChartTypeChange}
 		>
-			<ChartRenderer
+			<ChartRenderer<LocationChartData>
 				chartType={chartType}
 				data={data}
 				dataKey="value"

@@ -23,7 +23,8 @@ import type { ChartType } from './types';
 export interface ChartDataItem {
 	name: string;
 	value: number;
-	[key: string]: string | number;
+	id: string;
+	[key: string]: string | number | undefined;
 }
 
 // Types for tooltip payload
@@ -51,7 +52,9 @@ export interface ChartRendererProps<T extends ChartDataItem = ChartDataItem> {
 		[key: string]: string | number | boolean | object | undefined;
 	};
 	tooltipConfig?: {
-		formatter?: (value: number | string, name?: string, props?: unknown) => [string | number, string?];
+		formatter?:
+			| ((value: number | string, name?: string, props?: unknown) => [string | number, string?])
+			| ((value: number) => [number, string]);
 		labelFormatter?: (label: string | number, payload?: TooltipPayload[]) => string | React.ReactNode;
 		contentStyle?: CSSProperties;
 		labelStyle?: CSSProperties;

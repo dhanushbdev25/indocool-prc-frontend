@@ -113,7 +113,7 @@ export const PartsBarChart = ({ data }: PartsBarChartProps) => {
 			chartType={chartType}
 			onChartTypeChange={handleChartTypeChange}
 		>
-			<ChartRenderer
+			<ChartRenderer<PartsChartData>
 				chartType={chartType}
 				data={data}
 				dataKey="value"

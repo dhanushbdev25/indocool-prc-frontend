@@ -47,7 +47,7 @@ export const DefectBarChart = ({ data }: DefectBarChartProps) => {
 			chartType={chartType}
 			onChartTypeChange={handleChartTypeChange}
 		>
-			<ChartRenderer
+			<ChartRenderer<DefectChartData>
 				chartType={chartType}
 				data={data}
 				dataKey="value"
@@ -82,7 +82,10 @@ export const DefectBarChart = ({ data }: DefectBarChartProps) => {
 								<div style={{ wordWrap: 'break-word' }}>
 									<strong>{payloadData.defectName || label}</strong>
 									<br />
-									<small style={{ color: '#666' }}>Severity: {payloadData.severity?.toUpperCase() || 'UNKNOWN'}</small>
+									<small style={{ color: '#666' }}>
+										Severity:{' '}
+										{typeof payloadData.severity === 'string' ? payloadData.severity.toUpperCase() : 'UNKNOWN'}
+									</small>
 								</div>
 							);
 						}

@@ -715,7 +715,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				)}
 
 				{/* Range Display and Validation */}
-				{isMeasurementRange && formData.value && validationStatus !== null && (
+				{isMeasurementRange && formData.value && validationStatus !== null ? (
 					<Paper
 						elevation={0}
 						sx={{
@@ -742,7 +742,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							{getValidationChip(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
 						</Box>
 					</Paper>
-				)}
+				) : null}
 
 				{/* Acknowledgment checkbox for out-of-range values */}
 				{showAcknowledgment && !isReadOnly && (
