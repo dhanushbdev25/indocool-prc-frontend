@@ -17,7 +17,6 @@ import {
 } from 'recharts';
 import type { CSSProperties } from 'react';
 import React from 'react';
-import type { Formatter, Payload } from 'recharts';
 import type { ChartType } from './types';
 
 // Base interface for chart data items
@@ -25,6 +24,14 @@ export interface ChartDataItem {
 	name: string;
 	value: number;
 	[key: string]: string | number;
+}
+
+// Types for tooltip payload
+interface TooltipPayload {
+	value?: number | string;
+	name?: string;
+	payload?: ChartDataItem;
+	[key: string]: unknown;
 }
 
 export interface ChartRendererProps<T extends ChartDataItem = ChartDataItem> {
@@ -44,8 +51,8 @@ export interface ChartRendererProps<T extends ChartDataItem = ChartDataItem> {
 		[key: string]: string | number | boolean | object | undefined;
 	};
 	tooltipConfig?: {
-		formatter?: Formatter<number, string> | ((value: number | string) => [string | number, string?]);
-		labelFormatter?: (label: string | number, payload?: Array<Payload<number, string>>) => string | React.ReactNode;
+		formatter?: (value: number | string, name?: string, props?: unknown) => [string | number, string?];
+		labelFormatter?: (label: string | number, payload?: TooltipPayload[]) => string | React.ReactNode;
 		contentStyle?: CSSProperties;
 		labelStyle?: CSSProperties;
 	};

@@ -102,13 +102,13 @@ export const DashboardHeader = ({
 								<MenuItem value="">
 									<em>All Parts</em>
 								</MenuItem>
-								{partsData &&
-									Array.isArray((partsData as { data?: Array<{ label: string; value: number }> })?.data) &&
-									(partsData as { data: Array<{ label: string; value: number }> }).data.map(part => (
-										<MenuItem key={part.value} value={part.value.toString()}>
-											{part.label}
-										</MenuItem>
-									))}
+								{partsData && Array.isArray((partsData as { data?: Array<{ label: string; value: number }> })?.data)
+									? (partsData as { data: Array<{ label: string; value: number }> }).data.map(part => (
+											<MenuItem key={part.value} value={part.value.toString()}>
+												{part.label}
+											</MenuItem>
+										))
+									: null}
 							</Select>
 						</FormControl>
 					</Grid>

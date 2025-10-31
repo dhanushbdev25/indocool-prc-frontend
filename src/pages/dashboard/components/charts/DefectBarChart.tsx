@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChartContainer } from './PartsBarChart';
-import type { DefectChartData } from '../../../store/api/business/dashboard/dashboard.validators';
+import type { DefectChartData } from '../../../../store/api/business/dashboard/dashboard.validators';
 import type { ChartType } from './types';
 import { CHART_STORAGE_KEYS, loadChartType, saveChartType } from './types';
 import { ChartRenderer } from './ChartRenderer';
