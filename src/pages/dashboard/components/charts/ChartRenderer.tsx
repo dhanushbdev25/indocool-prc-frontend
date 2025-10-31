@@ -18,14 +18,7 @@ import {
 import type { CSSProperties } from 'react';
 import React from 'react';
 import type { ChartType } from './types';
-
-// Base interface for chart data items
-export interface ChartDataItem {
-	name: string;
-	value: number;
-	id: string;
-	[key: string]: string | number | undefined;
-}
+import type { ChartDataItem } from '../../../../store/api/business/dashboard/dashboard.validators';
 
 // Types for tooltip payload
 interface TooltipPayload {
