@@ -21,10 +21,10 @@ import type { ChartType } from './types';
 import type { ChartDataItem } from '../../../../store/api/business/dashboard/dashboard.validators';
 
 // Types for tooltip payload
-interface TooltipPayload {
+interface TooltipPayload<T extends ChartDataItem = ChartDataItem> {
 	value?: number | string;
 	name?: string;
-	payload?: ChartDataItem;
+	payload?: T;
 	[key: string]: unknown;
 }
 
@@ -126,7 +126,7 @@ export const ChartRenderer = <T extends ChartDataItem = ChartDataItem>({
 			<ResponsiveContainer width="100%" height="100%">
 				<PieChart margin={pieMargin}>
 					<Pie
-						data={data}
+						data={data as unknown[]}
 						cx="50%"
 						cy="50%"
 						labelLine={false}

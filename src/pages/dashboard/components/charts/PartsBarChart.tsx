@@ -127,10 +127,11 @@ export const PartsBarChart = ({ data }: PartsBarChartProps) => {
 					interval: 0
 				}}
 				tooltipConfig={{
-					formatter: (value: number) => [value, 'Completed PRCs'],
+					formatter: (value: number) => [value.toString(), 'Completed PRCs'] as [string, string],
 					labelFormatter: (label, payload) => {
 						if (payload && payload[0] && payload[0].payload) {
-							return payload[0].payload.description || label;
+							const payloadData = payload[0].payload as PartsChartData;
+							return payloadData.description || label;
 						}
 						return label;
 					},
