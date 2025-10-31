@@ -47,8 +47,8 @@ export interface ChartRendererProps<T extends ChartDataItem = ChartDataItem> {
 	tooltipConfig?: {
 		formatter?:
 			| ((value: number | string, name?: string, props?: unknown) => [string | number, string?])
-			| ((value: number) => [number, string]);
-		labelFormatter?: (label: string | number, payload?: TooltipPayload[]) => string | React.ReactNode;
+			| ((value: number) => [string, string] | [number, string]);
+		labelFormatter?: (label: string | number, payload?: TooltipPayload<T>[]) => string | React.ReactNode;
 		contentStyle?: CSSProperties;
 		labelStyle?: CSSProperties;
 	};
@@ -126,7 +126,8 @@ export const ChartRenderer = <T extends ChartDataItem = ChartDataItem>({
 			<ResponsiveContainer width="100%" height="100%">
 				<PieChart margin={pieMargin}>
 					<Pie
-						data={data as unknown[]}
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						data={data as any}
 						cx="50%"
 						cy="50%"
 						labelLine={false}

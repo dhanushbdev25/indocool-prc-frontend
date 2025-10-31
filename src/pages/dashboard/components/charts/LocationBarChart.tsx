@@ -41,7 +41,8 @@ export const LocationBarChart = ({ data }: LocationBarChartProps) => {
 					interval: 0
 				}}
 				tooltipConfig={{
-					formatter: (value: number) => [value.toString(), 'Completed PRCs'] as [string, string],
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					formatter: ((value: number) => [value.toString(), 'Completed PRCs'] as [string, string]) as any,
 					labelFormatter: (label, payload) => {
 						if (payload && payload[0] && payload[0].payload) {
 							const payloadData = payload[0].payload as LocationChartData;

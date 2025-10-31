@@ -74,7 +74,8 @@ export const DefectBarChart = ({ data }: DefectBarChartProps) => {
 						fontSize: '14px',
 						maxWidth: '300px'
 					},
-					formatter: (value: number) => [value.toString(), 'Occurrences'] as [string, string],
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					formatter: ((value: number) => [value.toString(), 'Occurrences'] as [string, string]) as any,
 					labelFormatter: (label, payload) => {
 						if (payload && payload[0] && payload[0].payload) {
 							const payloadData = payload[0].payload as DefectChartData;

@@ -5,9 +5,9 @@ import { DashboardSummaryCards } from './components/DashboardSummaryCards';
 import { PartsBarChart } from './components/charts/PartsBarChart';
 import { LocationBarChart } from './components/charts/LocationBarChart';
 import { DefectBarChart } from './components/charts/DefectBarChart';
-import type { 
-	PartsChartData, 
-	LocationChartData, 
+import type {
+	PartsChartData,
+	LocationChartData,
 	DefectChartData,
 	DashboardData
 } from '../../store/api/business/dashboard/dashboard.validators';
@@ -17,6 +17,7 @@ const Dashboard = () => {
 	const [selectedPart, setSelectedPart] = useState('');
 
 	// Hardcoded dashboard data
+	// eslint-disable-next-line react-hooks/exhaustive-deps
 	const dashboardData: DashboardData = {
 		partsBarGraphCount: {
 			header: {
@@ -121,14 +122,14 @@ const Dashboard = () => {
 		return Object.entries(dashboardData.defectBarGraphCount.detail)
 			.map(([id, value]) => {
 				const fullName = dashboardData.defectBarGraphCount.header[id] || `Defect ${id}`;
-				
+
 				return {
 					id,
 					name: fullName, // Show full names
 					value,
 					defectCode: id,
 					defectName: fullName,
-					severity: value > 30 ? 'high' as const : value > 15 ? 'medium' as const : 'low' as const
+					severity: value > 30 ? ('high' as const) : value > 15 ? ('medium' as const) : ('low' as const)
 				};
 			})
 			.sort((a, b) => b.value - a.value); // Sort by frequency descending
