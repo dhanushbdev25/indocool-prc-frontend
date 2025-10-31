@@ -715,34 +715,40 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				)}
 
 				{/* Range Display and Validation */}
-				{isMeasurementRange && formData.value && validationStatus !== null && (
-					<Paper
-						elevation={0}
-						sx={{
-							mt: 2,
-							p: 2,
-							backgroundColor: getValidationBackgroundColor(validationStatus as 'Accepted' | 'Lesser' | 'Greater'),
-							border: `1px solid ${getValidationBorderColor(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}`,
-							borderRadius: 2
-						}}
-					>
-						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-								{getValidationIcon(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
-								<Box>
-									<Typography variant="body2" color="text.secondary">
-										Acceptance Range
-									</Typography>
-									<Typography variant="h6" sx={{ fontWeight: 600 }}>
-										{String(stepData.minimumAcceptanceValue || '')} - {String(stepData.maximumAcceptanceValue || '')}{' '}
-										{stepData.uom || ''}
-									</Typography>
+				{isMeasurementRange &&
+					formData.value &&
+					validationStatus !== null &&
+					(() => {
+						const status = validationStatus as 'Accepted' | 'Lesser' | 'Greater';
+						return (
+							<Paper
+								elevation={0}
+								sx={{
+									mt: 2,
+									p: 2,
+									backgroundColor: getValidationBackgroundColor(status),
+									border: `1px solid ${getValidationBorderColor(status)}`,
+									borderRadius: 2
+								}}
+							>
+								<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+									<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+										{getValidationIcon(status)}
+										<Box>
+											<Typography variant="body2" color="text.secondary">
+												Acceptance Range
+											</Typography>
+											<Typography variant="h6" sx={{ fontWeight: 600 }}>
+												{String(stepData.minimumAcceptanceValue || '')} -{' '}
+												{String(stepData.maximumAcceptanceValue || '')} {stepData.uom || ''}
+											</Typography>
+										</Box>
+									</Box>
+									{getValidationChip(status)}
 								</Box>
-							</Box>
-							{getValidationChip(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
-						</Box>
-					</Paper>
-				)}
+							</Paper>
+						);
+					})()}
 
 				{/* Acknowledgment checkbox for out-of-range values */}
 				{showAcknowledgment && !isReadOnly && (

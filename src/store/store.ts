@@ -42,7 +42,9 @@ export const store = configureStore({
 	reducer: appReducer,
 	devTools: process.env.NODE_ENV !== 'production',
 	middleware: getDefaultMiddleware =>
-		getDefaultMiddleware().concat([
+		getDefaultMiddleware({
+			serializableCheck: false
+		}).concat([
 			authApi.middleware,
 			sessionApi.middleware,
 			catalystApi.middleware,
@@ -53,7 +55,7 @@ export const store = configureStore({
 			prcExecutionApi.middleware,
 			dashboardApi.middleware,
 			rtkQueryErrorLogger
-		])
+		] as Middleware[])
 });
 
 export type RootState = ReturnType<typeof store.getState>;

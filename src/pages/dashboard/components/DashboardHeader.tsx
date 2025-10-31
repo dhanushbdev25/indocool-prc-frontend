@@ -9,11 +9,11 @@ interface DashboardHeaderProps {
 	onPartChange: (part: string) => void;
 }
 
-export const DashboardHeader = ({ 
-	selectedCustomer, 
-	selectedPart, 
-	onCustomerChange, 
-	onPartChange 
+export const DashboardHeader = ({
+	selectedCustomer,
+	selectedPart,
+	onCustomerChange,
+	onPartChange
 }: DashboardHeaderProps) => {
 	// Fetch customers and parts data
 	const { data: customersData } = useFetchCustomersQuery();
@@ -76,7 +76,7 @@ export const DashboardHeader = ({
 							<Select
 								value={selectedCustomer}
 								label="Customer"
-								onChange={(e) => onCustomerChange(e.target.value)}
+								onChange={e => onCustomerChange(e.target.value)}
 								sx={{ borderRadius: '8px' }}
 							>
 								<MenuItem value="">
@@ -96,17 +96,19 @@ export const DashboardHeader = ({
 							<Select
 								value={selectedPart}
 								label="Part"
-								onChange={(e) => onPartChange(e.target.value)}
+								onChange={e => onPartChange(e.target.value)}
 								sx={{ borderRadius: '8px' }}
 							>
 								<MenuItem value="">
 									<em>All Parts</em>
 								</MenuItem>
-								{partsData?.data?.map(part => (
-									<MenuItem key={part.value} value={part.value.toString()}>
-										{part.label}
-									</MenuItem>
-								))}
+								{partsData &&
+									Array.isArray((partsData as { data?: Array<{ label: string; value: number }> })?.data) &&
+									(partsData as { data: Array<{ label: string; value: number }> }).data.map(part => (
+										<MenuItem key={part.value} value={part.value.toString()}>
+											{part.label}
+										</MenuItem>
+									))}
 							</Select>
 						</FormControl>
 					</Grid>

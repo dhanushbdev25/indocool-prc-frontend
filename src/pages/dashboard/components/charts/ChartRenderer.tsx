@@ -17,7 +17,7 @@ import {
 } from 'recharts';
 import type { CSSProperties } from 'react';
 import React from 'react';
-import type { TooltipProps } from 'recharts';
+import type { Formatter, Payload } from 'recharts';
 import type { ChartType } from './types';
 
 // Base interface for chart data items
@@ -32,7 +32,7 @@ export interface ChartRendererProps<T extends ChartDataItem = ChartDataItem> {
 	data: T[];
 	dataKey: string;
 	color?: string | string[] | ((item: T) => string);
-	margin?: { top?: number; right?: number; left?: number; bottom?: number };
+	margin?: { top: number; right: number; left: number; bottom: number };
 	xAxisConfig?: {
 		dataKey?: string;
 		angle?: number;
@@ -44,8 +44,8 @@ export interface ChartRendererProps<T extends ChartDataItem = ChartDataItem> {
 		[key: string]: string | number | boolean | object | undefined;
 	};
 	tooltipConfig?: {
-		formatter?: (value: number | string, name?: string, props?: TooltipProps<number, string>) => [string, string?];
-		labelFormatter?: (label: string | number, payload?: Array<{ payload?: T }>) => string | React.ReactNode;
+		formatter?: Formatter<number, string> | ((value: number | string) => [string | number, string?]);
+		labelFormatter?: (label: string | number, payload?: Array<Payload<number, string>>) => string | React.ReactNode;
 		contentStyle?: CSSProperties;
 		labelStyle?: CSSProperties;
 	};
@@ -118,15 +118,18 @@ export const ChartRenderer = <T extends ChartDataItem = ChartDataItem>({
 	if (chartType === 'pie') {
 		// For pie charts, make outer radius responsive to data size
 		const outerRadius = data.length > 10 ? 100 : 80;
+		const pieMargin = margin || { top: 20, right: 30, left: 20, bottom: 80 };
 		return (
 			<ResponsiveContainer width="100%" height="100%">
-				<PieChart margin={margin}>
+				<PieChart margin={pieMargin}>
 					<Pie
 						data={data}
 						cx="50%"
 						cy="50%"
 						labelLine={false}
-						label={({ name, percent }) => {
+						label={(entry: { name?: string; percent?: number }) => {
+							const name = entry.name || '';
+							const percent = typeof entry.percent === 'number' ? entry.percent : 0;
 							// Truncate long names for better display
 							const displayName = name.length > 15 ? `${name.substring(0, 15)}...` : name;
 							return `${displayName}: ${(percent * 100).toFixed(0)}%`;
@@ -139,7 +142,7 @@ export const ChartRenderer = <T extends ChartDataItem = ChartDataItem>({
 							<Cell key={`cell-${index}`} fill={getBarFill(entry, index)} />
 						))}
 					</Pie>
-					<Tooltip {...defaultTooltipConfig} />
+					<Tooltip {...(defaultTooltipConfig as object)} />
 					<Legend />
 				</PieChart>
 			</ResponsiveContainer>
@@ -148,7 +151,7 @@ export const ChartRenderer = <T extends ChartDataItem = ChartDataItem>({
 
 	const commonProps = {
 		data,
-		margin
+		margin: margin || { top: 20, right: 30, left: 20, bottom: 80 }
 	};
 
 	if (chartType === 'bar') {
@@ -159,7 +162,7 @@ export const ChartRenderer = <T extends ChartDataItem = ChartDataItem>({
 					<CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
 					<XAxis {...defaultXAxisConfig} />
 					<YAxis {...defaultYAxisConfig} />
-					<Tooltip {...defaultTooltipConfig} />
+					<Tooltip {...(defaultTooltipConfig as object)} />
 					<Bar
 						dataKey={dataKey}
 						fill={hasCustomColors ? undefined : typeof color === 'string' ? color : '#0D5FDC'}
@@ -187,7 +190,7 @@ export const ChartRenderer = <T extends ChartDataItem = ChartDataItem>({
 					<CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
 					<XAxis {...defaultXAxisConfig} />
 					<YAxis {...defaultYAxisConfig} />
-					<Tooltip {...defaultTooltipConfig} />
+					<Tooltip {...(defaultTooltipConfig as object)} />
 					<Line
 						type="monotone"
 						dataKey={dataKey}
@@ -210,7 +213,7 @@ export const ChartRenderer = <T extends ChartDataItem = ChartDataItem>({
 					<CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
 					<XAxis {...defaultXAxisConfig} />
 					<YAxis {...defaultYAxisConfig} />
-					<Tooltip {...defaultTooltipConfig} />
+					<Tooltip {...(defaultTooltipConfig as object)} />
 					<Area type="monotone" dataKey={dataKey} stroke={areaColor} fill={areaColor} fillOpacity={0.6} />
 				</AreaChart>
 			</ResponsiveContainer>
