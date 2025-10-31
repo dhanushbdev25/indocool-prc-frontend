@@ -70,6 +70,8 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							uom: string;
 							minValue?: string;
 							maxValue?: string;
+							minimumAcceptanceValue?: string | null;
+							maximumAcceptanceValue?: string | null;
 							multipleMeasurements: boolean;
 							notes: string;
 							parameterDescription: string;
@@ -118,8 +120,8 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 									...step,
 									minValue: step.minValue,
 									maxValue: step.maxValue,
-									minimumAcceptanceValue: step.minValue,
-									maximumAcceptanceValue: step.maxValue,
+									minimumAcceptanceValue: step.minimumAcceptanceValue || step.minValue,
+									maximumAcceptanceValue: step.maximumAcceptanceValue || step.maxValue,
 									stepNumber: step.id, // Use step id as step number for now
 									version: 1,
 									isLatest: true,

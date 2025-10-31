@@ -338,9 +338,44 @@ const ExecutePrc = () => {
 
 							// Find the step definition to get context
 							const stepDefinition = currentStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
+
+							// Extract value from stepData (handle both direct value and nested data)
+							let value = stepData.value || stepData.data;
+							let extractedMinimumAcceptanceValue = stepData.minimumAcceptanceValue;
+							let extractedMaximumAcceptanceValue = stepData.maximumAcceptanceValue;
+							let extractedValidationStatus = stepData.validationStatus;
+
+							// Handle array data (multiple measurements) where each item might have validation info
+							if (
+								Array.isArray(value) &&
+								value.length > 0 &&
+								typeof value[0] === 'object' &&
+								value[0] !== null &&
+								'value' in value[0]
+							) {
+								// Extract values from array of objects
+								const firstItem = value[0] as Record<string, unknown>;
+								value = (value as Array<Record<string, unknown>>).map(item => item.value);
+								// For multiple measurements, use validation status from first item if available
+								if (firstItem.validationStatus) {
+									extractedValidationStatus = firstItem.validationStatus;
+									extractedMinimumAcceptanceValue = firstItem.minimumAcceptanceValue as string | undefined;
+									extractedMaximumAcceptanceValue = firstItem.maximumAcceptanceValue as string | undefined;
+								}
+							} else if (typeof value === 'object' && value !== null && 'value' in value) {
+								// Handle nested structure like { value: "10", minimumAcceptanceValue: "1", ... }
+								const valueObj = value as Record<string, unknown>;
+								value = valueObj.value;
+								extractedMinimumAcceptanceValue =
+									(valueObj.minimumAcceptanceValue as string) || extractedMinimumAcceptanceValue;
+								extractedMaximumAcceptanceValue =
+									(valueObj.maximumAcceptanceValue as string) || extractedMaximumAcceptanceValue;
+								extractedValidationStatus = (valueObj.validationStatus as string) || extractedValidationStatus;
+							}
+
 							const measurementData = {
 								stepId: stepId,
-								value: stepData.value || stepData.data,
+								value: value,
 								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
 								stepType: stepDefinition?.stepType || 'Unknown',
 								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
@@ -348,6 +383,10 @@ const ExecutePrc = () => {
 								notes: stepDefinition?.notes || '',
 								ctq: stepDefinition?.ctq || false,
 								stepNumber: stepDefinition?.stepNumber || 0,
+								// Store acceptance values and validation status if available
+								minimumAcceptanceValue: extractedMinimumAcceptanceValue || stepDefinition?.minimumAcceptanceValue,
+								maximumAcceptanceValue: extractedMaximumAcceptanceValue || stepDefinition?.maximumAcceptanceValue,
+								validationStatus: extractedValidationStatus,
 								responsiblePersons: [] as Array<{
 									role: string;
 									employeeName: string;

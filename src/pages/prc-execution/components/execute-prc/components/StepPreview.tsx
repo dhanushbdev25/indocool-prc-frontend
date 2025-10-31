@@ -32,7 +32,9 @@ import {
 	AccessTime,
 	ArrowDropDown,
 	ExpandMore,
-	ExpandLess
+	ExpandLess,
+	Warning,
+	Error as ErrorIcon
 } from '@mui/icons-material';
 import { type StepPreviewData } from '../../../types/execution.types';
 import ImageDisplay from './ImageDisplay';
@@ -88,6 +90,25 @@ const StepPreview = ({
 		const mins = Math.floor((seconds % 3600) / 60);
 		const secs = Math.round(seconds % 60);
 		return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+	};
+
+	// Helper functions for validation status display
+	const getValidationIcon = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+		switch (status) {
+			case 'Accepted':
+				return <CheckCircle sx={{ color: 'success.main', fontSize: 20 }} />;
+			case 'Lesser':
+				return <Warning sx={{ color: 'warning.main', fontSize: 20 }} />;
+			case 'Greater':
+				return <ErrorIcon sx={{ color: 'error.main', fontSize: 20 }} />;
+		}
+	};
+
+	const getValidationChip = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+		const color = status === 'Accepted' ? 'success' : status === 'Lesser' ? 'warning' : 'error';
+		const label = `Range: ${status}`;
+
+		return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
 	};
 
 	// Debug logging
@@ -347,6 +368,7 @@ const StepPreview = ({
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Value</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Type</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Method</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Range</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
 								</TableRow>
 							</TableHead>
@@ -421,25 +443,47 @@ const StepPreview = ({
 												{measurement.evaluationMethod}
 											</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												<Box
-													sx={{
-														display: 'flex',
-														alignItems: 'center',
-														justifyContent: 'center',
-														width: 24,
-														height: 24,
-														borderRadius: '50%',
-														backgroundColor: '#e8f5e8'
-													}}
-												>
-													<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
-												</Box>
+												{measurement.stepType === 'Measurement' &&
+												measurement.minimumAcceptanceValue &&
+												measurement.maximumAcceptanceValue ? (
+													<Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
+														{measurement.minimumAcceptanceValue} - {measurement.maximumAcceptanceValue}{' '}
+														{measurement.uom && measurement.uom !== 'None' ? measurement.uom : ''}
+													</Typography>
+												) : (
+													<Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
+														N/A
+													</Typography>
+												)}
+											</TableCell>
+											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+												{measurement.validationStatus &&
+												measurement.minimumAcceptanceValue &&
+												measurement.maximumAcceptanceValue ? (
+													<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+														{getValidationChip(measurement.validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
+													</Box>
+												) : (
+													<Box
+														sx={{
+															display: 'flex',
+															alignItems: 'center',
+															justifyContent: 'center',
+															width: 24,
+															height: 24,
+															borderRadius: '50%',
+															backgroundColor: '#e8f5e8'
+														}}
+													>
+														<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+													</Box>
+												)}
 											</TableCell>
 										</TableRow>
 									))
 								) : (
 									<TableRow>
-										<TableCell colSpan={6} sx={{ textAlign: 'center', py: 3, color: '#666' }}>
+										<TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, color: '#666' }}>
 											No measurement data available
 										</TableCell>
 									</TableRow>
@@ -708,10 +752,17 @@ const StepPreview = ({
 										let displayValue = '';
 										let hasAnnotations = false;
 										let isMultiColumn = false;
+										let isTableType = false;
+										let tableRowCount = 0;
 										let ctqStatus = paramMeta?.ctq || false;
 										let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
 										let parameterType = paramMeta?.type || 'text';
 										let specification = paramMeta?.specification || 'N/A';
+
+										// Check if this is a table type parameter
+										if (parameterType === 'table' && paramMeta?.columns && paramMeta.columns.length > 0) {
+											isTableType = true;
+										}
 
 										if (typeof parameterData === 'object' && parameterData !== null) {
 											// Handle object structure: { "value": "1", "annotations": [...] }
@@ -724,7 +775,16 @@ const StepPreview = ({
 
 											// Handle value
 											if (paramObj.value) {
-												if (typeof paramObj.value === 'object' && paramObj.value !== null) {
+												if (isTableType && Array.isArray(paramObj.value)) {
+													// Table type: value is an array of row objects
+													isMultiColumn = true; // Use same expansion logic
+													tableRowCount = (paramObj.value as unknown[]).length;
+													displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
+												} else if (
+													typeof paramObj.value === 'object' &&
+													paramObj.value !== null &&
+													!Array.isArray(paramObj.value)
+												) {
 													// Multi-column data: { "value": { "Date": "213", "Name": "1" } }
 													isMultiColumn = true;
 													const valueObj = paramObj.value as Record<string, unknown>;
@@ -766,13 +826,13 @@ const StepPreview = ({
 													sx={{
 														'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
 														'&:hover': { backgroundColor: '#f0f0f0' },
-														cursor: isMultiColumn ? 'pointer' : 'default'
+														cursor: isMultiColumn || isTableType ? 'pointer' : 'default'
 													}}
-													onClick={isMultiColumn ? () => toggleMultiValueParam(parameterId) : undefined}
+													onClick={isMultiColumn || isTableType ? () => toggleMultiValueParam(parameterId) : undefined}
 												>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 														<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-															{isMultiColumn && (
+															{(isMultiColumn || isTableType) && (
 																<IconButton size="small" sx={{ p: 0.25 }}>
 																	{expandedMultiValueParams.has(parameterId) ? <ExpandLess /> : <ExpandMore />}
 																</IconButton>
@@ -809,7 +869,20 @@ const StepPreview = ({
 																	}}
 																/>
 															)}
-															{isMultiColumn && (
+															{isTableType && (
+																<Chip
+																	label="Table"
+																	size="small"
+																	sx={{
+																		backgroundColor: '#e1f5fe',
+																		color: '#0277bd',
+																		fontSize: '0.6rem',
+																		height: 16,
+																		'& .MuiChip-label': { px: 0.5 }
+																	}}
+																/>
+															)}
+															{isMultiColumn && !isTableType && (
 																<Chip
 																	label="Multi"
 																	size="small"
@@ -839,7 +912,11 @@ const StepPreview = ({
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{parameterType}</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-														{isMultiColumn ? (
+														{isTableType ? (
+															<Typography variant="body2" sx={{ fontWeight: 600, color: '#0277bd' }}>
+																{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
+															</Typography>
+														) : isMultiColumn ? (
 															<Typography variant="body2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
 																{
 																	Object.keys(
@@ -898,7 +975,7 @@ const StepPreview = ({
 													</TableCell>
 												</TableRow>
 
-												{/* Collapsible Detail Row for Multi-Column Parameters */}
+												{/* Collapsible Detail Row for Multi-Column and Table Parameters */}
 												{isMultiColumn && (
 													<TableRow>
 														<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
@@ -913,7 +990,7 @@ const StepPreview = ({
 																	}}
 																>
 																	<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#333' }}>
-																		{parameterName} - Detailed Values
+																		{parameterName} - {isTableType ? 'Table Data' : 'Detailed Values'}
 																	</Typography>
 																	<TableContainer component={Paper} variant="outlined">
 																		<Table size="small">
@@ -936,49 +1013,100 @@ const StepPreview = ({
 																				</TableRow>
 																			</TableHead>
 																			<TableBody>
-																				<TableRow>
-																					{paramMeta?.columns?.map(column => {
-																						const value = (
-																							(parameterData as Record<string, unknown>).value as Record<
-																								string,
-																								unknown
-																							>
-																						)[column.name];
-																						const formattedValue =
-																							column.type === 'ok/not ok'
-																								? value === 'ok'
-																									? 'OK'
-																									: value === 'not ok'
-																										? 'Not OK'
-																										: String(value)
-																								: String(value);
+																				{isTableType &&
+																				Array.isArray((parameterData as Record<string, unknown>).value) ? (
+																					// Table type: render multiple rows
+																					(
+																						(parameterData as Record<string, unknown>).value as Record<
+																							string,
+																							unknown
+																						>[]
+																					).map((row, rowIndex) => (
+																						<TableRow key={rowIndex}>
+																							{paramMeta?.columns?.map(column => {
+																								const value = row[column.name];
+																								const formattedValue =
+																									column.type === 'ok/not ok'
+																										? value === 'ok'
+																											? 'OK'
+																											: value === 'not ok'
+																												? 'Not OK'
+																												: String(value || '')
+																										: String(value || '');
 
-																						return (
-																							<TableCell
-																								key={column.name}
-																								sx={{
-																									fontSize: '0.75rem',
-																									py: 0.5,
-																									px: 1,
-																									borderRight: '1px solid #e0e0e0',
-																									maxWidth: 150
-																								}}
-																							>
-																								<Typography
-																									variant="body2"
-																									sx={{
-																										overflow: 'hidden',
-																										textOverflow: 'ellipsis',
-																										whiteSpace: 'nowrap'
-																									}}
-																									title={formattedValue}
+																								return (
+																									<TableCell
+																										key={column.name}
+																										sx={{
+																											fontSize: '0.75rem',
+																											py: 0.5,
+																											px: 1,
+																											borderRight: '1px solid #e0e0e0',
+																											maxWidth: 150
+																										}}
+																									>
+																										<Typography
+																											variant="body2"
+																											sx={{
+																												overflow: 'hidden',
+																												textOverflow: 'ellipsis',
+																												whiteSpace: 'nowrap'
+																											}}
+																											title={formattedValue}
+																										>
+																											{formattedValue}
+																										</Typography>
+																									</TableCell>
+																								);
+																							})}
+																						</TableRow>
+																					))
+																				) : (
+																					// Multi-column single row
+																					<TableRow>
+																						{paramMeta?.columns?.map(column => {
+																							const value = (
+																								(parameterData as Record<string, unknown>).value as Record<
+																									string,
+																									unknown
 																								>
-																									{formattedValue}
-																								</Typography>
-																							</TableCell>
-																						);
-																					})}
-																				</TableRow>
+																							)[column.name];
+																							const formattedValue =
+																								column.type === 'ok/not ok'
+																									? value === 'ok'
+																										? 'OK'
+																										: value === 'not ok'
+																											? 'Not OK'
+																											: String(value)
+																									: String(value);
+
+																							return (
+																								<TableCell
+																									key={column.name}
+																									sx={{
+																										fontSize: '0.75rem',
+																										py: 0.5,
+																										px: 1,
+																										borderRight: '1px solid #e0e0e0',
+																										maxWidth: 150
+																									}}
+																								>
+																									<Typography
+																										variant="body2"
+																										sx={{
+																											overflow: 'hidden',
+																											textOverflow: 'ellipsis',
+																											whiteSpace: 'nowrap'
+																										}}
+																										title={formattedValue}
+																									>
+																										{formattedValue}
+																									</Typography>
+																								</TableCell>
+																							);
+																						})}
+																					</TableRow>
+																				)}
 																			</TableBody>
 																		</Table>
 																	</TableContainer>

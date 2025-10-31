@@ -1,82 +1,98 @@
 import { z } from 'zod/v4';
 
 // Column schema for inspection parameters
-export const columnSchema = z.object({
-	name: z.string(),
-	type: z.string(),
-	defaultValue: z.union([z.string(), z.number()]).optional(),
-	tolerance: z.union([z.string(), z.number()]).optional()
-});
+export const columnSchema = z
+	.object({
+		name: z.string(),
+		type: z.string(),
+		defaultValue: z.union([z.string(), z.number()]).optional(),
+		tolerance: z.union([z.string(), z.number()]).optional()
+	})
+	.loose();
 
 // Part image schema
-export const partImageSchema = z.object({
-	name: z.string(),
-	url: z.string().url()
-});
+export const partImageSchema = z
+	.object({
+		name: z.string(),
+		url: z.string().url()
+	})
+	.loose();
 
 // Files schema for inspection parameters
 export const filesSchema = z.record(z.string(), z.string()).optional();
 
 // Inspection parameter schema
-export const inspectionParameterSchema = z.object({
-	id: z.number().optional(),
-	inspectionId: z.number().optional(),
-	order: z.number(),
-	version: z.number().optional(),
-	isLatest: z.boolean().optional(),
-	parameterName: z.string(),
-	specification: z.string().optional(),
-	tolerance: z.union([z.string(), z.number()]).optional(),
-	type: z.string(),
-	files: filesSchema,
-	columns: z.array(columnSchema),
-	role: z.string(),
-	ctq: z.boolean(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional()
-});
+export const inspectionParameterSchema = z
+	.object({
+		id: z.number().optional(),
+		inspectionId: z.number().optional(),
+		order: z.number(),
+		version: z.number().optional(),
+		isLatest: z.boolean().optional(),
+		parameterName: z.string(),
+		specification: z.string().optional(),
+		tolerance: z.union([z.string(), z.number()]).optional(),
+		type: z.string(),
+		files: filesSchema,
+		columns: z.array(columnSchema),
+		role: z.string(),
+		ctq: z.boolean(),
+		createdAt: z.string().optional(),
+		updatedAt: z.string().optional()
+	})
+	.loose();
 
 // Inspection schema
-export const inspectionSchema = z.object({
-	id: z.number().optional(),
-	inspectionName: z.string(),
-	status: z.string(),
-	inspectionId: z.string(),
-	type: z.string(),
-	version: z.number(),
-	isLatest: z.boolean(),
-	showPartImages: z.boolean().optional(),
-	partImages: z.array(partImageSchema).optional(),
-	createdBy: z.number().nullable().optional(),
-	updatedBy: z.number().nullable().optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional()
-});
+export const inspectionSchema = z
+	.object({
+		id: z.number().optional(),
+		inspectionName: z.string(),
+		status: z.string(),
+		inspectionId: z.string(),
+		type: z.string(),
+		version: z.number(),
+		isLatest: z.boolean(),
+		showPartImages: z.boolean().optional(),
+		partImages: z.array(partImageSchema).optional(),
+		createdBy: z.number().nullable().optional(),
+		updatedBy: z.number().nullable().optional(),
+		createdAt: z.string().optional(),
+		updatedAt: z.string().optional()
+	})
+	.loose();
 
 // Inspection detail schema combining inspection + inspectionParameters
-export const inspectionDetailSchema = z.object({
-	inspection: inspectionSchema,
-	inspectionParameters: z.array(inspectionParameterSchema)
-});
+export const inspectionDetailSchema = z
+	.object({
+		inspection: inspectionSchema,
+		inspectionParameters: z.array(inspectionParameterSchema)
+	})
+	.loose();
 
 // Header schema for counts
-export const inspectionHeaderSchema = z.object({
-	ACTIVE: z.number(),
-	NEW: z.number(),
-	INACTIVE: z.number()
-});
+export const inspectionHeaderSchema = z
+	.object({
+		ACTIVE: z.number(),
+		NEW: z.number(),
+		INACTIVE: z.number()
+	})
+	.loose();
 
 // List response schema
-export const inspectionListResponseSchema = z.object({
-	header: inspectionHeaderSchema,
-	detail: z.array(inspectionDetailSchema)
-});
+export const inspectionListResponseSchema = z
+	.object({
+		header: inspectionHeaderSchema,
+		detail: z.array(inspectionDetailSchema)
+	})
+	.loose();
 
 // Single inspection response schema
-export const inspectionByIdResponseSchema = z.object({
-	header: inspectionHeaderSchema,
-	detail: inspectionDetailSchema
-});
+export const inspectionByIdResponseSchema = z
+	.object({
+		header: inspectionHeaderSchema,
+		detail: inspectionDetailSchema
+	})
+	.loose();
 
 // Request schemas for create/update operations
 export const columnRequestSchema = z.object({
@@ -137,31 +153,37 @@ export const updateInspectionRequestSchema = z.object({
 });
 
 // Response schemas for create/update operations
-export const inspectionBasicSchema = z.object({
-	id: z.number(),
-	inspectionName: z.string(),
-	status: z.string(),
-	inspectionId: z.string(),
-	type: z.string(),
-	version: z.number(),
-	isLatest: z.boolean(),
-	showPartImages: z.boolean().optional(),
-	partImages: z.array(partImageSchema).optional(),
-	createdBy: z.number().nullable().optional(),
-	updatedBy: z.number().nullable().optional(),
-	createdAt: z.string(),
-	updatedAt: z.string()
-});
+export const inspectionBasicSchema = z
+	.object({
+		id: z.number(),
+		inspectionName: z.string(),
+		status: z.string(),
+		inspectionId: z.string(),
+		type: z.string(),
+		version: z.number(),
+		isLatest: z.boolean(),
+		showPartImages: z.boolean().optional(),
+		partImages: z.array(partImageSchema).optional(),
+		createdBy: z.number().nullable().optional(),
+		updatedBy: z.number().nullable().optional(),
+		createdAt: z.string(),
+		updatedAt: z.string()
+	})
+	.loose();
 
-export const createInspectionResponseSchema = z.object({
-	message: z.string(),
-	data: inspectionBasicSchema
-});
+export const createInspectionResponseSchema = z
+	.object({
+		message: z.string(),
+		data: inspectionBasicSchema
+	})
+	.loose();
 
-export const updateInspectionResponseSchema = z.object({
-	message: z.string(),
-	data: inspectionBasicSchema
-});
+export const updateInspectionResponseSchema = z
+	.object({
+		message: z.string(),
+		data: inspectionBasicSchema
+	})
+	.loose();
 
 // Delete task request schema - sets status to INACTIVE and sends remaining data
 export const deleteInspectionTaskRequestSchema = z.object({
@@ -170,10 +192,12 @@ export const deleteInspectionTaskRequestSchema = z.object({
 });
 
 // Delete task response schema
-export const deleteInspectionTaskResponseSchema = z.object({
-	message: z.string(),
-	data: inspectionBasicSchema
-});
+export const deleteInspectionTaskResponseSchema = z
+	.object({
+		message: z.string(),
+		data: inspectionBasicSchema
+	})
+	.loose();
 
 // TypeScript types inferred from Zod schemas
 export type Column = z.infer<typeof columnSchema>;

@@ -14,9 +14,12 @@ import {
 	IconButton,
 	Select,
 	MenuItem,
-	InputLabel
+	InputLabel,
+	Chip,
+	Checkbox,
+	Paper
 } from '@mui/material';
-import { Add, Delete } from '@mui/icons-material';
+import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
 
 interface SequenceStepProps {
@@ -25,8 +28,16 @@ interface SequenceStepProps {
 	onStepComplete: (formData: FormData) => void;
 }
 
+// Helper function to validate measurement value against acceptance range
+const validateMeasurementRange = (value: number, min: number, max: number): 'Accepted' | 'Lesser' | 'Greater' => {
+	if (value < min) return 'Lesser';
+	if (value > max) return 'Greater';
+	return 'Accepted';
+};
+
 const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
+	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 
 	// Compute initial data from existing data
 	const initialData = useMemo(() => {
@@ -179,10 +190,37 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				value: ''
 			}));
 		}
+
+		// Clear acknowledgment when value changes (will be re-evaluated)
+		if (acknowledgments.value) {
+			setAcknowledgments(prev => {
+				const newAcks = { ...prev };
+				delete newAcks.value;
+				return newAcks;
+			});
+		}
 	};
 
 	const handleMeasurementChange = (measurementId: string, value: string) => {
 		setMeasurements(prev => prev.map(m => (m.id === measurementId ? { ...m, value } : m)));
+
+		// Clear acknowledgment when measurement value changes (will be re-evaluated)
+		const acknowledgmentKey = `measurement_${measurementId}`;
+		if (acknowledgments[acknowledgmentKey]) {
+			setAcknowledgments(prev => {
+				const newAcks = { ...prev };
+				delete newAcks[acknowledgmentKey];
+				return newAcks;
+			});
+		}
+
+		// Clear error when user starts typing
+		if (errors[`measurement_${measurementId}`]) {
+			setErrors(prev => ({
+				...prev,
+				[`measurement_${measurementId}`]: ''
+			}));
+		}
 	};
 
 	const addMeasurement = () => {
@@ -225,8 +263,22 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		}
 	};
 
+	const handleAcknowledgmentChange = (key: string, acknowledged: boolean) => {
+		setAcknowledgments(prev => ({
+			...prev,
+			[key]: acknowledged
+		}));
+	};
+
 	const validateForm = () => {
 		const newErrors: Record<string, string> = {};
+
+		// Check if this is a Measurement step with range type that requires acceptance value validation
+		const isMeasurementRange =
+			stepData.stepType === 'Measurement' &&
+			stepData.targetValueType === 'range' &&
+			stepData.minimumAcceptanceValue &&
+			stepData.maximumAcceptanceValue;
 
 		// For multiple measurements, only validate the measurements array
 		if (stepData.multipleMeasurements) {
@@ -245,6 +297,18 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							if (numValue < min || numValue > max) {
 								newErrors[`measurement_${measurement.id}`] =
 									`Measurement ${index + 1} must be between ${min} and ${max} ${stepData.uom || ''}`;
+							}
+						}
+
+						// For Measurement range type, check against acceptance values
+						if (isMeasurementRange) {
+							const minAcceptance = parseFloat(stepData.minimumAcceptanceValue!);
+							const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue!);
+							if (!isNaN(minAcceptance) && !isNaN(maxAcceptance)) {
+								const validationStatus = validateMeasurementRange(numValue, minAcceptance, maxAcceptance);
+								if (validationStatus !== 'Accepted' && !acknowledgments[`measurement_${measurement.id}`]) {
+									newErrors[`measurement_${measurement.id}_acknowledge`] = 'Please acknowledge the out-of-range value';
+								}
 							}
 						}
 					}
@@ -272,6 +336,18 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 								newErrors.value = `Value must be between ${min} and ${max} ${stepData.uom || ''}`;
 							}
 						}
+
+						// For Measurement range type, check against acceptance values
+						if (isMeasurementRange) {
+							const minAcceptance = parseFloat(stepData.minimumAcceptanceValue!);
+							const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue!);
+							if (!isNaN(minAcceptance) && !isNaN(maxAcceptance)) {
+								const validationStatus = validateMeasurementRange(numValue, minAcceptance, maxAcceptance);
+								if (validationStatus !== 'Accepted' && !acknowledgments.value) {
+									newErrors.value_acknowledge = 'Please acknowledge the out-of-range value';
+								}
+							}
+						}
 					}
 				}
 			}
@@ -296,6 +372,68 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
+	};
+
+	// Helper functions for validation status UI
+	const getValidationStatus = (value: string | number | undefined): 'Accepted' | 'Lesser' | 'Greater' | null => {
+		if (!stepData.stepType || stepData.stepType !== 'Measurement') return null;
+		if (stepData.targetValueType !== 'range') return null;
+		if (!stepData.minimumAcceptanceValue || !stepData.maximumAcceptanceValue) return null;
+
+		const numValue = typeof value === 'string' ? parseFloat(value) : typeof value === 'number' ? value : undefined;
+		if (numValue === undefined || isNaN(numValue)) return null;
+
+		const minAcceptance = parseFloat(stepData.minimumAcceptanceValue);
+		const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue);
+		if (isNaN(minAcceptance) || isNaN(maxAcceptance)) return null;
+
+		return validateMeasurementRange(numValue, minAcceptance, maxAcceptance);
+	};
+
+	const getValidationIcon = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+		switch (status) {
+			case 'Accepted':
+				return <CheckCircle sx={{ color: 'success.main', fontSize: 20 }} />;
+			case 'Lesser':
+				return <Warning sx={{ color: 'warning.main', fontSize: 20 }} />;
+			case 'Greater':
+				return <ErrorIcon sx={{ color: 'error.main', fontSize: 20 }} />;
+		}
+	};
+
+	const getValidationChip = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+		const color = status === 'Accepted' ? 'success' : status === 'Lesser' ? 'warning' : 'error';
+		const label = `Range: ${status}`;
+
+		return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
+	};
+
+	// Helper function to get validation background color
+	const getValidationBackgroundColor = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+		switch (status) {
+			case 'Accepted':
+				return '#e8f5e8';
+			case 'Lesser':
+				return '#fff3e0';
+			case 'Greater':
+				return '#ffebee';
+			default:
+				return '#f5f5f5';
+		}
+	};
+
+	// Helper function to get validation border color
+	const getValidationBorderColor = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+		switch (status) {
+			case 'Accepted':
+				return '#4caf50';
+			case 'Lesser':
+				return '#ff9800';
+			case 'Greater':
+				return '#f44336';
+			default:
+				return '#e0e0e0';
+		}
 	};
 
 	const handleSubmit = () => {
@@ -326,6 +464,58 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					employeeName: person.employeeName,
 					employeeCode: person.employeeCode
 				}));
+			}
+
+			// For Measurement steps with range type, store acceptance values and validation status
+			const isMeasurementRange =
+				stepData.stepType === 'Measurement' &&
+				stepData.targetValueType === 'range' &&
+				stepData.minimumAcceptanceValue &&
+				stepData.maximumAcceptanceValue;
+
+			if (isMeasurementRange) {
+				if (stepData.multipleMeasurements) {
+					// For multiple measurements, store validation status for each measurement
+					const valuesWithValidation = measurements.map(m => {
+						const value = parseFloat(m.value);
+						if (!isNaN(value)) {
+							const minAcceptance = parseFloat(stepData.minimumAcceptanceValue!);
+							const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue!);
+							if (!isNaN(minAcceptance) && !isNaN(maxAcceptance)) {
+								const validationStatus = validateMeasurementRange(value, minAcceptance, maxAcceptance);
+								return {
+									value: m.value,
+									minimumAcceptanceValue: stepData.minimumAcceptanceValue,
+									maximumAcceptanceValue: stepData.maximumAcceptanceValue,
+									validationStatus: validationStatus
+								};
+							}
+						}
+						return {
+							value: m.value,
+							minimumAcceptanceValue: stepData.minimumAcceptanceValue,
+							maximumAcceptanceValue: stepData.maximumAcceptanceValue
+						};
+					});
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(formDataToSubmit as any).data = valuesWithValidation;
+				} else {
+					// For single measurement, store acceptance values and validation status
+					const value = parseFloat(String(formData.value));
+					if (!isNaN(value)) {
+						const minAcceptance = parseFloat(stepData.minimumAcceptanceValue!);
+						const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue!);
+						if (!isNaN(minAcceptance) && !isNaN(maxAcceptance)) {
+							const validationStatus = validateMeasurementRange(value, minAcceptance, maxAcceptance);
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(formDataToSubmit as any).minimumAcceptanceValue = stepData.minimumAcceptanceValue;
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(formDataToSubmit as any).maximumAcceptanceValue = stepData.maximumAcceptanceValue;
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(formDataToSubmit as any).validationStatus = validationStatus;
+						}
+					}
+				}
 			}
 
 			onStepComplete(formDataToSubmit);
@@ -374,43 +564,112 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 		if (stepData.multipleMeasurements) {
 			const maxCount = stepData.multipleMeasurementMaxCount || 10;
+			const isMeasurementRange =
+				stepData.stepType === 'Measurement' &&
+				stepData.targetValueType === 'range' &&
+				stepData.minimumAcceptanceValue &&
+				stepData.maximumAcceptanceValue;
+
 			return (
 				<Box>
 					<Typography variant="body2" sx={{ mb: 1, fontWeight: 500, color: '#666' }}>
 						Multiple Measurements (Max {maxCount} allowed):
 					</Typography>
-					{measurements.map((measurement, index) => (
-						<Box key={measurement.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-							<Typography variant="body2" sx={{ minWidth: '60px' }}>
-								{index + 1}:
-							</Typography>
-							<TextField
-								size="small"
-								type="number"
-								value={measurement.value}
-								onChange={e => handleMeasurementChange(measurement.id, e.target.value)}
-								error={!!errors[`measurement_${measurement.id}`]}
-								helperText={errors[`measurement_${measurement.id}`]}
-								sx={{ flex: 1 }}
-								inputProps={{
-									min: stepData.minValue ? parseFloat(stepData.minValue) : 0,
-									max: stepData.maxValue ? parseFloat(stepData.maxValue) : undefined,
-									step: 0.01
-								}}
-								disabled={isReadOnly}
-							/>
-							{stepData.uom && stepData.uom !== 'None' && (
-								<Typography variant="body2" sx={{ color: '#666', minWidth: '40px' }}>
-									{stepData.uom}
-								</Typography>
-							)}
-							{measurements.length > 1 && !isReadOnly && (
-								<IconButton onClick={() => removeMeasurement(measurement.id)} color="error" size="small">
-									<Delete />
-								</IconButton>
-							)}
-						</Box>
-					))}
+					{measurements.map((measurement, index) => {
+						const validationStatus =
+							isMeasurementRange && measurement.value ? getValidationStatus(measurement.value) : null;
+						const showAcknowledgment = validationStatus && validationStatus !== 'Accepted';
+
+						return (
+							<Box key={measurement.id} sx={{ mb: 2 }}>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+									<Typography variant="body2" sx={{ minWidth: '60px' }}>
+										{index + 1}:
+									</Typography>
+									<TextField
+										size="small"
+										type="number"
+										value={measurement.value}
+										onChange={e => handleMeasurementChange(measurement.id, e.target.value)}
+										error={!!errors[`measurement_${measurement.id}`]}
+										helperText={errors[`measurement_${measurement.id}`]}
+										sx={{ flex: 1 }}
+										inputProps={{
+											min: stepData.minValue ? parseFloat(stepData.minValue) : 0,
+											max: stepData.maxValue ? parseFloat(stepData.maxValue) : undefined,
+											step: 0.01
+										}}
+										disabled={isReadOnly}
+									/>
+									{stepData.uom && stepData.uom !== 'None' && (
+										<Typography variant="body2" sx={{ color: '#666', minWidth: '40px' }}>
+											{stepData.uom}
+										</Typography>
+									)}
+									{measurements.length > 1 && !isReadOnly && (
+										<IconButton onClick={() => removeMeasurement(measurement.id)} color="error" size="small">
+											<Delete />
+										</IconButton>
+									)}
+								</Box>
+
+								{/* Range Display and Validation */}
+								{isMeasurementRange && measurement.value && validationStatus && validationStatus !== null && (
+									<Paper
+										elevation={0}
+										sx={{
+											mt: 2,
+											ml: 8,
+											p: 2,
+											backgroundColor: getValidationBackgroundColor(validationStatus),
+											border: `1px solid ${getValidationBorderColor(validationStatus)}`,
+											borderRadius: 2
+										}}
+									>
+										<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+											<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+												{getValidationIcon(validationStatus)}
+												<Box>
+													<Typography variant="body2" color="text.secondary">
+														Acceptance Range
+													</Typography>
+													<Typography variant="h6" sx={{ fontWeight: 600 }}>
+														{stepData.minimumAcceptanceValue} - {stepData.maximumAcceptanceValue} {stepData.uom || ''}
+													</Typography>
+												</Box>
+											</Box>
+											{getValidationChip(validationStatus)}
+										</Box>
+									</Paper>
+								)}
+
+								{/* Acknowledgment checkbox for out-of-range values */}
+								{showAcknowledgment && !isReadOnly && (
+									<Box sx={{ mt: 2, ml: 8 }}>
+										<FormControlLabel
+											control={
+												<Checkbox
+													checked={acknowledgments[`measurement_${measurement.id}`] || false}
+													onChange={e => handleAcknowledgmentChange(`measurement_${measurement.id}`, e.target.checked)}
+													disabled={isReadOnly}
+												/>
+											}
+											label={
+												<Typography variant="body2" color="text.secondary">
+													I acknowledge that the measurement value is outside the acceptable range
+												</Typography>
+											}
+										/>
+										{errors[`measurement_${measurement.id}_acknowledge`] && (
+											<Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+												{errors[`measurement_${measurement.id}_acknowledge`]}
+											</Typography>
+										)}
+									</Box>
+								)}
+							</Box>
+						);
+					})}
 					{measurements.length < maxCount && !isReadOnly && (
 						<Button startIcon={<Add />} onClick={addMeasurement} variant="outlined" size="small">
 							Add Measurement ({measurements.length}/{maxCount})
@@ -421,6 +680,17 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		}
 
 		// Single value input
+		const isMeasurementRange =
+			stepData.stepType === 'Measurement' &&
+			stepData.targetValueType === 'range' &&
+			stepData.minimumAcceptanceValue &&
+			stepData.maximumAcceptanceValue;
+		const validationStatus =
+			isMeasurementRange && formData.value && (typeof formData.value === 'string' || typeof formData.value === 'number')
+				? getValidationStatus(formData.value)
+				: null;
+		const showAcknowledgment = validationStatus && validationStatus !== 'Accepted';
+
 		return (
 			<Box>
 				<TextField
@@ -442,6 +712,61 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					<Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
 						Unit: {stepData.uom}
 					</Typography>
+				)}
+
+				{/* Range Display and Validation */}
+				{isMeasurementRange && formData.value && validationStatus !== null && (
+					<Paper
+						elevation={0}
+						sx={{
+							mt: 2,
+							p: 2,
+							backgroundColor: getValidationBackgroundColor(validationStatus as 'Accepted' | 'Lesser' | 'Greater'),
+							border: `1px solid ${getValidationBorderColor(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}`,
+							borderRadius: 2
+						}}
+					>
+						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+								{getValidationIcon(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
+								<Box>
+									<Typography variant="body2" color="text.secondary">
+										Acceptance Range
+									</Typography>
+									<Typography variant="h6" sx={{ fontWeight: 600 }}>
+										{String(stepData.minimumAcceptanceValue || '')} - {String(stepData.maximumAcceptanceValue || '')}{' '}
+										{stepData.uom || ''}
+									</Typography>
+								</Box>
+							</Box>
+							{getValidationChip(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
+						</Box>
+					</Paper>
+				)}
+
+				{/* Acknowledgment checkbox for out-of-range values */}
+				{showAcknowledgment && !isReadOnly && (
+					<Box sx={{ mt: 2 }}>
+						<FormControlLabel
+							control={
+								<Checkbox
+									checked={acknowledgments.value || false}
+									onChange={e => handleAcknowledgmentChange('value', e.target.checked)}
+									disabled={isReadOnly}
+								/>
+							}
+							label={
+								<Typography variant="body2" color="text.secondary">
+									I acknowledge that the measurement value is outside the acceptable range
+								</Typography>
+							}
+						/>
+						{errors.value_acknowledge && (
+							<Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+								{errors.value_acknowledge}
+							</Typography>
+						)}
+					</Box>
 				)}
 			</Box>
 		);
@@ -518,6 +843,29 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 									{stepData.maxValue} {stepData.uom}
 								</Typography>
 							</Grid>
+							{/* Show acceptance range for Measurement type */}
+							{stepData.stepType === 'Measurement' &&
+								stepData.minimumAcceptanceValue &&
+								stepData.maximumAcceptanceValue && (
+									<>
+										<Grid size={{ xs: 6, sm: 3 }}>
+											<Typography variant="caption" sx={{ fontWeight: 600, color: '#d32f2f', fontSize: '0.75rem' }}>
+												Acceptance Range Min
+											</Typography>
+											<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#d32f2f' }}>
+												{stepData.minimumAcceptanceValue} {stepData.uom}
+											</Typography>
+										</Grid>
+										<Grid size={{ xs: 6, sm: 3 }}>
+											<Typography variant="caption" sx={{ fontWeight: 600, color: '#d32f2f', fontSize: '0.75rem' }}>
+												Acceptance Range Max
+											</Typography>
+											<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#d32f2f' }}>
+												{stepData.maximumAcceptanceValue} {stepData.uom}
+											</Typography>
+										</Grid>
+									</>
+								)}
 							{stepData.multipleMeasurements && stepData.multipleMeasurementMaxCount && (
 								<Grid size={{ xs: 12, sm: 6 }}>
 									<Typography variant="caption" sx={{ fontWeight: 600, color: '#856404', fontSize: '0.75rem' }}>
@@ -651,8 +999,8 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 			{/* Validation Alert */}
 			{Object.keys(errors).length > 0 && (
-				<Alert severity="error" sx={{ mb: 2, py: 1 }}>
-					Please fill in all required fields with valid values.
+				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} icon={<ErrorIcon />}>
+					Please fill in all required fields with valid values and acknowledge any out-of-range values.
 				</Alert>
 			)}
 

@@ -84,49 +84,102 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 
 		// Process each parameter with simplified structure
 		for (const param of step.inspectionParameters) {
+			const paramId = param.id.toString();
 			const paramData: Record<string, unknown> = {};
 
-			if (param.columns && param.columns.length > 0) {
-				// Multi-column parameter: collect all column values
-				const valueObj: Record<string, unknown> = {};
-				param.columns.forEach(column => {
-					const key = `${param.id}_${column.name}`;
-					const value = formData[key];
-					if (value !== undefined && value !== null) {
-						valueObj[column.name] = value;
-					}
-				});
-
-				if (Object.keys(valueObj).length > 0) {
-					paramData.value = valueObj;
+			// Check if data is already in nested format (from InspectionStep.handleSubmit)
+			if (formData[paramId] && typeof formData[paramId] === 'object' && formData[paramId] !== null) {
+				// Data is already formatted - use it directly
+				const existingParamData = formData[paramId] as Record<string, unknown>;
+				if (existingParamData.value !== undefined) {
+					paramData.value = existingParamData.value;
+				}
+				if (existingParamData.annotations && Array.isArray(existingParamData.annotations)) {
+					paramData.annotations = existingParamData.annotations;
 				}
 			} else {
-				// Single value parameter
-				const key = param.id.toString();
-				const formValue = formData[key];
+				// Data is in flat format - process it
+				const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
-				if (typeof formValue === 'object' && formValue !== null) {
-					// Already in object format: { "value": "ok", "annotations": [...] }
-					paramData.value = (formValue as Record<string, unknown>).value;
-					if ((formValue as Record<string, unknown>).annotations) {
-						paramData.annotations = (formValue as Record<string, unknown>).annotations;
+				if (isTableType && param.columns) {
+					// Table type parameter: collect row data
+					const rowsArray: Record<string, unknown>[] = [];
+
+					// Count rows by checking for keys like "87_row_0_*", "87_row_1_*", etc.
+					let maxRowIndex = -1;
+					Object.keys(formData).forEach(key => {
+						const match = key.match(new RegExp(`^${paramId}_row_(\\d+)_`));
+						if (match) {
+							const rowIndex = parseInt(match[1], 10);
+							if (rowIndex > maxRowIndex) {
+								maxRowIndex = rowIndex;
+							}
+						}
+					});
+
+					// Collect all rows
+					for (let rowIndex = 0; rowIndex <= maxRowIndex; rowIndex++) {
+						const rowObj: Record<string, unknown> = {};
+						let hasData = false;
+
+						param.columns.forEach(column => {
+							const key = `${paramId}_row_${rowIndex}_${column.name}`;
+							const value = formData[key];
+							if (value !== undefined && value !== null && String(value).trim() !== '') {
+								rowObj[column.name] = value;
+								hasData = true;
+							}
+						});
+
+						if (hasData && Object.keys(rowObj).length > 0) {
+							rowsArray.push(rowObj);
+						}
+					}
+
+					if (rowsArray.length > 0) {
+						paramData.value = rowsArray;
+					}
+				} else if (param.columns && param.columns.length > 0) {
+					// Multi-column parameter (non-table): collect all column values
+					const valueObj: Record<string, unknown> = {};
+					param.columns.forEach(column => {
+						const key = `${paramId}_${column.name}`;
+						const value = formData[key];
+						if (value !== undefined && value !== null) {
+							valueObj[column.name] = value;
+						}
+					});
+
+					if (Object.keys(valueObj).length > 0) {
+						paramData.value = valueObj;
 					}
 				} else {
-					// Direct value
-					paramData.value = formValue;
-				}
-			}
+					// Single value parameter
+					const formValue = formData[paramId];
 
-			// Handle annotations for this parameter
-			if (formData[param.id.toString()] && typeof formData[param.id.toString()] === 'object') {
-				const paramFormData = formData[param.id.toString()] as Record<string, unknown>;
-				if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
-					paramData.annotations = paramFormData.annotations;
+					if (typeof formValue === 'object' && formValue !== null) {
+						// Already in object format: { "value": "ok", "annotations": [...] }
+						paramData.value = (formValue as Record<string, unknown>).value;
+						if ((formValue as Record<string, unknown>).annotations) {
+							paramData.annotations = (formValue as Record<string, unknown>).annotations;
+						}
+					} else {
+						// Direct value
+						paramData.value = formValue;
+					}
+				}
+
+				// Handle annotations for this parameter
+				if (formData[paramId] && typeof formData[paramId] === 'object') {
+					const paramFormData = formData[paramId] as Record<string, unknown>;
+					if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
+						paramData.annotations = paramFormData.annotations;
+					}
 				}
 			}
 
 			if (Object.keys(paramData).length > 0) {
-				inspectionData[param.id.toString()] = paramData;
+				inspectionData[paramId] = paramData;
 				console.log(`DataBuilder: Final paramData for parameter ${param.id}:`, paramData);
 			}
 		}

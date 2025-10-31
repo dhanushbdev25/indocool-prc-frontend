@@ -59,11 +59,27 @@ const handleImageUploadAndUpdateForm = async (
 	const newFiles = gallery.map(item => item.file).filter(Boolean) as File[];
 	const existingFiles = gallery
 		.filter(item => !item.file && item.fileName)
-		.map(item => ({
-			fileName: item.fileName,
-			filePath: item.image,
-			originalFileName: item.fileName
-		}));
+		.map(item => {
+			// Use filePath if available (original path without base URL), otherwise extract from image
+			let relativeFilePath = item.filePath;
+			if (!relativeFilePath && item.image) {
+				// Extract relative path from full URL by removing API_BASE_URL_PRE_AUTH
+				const baseUrl = process.env.API_BASE_URL_PRE_AUTH || '';
+				if (item.image.startsWith(baseUrl)) {
+					relativeFilePath = item.image.substring(baseUrl.length);
+				} else {
+					relativeFilePath = item.image;
+				}
+			}
+			// For existing files, we need to preserve the API fileName and originalFileName
+			// If originalFileName is stored, use it; otherwise use fileName for both
+			// Note: fileName should be the API-generated name, originalFileName is the user's original name
+			return {
+				fileName: item.fileName || '',
+				filePath: relativeFilePath || '',
+				originalFileName: item.originalFileName || item.fileName || ''
+			};
+		});
 
 	// If no new files to upload, return existing files
 	if (newFiles.length === 0) {
@@ -384,7 +400,9 @@ const CreatePart = () => {
 					id: `existing-${index}`,
 					file: null,
 					image: file.filePath ? `${process.env.API_BASE_URL_PRE_AUTH}${file.filePath.replace(/\\/g, '/')}` : '',
-					fileName: file.originalFileName || `Image ${index}`
+					fileName: file.fileName || file.originalFileName || `Image ${index}`, // Display name (prefer fileName)
+					filePath: file.filePath ? file.filePath.replace(/\\/g, '/') : undefined, // Store original filePath without base URL
+					originalFileName: file.originalFileName || file.fileName || `Image ${index}` // Store originalFileName for API
 				}));
 				setGallery(galleryItems);
 			}

@@ -6,6 +6,8 @@ export type ImageItem = {
 	image: string;
 	fileName?: string;
 	inspectionParameterId?: number;
+	filePath?: string; // Original file path for existing files (without API_BASE_URL_PRE_AUTH)
+	originalFileName?: string; // Original file name for existing files
 };
 
 export function useImageGallery() {

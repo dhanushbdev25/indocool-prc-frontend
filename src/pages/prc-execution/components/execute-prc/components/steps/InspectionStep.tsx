@@ -27,7 +27,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
-import { Image, ExpandMore, ExpandLess, CameraAlt } from '@mui/icons-material';
+import { Image, ExpandMore, ExpandLess, CameraAlt, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import {
 	type TimelineStep,
 	type ExecutionData,
@@ -101,27 +101,53 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								hasAnnotations = true;
 								console.log(`Loading annotations for parameter ${parameterId}:`, value);
 							} else if (columnName === 'value' && typeof value === 'object' && value !== null) {
-								// Handle multi-column data structure: { "value": { "Date": "213", "Name": "1" } }
-								// Check if there's double nesting: { "value": { "value": { "Date": "213" } } }
-								const actualValue = (value as Record<string, unknown>).value;
-								if (actualValue && typeof actualValue === 'object' && actualValue !== null) {
-									// Double nesting case: { "value": { "value": { "Date": "213" } } }
-									Object.entries(actualValue as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
-										const key = `${parameterId}_${subColumnName}`;
-										newFormData[key] = String(subValue);
-										console.log(
-											`Loading double-nested multi-column data: ${parameterId}.value.value.${subColumnName} -> ${key} = ${subValue}`
-										);
+								// Check if this is a table type parameter (value is an array)
+								const param = step.inspectionParameters?.find(p => p.id.toString() === parameterId);
+								const isTableType = param?.type === 'table' && param?.columns && param.columns.length > 0;
+
+								if (isTableType && Array.isArray(value)) {
+									// Table type: { "value": [{col1: val1, ...}, {col1: val1, ...}] }
+									const rows = value as Record<string, unknown>[];
+									rows.forEach((row, rowIndex) => {
+										if (param && param.columns) {
+											param.columns.forEach(column => {
+												const key = `${parameterId}_row_${rowIndex}_${column.name}`;
+												const cellValue = row[column.name];
+												newFormData[key] = cellValue !== undefined && cellValue !== null ? String(cellValue) : '';
+												console.log(
+													`Loading table data: ${parameterId}.value[${rowIndex}].${column.name} -> ${key} = ${cellValue}`
+												);
+											});
+										}
 									});
 								} else {
-									// Single nesting case: { "value": { "Date": "213" } }
-									Object.entries(value as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
-										const key = `${parameterId}_${subColumnName}`;
-										newFormData[key] = String(subValue);
-										console.log(
-											`Loading single-nested multi-column data: ${parameterId}.value.${subColumnName} -> ${key} = ${subValue}`
-										);
-									});
+									// Handle multi-column data structure: { "value": { "Date": "213", "Name": "1" } }
+									// Check if there's double nesting: { "value": { "value": { "Date": "213" } } }
+									const actualValue = (value as Record<string, unknown>).value;
+									if (
+										actualValue &&
+										typeof actualValue === 'object' &&
+										actualValue !== null &&
+										!Array.isArray(actualValue)
+									) {
+										// Double nesting case: { "value": { "value": { "Date": "213" } } }
+										Object.entries(actualValue as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
+											const key = `${parameterId}_${subColumnName}`;
+											newFormData[key] = String(subValue);
+											console.log(
+												`Loading double-nested multi-column data: ${parameterId}.value.value.${subColumnName} -> ${key} = ${subValue}`
+											);
+										});
+									} else if (!Array.isArray(value)) {
+										// Single nesting case: { "value": { "Date": "213" } }
+										Object.entries(value as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
+											const key = `${parameterId}_${subColumnName}`;
+											newFormData[key] = String(subValue);
+											console.log(
+												`Loading single-nested multi-column data: ${parameterId}.value.${subColumnName} -> ${key} = ${subValue}`
+											);
+										});
+									}
 								}
 							} else if (columnName === 'value') {
 								// Handle single value parameter: { "value": "1" } or { "value": { "value": "1" } }
@@ -181,8 +207,27 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 	// Update form data when initial data changes
 	useEffect(() => {
 		console.log('Initializing form data and annotations:', initialFormData);
-		// eslint-disable-next-line react-hooks/set-state-in-effect
-		setFormData(initialFormData);
+		const updatedFormData = { ...initialFormData };
+
+		// For table type parameters with no existing data, add one default row
+		step.inspectionParameters?.forEach(param => {
+			const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
+			if (isTableType && param.columns) {
+				// Check if there are any rows for this parameter
+				const hasRows = Object.keys(updatedFormData).some(key => key.match(new RegExp(`^${param.id}_row_\\d+_`)));
+
+				if (!hasRows) {
+					// Add one default row (empty values)
+					param.columns.forEach(column => {
+						const key = `${param.id}_row_0_${column.name}`;
+						updatedFormData[key] = '';
+					});
+					console.log(`Added default row for table parameter ${param.id}`);
+				}
+			}
+		});
+
+		setFormData(updatedFormData);
 
 		// Initialize annotations from form data
 		if (initialFormData.annotations && Array.isArray(initialFormData.annotations)) {
@@ -204,7 +249,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			console.log('Total extracted annotations:', extractedAnnotations);
 			setAnnotations(extractedAnnotations);
 		}
-	}, [initialFormData]);
+	}, [initialFormData, step.inspectionParameters]);
 
 	const isReadOnly = step.status === 'completed';
 
@@ -327,12 +372,183 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		).length;
 	};
 
+	// Helper function to get row count for a table parameter
+	const getTableRowCount = (parameterId: number): number => {
+		if (!step.inspectionParameters) return 0;
+		const param = step.inspectionParameters.find(p => p.id === parameterId);
+		if (!param || param.type !== 'table' || !param.columns) return 0;
+
+		// Count rows by checking for keys like "87_row_0_*", "87_row_1_*", etc.
+		let maxRowIndex = -1;
+		Object.keys(formData).forEach(key => {
+			const match = key.match(new RegExp(`^${parameterId}_row_(\\d+)_`));
+			if (match) {
+				const rowIndex = parseInt(match[1], 10);
+				if (rowIndex > maxRowIndex) {
+					maxRowIndex = rowIndex;
+				}
+			}
+		});
+		return maxRowIndex + 1;
+	};
+
+	// Handler for table row changes
+	const handleTableRowChange = (parameterId: number, rowIndex: number, columnName: string, value: string) => {
+		const key = `${parameterId}_row_${rowIndex}_${columnName}`;
+		setFormData(prev => {
+			const newFormData = { ...prev };
+			newFormData[key] = value;
+			return newFormData;
+		});
+
+		// Clear error when user starts typing
+		if (errors[key]) {
+			setErrors(prev => ({
+				...prev,
+				[key]: ''
+			}));
+		}
+	};
+
+	// Handler to add a new table row
+	const handleAddTableRow = (parameterId: number) => {
+		const param = step.inspectionParameters?.find(p => p.id === parameterId);
+		if (!param || !param.columns) return;
+
+		const rowCount = getTableRowCount(parameterId);
+		const newRowIndex = rowCount;
+
+		setFormData(prev => {
+			const newFormData = { ...prev };
+			// Initialize all columns with empty values
+			param.columns?.forEach(column => {
+				const key = `${parameterId}_row_${newRowIndex}_${column.name}`;
+				newFormData[key] = '';
+			});
+			return newFormData;
+		});
+	};
+
+	// Handler to remove a table row
+	const handleRemoveTableRow = (parameterId: number, rowIndex: number) => {
+		const param = step.inspectionParameters?.find(p => p.id === parameterId);
+		if (!param || !param.columns) return;
+
+		setFormData(prev => {
+			const newFormData = { ...prev };
+
+			// Calculate row count from current formData
+			let maxRowIndex = -1;
+			Object.keys(newFormData).forEach(key => {
+				const match = key.match(new RegExp(`^${parameterId}_row_(\\d+)_`));
+				if (match) {
+					const idx = parseInt(match[1], 10);
+					if (idx > maxRowIndex) {
+						maxRowIndex = idx;
+					}
+				}
+			});
+			const rowCount = maxRowIndex + 1;
+
+			// Remove all keys for this row
+			param.columns?.forEach(column => {
+				const key = `${parameterId}_row_${rowIndex}_${column.name}`;
+				delete newFormData[key];
+			});
+
+			// Shift all rows after the removed row up by 1
+			for (let i = rowIndex + 1; i < rowCount; i++) {
+				param.columns?.forEach(column => {
+					const oldKey = `${parameterId}_row_${i}_${column.name}`;
+					const newKey = `${parameterId}_row_${i - 1}_${column.name}`;
+					if (oldKey in newFormData) {
+						newFormData[newKey] = newFormData[oldKey];
+						delete newFormData[oldKey];
+					}
+				});
+			}
+
+			return newFormData;
+		});
+
+		// Update errors for shifted rows
+		setErrors(prev => {
+			const newErrors = { ...prev };
+
+			// Calculate row count from errors
+			let maxRowIndex = -1;
+			Object.keys(newErrors).forEach(key => {
+				const match = key.match(new RegExp(`^${parameterId}_row_(\\d+)_`));
+				if (match) {
+					const idx = parseInt(match[1], 10);
+					if (idx > maxRowIndex) {
+						maxRowIndex = idx;
+					}
+				}
+			});
+			const rowCount = maxRowIndex + 1;
+
+			for (let i = rowIndex; i < rowCount; i++) {
+				param.columns?.forEach(column => {
+					const oldKey = `${parameterId}_row_${i}_${column.name}`;
+					const newKey = `${parameterId}_row_${i - 1}_${column.name}`;
+					if (oldKey in newErrors) {
+						if (i === rowIndex) {
+							// Delete error for removed row
+							delete newErrors[oldKey];
+						} else {
+							// Shift error to new key
+							newErrors[newKey] = newErrors[oldKey];
+							delete newErrors[oldKey];
+						}
+					}
+				});
+			}
+			return newErrors;
+		});
+	};
+
 	const validateForm = () => {
 		const newErrors: Record<string, string> = {};
 
 		step.inspectionParameters?.forEach(param => {
-			if (param.columns && param.columns.length > 0) {
-				// Multi-column parameter - validate each column
+			const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
+
+			if (isTableType && param.columns) {
+				// Table type parameter - validate all rows
+				const rowCount = getTableRowCount(param.id);
+
+				if (rowCount === 0) {
+					// At least one row is required
+					newErrors[`${param.id}_table_rows`] = 'At least one row is required';
+				}
+
+				// Validate each row and each column in each row
+				for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+					param.columns.forEach(column => {
+						const key = `${param.id}_row_${rowIndex}_${column.name}`;
+						const value = formData[key];
+
+						if (!value || (typeof value === 'string' && value.trim() === '')) {
+							newErrors[key] = `Row ${rowIndex + 1}, ${column.name} is required`;
+						} else if (column.type === 'number') {
+							const numValue = parseFloat(String(value));
+							if (isNaN(numValue)) {
+								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be a valid number`;
+							}
+						} else if (column.type === 'ok/not ok') {
+							if (value !== 'ok' && value !== 'not ok') {
+								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be either OK or Not OK`;
+							}
+						} else if (column.type === 'datetime') {
+							if (!value || !String(value).trim()) {
+								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} is required`;
+							}
+						}
+					});
+				}
+			} else if (param.columns && param.columns.length > 0) {
+				// Multi-column parameter (non-table) - validate each column
 				param.columns.forEach(column => {
 					const key = `${param.id}_${column.name}`;
 					const value = formData[key];
@@ -398,9 +614,34 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			// Process each parameter
 			step.inspectionParameters?.forEach(param => {
 				const paramData: Record<string, unknown> = {};
+				const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
-				if (param.columns && param.columns.length > 0) {
-					// Multi-column parameter: store all column values in a value object
+				if (isTableType && param.columns) {
+					// Table type parameter: store as array of row objects
+					const rowCount = getTableRowCount(param.id);
+					const rowsArray: Record<string, unknown>[] = [];
+
+					for (let rowIndex = 0; rowIndex < rowCount; rowIndex++) {
+						const rowObj: Record<string, unknown> = {};
+						param.columns.forEach(column => {
+							const key = `${param.id}_row_${rowIndex}_${column.name}`;
+							const value = formData[key];
+							if (value !== undefined && value !== null) {
+								rowObj[column.name] = value;
+							}
+						});
+						if (Object.keys(rowObj).length > 0) {
+							rowsArray.push(rowObj);
+						}
+					}
+
+					if (rowsArray.length > 0) {
+						paramData.value = rowsArray;
+					}
+
+					console.log(`Table parameter ${param.id}:`, rowsArray);
+				} else if (param.columns && param.columns.length > 0) {
+					// Multi-column parameter (non-table): store all column values in a value object
 					const valueObj: Record<string, unknown> = {};
 					param.columns.forEach(column => {
 						const key = `${param.id}_${column.name}`;
@@ -546,10 +787,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					<TableBody>
 						{step.inspectionParameters?.map((param, index) => {
 							const hasImages = Array.isArray(param.files) && param.files.length > 0;
-							const hasMultipleColumns = param.columns && param.columns.length > 0;
+							const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
+							const hasMultipleColumns = !isTableType && param.columns && param.columns.length > 0;
 							const isExpanded = expandedRows.has(param.id);
 							const isMultiColumnExpanded = expandedMultiColumnRows.has(param.id);
 							const annotationCount = getAnnotationCount(param.id);
+							const tableRowCount = isTableType ? getTableRowCount(param.id) : 0;
 
 							return (
 								<>
@@ -567,6 +810,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											</Typography>
 											<Typography variant="caption" sx={{ color: '#666', display: 'block' }}>
 												{param.type} • {param.role}
+												{isTableType && ` • Table`}
 												{hasMultipleColumns && ` • ${param.columns?.length} fields`}
 											</Typography>
 										</TableCell>
@@ -574,7 +818,21 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											{param.ctq && <Chip label="CTQ" size="small" color="warning" sx={{ fontSize: '0.75rem' }} />}
 										</TableCell>
 										<TableCell>
-											{hasMultipleColumns ? (
+											{isTableType ? (
+												// Table type parameter - show row count and expand button
+												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+													<Typography variant="caption" sx={{ color: '#666' }}>
+														{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
+													</Typography>
+													<IconButton
+														size="small"
+														onClick={() => toggleMultiColumnRowExpansion(param.id)}
+														sx={{ color: 'primary' }}
+													>
+														{isMultiColumnExpanded ? <ExpandLess /> : <ExpandMore />}
+													</IconButton>
+												</Box>
+											) : hasMultipleColumns ? (
 												// Multi-column parameter - show summary and expand button
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 													<Typography variant="caption" sx={{ color: '#666' }}>
@@ -752,6 +1010,189 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											</Box>
 										</TableCell>
 									</TableRow>
+
+									{/* Expandable Table Type Row */}
+									{isTableType && (
+										<TableRow key={`${param.id}-table`}>
+											<TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
+												<Collapse in={isMultiColumnExpanded} timeout="auto" unmountOnExit>
+													<Box sx={{ p: 2, backgroundColor: '#f8f9fa' }}>
+														<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+															<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+																{param.parameterName} - Table
+															</Typography>
+															{!isReadOnly && (
+																<Button
+																	variant="outlined"
+																	size="small"
+																	startIcon={<AddIcon />}
+																	onClick={() => handleAddTableRow(param.id)}
+																	sx={{
+																		textTransform: 'none',
+																		borderRadius: '4px'
+																	}}
+																>
+																	Add Row
+																</Button>
+															)}
+														</Box>
+
+														{tableRowCount === 0 && !isReadOnly ? (
+															<Box sx={{ textAlign: 'center', py: 4, color: '#999' }}>
+																<Typography variant="body2">No rows added. Click "Add Row" to start.</Typography>
+															</Box>
+														) : (
+															<TableContainer component={Paper} variant="outlined">
+																<Table size="small">
+																	<TableHead>
+																		<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+																			{param.columns?.map(column => (
+																				<TableCell key={column.name} sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+																					{column.name}
+																					{column.defaultValue && (
+																						<Typography
+																							variant="caption"
+																							sx={{ display: 'block', color: '#666', fontWeight: 400 }}
+																						>
+																							Default: {column.defaultValue}
+																						</Typography>
+																					)}
+																				</TableCell>
+																			))}
+																			{!isReadOnly && (
+																				<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', width: 80 }}>
+																					Actions
+																				</TableCell>
+																			)}
+																		</TableRow>
+																	</TableHead>
+																	<TableBody>
+																		{Array.from({ length: tableRowCount }, (_, rowIndex) => (
+																			<TableRow key={rowIndex}>
+																				{param.columns?.map(column => {
+																					const key = `${param.id}_row_${rowIndex}_${column.name}`;
+																					const currentValue = String(formData[key] || '');
+
+																					return (
+																						<TableCell key={column.name}>
+																							{column.type === 'ok/not ok' ? (
+																								<FormControl component="fieldset" disabled={isReadOnly} size="small">
+																									<RadioGroup
+																										row
+																										value={currentValue}
+																										onChange={e =>
+																											handleTableRowChange(
+																												param.id,
+																												rowIndex,
+																												column.name,
+																												e.target.value
+																											)
+																										}
+																										sx={{ gap: 0.5, m: 0 }}
+																									>
+																										<FormControlLabel
+																											value="ok"
+																											control={<Radio size="small" color="success" />}
+																											label="OK"
+																											sx={{
+																												m: 0,
+																												'& .MuiFormControlLabel-label': {
+																													fontSize: '0.75rem',
+																													color: currentValue === 'ok' ? '#2e7d32' : '#666'
+																												}
+																											}}
+																										/>
+																										<FormControlLabel
+																											value="not ok"
+																											control={<Radio size="small" color="error" />}
+																											label="Not OK"
+																											sx={{
+																												m: 0,
+																												'& .MuiFormControlLabel-label': {
+																													fontSize: '0.75rem',
+																													color: currentValue === 'not ok' ? '#d32f2f' : '#666'
+																												}
+																											}}
+																										/>
+																									</RadioGroup>
+																								</FormControl>
+																							) : column.type === 'datetime' ? (
+																								<LocalizationProvider dateAdapter={AdapterDayjs}>
+																									<DateTimePicker
+																										value={currentValue ? dayjs(currentValue) : null}
+																										onChange={newValue => {
+																											const formattedValue = newValue
+																												? newValue.format('YYYY-MM-DDTHH:mm')
+																												: '';
+																											handleTableRowChange(
+																												param.id,
+																												rowIndex,
+																												column.name,
+																												formattedValue
+																											);
+																										}}
+																										disabled={isReadOnly}
+																										slotProps={{
+																											textField: {
+																												size: 'small',
+																												error: !!errors[key],
+																												helperText: errors[key],
+																												variant: 'outlined',
+																												fullWidth: true
+																											}
+																										}}
+																									/>
+																								</LocalizationProvider>
+																							) : (
+																								<TextField
+																									type={column.type === 'number' ? 'number' : 'text'}
+																									value={currentValue}
+																									onChange={e =>
+																										handleTableRowChange(
+																											param.id,
+																											rowIndex,
+																											column.name,
+																											e.target.value
+																										)
+																									}
+																									error={!!errors[key]}
+																									helperText={errors[key]}
+																									size="small"
+																									disabled={isReadOnly}
+																									variant="outlined"
+																									fullWidth
+																									inputProps={{
+																										min: 0,
+																										step: column.type === 'number' ? 0.01 : undefined
+																									}}
+																								/>
+																							)}
+																						</TableCell>
+																					);
+																				})}
+																				{!isReadOnly && (
+																					<TableCell>
+																						<IconButton
+																							size="small"
+																							onClick={() => handleRemoveTableRow(param.id, rowIndex)}
+																							color="error"
+																							sx={{ p: 0.5 }}
+																						>
+																							<DeleteIcon fontSize="small" />
+																						</IconButton>
+																					</TableCell>
+																				)}
+																			</TableRow>
+																		))}
+																	</TableBody>
+																</Table>
+															</TableContainer>
+														)}
+													</Box>
+												</Collapse>
+											</TableCell>
+										</TableRow>
+									)}
 
 									{/* Expandable Multi-Column Row */}
 									{hasMultipleColumns && (

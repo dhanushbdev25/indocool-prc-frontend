@@ -1,68 +1,82 @@
 import { z } from 'zod/v4';
 
 // PRC Template Step schema
-export const prcTemplateStepSchema = z.object({
-	id: z.number().optional(),
-	templateId: z.number().optional(),
-	version: z.number(),
-	isLatest: z.boolean(),
-	sequence: z.number(),
-	sequenceId: z.number().nullable().optional(),
-	inspectionId: z.number().nullable().optional(),
-	type: z.string(),
-	blockCatalystMixing: z.boolean(),
-	requestSupervisorApproval: z.boolean(),
-	stepId: z.number().nullable(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional(),
-	data: z.any().optional() // Add data field to handle inspection parameters
-});
+export const prcTemplateStepSchema = z
+	.object({
+		id: z.number().optional(),
+		templateId: z.number().optional(),
+		version: z.number(),
+		isLatest: z.boolean(),
+		sequence: z.number(),
+		sequenceId: z.number().nullable().optional(),
+		inspectionId: z.number().nullable().optional(),
+		type: z.string(),
+		blockCatalystMixing: z.boolean(),
+		requestSupervisorApproval: z.boolean(),
+		stepId: z.number().nullable(),
+		createdAt: z.string().optional(),
+		updatedAt: z.string().optional(),
+		data: z.any().optional() // Add data field to handle inspection parameters
+	})
+	.loose();
 
 // PRC Template schema
-export const prcTemplateSchema = z.object({
-	id: z.number().optional(),
-	status: z.string(),
-	templateId: z.string(),
-	templateName: z.string(),
-	notes: z.string().optional(),
-	version: z.number(),
-	isLatest: z.boolean(),
-	isActive: z.boolean(),
-	createdBy: z.number().nullable().optional(),
-	updatedBy: z.number().nullable().optional(),
-	createdAt: z.string().optional(),
-	updatedAt: z.string().optional()
-});
+export const prcTemplateSchema = z
+	.object({
+		id: z.number().optional(),
+		status: z.string(),
+		templateId: z.string(),
+		templateName: z.string(),
+		notes: z.string().optional(),
+		version: z.number(),
+		isLatest: z.boolean(),
+		isActive: z.boolean(),
+		createdBy: z.number().nullable().optional(),
+		updatedBy: z.number().nullable().optional(),
+		createdAt: z.string().optional(),
+		updatedAt: z.string().optional()
+	})
+	.loose();
 
 // PRC Template detail schema combining template + steps
-export const prcTemplateDetailSchema = z.object({
-	prcTemplate: prcTemplateSchema,
-	prcTemplateSteps: z.array(prcTemplateStepSchema)
-});
+export const prcTemplateDetailSchema = z
+	.object({
+		prcTemplate: prcTemplateSchema,
+		prcTemplateSteps: z.array(prcTemplateStepSchema)
+	})
+	.loose();
 
 // Header schema for counts
-export const prcTemplateHeaderSchema = z.object({
-	ACTIVE: z.number(),
-	NEW: z.number(),
-	INACTIVE: z.number()
-});
+export const prcTemplateHeaderSchema = z
+	.object({
+		ACTIVE: z.number(),
+		NEW: z.number(),
+		INACTIVE: z.number()
+	})
+	.loose();
 
 // List response schema
-export const prcTemplateListResponseSchema = z.object({
-	header: prcTemplateHeaderSchema,
-	detail: z.array(prcTemplateDetailSchema)
-});
+export const prcTemplateListResponseSchema = z
+	.object({
+		header: prcTemplateHeaderSchema,
+		detail: z.array(prcTemplateDetailSchema)
+	})
+	.loose();
 
 // Single template response schema
-export const prcTemplateByIdResponseSchema = z.object({
-	header: prcTemplateHeaderSchema,
-	detail: prcTemplateDetailSchema
-});
+export const prcTemplateByIdResponseSchema = z
+	.object({
+		header: prcTemplateHeaderSchema,
+		detail: prcTemplateDetailSchema
+	})
+	.loose();
 
 // PRC Template inspections response schema (without header)
-export const prcTemplateInspectionsResponseSchema = z.object({
-	detail: prcTemplateDetailSchema
-});
+export const prcTemplateInspectionsResponseSchema = z
+	.object({
+		detail: prcTemplateDetailSchema
+	})
+	.loose();
 
 // Request schemas for create/update operations
 export const prcTemplateStepRequestSchema = z.object({
@@ -108,38 +122,44 @@ export const deletePrcTemplateTaskRequestSchema = z.object({
 
 // Response schemas
 // Create response might return just the template without steps, or even simpler structure
-export const createPrcTemplateResponseSchema = z.object({
-	message: z.string(),
-	data: z
-		.union([
-			prcTemplateDetailSchema, // Full detail with steps
-			prcTemplateSchema, // Just the template
-			z.object({}) // Empty object if API doesn't return data
-		])
-		.optional() // Data might be optional
-});
+export const createPrcTemplateResponseSchema = z
+	.object({
+		message: z.string(),
+		data: z
+			.union([
+				prcTemplateDetailSchema, // Full detail with steps
+				prcTemplateSchema, // Just the template
+				z.object({}).loose() // Empty object if API doesn't return data
+			])
+			.optional() // Data might be optional
+	})
+	.loose();
 
-export const updatePrcTemplateResponseSchema = z.object({
-	message: z.string(),
-	data: z
-		.union([
-			prcTemplateDetailSchema, // Full detail with steps
-			prcTemplateSchema, // Just the template
-			z.object({}) // Empty object if API doesn't return data
-		])
-		.optional() // Data might be optional
-});
+export const updatePrcTemplateResponseSchema = z
+	.object({
+		message: z.string(),
+		data: z
+			.union([
+				prcTemplateDetailSchema, // Full detail with steps
+				prcTemplateSchema, // Just the template
+				z.object({}).loose() // Empty object if API doesn't return data
+			])
+			.optional() // Data might be optional
+	})
+	.loose();
 
-export const deletePrcTemplateTaskResponseSchema = z.object({
-	message: z.string(),
-	data: z
-		.union([
-			prcTemplateDetailSchema, // Full detail with steps
-			prcTemplateSchema, // Just the template
-			z.object({}) // Empty object if API doesn't return data
-		])
-		.optional() // Data might be optional
-});
+export const deletePrcTemplateTaskResponseSchema = z
+	.object({
+		message: z.string(),
+		data: z
+			.union([
+				prcTemplateDetailSchema, // Full detail with steps
+				prcTemplateSchema, // Just the template
+				z.object({}).loose() // Empty object if API doesn't return data
+			])
+			.optional() // Data might be optional
+	})
+	.loose();
 
 // Type exports
 export type PrcTemplateStep = z.infer<typeof prcTemplateStepSchema>;
