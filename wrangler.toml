@@ -1,4 +1,4 @@
-name = "indocool-prc-executor"
+name = "indocool-prc-exceutor"
 main = "worker.js"
 compatibility_date = "2025-11-01"
 
