@@ -30,6 +30,7 @@ const MainLayout = () => {
 	const drawerOpen = manuallyToggled ? !shouldBeOpen : shouldBeOpen;
 
 	const token = Cookie.getToken();
+	console.log('token', token);
 	const { data, isLoading, isError, errorMessage } = useSessionContextQuery(token);
 
 	if (isLoading) return <BackdropLoader openStates={isLoading} />;
