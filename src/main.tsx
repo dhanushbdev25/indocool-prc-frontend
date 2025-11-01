@@ -16,9 +16,9 @@ const root = createRoot(container!);
 
 root.render(
 	<React.StrictMode>
-		<MsalProvider instance={msalInstance}>
+			<MsalProvider instance={msalInstance}>
 			<ReduxProvider store={store}>
-				<BrowserRouter>
+				<BrowserRouter basename="/indocool-prc-frontend">
 					<App />
 				</BrowserRouter>
 			</ReduxProvider>
