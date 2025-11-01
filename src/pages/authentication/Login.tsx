@@ -1,6 +1,7 @@
 import { Typography, Box, Paper, Container, Link } from '@mui/material';
 import AuthLogin from './auth-forms/AuthLogin';
 import Logo from '../../components/common/logo/Logo';
+import indocoolLogo from '../../assets/images/auth/Indocool-main-logo.png';
 
 const Login = () => {
 	return (
@@ -101,18 +102,34 @@ const Login = () => {
 						}}
 					>
 						{/* Header */}
-						<Box sx={{ mb: 3 }}>
+						<Box 
+							sx={{ 
+								mb: 3,
+								display: 'flex',
+								justifyContent: 'space-between',
+								alignItems: 'center'
+							}}
+						>
 							<Typography
 								variant="h4"
 								component="h1"
 								sx={{
 									fontWeight: 700,
-									color: '#1a1a1a',
-									mb: 1
+									color: '#1a1a1a'
 								}}
 							>
 								Login
 							</Typography>
+							<Box
+								component="img"
+								src={indocoolLogo}
+								alt="Indocool Logo"
+								sx={{
+									height: 'auto',
+									maxWidth: 120,
+									objectFit: 'contain'
+								}}
+							/>
 						</Box>
 
 						{/* Form */}
@@ -152,7 +169,7 @@ const Login = () => {
 							}
 						}}
 					>
-						Digital Garage
+						Ignis AI Labs
 					</Link>
 				</Typography>
 				<Link
