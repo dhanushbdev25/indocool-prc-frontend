@@ -60,6 +60,9 @@ class Cookie {
 		document.cookie = `${Cookie.key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=None`;
 		document.cookie = `${Cookie.key}=; domain=.tolaram.com; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=None`;
 		document.cookie = `${Cookie.key}=; domain=localhost; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=None`;
+		document.cookie = `${Cookie.key}=; domain=indocool-prc-backend.onrender.com; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=None`;
+		document.cookie = `${Cookie.refreshKey}=; domain=indocool-prc-backend.onrender.com; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; secure; samesite=None`;
+		
 		this.delete(Cookie.key);
 		this.delete(Cookie.refreshKey);
 	}

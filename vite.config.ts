@@ -28,7 +28,7 @@ export default defineConfig({
 			AZURE_CLIENT_ID: '6e3a5cb0-04eb-46f2-a413-36e9a623cfac',
 			AZURE_CLIENT_SECRET: '1Zn8Q~OCQ3SVqTOuGi~vnr1CpX44vr_yvKDsidBX'
 		})
-		
+
 		// process.env.ANALYZE === 'true' &&
 		// 	visualizer({
 		// 		filename: 'dist/bundle-analysis.html',

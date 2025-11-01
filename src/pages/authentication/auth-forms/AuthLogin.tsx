@@ -67,6 +67,7 @@ const AuthLogin = () => {
 				email: values.email,
 				password: values.password
 			}).unwrap();
+			localStorage.setItem('isLoggedIn', 'true');
 			navigate('/');
 		} catch (err: unknown) {
 			setSubmitError(err instanceof Error ? err.message : 'An error occurred');

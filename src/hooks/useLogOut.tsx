@@ -17,6 +17,7 @@ export const useLogout = () => {
 			console.error('Logout API failed:', err);
 		}
 		Cookie.removeToken(); // 🔹 remove frontend cookies
+		localStorage.removeItem("isLoggedIn")
 		dispatch(logoutApp()); // 🔹 reset Redux
 		navigate('/'); // 🔹 redirect to login
 	};

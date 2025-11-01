@@ -26,9 +26,13 @@ export const sessionApi = createApi({
 
 const { useUserSessionContextQuery } = sessionApi;
 
-const useSessionContextQuery = (token: string | null) => {
+const useSessionContextQuery = (token: string | null | undefined) => {
+	// Always attempt session API call - cookies are sent automatically with credentials: 'include'
+	// In cross-origin scenarios, we can't read the cookie via JS, but the browser sends it automatically
+	const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true' ? true : false;
+	console.log('isLoggedIn', isLoggedIn);
 	const query = useUserSessionContextQuery(null, {
-		skip: !token,
+		skip: !isLoggedIn, // Always attempt - let server determine auth status
 		refetchOnMountOrArgChange: false,
 		refetchOnReconnect: false
 	});
@@ -49,7 +53,7 @@ const useSessionContextQuery = (token: string | null) => {
 		}
 	}
 
-	return { ...query, errorMessage };
+	return { ...query, errorMessage, error: query.error };
 };
 
 export { useSessionContextQuery };
