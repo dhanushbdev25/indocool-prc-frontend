@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 // material-ui
 import {
@@ -35,7 +34,6 @@ const validationSchema = Yup.object().shape({
 const AuthLogin = () => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [submitError, setSubmitError] = useState<string>('');
-	const navigate = useNavigate();
 
 	const [loginUser] = useLoginUserMutation();
 
@@ -67,7 +65,17 @@ const AuthLogin = () => {
 				email: values.email,
 				password: values.password
 			}).unwrap();
-			navigate('/');
+			
+			// Set localStorage flag for demo purposes (GitHub Pages workaround)
+			localStorage.setItem('isLoggedIn', 'true');
+			localStorage.setItem('loginTimestamp', Date.now().toString());
+			
+			// Wait a bit for cookie to be set by backend
+			await new Promise(resolve => setTimeout(resolve, 500));
+			
+			// Force full page reload to ensure routes re-evaluate with new cookie
+			// This works better on GitHub Pages than navigate()
+			window.location.href = '/';
 		} catch (err: unknown) {
 			setSubmitError(err instanceof Error ? err.message : 'An error occurred');
 		}

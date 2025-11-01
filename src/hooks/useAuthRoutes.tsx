@@ -10,10 +10,25 @@ import { createLoadingRoutes, createErrorRoutes } from './useAuthRoutes.constant
 
 export function useAuthRoutes() {
 	const token = Cookie.getToken();
+	
+	// Demo workaround: Check localStorage if cookie not readable (GitHub Pages)
+	const isLoggedInFromStorage = localStorage.getItem('isLoggedIn') === 'true';
+	const loginTimestamp = localStorage.getItem('loginTimestamp');
+	
+	// If login was recent (within last 5 minutes) and no token, still try session query
+	// This handles cases where cookie is HTTP-only or not immediately readable
+	const shouldCheckSession = token || (isLoggedInFromStorage && loginTimestamp && 
+		Date.now() - parseInt(loginTimestamp) < 5 * 60 * 1000);
 
-	const { data, isLoading, isError, errorMessage } = useSessionContextQuery(token);
+	const { data, isLoading, isError, errorMessage } = useSessionContextQuery(shouldCheckSession ? 'check' : null);
 
-	if (!token) return [LoginRoutes];
+	// If session query fails after recent login attempt, clear localStorage fallback
+	if (isError && isLoggedInFromStorage && loginTimestamp && Date.now() - parseInt(loginTimestamp) < 5 * 60 * 1000) {
+		localStorage.removeItem('isLoggedIn');
+		localStorage.removeItem('loginTimestamp');
+	}
+
+	if (!shouldCheckSession) return [LoginRoutes];
 
 	if (isLoading || !data) return [createLoadingRoutes()];
 
