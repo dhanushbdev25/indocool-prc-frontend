@@ -1,41 +1,92 @@
 import { Navigate } from 'react-router-dom';
-import Cookie from '../utils/Cookie';
+import { useState, useEffect } from 'react';
 import MainLayout from '../layouts/MainLayout';
 import { getOrderedScreens, getInitialScreen } from '../routes/screenHelpers';
-import { useSessionContextQuery } from '../store/api/auth/session.api';
 import { LoginRoutes } from '../routes/LoginRoutes';
 import NotFound from '../pages/general/NotFound';
 import { getAllPermissions } from '../store/api/userSessionContextParser';
-import { createLoadingRoutes, createErrorRoutes } from './useAuthRoutes.constants';
+import { createLoadingRoutes } from './useAuthRoutes.constants';
+import type { sessionData } from '../store/api/userSessionContextParser';
+import { userSessionContextparser } from '../store/api/userSessionContextParser';
 
 export function useAuthRoutes() {
-	const token = Cookie.getToken();
-	
-	// Demo workaround: Check localStorage if cookie not readable (GitHub Pages)
-	const isLoggedInFromStorage = localStorage.getItem('isLoggedIn') === 'true';
-	const loginTimestamp = localStorage.getItem('loginTimestamp');
-	
-	// If login was recent (within last 5 minutes) and no token, still try session query
-	// This handles cases where cookie is HTTP-only or not immediately readable
-	const shouldCheckSession = token || (isLoggedInFromStorage && loginTimestamp && 
-		Date.now() - parseInt(loginTimestamp) < 5 * 60 * 1000);
+	// DEMO: Simple approach - use localStorage session data directly
+	const [sessionData, setSessionData] = useState<sessionData | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
 
-	const { data, isLoading, isError, errorMessage } = useSessionContextQuery(shouldCheckSession ? 'check' : null);
+	useEffect(() => {
+		const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+		
+		if (isLoggedIn) {
+			// Try to get session from localStorage first
+			const storedSession = localStorage.getItem('userSession');
+			
+			if (storedSession) {
+				try {
+					const parsed = JSON.parse(storedSession);
+					const validated = userSessionContextparser.safeParse(parsed);
+					
+					if (validated.success) {
+						setSessionData(validated.data);
+						setIsLoading(false);
+						return;
+					}
+				} catch (error) {
+					console.error('Failed to parse stored session:', error);
+				}
+			}
+			
+			// If localStorage doesn't have valid session, try to fetch from API
+			// This handles cases where localStorage was cleared but user still has cookie
+			const fetchSession = async () => {
+				try {
+					const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || process.env.API_BASE_URL || '';
+					const response = await fetch(`${apiBaseUrl}/session`, {
+						method: 'GET',
+						credentials: 'include',
+						headers: { 'Content-Type': 'application/json' }
+					});
+					
+					if (response.ok) {
+						const data = await response.json();
+						const validated = userSessionContextparser.safeParse(data);
+						
+						if (validated.success) {
+							// Store in localStorage for next time
+							localStorage.setItem('userSession', JSON.stringify(validated.data));
+							setSessionData(validated.data);
+						} else {
+							// Invalid session data, clear localStorage
+							localStorage.removeItem('isLoggedIn');
+							localStorage.removeItem('userSession');
+						}
+					} else {
+						// Session expired or invalid, clear localStorage
+						localStorage.removeItem('isLoggedIn');
+						localStorage.removeItem('userSession');
+					}
+				} catch (error) {
+					console.error('Failed to fetch session:', error);
+					// On error, clear localStorage to prevent stuck state
+					localStorage.removeItem('isLoggedIn');
+					localStorage.removeItem('userSession');
+				} finally {
+					setIsLoading(false);
+				}
+			};
+			
+			fetchSession();
+		} else {
+			setIsLoading(false);
+		}
+	}, []);
 
-	// If session query fails after recent login attempt, clear localStorage fallback
-	if (isError && isLoggedInFromStorage && loginTimestamp && Date.now() - parseInt(loginTimestamp) < 5 * 60 * 1000) {
-		localStorage.removeItem('isLoggedIn');
-		localStorage.removeItem('loginTimestamp');
-	}
+	if (isLoading) return [createLoadingRoutes()];
 
-	if (!shouldCheckSession) return [LoginRoutes];
-
-	if (isLoading || !data) return [createLoadingRoutes()];
-
-	if (isError || !data) return [createErrorRoutes(errorMessage ?? 'unknown Error')];
+	if (!sessionData) return [LoginRoutes];
 
 	// Use static permissions for initial route setup
-	const permissions = getAllPermissions(data);
+	const permissions = getAllPermissions(sessionData);
 	const orderedScreens = getOrderedScreens(permissions);
 	const initialScreen = getInitialScreen(permissions);
 

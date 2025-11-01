@@ -18,9 +18,9 @@ export const useLogout = () => {
 		}
 		Cookie.removeToken(); // 🔹 remove frontend cookies
 		
-		// Clear demo workaround localStorage (GitHub Pages)
+		// Clear localStorage session data (DEMO approach)
 		localStorage.removeItem('isLoggedIn');
-		localStorage.removeItem('loginTimestamp');
+		localStorage.removeItem('userSession');
 		
 		dispatch(logoutApp()); // 🔹 reset Redux
 		navigate('/'); // 🔹 redirect to login

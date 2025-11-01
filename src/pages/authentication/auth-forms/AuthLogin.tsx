@@ -19,6 +19,7 @@ import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useLoginUserMutation } from '../../../store/api/auth/auth.api';
 import Button from '../../../components/common/button/Button';
 import { displayValidationErrors } from '../../../utils/helpers';
+import { userSessionContextparser } from '../../../store/api/userSessionContextParser';
 
 interface FormValues {
 	email: string;
@@ -61,21 +62,47 @@ const AuthLogin = () => {
 	const onSubmit = async (values: FormValues) => {
 		try {
 			setSubmitError('');
+			
+			// Step 1: Login
 			await loginUser({
 				email: values.email,
 				password: values.password
 			}).unwrap();
 			
-			// Set localStorage flag for demo purposes (GitHub Pages workaround)
-			localStorage.setItem('isLoggedIn', 'true');
-			localStorage.setItem('loginTimestamp', Date.now().toString());
-			
-			// Wait a bit for cookie to be set by backend
-			await new Promise(resolve => setTimeout(resolve, 500));
-			
-			// Force full page reload to ensure routes re-evaluate with new cookie
-			// This works better on GitHub Pages than navigate()
-			window.location.href = '/';
+			// Step 2: Immediately fetch session data
+			try {
+				const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || process.env.API_BASE_URL || '';
+				const response = await fetch(`${apiBaseUrl}/session`, {
+					method: 'GET',
+					credentials: 'include',
+					headers: {
+						'Content-Type': 'application/json'
+					}
+				});
+				
+				if (!response.ok) {
+					throw new Error('Failed to fetch session');
+				}
+				
+				const sessionData = await response.json();
+				
+				// Validate and parse session data
+				const parsed = userSessionContextparser.safeParse(sessionData);
+				if (!parsed.success) {
+					console.error('Session validation failed:', parsed.error);
+					throw new Error('Invalid session data');
+				}
+				
+				// Step 3: Store session data in localStorage (DEMO - Simple approach)
+				localStorage.setItem('userSession', JSON.stringify(parsed.data));
+				localStorage.setItem('isLoggedIn', 'true');
+				
+				// Step 4: Redirect to main page
+				window.location.href = '/';
+			} catch (sessionError) {
+				console.error('Session fetch error:', sessionError);
+				setSubmitError('Login successful but failed to load session. Please try again.');
+			}
 		} catch (err: unknown) {
 			setSubmitError(err instanceof Error ? err.message : 'An error occurred');
 		}
