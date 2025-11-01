@@ -10,22 +10,25 @@ export default defineConfig({
 	plugins: [
 		react(),
 		//local environment
-		EnvironmentPlugin({
-			VITE_APP_NAME: 'PRC Management Portal',
-			API_BASE_URL: '//localhost:8000/web/',
-			API_BASE_URL_PRE_AUTH: '//localhost:8000/',
-			REDIRECT_URI: 'http://localhost:5173/auth/login',
-			AZURE_CLIENT_ID: '6e3a5cb0-04eb-46f2-a413-36e9a623cfac',
-			AZURE_CLIENT_SECRET: '1Zn8Q~OCQ3SVqTOuGi~vnr1CpX44vr_yvKDsidBX'
-		}),
 		// EnvironmentPlugin({
 		// 	VITE_APP_NAME: 'PRC Management Portal',
-		// 	API_BASE_URL: 'https://indocool-prc-backend.onrender.com/web/',
-		// 	API_BASE_URL_PRE_AUTH: 'https://indocool-prc-backend.onrender.com/',
-		// 	REDIRECT_URI: 'https://dhanushbdev25.github.io/indocool-prc-frontend/auth/login',
+		// 	API_BASE_URL: '//localhost:8000/web/',
+		// 	API_BASE_URL_PRE_AUTH: '//localhost:8000/',
+		// 	REDIRECT_URI: 'http://localhost:5173/auth/login',
 		// 	AZURE_CLIENT_ID: '6e3a5cb0-04eb-46f2-a413-36e9a623cfac',
 		// 	AZURE_CLIENT_SECRET: '1Zn8Q~OCQ3SVqTOuGi~vnr1CpX44vr_yvKDsidBX'
 		// }),
+
+		// production environment
+		EnvironmentPlugin({
+			VITE_APP_NAME: 'PRC Management Portal',
+			API_BASE_URL: 'https://indocool-prc-backend.onrender.com/web/',
+			API_BASE_URL_PRE_AUTH: 'https://indocool-prc-backend.onrender.com/',
+			REDIRECT_URI: 'https://dhanushbdev25.github.io/indocool-prc-frontend/auth/login',
+			AZURE_CLIENT_ID: '6e3a5cb0-04eb-46f2-a413-36e9a623cfac',
+			AZURE_CLIENT_SECRET: '1Zn8Q~OCQ3SVqTOuGi~vnr1CpX44vr_yvKDsidBX'
+		})
+		
 		// process.env.ANALYZE === 'true' &&
 		// 	visualizer({
 		// 		filename: 'dist/bundle-analysis.html',
