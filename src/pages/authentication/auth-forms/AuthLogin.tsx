@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // material-ui
 import {
@@ -34,6 +35,7 @@ const validationSchema = Yup.object().shape({
 const AuthLogin = () => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [submitError, setSubmitError] = useState<string>('');
+	const navigate = useNavigate();
 
 	const [loginUser] = useLoginUserMutation();
 
@@ -65,9 +67,7 @@ const AuthLogin = () => {
 				email: values.email,
 				password: values.password
 			}).unwrap();
-			// Force a full page reload to ensure cookie is read and routes are re-evaluated
-			// This is necessary for GitHub Pages deployment where cookie setting and route evaluation timing can be off
-			window.location.href = '/indocool-prc-frontend/';
+			navigate('/');
 		} catch (err: unknown) {
 			setSubmitError(err instanceof Error ? err.message : 'An error occurred');
 		}
