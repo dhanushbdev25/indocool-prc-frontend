@@ -9,10 +9,15 @@ import { getAllPermissions } from '../store/api/userSessionContextParser';
 import { createLoadingRoutes, createErrorRoutes } from './useAuthRoutes.constants';
 
 export function useAuthRoutes() {
+	console.log('useAuthRoutes');
 	const token = Cookie.getToken();
+	console.log('token', token);
 
 	const { data, isLoading, isError, errorMessage } = useSessionContextQuery(token);
-
+	console.log('data', data);
+	console.log('isLoading', isLoading);
+	console.log('isError', isError);
+	console.log('errorMessage', errorMessage);
 	if (!token) return [LoginRoutes];
 
 	if (isLoading || !data) return [createLoadingRoutes()];
