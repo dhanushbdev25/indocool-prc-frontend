@@ -54,6 +54,8 @@ export const inspectionSchema = z
 		isLatest: z.boolean(),
 		showPartImages: z.boolean().optional(),
 		partImages: z.array(partImageSchema).optional(),
+		approveByProduction: z.boolean().optional(),
+		approveByQuality: z.boolean().optional(),
 		createdBy: z.number().nullable().optional(),
 		updatedBy: z.number().nullable().optional(),
 		createdAt: z.string().optional(),
@@ -123,6 +125,8 @@ export const inspectionRequestSchema = z.object({
 	isLatest: z.boolean(),
 	showPartImages: z.boolean().optional(),
 	partImages: z.array(partImageSchema).optional(),
+	approveByProduction: z.boolean().optional(),
+	approveByQuality: z.boolean().optional(),
 	createdBy: z.number().nullable().optional(),
 	updatedBy: z.number().nullable().optional()
 });
@@ -137,6 +141,8 @@ export const inspectionRequestWithIdSchema = z.object({
 	isLatest: z.boolean(),
 	showPartImages: z.boolean().optional(),
 	partImages: z.array(partImageSchema).optional(),
+	approveByProduction: z.boolean().optional(),
+	approveByQuality: z.boolean().optional(),
 	createdBy: z.number().nullable().optional(),
 	updatedBy: z.number().nullable().optional()
 });
@@ -164,6 +170,8 @@ export const inspectionBasicSchema = z
 		isLatest: z.boolean(),
 		showPartImages: z.boolean().optional(),
 		partImages: z.array(partImageSchema).optional(),
+		approveByProduction: z.boolean().optional(),
+		approveByQuality: z.boolean().optional(),
 		createdBy: z.number().nullable().optional(),
 		updatedBy: z.number().nullable().optional(),
 		createdAt: z.string(),

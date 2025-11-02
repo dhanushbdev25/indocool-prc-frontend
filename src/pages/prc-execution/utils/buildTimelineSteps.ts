@@ -240,7 +240,11 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 								updatedAt: (inspectionData.inspection as any).updatedAt || new Date().toISOString(),
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
 								inspectionId: (inspectionData.inspection as any).inspectionId || prcTemplateStep.id.toString(),
-								inspectionName: inspectionData.inspection.inspectionName || 'Inspection'
+								inspectionName: inspectionData.inspection.inspectionName || 'Inspection',
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								approveByProduction: (inspectionData.inspection as any).approveByProduction,
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								approveByQuality: (inspectionData.inspection as any).approveByQuality
 							}
 						: undefined
 				});

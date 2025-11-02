@@ -1,4 +1,4 @@
-import { Box, Paper, Typography, TextField, FormControlLabel, Switch } from '@mui/material';
+import { Box, Paper, Typography, TextField, FormControlLabel, Switch, Checkbox } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { Info as InfoIcon } from '@mui/icons-material';
 import { Controller } from 'react-hook-form';
@@ -97,6 +97,48 @@ const InspectionBasicInfo = ({ control, errors }: InspectionBasicInfoProps) => {
 								<FormControlLabel
 									control={<Switch checked={field.value} onChange={field.onChange} color="primary" />}
 									label="Active Status"
+									sx={{ mt: 2 }}
+								/>
+							)}
+						/>
+					</Grid>
+
+					{/* Approve By Production */}
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name="approveByProduction"
+							control={control}
+							render={({ field }) => (
+								<FormControlLabel
+									control={
+										<Checkbox
+											checked={field.value || false}
+											onChange={e => field.onChange(e.target.checked)}
+											color="primary"
+										/>
+									}
+									label="Approve By Production"
+									sx={{ mt: 2 }}
+								/>
+							)}
+						/>
+					</Grid>
+
+					{/* Approve By Quality */}
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name="approveByQuality"
+							control={control}
+							render={({ field }) => (
+								<FormControlLabel
+									control={
+										<Checkbox
+											checked={field.value || false}
+											onChange={e => field.onChange(e.target.checked)}
+											color="primary"
+										/>
+									}
+									label="Approve By Quality"
 									sx={{ mt: 2 }}
 								/>
 							)}

@@ -74,6 +74,8 @@ const CreateInspection = () => {
 				isLatest: inspectionData.detail.inspection.isLatest,
 				showPartImages: inspectionData.detail.inspection.showPartImages,
 				partImages: inspectionData.detail.inspection.partImages,
+				approveByProduction: inspectionData.detail.inspection.approveByProduction ?? false,
+				approveByQuality: inspectionData.detail.inspection.approveByQuality ?? false,
 				inspectionParameters: inspectionData.detail.inspectionParameters.map(param => ({
 					order: param.order,
 					parameterName: param.parameterName,
@@ -161,7 +163,9 @@ const CreateInspection = () => {
 				version: data.version || 1,
 				isLatest: data.isLatest ?? true,
 				showPartImages: data.showPartImages ?? false,
-				partImages: data.partImages || []
+				partImages: data.partImages || [],
+				approveByProduction: data.approveByProduction ?? false,
+				approveByQuality: data.approveByQuality ?? false
 			};
 
 			const inspectionParameters = (data.inspectionParameters || []).map(param => ({
