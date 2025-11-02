@@ -110,6 +110,8 @@ export interface StepPreviewData {
 		updatedAt: string;
 		inspectionId: string;
 		inspectionName: string;
+		approveByProduction?: boolean;
+		approveByQuality?: boolean;
 	};
 }
 
@@ -205,6 +207,8 @@ export interface TimelineStep {
 		updatedAt: string;
 		inspectionId: string;
 		inspectionName: string;
+		approveByProduction?: boolean;
+		approveByQuality?: boolean;
 	};
 }
 

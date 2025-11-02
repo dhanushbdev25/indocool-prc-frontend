@@ -135,6 +135,8 @@ export const inspectionFormSchema = yup.object({
 			schema.of(partImageSchema).min(1, 'At least one part image is required when Show Part Images is enabled'),
 		otherwise: schema => schema.of(partImageSchema).min(0, 'Part images array cannot be negative')
 	}),
+	approveByProduction: yup.boolean().optional(),
+	approveByQuality: yup.boolean().optional(),
 	inspectionParameters: yup.array(inspectionParameterSchema).min(1, 'At least one inspection parameter is required'),
 	notes: yup.string().max(1000, 'Notes must be less than 1000 characters').optional(),
 	createdAt: yup.string().optional(),
@@ -185,6 +187,8 @@ export const defaultInspectionFormData: InspectionFormData = {
 	isLatest: true,
 	showPartImages: false,
 	partImages: [],
+	approveByProduction: false,
+	approveByQuality: true,
 	inspectionParameters: [defaultInspectionParameter],
 	notes: ''
 };
@@ -215,6 +219,8 @@ export const basicInfoSchema = yup.object({
 			schema.of(partImageSchema).min(1, 'At least one part image is required when Show Part Images is enabled'),
 		otherwise: schema => schema.of(partImageSchema).min(0, 'Part images array cannot be negative')
 	}),
+	approveByProduction: yup.boolean().optional(),
+	approveByQuality: yup.boolean().optional(),
 	notes: yup.string().max(1000, 'Notes must be less than 1000 characters').optional()
 });
 

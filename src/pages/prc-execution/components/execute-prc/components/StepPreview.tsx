@@ -61,8 +61,20 @@ const StepPreview = ({
 	onBackToStepGroup
 }: StepPreviewProps) => {
 	const { currentRole } = useCurrentRole();
-	const canApproveProduction = currentRole.id === 1 || currentRole.id === 2;
-	const canApproveCTQ = currentRole.id === 1 || currentRole.id === 3;
+	// Dynamic role checks for inspection steps based on approveByProduction and approveByQuality
+	// For non-inspection steps, use hardcoded checks
+	const canApproveProduction =
+		previewData.type === 'inspection'
+			? // For inspection: Admin always has access OR (approveByProduction enabled AND Production role)
+				currentRole.id === 1 || (previewData.inspectionMetadata?.approveByProduction === true && currentRole.id === 2)
+			: // For non-inspection steps: Keep hardcoded checks
+				currentRole.id === 1 || currentRole.id === 2;
+	const canApproveCTQ =
+		previewData.type === 'inspection'
+			? // For inspection: Admin always has access OR (approveByQuality enabled AND Quality role)
+				currentRole.id === 1 || (previewData.inspectionMetadata?.approveByQuality === true && currentRole.id === 3)
+			: // For non-inspection steps: Keep hardcoded checks
+				currentRole.id === 1 || currentRole.id === 3;
 
 	const [productionApproved, setProductionApproved] = useState(previewData.productionApproved || false);
 	const [ctqApproved, setCtqApproved] = useState(previewData.ctqApproved || false);

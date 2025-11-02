@@ -105,6 +105,46 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 							/>
 						</Box>
 					</Grid>
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Box>
+							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
+								Approve By Production
+							</Typography>
+							<Chip
+								icon={watchedData.approveByProduction ? <CheckCircleIcon /> : <CancelIcon />}
+								label={watchedData.approveByProduction ? 'Yes' : 'No'}
+								size="small"
+								sx={{
+									backgroundColor: watchedData.approveByProduction ? '#4caf50' : '#9e9e9e',
+									color: 'white',
+									fontSize: '0.75rem',
+									'& .MuiChip-icon': {
+										color: 'white'
+									}
+								}}
+							/>
+						</Box>
+					</Grid>
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Box>
+							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
+								Approve By Quality
+							</Typography>
+							<Chip
+								icon={watchedData.approveByQuality ? <CheckCircleIcon /> : <CancelIcon />}
+								label={watchedData.approveByQuality ? 'Yes' : 'No'}
+								size="small"
+								sx={{
+									backgroundColor: watchedData.approveByQuality ? '#4caf50' : '#9e9e9e',
+									color: 'white',
+									fontSize: '0.75rem',
+									'& .MuiChip-icon': {
+										color: 'white'
+									}
+								}}
+							/>
+						</Box>
+					</Grid>
 					{watchedData.notes && (
 						<Grid size={{ xs: 12 }}>
 							<Divider sx={{ my: 2 }} />
