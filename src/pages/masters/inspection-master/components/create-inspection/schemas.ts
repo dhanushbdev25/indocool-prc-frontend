@@ -48,7 +48,7 @@ export const partImageSchema = yup.object({
 		.string()
 		.required('Image name is required')
 		.min(2, 'Image name must be at least 2 characters')
-		.max(100, 'Image name must be less than 100 characters'),
+		.max(1000, 'Image name must be less than 1000 characters'),
 	url: yup.string().required('Image URL is required').url('Must be a valid URL')
 });
 
@@ -77,7 +77,7 @@ export const inspectionParameterSchema = yup.object({
 		.string()
 		.required('Parameter name is required')
 		.min(3, 'Parameter name must be at least 3 characters')
-		.max(100, 'Parameter name must be less than 100 characters'),
+		.max(1000, 'Parameter name must be less than 1000 characters'),
 	specification: yup.string().optional().max(500, 'Specification must be less than 500 characters'),
 	tolerance: yup.mixed().when('type', {
 		is: 'number',
@@ -113,7 +113,7 @@ export const inspectionFormSchema = yup.object({
 		.string()
 		.required('Inspection name is required')
 		.min(3, 'Inspection name must be at least 3 characters')
-		.max(100, 'Inspection name must be less than 100 characters'),
+		.max(1000, 'Inspection name must be less than 1000 characters'),
 	status: yup.boolean(),
 	inspectionId: yup
 		.string()
@@ -199,7 +199,7 @@ export const basicInfoSchema = yup.object({
 		.string()
 		.required('Inspection name is required')
 		.min(3, 'Inspection name must be at least 3 characters')
-		.max(100, 'Inspection name must be less than 100 characters'),
+		.max(1000, 'Inspection name must be less than 1000 characters'),
 	status: yup.boolean(),
 	inspectionId: yup
 		.string()

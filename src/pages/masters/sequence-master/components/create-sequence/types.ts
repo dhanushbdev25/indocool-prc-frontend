@@ -47,8 +47,11 @@ export const uomOptions = [
 	{ value: 'Centimeters (cm)', label: 'Centimeters (cm)' },
 	{ value: 'Meters (m)', label: 'Meters (m)' },
 	{ value: 'Pieces (pcs)', label: 'Pieces (pcs)' },
-	{ value: 'Centipoise (cP)', label: 'Centipoise (cP)' },
-	{ value: 'Pascal (Pa)', label: 'Pascal (Pa)' },
-	{ value: 'Bar', label: 'Bar' },
-	{ value: 'PSI', label: 'PSI' }
+	// { value: 'Centipoise (cP)', label: 'Centipoise (cP)' },
+	// { value: 'Pascal (Pa)', label: 'Pascal (Pa)' },
+	// { value: 'Bar', label: 'Bar' },
+	// { value: 'PSI', label: 'PSI' },
+	{ value: 'Hours', label: 'Hours (hr)' },
+	{ value: 'mm Hg', label: 'Millimeters of Mercury (mm Hg)' },
+	{ value: 'Microns (µm)', label: 'Microns (µm)' }
 ];
