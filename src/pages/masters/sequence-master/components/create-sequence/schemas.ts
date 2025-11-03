@@ -90,12 +90,12 @@ export const processStepGroupSchema = yup.object({
 		.string()
 		.required('Process name is required')
 		.min(3, 'Process name must be at least 3 characters')
-		.max(100, 'Process name must be less than 100 characters'),
+		.max(1000, 'Process name must be less than 1000 characters'),
 	processDescription: yup
 		.string()
 		.required('Process description is required')
 		.min(10, 'Process description must be at least 10 characters')
-		.max(500, 'Process description must be less than 500 characters'),
+		.max(1000, 'Process description must be less than 1000 characters'),
 	sequenceTiming: yup
 		.string()
 		.required('Expected duration is required')
