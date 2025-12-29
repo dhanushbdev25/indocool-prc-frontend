@@ -20,6 +20,7 @@ import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useLoginUserMutation } from '../../../store/api/auth/auth.api';
 import Button from '../../../components/common/button/Button';
 import { displayValidationErrors } from '../../../utils/helpers';
+import Cookie from '../../../utils/Cookie';
 
 interface FormValues {
 	email: string;
@@ -63,10 +64,22 @@ const AuthLogin = () => {
 	const onSubmit = async (values: FormValues) => {
 		try {
 			setSubmitError('');
-			await loginUser({
+			const response = await loginUser({
 				email: values.email,
 				password: values.password
 			}).unwrap();
+			
+			// Check if we're in localStorage mode and tokens are in response
+			const authMode = (import.meta.env.AUTH_MODE || process.env.AUTH_MODE || 'cookie') as 'cookie' | 'localStorage';
+			if (authMode === 'localStorage' && response.accessToken) {
+				// Store tokens in localStorage
+				Cookie.setToken(response.accessToken);
+				if (response.refreshToken) {
+					Cookie.setRefreshToken(response.refreshToken);
+				}
+			}
+			// Note: In cookie mode, tokens are set automatically by the browser
+			
 			localStorage.setItem('isLoggedIn', 'true');
 			navigate('/');
 		} catch (err: unknown) {
