@@ -11,8 +11,6 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { useAuthRoutes } from './hooks/useAuthRoutes';
-// import { MsalProvider } from '@azure/msal-react';
-// import { msalInstance } from './config';
 
 // Extend Day.js with plugins
 dayjs.extend(utc);
@@ -27,11 +25,9 @@ const App = () => {
 	return (
 		<ThemeCustomization>
 			<LocalizationProvider dateAdapter={AdapterDayjs}>
-				{/* <MsalProvider instance={msalInstance}> */}
 					<ScrollTop>
 						<Routes />
 					</ScrollTop>
-				{/* </MsalProvider> */}
 			</LocalizationProvider>
 		</ThemeCustomization>
 	);
