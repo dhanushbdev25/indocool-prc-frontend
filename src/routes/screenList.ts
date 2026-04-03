@@ -5,7 +5,6 @@ import {
 	Timeline,
 	Settings,
 	Checklist,
-	Assignment,
 	Build,
 	PlayArrow,
 	PlayCircleFilled,
@@ -174,36 +173,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			},
-			{
-				icon: Assignment,
-				text: 'PRC Template Master',
-				path: 'prc-template-master',
-				element: imports.prcTemplateMaster,
-				permission: 'EDITPROCESSSEQUENCE',
-				order: 4,
-				showInSidebar: true
-			},
-			{
-				text: 'Create PRC Template',
-				path: 'prc-template-master/create-prc-template',
-				element: imports.createPrcTemplate,
-				permission: 'EDITPROCESSSEQUENCE',
-				showInSidebar: false
-			},
-			{
-				text: 'View PRC Template',
-				path: 'prc-template-master/view-prc-template/:id',
-				element: imports.viewPrcTemplate,
-				permission: 'EDITPROCESSSEQUENCE',
-				showInSidebar: false
-			},
-			{
-				text: 'Edit PRC Template',
-				path: 'prc-template-master/edit-prc-template/:id',
-				element: imports.createPrcTemplate,
-				permission: 'EDITPROCESSSEQUENCE',
-				showInSidebar: false
-			},
+			
 			{
 				icon: Build,
 				text: 'Part Master',

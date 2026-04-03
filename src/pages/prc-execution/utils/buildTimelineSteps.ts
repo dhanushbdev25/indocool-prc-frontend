@@ -1,10 +1,26 @@
 import { type TimelineStep, type ExecutionData } from '../types/execution.types';
 
+function isPrcMetadataComplete(prcAggregatedSteps: Record<string, unknown> | undefined): boolean {
+	const meta = prcAggregatedSteps?.prcmetadata;
+	if (!meta || typeof meta !== 'object') return false;
+	return Object.keys(meta as Record<string, unknown>).length > 0;
+}
+
 export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[] {
 	const steps: TimelineStep[] = [];
 	let stepNumber = 1;
 
-	// Step 1: Raw Materials
+	const setupCompleted = isPrcMetadataComplete(executionData.prcAggregatedSteps as Record<string, unknown> | undefined);
+	steps.push({
+		stepNumber: stepNumber++,
+		type: 'setup',
+		title: 'Execution setup',
+		description: 'Confirm production setup, mould details, and shift before starting',
+		status: setupCompleted ? 'completed' : 'pending',
+		ctq: false
+	});
+
+	// Raw Materials
 	if (executionData.rawMaterials && executionData.rawMaterials.length > 0) {
 		const isCompleted = executionData.prcAggregatedSteps?.rawMaterials !== undefined;
 		steps.push({
@@ -195,7 +211,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						allowAttachments: false
 					},
 					inspectionParameters:
-						inspectionData.inspectionParameters?.map(param => ({
+						inspectionData.inspectionParameters?.map((param, index) => ({
 							id: param.id,
 							parameterName: param.parameterName,
 							type: param.type,
@@ -203,7 +219,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							role: param.role,
 							columns: param.columns || [],
 							specification: param.specification,
-							order: param.order,
+							order: param.order ?? index + 1,
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							tolerance: (param as any).tolerance || '',
 							files: param.files || [],

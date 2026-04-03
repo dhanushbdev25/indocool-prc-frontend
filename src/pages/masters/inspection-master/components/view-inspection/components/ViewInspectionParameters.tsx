@@ -131,7 +131,7 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 												Order
 											</Typography>
 											<Typography variant="body1" sx={{ fontWeight: 500, mb: 2 }}>
-												{parameter.order}
+												{parameter.order ?? '—'}
 											</Typography>
 										</Grid>
 										<Grid size={{ xs: 12, md: 6 }}>

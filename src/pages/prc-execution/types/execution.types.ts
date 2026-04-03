@@ -117,7 +117,7 @@ export interface StepPreviewData {
 
 export interface TimelineStep {
 	stepNumber: number;
-	type: 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
+	type: 'setup' | 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
 	title: string;
 	description: string;
 	status: 'completed' | 'in-progress' | 'pending';
@@ -293,6 +293,7 @@ export interface ExecutionData {
 	}>;
 	prcAggregatedSteps?: Record<string, unknown> & {
 		stepApprovedBy?: Record<string, unknown>;
+		prcmetadata?: Record<string, unknown>;
 	};
 	stepStartEndTime?: Record<string, unknown>;
 	catalystData?: {

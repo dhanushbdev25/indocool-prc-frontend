@@ -26,7 +26,7 @@ export const inspectionParameterSchema = z
 	.object({
 		id: z.number().optional(),
 		inspectionId: z.number().optional(),
-		order: z.number(),
+		order: z.number().nullable(),
 		version: z.number().optional(),
 		isLatest: z.boolean().optional(),
 		parameterName: z.string(),
@@ -71,11 +71,11 @@ export const inspectionDetailSchema = z
 	})
 	.loose();
 
-// Header schema for counts
+// Header schema for counts (NEW is optional — some API deployments omit it)
 export const inspectionHeaderSchema = z
 	.object({
 		ACTIVE: z.number(),
-		NEW: z.number(),
+		NEW: z.number().optional(),
 		INACTIVE: z.number()
 	})
 	.loose();

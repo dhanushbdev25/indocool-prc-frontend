@@ -19,7 +19,8 @@ interface SummaryCardsProps {
 }
 
 const SummaryCards = ({ headerData }: SummaryCardsProps) => {
-	const totalInspections = headerData.ACTIVE + headerData.NEW + headerData.INACTIVE;
+	const newCount = headerData.NEW ?? 0;
+	const totalInspections = headerData.ACTIVE + newCount + headerData.INACTIVE;
 
 	const summaryData: SummaryCardData[] = [
 		{
@@ -36,7 +37,7 @@ const SummaryCards = ({ headerData }: SummaryCardsProps) => {
 		},
 		{
 			title: 'New Inspections',
-			value: headerData.NEW,
+			value: newCount,
 			subtitle: 'Recently created',
 			icon: <NewIcon sx={{ color: '#2196f3', fontSize: '1.5rem', opacity: 0.8 }} />
 		},

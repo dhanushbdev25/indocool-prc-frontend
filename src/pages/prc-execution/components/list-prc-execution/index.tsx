@@ -5,7 +5,6 @@ import PrcExecutionHeader from './components/PrcExecutionHeader';
 import SummaryCards from './components/SummaryCards';
 import PrcExecutionManagement from './components/PrcExecutionManagement';
 import PrcExecutionTable, { PrcExecutionData } from './components/PrcExecutionTable';
-import CreatePrcExecutionModal from './components/CreatePrcExecutionModal';
 import CatalystTableSkeleton from '../../../../components/common/skeleton/CatalystTableSkeleton';
 import { useFetchPrcExecutionsQuery } from '../../../../store/api/business/prc-execution/prc-execution.api';
 
@@ -15,14 +14,11 @@ const ListPrcExecution = () => {
 	const [activeFilter, setActiveFilter] = useState('All Executions');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [executionToDelete, setExecutionToDelete] = useState<PrcExecutionData | null>(null);
-	const [createModalOpen, setCreateModalOpen] = useState(false);
-
 	// Fetch all PRC executions using the API
 	const {
 		data: prcExecutionData,
 		isLoading: isPrcExecutionDataLoading,
-		isFetching: isPrcExecutionDataFetching,
-		refetch: refetchPrcExecutions
+		isFetching: isPrcExecutionDataFetching
 	} = useFetchPrcExecutionsQuery();
 
 	// Extract execution data for table
@@ -70,14 +66,6 @@ const ListPrcExecution = () => {
 		setActiveFilter(filter);
 	};
 
-	const handleCreateClick = () => {
-		setCreateModalOpen(true);
-	};
-
-	const handleCreateSuccess = () => {
-		refetchPrcExecutions();
-	};
-
 	const handleExecute = (executionId: number) => {
 		navigate(`/prc-execution/execute/${executionId}`);
 	};
@@ -106,7 +94,7 @@ const ListPrcExecution = () => {
 	if (isPrcExecutionDataLoading || isPrcExecutionDataFetching) {
 		return (
 			<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-				<PrcExecutionHeader onCreateClick={handleCreateClick} />
+				<PrcExecutionHeader />
 				<CatalystTableSkeleton />
 			</Box>
 		);
@@ -114,17 +102,10 @@ const ListPrcExecution = () => {
 
 	return (
 		<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-			<PrcExecutionHeader onCreateClick={handleCreateClick} />
+			<PrcExecutionHeader />
 			<SummaryCards headerData={mockHeaderData} />
 			<PrcExecutionManagement onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
 			<PrcExecutionTable data={filteredData} onExecute={handleExecute} />
-
-			{/* Create Modal */}
-			<CreatePrcExecutionModal
-				open={createModalOpen}
-				onClose={() => setCreateModalOpen(false)}
-				onSuccess={handleCreateSuccess}
-			/>
 
 			{/* Delete Confirmation Dialog */}
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>

@@ -58,7 +58,7 @@ const ListSequence = () => {
 					sequence.sequenceName.toLowerCase().includes(searchTerm.toLowerCase()) ||
 					sequence.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
 					sequence.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					sequence.notes.toLowerCase().includes(searchTerm.toLowerCase())
+					(sequence.notes ?? '').toLowerCase().includes(searchTerm.toLowerCase())
 			);
 		}
 
@@ -106,7 +106,7 @@ const ListSequence = () => {
 							isLatest: fullSequenceDetail.isLatest,
 							category: fullSequenceDetail.category,
 							type: fullSequenceDetail.type,
-							notes: fullSequenceDetail.notes,
+							notes: fullSequenceDetail.notes ?? '',
 							totalSteps: fullSequenceDetail.totalSteps,
 							ctqSteps: fullSequenceDetail.ctqSteps
 						},

@@ -127,7 +127,7 @@ export const partMasterSchema = z
 		createdAt: z.string().nullable().optional(),
 		updatedAt: z.string().nullable().optional(),
 		customerName: z.string().nullable().optional(),
-		mouldes: z.array(mouldeSchema).optional().default([]),
+		mouldedetails: z.array(mouldeSchema).optional().default([]),
 		files: z.array(partDrawingSchema).nullable().optional(),
 		inspectionDiagrams: z
 			.union([inspectionDiagramSchema, z.array(inspectionDiagramSchema)])

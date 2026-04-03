@@ -6,6 +6,7 @@ import RawMaterialsStep from './steps/RawMaterialsStep';
 import BomStep from './steps/BomStep';
 import SequenceStep from './steps/SequenceStep';
 import InspectionStep from './steps/InspectionStep';
+import ExecutionSetupStep from './steps/ExecutionSetupStep';
 
 interface StepDetailViewProps {
 	step: TimelineStep;
@@ -174,6 +175,8 @@ const StepDetailView = ({
 
 		// For non-sequence steps, render the appropriate component
 		switch (step.type) {
+			case 'setup':
+				return <ExecutionSetupStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
 			case 'rawMaterials':
 				return <RawMaterialsStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
 			case 'bom':

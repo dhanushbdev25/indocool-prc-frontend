@@ -1,6 +1,7 @@
-import { Box, Typography, LinearProgress, Chip, Button } from '@mui/material';
-import { ArrowBack, Pause, Escalator } from '@mui/icons-material';
+import { Box, Typography, LinearProgress, Chip, Button, Tooltip } from '@mui/material';
+import { ArrowBack, Pause, Escalator, Person } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { type ExecutionData } from '../../../types/execution.types';
 
 interface ExecutionHeaderProps {
@@ -9,6 +10,7 @@ interface ExecutionHeaderProps {
 
 const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 	const navigate = useNavigate();
+	const { userInfo } = useCurrentRole();
 
 	const calculateProgress = (execution: ExecutionData) => {
 		// Use the progress value directly from API response
@@ -94,6 +96,16 @@ const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 
 				{/* Status & Actions */}
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+					<Tooltip title={userInfo.email || ''}>
+						<Chip
+							icon={<Person sx={{ fontSize: '18px !important' }} />}
+							label={userInfo.name}
+							size="small"
+							variant="outlined"
+							sx={{ maxWidth: 220, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
+						/>
+					</Tooltip>
+
 					{/* CTQ Status */}
 					<Chip
 						label={`${executionData.completedCtq}/${executionData.totalCtq} CTQs`}

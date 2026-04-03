@@ -2,7 +2,7 @@ import * as yup from 'yup';
 
 // Raw Material validation schema
 export const rawMaterialFormSchema = yup.object({
-	id: yup.mixed().optional(), // Allow both numbers and strings (UUIDs)
+	id: yup.mixed().optional(),
 	materialName: yup.string().required('Material name is required'),
 	materialCode: yup.string().required('Material code is required'),
 	quantity: yup.string().required('Quantity is required'),
@@ -29,7 +29,7 @@ export const rawMaterialFormSchema = yup.object({
 
 // Drilling validation schema
 export const drillingFormSchema = yup.object({
-	id: yup.mixed().optional(), // Allow both numbers and strings (UUIDs)
+	id: yup.mixed().optional(),
 	characteristics: yup.string().required('Characteristics is required'),
 	specification: yup.string().required('Specification is required'),
 	noOfHoles: yup.string().required('Number of holes is required'),
@@ -41,7 +41,7 @@ export const drillingFormSchema = yup.object({
 
 // Cutting validation schema
 export const cuttingFormSchema = yup.object({
-	id: yup.mixed().optional(), // Allow both numbers and strings (UUIDs)
+	id: yup.mixed().optional(),
 	characteristics: yup.string().required('Characteristics is required'),
 	specification: yup.string().required('Specification is required'),
 	tolerance: yup.string().required('Tolerance is required'),
@@ -88,6 +88,24 @@ export const mouldeSchema = yup.object({
 	currentCount: yup.number().default(0)
 });
 
+// PRC Template Step schema (inline within part master)
+export const prcTemplateStepFormSchema = yup.object({
+	id: yup.number().optional(),
+	version: yup.number().default(1),
+	isLatest: yup.boolean().default(true),
+	sequence: yup.number().required('Sequence number is required').min(1, 'Sequence must be at least 1'),
+	stepId: yup.number().required('Step ID is required'),
+	type: yup
+		.string()
+		.required('Step type is required')
+		.oneOf(['sequence', 'inspection'], 'Type must be either sequence or inspection'),
+	blockCatalystMixing: yup.boolean().default(false),
+	requestSupervisorApproval: yup.boolean().default(false),
+	group: yup.string().required('Operation group is required'),
+	createdAt: yup.string().optional(),
+	updatedAt: yup.string().optional()
+});
+
 // Main form validation schema
 export const partMasterFormSchema = yup.object({
 	id: yup.number().optional(),
@@ -119,6 +137,18 @@ export const partMasterFormSchema = yup.object({
 	isLatest: yup.boolean().default(true),
 	catalyst: yup.number().optional(),
 	prcTemplate: yup.number().optional(),
+	// Inline PRC template fields
+	templateId: yup
+		.string()
+		.optional()
+		.max(50, 'Template ID must be less than 50 characters'),
+	templateName: yup
+		.string()
+		.optional()
+		.max(100, 'Template name must be less than 100 characters'),
+	templateNotes: yup.string().max(500, 'Template notes must be less than 500 characters').optional(),
+	isTemplateActive: yup.boolean().default(true),
+	prcTemplateSteps: yup.array(prcTemplateStepFormSchema).default([]),
 	rawMaterials: yup.array(rawMaterialFormSchema).default([]),
 	drilling: yup.array(drillingFormSchema).default([]),
 	cutting: yup.array(cuttingFormSchema).default([]),
@@ -136,6 +166,7 @@ export type CuttingFormData = yup.InferType<typeof cuttingFormSchema>;
 export type PartDrawingFormData = yup.InferType<typeof partDrawingSchema>;
 export type InspectionDiagramFormData = yup.InferType<typeof inspectionDiagramSchema>;
 export type MouldeFormData = yup.InferType<typeof mouldeSchema>;
+export type PrcTemplateStepFormData = yup.InferType<typeof prcTemplateStepFormSchema>;
 export type PartMasterFormData = yup.InferType<typeof partMasterFormSchema>;
 
 // Default values
@@ -195,6 +226,11 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	isLatest: true,
 	catalyst: undefined,
 	prcTemplate: undefined,
+	templateId: '',
+	templateName: '',
+	templateNotes: '',
+	isTemplateActive: true,
+	prcTemplateSteps: [],
 	rawMaterials: [],
 	drilling: [],
 	cutting: [],
@@ -241,5 +277,8 @@ export const technicalDataSchema = yup.object({
 
 export const linkedMastersSchema = yup.object({
 	catalyst: yup.number().optional(),
-	prcTemplate: yup.number().optional()
+	prcTemplate: yup.number().optional(),
+	templateId: yup.string().optional(),
+	templateName: yup.string().optional(),
+	prcTemplateSteps: yup.array(prcTemplateStepFormSchema).default([])
 });

@@ -103,8 +103,8 @@ const ListInspection = () => {
 						createdBy: fullInspectionDetail.inspection.createdBy,
 						updatedBy: fullInspectionDetail.inspection.updatedBy
 					},
-					inspectionParameters: fullInspectionDetail.inspectionParameters.map(param => ({
-						order: param.order,
+					inspectionParameters: fullInspectionDetail.inspectionParameters.map((param, index) => ({
+						order: param.order ?? index + 1,
 						parameterName: param.parameterName,
 						specification: param.specification,
 						tolerance: param.tolerance,

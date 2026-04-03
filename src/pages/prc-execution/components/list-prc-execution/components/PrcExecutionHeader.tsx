@@ -1,11 +1,6 @@
-import { Button, Box, Typography } from '@mui/material';
-import { Add as AddIcon } from '@mui/icons-material';
+import { Box, Typography } from '@mui/material';
 
-interface PrcExecutionHeaderProps {
-	onCreateClick: () => void;
-}
-
-const PrcExecutionHeader = ({ onCreateClick }: PrcExecutionHeaderProps) => {
+const PrcExecutionHeader = () => {
 	return (
 		<Box sx={{ mb: 4 }}>
 			<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
@@ -32,26 +27,6 @@ const PrcExecutionHeader = ({ onCreateClick }: PrcExecutionHeaderProps) => {
 						Manage and monitor production run control executions
 					</Typography>
 				</Box>
-				<Button
-					variant="contained"
-					startIcon={<AddIcon />}
-					onClick={onCreateClick}
-					sx={{
-						backgroundColor: '#1976d2',
-						color: 'white',
-						borderRadius: '8px',
-						px: 3,
-						py: 1.5,
-						textTransform: 'none',
-						fontSize: '0.875rem',
-						fontWeight: 500,
-						'&:hover': {
-							backgroundColor: '#1565c0'
-						}
-					}}
-				>
-					Create PRC Execution
-				</Button>
 			</Box>
 		</Box>
 	);

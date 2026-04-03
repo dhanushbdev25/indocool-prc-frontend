@@ -1,6 +1,18 @@
 import { type TimelineStep, type FormData } from '../types/execution.types';
 
 export function buildAggregatedData(step: TimelineStep, formData: FormData): Record<string, unknown> {
+	if (step.type === 'setup') {
+		return {
+			prcmetadata: {
+				productionSetId: formData.productionSetId,
+				mouldId: formData.mouldId,
+				shift: formData.shift,
+				date: formData.date,
+				recordedByUserId: formData.recordedByUserId
+			}
+		};
+	}
+
 	if (step.type === 'rawMaterials') {
 		return { rawMaterials: formData };
 	}
@@ -193,6 +205,15 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 }
 
 export function buildTimingData(step: TimelineStep, startTime: string, endTime: string): Record<string, unknown> {
+	if (step.type === 'setup') {
+		return {
+			prcmetadata: {
+				startTime,
+				endTime
+			}
+		};
+	}
+
 	if (step.type === 'rawMaterials') {
 		return {
 			rawMaterials: {
@@ -415,6 +436,14 @@ export function buildUserApprovalData(
 	actionType: 'dataEnteredBy' | 'productionApprovedBy' | 'ctqApprovedBy' | 'stepCompletedBy',
 	userId: number
 ): Record<string, unknown> {
+	if (step.type === 'setup') {
+		return {
+			prcmetadata: {
+				[actionType]: userId
+			}
+		};
+	}
+
 	if (step.type === 'rawMaterials') {
 		return {
 			rawMaterials: {

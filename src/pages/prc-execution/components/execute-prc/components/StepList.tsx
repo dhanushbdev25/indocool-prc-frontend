@@ -44,6 +44,8 @@ const StepList = ({ steps, currentStepIndex, onStepClick }: StepListProps) => {
 
 	const getStepTypeLabel = (step: TimelineStep) => {
 		switch (step.type) {
+			case 'setup':
+				return 'Setup';
 			case 'rawMaterials':
 				return 'Raw Materials';
 			case 'bom':

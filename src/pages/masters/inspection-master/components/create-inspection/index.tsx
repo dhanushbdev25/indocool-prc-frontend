@@ -76,8 +76,8 @@ const CreateInspection = () => {
 				partImages: inspectionData.detail.inspection.partImages,
 				approveByProduction: inspectionData.detail.inspection.approveByProduction ?? false,
 				approveByQuality: inspectionData.detail.inspection.approveByQuality ?? false,
-				inspectionParameters: inspectionData.detail.inspectionParameters.map(param => ({
-					order: param.order,
+				inspectionParameters: inspectionData.detail.inspectionParameters.map((param, index) => ({
+					order: param.order ?? index + 1,
 					parameterName: param.parameterName,
 					specification: param.specification,
 					tolerance: param.tolerance,

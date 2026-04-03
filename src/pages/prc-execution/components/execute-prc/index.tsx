@@ -141,6 +141,10 @@ const ExecutePrc = () => {
 			return existingTimingData[prcTemplateStepId.toString()] !== undefined;
 		}
 
+		if (step.type === 'setup') {
+			return existingTimingData.prcmetadata !== undefined;
+		}
+
 		return false;
 	};
 
@@ -1388,6 +1392,11 @@ const ExecutePrc = () => {
 			const stepCompleted = stepData.stepCompleted === true;
 
 			return productionApproved && stepCompleted && ctqApproved;
+		}
+
+		if (step.type === 'setup') {
+			const meta = getCurrentAggregatedData()?.prcmetadata as Record<string, unknown> | undefined;
+			return !!meta && typeof meta === 'object' && Object.keys(meta).length > 0;
 		}
 
 		// For other step types (rawMaterials, bom), just check if they have data
