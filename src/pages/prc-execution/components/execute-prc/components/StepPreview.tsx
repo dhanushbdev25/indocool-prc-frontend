@@ -172,6 +172,21 @@ const StepPreview = ({
 		!previewData.stepCompleted &&
 		(!previewData.timingExceeded || timingExceededRemarks.trim().length > 0);
 
+	const parseOkNotOkValue = (rawValue: unknown): { value: string; notOkComment: string } => {
+		if (typeof rawValue === 'string') {
+			return { value: rawValue, notOkComment: '' };
+		}
+		if (typeof rawValue === 'object' && rawValue !== null) {
+			const value = (rawValue as Record<string, unknown>).value;
+			const notOkComment = (rawValue as Record<string, unknown>).notOkComment;
+			return {
+				value: typeof value === 'string' ? value : '',
+				notOkComment: typeof notOkComment === 'string' ? notOkComment : ''
+			};
+		}
+		return { value: '', notOkComment: '' };
+	};
+
 	const renderDataSummary = () => {
 		let { data } = previewData;
 
@@ -433,7 +448,10 @@ const StepPreview = ({
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
 													{measurement.stepType === 'Check' || measurement.stepType === 'Inspection' ? (
 														<Chip
-															label={measurement.value}
+															label={(() => {
+																const parsedValue = parseOkNotOkValue(measurement.value);
+																return parsedValue.value || String(measurement.value || '');
+															})()}
 															size="small"
 															sx={{
 																backgroundColor: '#e3f2fd',
@@ -449,6 +467,17 @@ const StepPreview = ({
 														</Typography>
 													)}
 												</Box>
+												{(() => {
+													const parsedValue = parseOkNotOkValue(measurement.value);
+													const shouldShowComment =
+														parsedValue.value === 'not ok' && parsedValue.notOkComment.trim().length > 0;
+													if (!shouldShowComment) return null;
+													return (
+														<Typography variant="caption" sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}>
+															Comment: {parsedValue.notOkComment}
+														</Typography>
+													);
+												})()}
 											</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{measurement.stepType}</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
@@ -770,6 +799,7 @@ const StepPreview = ({
 										let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
 										let parameterType = paramMeta?.type || 'text';
 										let specification = paramMeta?.specification || 'N/A';
+										let notOkComment = '';
 
 										// Check if this is a table type parameter
 										if (parameterType === 'table' && paramMeta?.columns && paramMeta.columns.length > 0) {
@@ -804,7 +834,18 @@ const StepPreview = ({
 														.map(([col, val]) => {
 															// Format values based on parameter type
 															if (parameterType === 'ok/not ok') {
-																return `${col}: ${val === 'ok' ? 'OK' : val === 'not ok' ? 'Not OK' : val}`;
+																const parsedValue = parseOkNotOkValue(val);
+																const formatted =
+																	parsedValue.value === 'ok'
+																		? 'OK'
+																		: parsedValue.value === 'not ok'
+																			? 'Not OK'
+																			: parsedValue.value;
+																const commentSuffix =
+																	parsedValue.value === 'not ok' && parsedValue.notOkComment.trim()
+																		? ` (Comment: ${parsedValue.notOkComment})`
+																		: '';
+																return `${col}: ${formatted}${commentSuffix}`;
 															} else if (parameterType === 'datetime') {
 																return `${col}: ${val}`;
 															}
@@ -813,10 +854,15 @@ const StepPreview = ({
 														.join(', ');
 												} else {
 													// Single value
-													const value = String(paramObj.value);
 													if (parameterType === 'ok/not ok') {
+														const parsedValue = parseOkNotOkValue(paramObj.value);
+														const value = parsedValue.value;
+														notOkComment =
+															parsedValue.notOkComment ||
+															(typeof paramObj.notOkComment === 'string' ? String(paramObj.notOkComment) : '');
 														displayValue = value === 'ok' ? 'OK' : value === 'not ok' ? 'Not OK' : value;
 													} else {
+														const value = String(paramObj.value);
 														displayValue = value;
 													}
 												}
@@ -938,9 +984,16 @@ const StepPreview = ({
 																fields
 															</Typography>
 														) : (
-															<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-																{displayValue}
-															</Typography>
+															<>
+																<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+																	{displayValue}
+																</Typography>
+																{parameterType === 'ok/not ok' && displayValue === 'Not OK' && notOkComment.trim() && (
+																	<Typography variant="caption" sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}>
+																		Comment: {notOkComment}
+																	</Typography>
+																)}
+															</>
 														)}
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
@@ -1037,13 +1090,17 @@ const StepPreview = ({
 																						<TableRow key={rowIndex}>
 																							{paramMeta?.columns?.map(column => {
 																								const value = row[column.name];
+																								const parsedValue =
+																									column.type === 'ok/not ok'
+																										? parseOkNotOkValue(value)
+																										: { value: String(value || ''), notOkComment: '' };
 																								const formattedValue =
 																									column.type === 'ok/not ok'
-																										? value === 'ok'
+																										? parsedValue.value === 'ok'
 																											? 'OK'
-																											: value === 'not ok'
+																											: parsedValue.value === 'not ok'
 																												? 'Not OK'
-																												: String(value || '')
+																												: String(parsedValue.value || '')
 																										: String(value || '');
 
 																								return (
@@ -1068,6 +1125,16 @@ const StepPreview = ({
 																										>
 																											{formattedValue}
 																										</Typography>
+																										{column.type === 'ok/not ok' &&
+																											parsedValue.value === 'not ok' &&
+																											parsedValue.notOkComment.trim() && (
+																												<Typography
+																													variant="caption"
+																													sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}
+																												>
+																													Comment: {parsedValue.notOkComment}
+																												</Typography>
+																											)}
 																									</TableCell>
 																								);
 																							})}
@@ -1083,13 +1150,17 @@ const StepPreview = ({
 																									unknown
 																								>
 																							)[column.name];
+																							const parsedValue =
+																								column.type === 'ok/not ok'
+																									? parseOkNotOkValue(value)
+																									: { value: String(value), notOkComment: '' };
 																							const formattedValue =
 																								column.type === 'ok/not ok'
-																									? value === 'ok'
+																									? parsedValue.value === 'ok'
 																										? 'OK'
-																										: value === 'not ok'
+																										: parsedValue.value === 'not ok'
 																											? 'Not OK'
-																											: String(value)
+																											: String(parsedValue.value)
 																									: String(value);
 
 																							return (
@@ -1114,6 +1185,16 @@ const StepPreview = ({
 																									>
 																										{formattedValue}
 																									</Typography>
+																									{column.type === 'ok/not ok' &&
+																										parsedValue.value === 'not ok' &&
+																										parsedValue.notOkComment.trim() && (
+																											<Typography
+																												variant="caption"
+																												sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}
+																											>
+																												Comment: {parsedValue.notOkComment}
+																											</Typography>
+																										)}
 																								</TableCell>
 																							);
 																						})}

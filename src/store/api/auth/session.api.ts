@@ -1,6 +1,7 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { sessionData, userSessionContextparser } from '../userSessionContextParser';
 import { baseQuery } from '../baseApi';
+import Cookie from '../../../utils/Cookie';
 
 export const sessionApi = createApi({
 	reducerPath: 'sessionApi',
@@ -27,13 +28,10 @@ export const sessionApi = createApi({
 const { useUserSessionContextQuery } = sessionApi;
 
 const useSessionContextQuery = (token: string | null | undefined) => {
-	// Always attempt session API call - cookies are sent automatically with credentials: 'include'
-	// In cross-origin scenarios, we can't read the cookie via JS, but the browser sends it automatically
-	const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true' ? true : false;
-	console.log('isLoggedIn', isLoggedIn);
+	const resolvedToken = token ?? Cookie.getToken();
 	const query = useUserSessionContextQuery(null, {
-		skip: !isLoggedIn, // Always attempt - let server determine auth status
-		refetchOnMountOrArgChange: false,
+		skip: !resolvedToken,
+		refetchOnMountOrArgChange: true,
 		refetchOnReconnect: false
 	});
 

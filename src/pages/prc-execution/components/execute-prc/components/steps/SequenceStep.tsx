@@ -39,6 +39,23 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 
+	const getOkNotOkValue = (value: unknown): string => {
+		if (typeof value === 'string') return value;
+		if (typeof value === 'object' && value !== null && 'value' in value) {
+			const innerValue = (value as Record<string, unknown>).value;
+			return typeof innerValue === 'string' ? innerValue : '';
+		}
+		return '';
+	};
+
+	const getNotOkComment = (value: unknown): string => {
+		if (typeof value === 'object' && value !== null && 'notOkComment' in value) {
+			const comment = (value as Record<string, unknown>).notOkComment;
+			return typeof comment === 'string' ? comment : '';
+		}
+		return '';
+	};
+
 	// Compute initial data from existing data
 	const initialData = useMemo(() => {
 		const stepData = step.stepData;
@@ -121,9 +138,29 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				} else if (typeof actualData === 'object' && actualData !== null) {
 					// Handle object data (like { value: "ok" })
 					if ('value' in actualData) {
+						const candidateValue = (actualData as Record<string, unknown>).value;
+						const resolvedValue =
+							typeof candidateValue === 'string'
+								? candidateValue
+								: typeof candidateValue === 'object' && candidateValue !== null && 'value' in candidateValue
+									? String((candidateValue as Record<string, unknown>).value || '')
+									: '';
+						const resolvedNotOkComment = (() => {
+							if ('notOkComment' in actualData) {
+								const comment = (actualData as Record<string, unknown>).notOkComment;
+								return typeof comment === 'string' ? comment : '';
+							}
+							if (typeof candidateValue === 'object' && candidateValue !== null && 'notOkComment' in candidateValue) {
+								const nestedComment = (candidateValue as Record<string, unknown>).notOkComment;
+								return typeof nestedComment === 'string' ? nestedComment : '';
+							}
+							return '';
+						})();
 						return {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							formData: { value: (actualData as any).value.toString() },
+							formData: {
+								value: resolvedValue,
+								notOkComment: resolvedNotOkComment
+							},
 							measurements: [{ id: '1', value: '' }],
 							responsiblePersonData
 						};
@@ -198,6 +235,20 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				delete newAcks.value;
 				return newAcks;
 			});
+		}
+	};
+
+	const handleNotOkCommentChange = (comment: string) => {
+		setFormData(prev => ({
+			...prev,
+			notOkComment: comment
+		}));
+
+		if (errors.notOkComment) {
+			setErrors(prev => ({
+				...prev,
+				notOkComment: ''
+			}));
 		}
 	};
 
@@ -317,8 +368,13 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		} else {
 			// For single measurements, validate the main formData.value
 			if (stepData.targetValueType === 'ok/not ok') {
-				if (!formData.value) {
+				const selectedValue = getOkNotOkValue(formData.value);
+				const notOkComment = typeof formData.notOkComment === 'string' ? formData.notOkComment.trim() : '';
+
+				if (!selectedValue) {
 					newErrors.value = 'Please select an option';
+				} else if (selectedValue === 'not ok' && !notOkComment) {
+					newErrors.notOkComment = 'Comment is required when Not OK is selected';
 				}
 			} else {
 				if (!formData.value || (typeof formData.value === 'string' && formData.value.trim() === '')) {
@@ -438,11 +494,18 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 	const handleSubmit = () => {
 		if (validateForm()) {
-			let submitData: string | string[];
+			let submitData: string | string[] | Record<string, unknown>;
 
 			if (stepData.multipleMeasurements) {
 				// For multiple measurements, send array directly
 				submitData = measurements.map(m => m.value);
+			} else if (stepData.targetValueType === 'ok/not ok') {
+				const selectedValue = getOkNotOkValue(formData.value);
+				const notOkComment = typeof formData.notOkComment === 'string' ? formData.notOkComment.trim() : '';
+				submitData = {
+					value: selectedValue,
+					notOkComment
+				};
 			} else {
 				// For single values, send string directly
 				submitData = String(formData.value);
@@ -524,14 +587,15 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 	const renderInput = () => {
 		if (stepData.targetValueType === 'ok/not ok') {
+			const selectedValue = getOkNotOkValue(formData.value);
 			return (
-				<FormControl component="fieldset" disabled={isReadOnly}>
+				<FormControl component="fieldset" disabled={isReadOnly} fullWidth sx={{ width: '100%' }}>
 					<FormLabel component="legend" sx={{ fontSize: '0.875rem', color: '#666', mb: 1 }}>
 						Select Result
 					</FormLabel>
 					<RadioGroup
 						row
-						value={formData.value || ''}
+						value={selectedValue}
 						onChange={e => handleValueChange(e.target.value)}
 						sx={{ gap: 2 }}
 					>
@@ -542,7 +606,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							sx={{
 								'& .MuiFormControlLabel-label': {
 									fontSize: '0.875rem',
-									color: formData.value === 'ok' ? '#2e7d32' : '#666'
+									color: selectedValue === 'ok' ? '#2e7d32' : '#666'
 								}
 							}}
 						/>
@@ -553,11 +617,27 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							sx={{
 								'& .MuiFormControlLabel-label': {
 									fontSize: '0.875rem',
-									color: formData.value === 'not ok' ? '#d32f2f' : '#666'
+									color: selectedValue === 'not ok' ? '#d32f2f' : '#666'
 								}
 							}}
 						/>
 					</RadioGroup>
+					{selectedValue === 'not ok' && (
+						<TextField
+							fullWidth
+							multiline
+							rows={3}
+							label="Not OK Comment"
+							placeholder="Enter comments for Not OK selection"
+							value={typeof formData.notOkComment === 'string' ? formData.notOkComment : ''}
+							onChange={e => handleNotOkCommentChange(e.target.value)}
+							error={!!errors.notOkComment}
+							helperText={errors.notOkComment || 'Required when Not OK is selected'}
+							sx={{ mt: 1.5 }}
+							disabled={isReadOnly}
+							required
+						/>
+					)}
 				</FormControl>
 			);
 		}

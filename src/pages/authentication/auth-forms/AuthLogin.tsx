@@ -21,6 +21,8 @@ import { useLoginUserMutation } from '../../../store/api/auth/auth.api';
 import Button from '../../../components/common/button/Button';
 import { displayValidationErrors } from '../../../utils/helpers';
 import Cookie from '../../../utils/Cookie';
+import { useAppDispatch } from '../../../store/store';
+import { sessionApi } from '../../../store/api/auth/session.api';
 
 interface FormValues {
 	email: string;
@@ -37,6 +39,7 @@ const AuthLogin = () => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [submitError, setSubmitError] = useState<string>('');
 	const navigate = useNavigate();
+	const dispatch = useAppDispatch();
 
 	const [loginUser] = useLoginUserMutation();
 
@@ -68,19 +71,18 @@ const AuthLogin = () => {
 				email: values.email,
 				password: values.password
 			}).unwrap();
-			
-			// Check if we're in localStorage mode and tokens are in response
-			const authMode = (import.meta.env.AUTH_MODE || process.env.AUTH_MODE || 'cookie') as 'cookie' | 'localStorage';
-			if (authMode === 'localStorage' && response.accessToken) {
-				// Store tokens in localStorage
-				Cookie.setToken(response.accessToken);
-				if (response.refreshToken) {
-					Cookie.setRefreshToken(response.refreshToken);
-				}
+
+			if (!response.accessToken) {
+				throw new Error('Missing access token in login response');
 			}
-			// Note: In cookie mode, tokens are set automatically by the browser
-			
-			localStorage.setItem('isLoggedIn', 'true');
+
+			Cookie.setToken(response.accessToken);
+			if (response.refreshToken) {
+				Cookie.setRefreshToken(response.refreshToken);
+			}
+
+			// Clear stale session query error/data before next route bootstrap.
+			dispatch(sessionApi.util.resetApiState());
 			navigate('/');
 		} catch (err: unknown) {
 			setSubmitError(err instanceof Error ? err.message : 'An error occurred');

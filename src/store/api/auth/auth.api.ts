@@ -17,8 +17,7 @@ export const authApi = createApi({
 				return {
 					url: 'auth/login',
 					method: 'post',
-					body: data,
-					credentials: 'include'
+					body: data
 				};
 			}
 		}),
@@ -26,8 +25,7 @@ export const authApi = createApi({
 		logoutUser: builder.mutation<LogoutRes, void>({
 			query: () => ({
 				url: 'auth/logout',
-				method: 'post',
-				credentials: 'include'
+				method: 'post'
 			})
 		})
 	})

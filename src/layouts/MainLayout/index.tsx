@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { Box, useMediaQuery } from '@mui/material';
 import Drawer from './Drawer';
@@ -32,7 +32,7 @@ const MainLayout = () => {
 	const token = Cookie.getToken();
 
 	useEffect(() => {
-		if (localStorage.getItem('isLoggedIn') !== 'true') {
+		if (!token) {
 			window.location.href = '/';
 		}
 	}, [token]);

@@ -50,6 +50,23 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 	const [expandedMultiColumnRows, setExpandedMultiColumnRows] = useState<Set<number>>(new Set());
 	// Default all annotations to open (no need for expand/collapse state)
 
+	const getNotOkCommentKey = (key: string) => `${key}_notOkComment`;
+
+	const parseOkNotOkValue = (rawValue: unknown): { value: string; notOkComment: string } => {
+		if (typeof rawValue === 'string') {
+			return { value: rawValue, notOkComment: '' };
+		}
+		if (typeof rawValue === 'object' && rawValue !== null) {
+			const valueCandidate = (rawValue as Record<string, unknown>).value;
+			const commentCandidate = (rawValue as Record<string, unknown>).notOkComment;
+			return {
+				value: typeof valueCandidate === 'string' ? valueCandidate : '',
+				notOkComment: typeof commentCandidate === 'string' ? commentCandidate : ''
+			};
+		}
+		return { value: '', notOkComment: '' };
+	};
+
 	// Compute initial form data from existing data
 	const initialFormData = useMemo(() => {
 		if (executionData.prcAggregatedSteps) {
@@ -113,7 +130,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											param.columns.forEach(column => {
 												const key = `${parameterId}_row_${rowIndex}_${column.name}`;
 												const cellValue = row[column.name];
-												newFormData[key] = cellValue !== undefined && cellValue !== null ? String(cellValue) : '';
+												if (column.type === 'ok/not ok') {
+													const parsed = parseOkNotOkValue(cellValue);
+													newFormData[key] = parsed.value;
+													newFormData[getNotOkCommentKey(key)] = parsed.notOkComment;
+												} else {
+													newFormData[key] =
+														cellValue !== undefined && cellValue !== null ? String(cellValue) : '';
+												}
 												console.log(
 													`Loading table data: ${parameterId}.value[${rowIndex}].${column.name} -> ${key} = ${cellValue}`
 												);
@@ -133,7 +157,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 										// Double nesting case: { "value": { "value": { "Date": "213" } } }
 										Object.entries(actualValue as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
 											const key = `${parameterId}_${subColumnName}`;
-											newFormData[key] = String(subValue);
+											const columnMeta = param?.columns?.find(col => col.name === subColumnName);
+											if (columnMeta?.type === 'ok/not ok') {
+												const parsed = parseOkNotOkValue(subValue);
+												newFormData[key] = parsed.value;
+												newFormData[getNotOkCommentKey(key)] = parsed.notOkComment;
+											} else {
+												newFormData[key] = String(subValue);
+											}
 											console.log(
 												`Loading double-nested multi-column data: ${parameterId}.value.value.${subColumnName} -> ${key} = ${subValue}`
 											);
@@ -142,7 +173,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 										// Single nesting case: { "value": { "Date": "213" } }
 										Object.entries(value as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
 											const key = `${parameterId}_${subColumnName}`;
-											newFormData[key] = String(subValue);
+											const columnMeta = param?.columns?.find(col => col.name === subColumnName);
+											if (columnMeta?.type === 'ok/not ok') {
+												const parsed = parseOkNotOkValue(subValue);
+												newFormData[key] = parsed.value;
+												newFormData[getNotOkCommentKey(key)] = parsed.notOkComment;
+											} else {
+												newFormData[key] = String(subValue);
+											}
 											console.log(
 												`Loading single-nested multi-column data: ${parameterId}.value.${subColumnName} -> ${key} = ${subValue}`
 											);
@@ -151,19 +189,32 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								}
 							} else if (columnName === 'value') {
 								// Handle single value parameter: { "value": "1" } or { "value": { "value": "1" } }
-								const actualValue = (value as Record<string, unknown>).value;
-								if (actualValue !== undefined) {
-									// Double nesting case: { "value": { "value": "1" } }
-									paramFormData.value = String(actualValue);
-									console.log(
-										`Loading double-nested single value data: ${parameterId}.value.value -> ${parameterId} = ${actualValue}`
-									);
+								const paramMeta = step.inspectionParameters?.find(p => p.id.toString() === parameterId);
+								const parsed = parseOkNotOkValue(value);
+								if (paramMeta?.type === 'ok/not ok' && parsed.value) {
+									paramFormData.value = parsed.value;
+									if (parsed.notOkComment) {
+										paramFormData.notOkComment = parsed.notOkComment;
+									}
 								} else {
-									// Single nesting case: { "value": "1" }
-									paramFormData.value = String(value);
-									console.log(
-										`Loading single-nested single value data: ${parameterId}.value -> ${parameterId} = ${value}`
-									);
+									const actualValue = (value as Record<string, unknown>).value;
+									if (actualValue !== undefined) {
+										// Double nesting case: { "value": { "value": "1" } }
+										paramFormData.value = String(actualValue);
+										console.log(
+											`Loading double-nested single value data: ${parameterId}.value.value -> ${parameterId} = ${actualValue}`
+										);
+									} else {
+										// Single nesting case: { "value": "1" }
+										paramFormData.value = String(value);
+										console.log(
+											`Loading single-nested single value data: ${parameterId}.value -> ${parameterId} = ${value}`
+										);
+									}
+								}
+								const notOkComment = (parameterData as Record<string, unknown>).notOkComment;
+								if (typeof notOkComment === 'string') {
+									paramFormData.notOkComment = notOkComment;
 								}
 							} else {
 								// Handle direct column data (fallback)
@@ -281,6 +332,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						...existingValue,
 						value: value
 					};
+					if (value !== 'not ok') {
+						delete (newFormData[parameterId.toString()] as Record<string, unknown>).notOkComment;
+					}
 				} else {
 					// Create new object structure
 					newFormData[parameterId.toString()] = {
@@ -290,6 +344,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			} else {
 				// For multi-column parameters, use the flat structure
 				newFormData[key] = value;
+				if (value !== 'not ok') {
+					delete newFormData[getNotOkCommentKey(key)];
+				}
 			}
 
 			return newFormData;
@@ -300,6 +357,26 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			setErrors(prev => ({
 				...prev,
 				[key]: ''
+			}));
+		}
+		if (value !== 'not ok' && errors[getNotOkCommentKey(key)]) {
+			setErrors(prev => ({
+				...prev,
+				[getNotOkCommentKey(key)]: ''
+			}));
+		}
+	};
+
+	const handleNotOkCommentChange = (key: string, value: string) => {
+		const commentKey = getNotOkCommentKey(key);
+		setFormData(prev => ({
+			...prev,
+			[commentKey]: value
+		}));
+		if (errors[commentKey]) {
+			setErrors(prev => ({
+				...prev,
+				[commentKey]: ''
 			}));
 		}
 	};
@@ -398,6 +475,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		setFormData(prev => {
 			const newFormData = { ...prev };
 			newFormData[key] = value;
+			if (value !== 'not ok') {
+				delete newFormData[getNotOkCommentKey(key)];
+			}
 			return newFormData;
 		});
 
@@ -406,6 +486,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			setErrors(prev => ({
 				...prev,
 				[key]: ''
+			}));
+		}
+		if (value !== 'not ok' && errors[getNotOkCommentKey(key)]) {
+			setErrors(prev => ({
+				...prev,
+				[getNotOkCommentKey(key)]: ''
 			}));
 		}
 	};
@@ -539,6 +625,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						} else if (column.type === 'ok/not ok') {
 							if (value !== 'ok' && value !== 'not ok') {
 								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be either OK or Not OK`;
+							} else if (value === 'not ok') {
+								const commentKey = getNotOkCommentKey(key);
+								const commentValue = formData[commentKey];
+								if (!commentValue || (typeof commentValue === 'string' && commentValue.trim() === '')) {
+									newErrors[commentKey] = `Row ${rowIndex + 1}, ${column.name} comment is required for Not OK`;
+								}
 							}
 						} else if (column.type === 'datetime') {
 							if (!value || !String(value).trim()) {
@@ -562,6 +654,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					} else if (column.type === 'ok/not ok') {
 						if (value !== 'ok' && value !== 'not ok') {
 							newErrors[key] = `${column.name} must be either OK or Not OK`;
+						} else if (value === 'not ok') {
+							const commentKey = getNotOkCommentKey(key);
+							const commentValue = formData[commentKey];
+							if (!commentValue || (typeof commentValue === 'string' && commentValue.trim() === '')) {
+								newErrors[commentKey] = `${column.name} comment is required for Not OK`;
+							}
 						}
 					} else if (column.type === 'datetime') {
 						if (!value || !String(value).trim()) {
@@ -593,6 +691,15 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				} else if (param.type === 'ok/not ok') {
 					if (value !== 'ok' && value !== 'not ok') {
 						newErrors[key] = 'Value must be either OK or Not OK';
+					} else if (value === 'not ok') {
+						const notOkComment =
+							typeof paramData === 'object' && paramData !== null && 'notOkComment' in paramData
+								? String((paramData as Record<string, unknown>).notOkComment || '')
+								: '';
+						const commentFromKey = String(formData[getNotOkCommentKey(key)] || '');
+						if (!notOkComment.trim() && !commentFromKey.trim()) {
+							newErrors[getNotOkCommentKey(key)] = 'Comment is required for Not OK';
+						}
 					}
 				} else if (param.type === 'datetime') {
 					if (!value || !value.trim()) {
@@ -627,7 +734,15 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 							const key = `${param.id}_row_${rowIndex}_${column.name}`;
 							const value = formData[key];
 							if (value !== undefined && value !== null) {
-								rowObj[column.name] = value;
+								if (column.type === 'ok/not ok') {
+									const commentValue = formData[getNotOkCommentKey(key)];
+									rowObj[column.name] = {
+										value,
+										notOkComment: typeof commentValue === 'string' ? commentValue.trim() : ''
+									};
+								} else {
+									rowObj[column.name] = value;
+								}
 							}
 						});
 						if (Object.keys(rowObj).length > 0) {
@@ -647,7 +762,15 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						const key = `${param.id}_${column.name}`;
 						const value = formData[key];
 						if (value !== undefined && value !== null) {
-							valueObj[column.name] = value;
+							if (column.type === 'ok/not ok') {
+								const commentValue = formData[getNotOkCommentKey(key)];
+								valueObj[column.name] = {
+									value,
+									notOkComment: typeof commentValue === 'string' ? commentValue.trim() : ''
+								};
+							} else {
+								valueObj[column.name] = value;
+							}
 						}
 					});
 
@@ -667,9 +790,22 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						if ((formValue as Record<string, unknown>).annotations) {
 							paramData.annotations = (formValue as Record<string, unknown>).annotations;
 						}
+						if ((formValue as Record<string, unknown>).notOkComment) {
+							paramData.notOkComment = (formValue as Record<string, unknown>).notOkComment;
+						}
+						if (param.type === 'ok/not ok') {
+							const commentValue = formData[getNotOkCommentKey(key)];
+							if (typeof commentValue === 'string') {
+								paramData.notOkComment = commentValue.trim();
+							}
+						}
 					} else {
 						// Direct value
 						paramData.value = formValue;
+						if (param.type === 'ok/not ok' && formValue === 'not ok') {
+							const commentValue = formData[getNotOkCommentKey(key)];
+							paramData.notOkComment = typeof commentValue === 'string' ? commentValue.trim() : '';
+						}
 					}
 
 					console.log(`Single value parameter ${param.id}:`, paramData.value);
@@ -860,8 +996,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 													// Handle different parameter types
 													if (param.type === 'ok/not ok') {
+														const commentKey = getNotOkCommentKey(param.id.toString());
 														return (
-															<FormControl component="fieldset" disabled={isReadOnly}>
+															<FormControl component="fieldset" disabled={isReadOnly} fullWidth sx={{ width: '100%' }}>
 																<FormLabel component="legend" sx={{ fontSize: '0.875rem', color: '#666', mb: 1 }}>
 																	Select Result
 																</FormLabel>
@@ -894,6 +1031,30 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																		}}
 																	/>
 																</RadioGroup>
+																{currentValue === 'not ok' && (
+																	<TextField
+																		fullWidth
+																		multiline
+																		rows={2}
+																		label="Not OK Comment"
+																		placeholder="Enter comments for Not OK selection"
+																		value={String(
+																			formData[commentKey] ||
+																				(typeof paramData === 'object' &&
+																				paramData !== null &&
+																				'notOkComment' in paramData
+																					? (paramData as Record<string, unknown>).notOkComment
+																					: '') ||
+																				''
+																		)}
+																		onChange={e => handleNotOkCommentChange(param.id.toString(), e.target.value)}
+																		error={!!errors[commentKey]}
+																		helperText={errors[commentKey] || 'Required when Not OK is selected'}
+																		disabled={isReadOnly}
+																		required
+																		sx={{ mt: 1 }}
+																	/>
+																)}
 															</FormControl>
 														);
 													}
@@ -1076,7 +1237,13 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																					return (
 																						<TableCell key={column.name}>
 																							{column.type === 'ok/not ok' ? (
-																								<FormControl component="fieldset" disabled={isReadOnly} size="small">
+																								<FormControl
+																									component="fieldset"
+																									disabled={isReadOnly}
+																									size="small"
+																									fullWidth
+																									sx={{ width: '100%' }}
+																								>
 																									<RadioGroup
 																										row
 																										value={currentValue}
@@ -1115,6 +1282,26 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																											}}
 																										/>
 																									</RadioGroup>
+																									{currentValue === 'not ok' && (
+																										<TextField
+																											fullWidth
+																											multiline
+																											rows={2}
+																											label="Not OK Comment"
+																											placeholder="Enter comments for Not OK selection"
+																											value={String(formData[getNotOkCommentKey(key)] || '')}
+																											onChange={e => handleNotOkCommentChange(key, e.target.value)}
+																											error={!!errors[getNotOkCommentKey(key)]}
+																											helperText={
+																												errors[getNotOkCommentKey(key)] ||
+																												'Required when Not OK is selected'
+																											}
+																											disabled={isReadOnly}
+																											required
+																											size="small"
+																											sx={{ mt: 1 }}
+																										/>
+																									)}
 																								</FormControl>
 																							) : column.type === 'datetime' ? (
 																								<LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -1213,10 +1400,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																	<Grid key={column.name} size={{ xs: 12, sm: 6, md: 4 }}>
 																		{column.type === 'ok/not ok' ? (
 																			<Box>
+																				{(() => {
+																					const commentKey = getNotOkCommentKey(key);
+																					return (
+																						<>
 																				<Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
 																					{column.name}
 																				</Typography>
-																				<FormControl component="fieldset" disabled={isReadOnly}>
+																				<FormControl component="fieldset" disabled={isReadOnly} fullWidth sx={{ width: '100%' }}>
 																					<RadioGroup
 																						row
 																						value={currentValue}
@@ -1256,6 +1447,26 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																						{errors[key]}
 																					</Typography>
 																				)}
+																				{currentValue === 'not ok' && (
+																					<TextField
+																						fullWidth
+																						multiline
+																						rows={2}
+																						label="Not OK Comment"
+																						placeholder="Enter comments for Not OK selection"
+																						value={String(formData[commentKey] || '')}
+																						onChange={e => handleNotOkCommentChange(key, e.target.value)}
+																						error={!!errors[commentKey]}
+																						helperText={errors[commentKey] || 'Required when Not OK is selected'}
+																						disabled={isReadOnly}
+																						required
+																						size="small"
+																						sx={{ mt: 1 }}
+																					/>
+																				)}
+																						</>
+																					);
+																				})()}
 																			</Box>
 																		) : column.type === 'datetime' ? (
 																			<LocalizationProvider dateAdapter={AdapterDayjs}>
