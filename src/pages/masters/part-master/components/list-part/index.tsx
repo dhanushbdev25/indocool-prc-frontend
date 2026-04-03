@@ -14,6 +14,7 @@ import {
 	type Drilling,
 	type Cutting
 } from '../../../../../store/api/business/part-master/part.validators';
+import { getPartMouldeSummary } from '../../../../../mocks/moulde-reconciliation.mock';
 
 const ListPart = () => {
 	const navigate = useNavigate();
@@ -32,25 +33,10 @@ const ListPart = () => {
 	const allPartData: PartData[] = useMemo(() => {
 		if (!partData) return [];
 		return partData.detail
-			.filter(
-				(item: {
-					partMaster: PartMaster;
-					rawMaterials: RawMaterial[];
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					bom?: any[]; // BOM might still be in API response but we ignore it
-					drilling: Drilling[];
-					cutting: Cutting[];
-				}) => item.partMaster.id !== undefined
-			)
-			.map(
-				(item: {
-					partMaster: PartMaster;
-					rawMaterials: RawMaterial[];
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					bom?: any[]; // BOM might still be in API response but we ignore it
-					drilling: Drilling[];
-					cutting: Cutting[];
-				}) => ({
+			.filter((item: { partMaster: PartMaster }) => item.partMaster.id !== undefined)
+			.map((item: { partMaster: PartMaster; rawMaterials: RawMaterial[]; drilling: Drilling[]; cutting: Cutting[] }) => {
+				const mouldeSummary = getPartMouldeSummary(item.partMaster.partNumber);
+				return {
 					id: item.partMaster.id!,
 					partNumber: item.partMaster.partNumber,
 					drawingNumber: item.partMaster.drawingNumber,
@@ -62,10 +48,12 @@ const ListPart = () => {
 					totalRawMaterials: item.rawMaterials.length,
 					totalDrilling: item.drilling.length,
 					totalCutting: item.cutting.length,
+					totalMouldes: mouldeSummary.totalMouldes,
+					dueMouldes: mouldeSummary.dueMouldes,
 					createdAt: item.partMaster.createdAt || '',
 					updatedAt: item.partMaster.updatedAt || ''
-				})
-			);
+				};
+			});
 	}, [partData]);
 
 	// Filter and search logic

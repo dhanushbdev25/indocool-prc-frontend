@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Box, Grid, Typography, Chip, Paper } from '@mui/material';
 import { PartMaster, PartDrawing } from '../../../../../../store/api/business/part-master/part.validators';
 import PartImageUpload from '../../create-part/components/PartImageUpload';
+import { getPartMouldes, PartMouldeMapping } from '../../../../../../mocks/moulde-reconciliation.mock';
 
 interface ViewGeneralInfoProps {
 	partMaster: PartMaster;
@@ -8,6 +10,16 @@ interface ViewGeneralInfoProps {
 }
 
 const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
+	const [mouldes, setMouldes] = useState<PartMouldeMapping[]>([]);
+
+	useEffect(() => {
+		const loadMouldes = async () => {
+			const data = await getPartMouldes(partMaster.partNumber);
+			setMouldes(data);
+		};
+		loadMouldes();
+	}, [partMaster.partNumber]);
+
 	// Convert files to gallery format for display
 	const displayGallery = files.map((file, index) => ({
 		id: index,
@@ -198,6 +210,25 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 							<Typography variant="body1" sx={{ color: '#333', lineHeight: 1.6 }}>
 								{partMaster.notes}
 							</Typography>
+						</Box>
+					</Grid>
+				)}
+
+				{mouldes.length > 0 && (
+					<Grid size={{ xs: 12 }}>
+						<Box sx={{ mb: 2 }}>
+							<Typography variant="body2" sx={{ color: '#666', fontWeight: 500, mb: 1 }}>
+								Moulde Mapping
+							</Typography>
+							<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+								{mouldes.map(moulde => (
+									<Chip
+										key={`${moulde.partNumber}-${moulde.mouldeCode}`}
+										label={`${moulde.mouldeCode} | Count: ${moulde.reconciliationCount}`}
+										variant="outlined"
+									/>
+								))}
+							</Box>
 						</Box>
 					</Grid>
 				)}

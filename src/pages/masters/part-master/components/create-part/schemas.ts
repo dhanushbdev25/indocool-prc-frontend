@@ -78,6 +78,16 @@ export const inspectionDiagramSchema = yup.object({
 		.default([])
 });
 
+export const mouldeSchema = yup.object({
+	mouldeCode: yup.string().required('Moulde code is required'),
+	reconciliationCount: yup
+		.number()
+		.typeError('Reconciliation count must be a number')
+		.min(1, 'Reconciliation count must be at least 1')
+		.required('Reconciliation count is required'),
+	currentCount: yup.number().default(0)
+});
+
 // Main form validation schema
 export const partMasterFormSchema = yup.object({
 	id: yup.number().optional(),
@@ -112,6 +122,7 @@ export const partMasterFormSchema = yup.object({
 	rawMaterials: yup.array(rawMaterialFormSchema).default([]),
 	drilling: yup.array(drillingFormSchema).default([]),
 	cutting: yup.array(cuttingFormSchema).default([]),
+	mouldes: yup.array(mouldeSchema).default([]),
 	files: yup.array(partDrawingSchema).default([]),
 	inspectionDiagrams: inspectionDiagramSchema.optional(),
 	createdAt: yup.string().optional(),
@@ -124,6 +135,7 @@ export type DrillingFormData = yup.InferType<typeof drillingFormSchema>;
 export type CuttingFormData = yup.InferType<typeof cuttingFormSchema>;
 export type PartDrawingFormData = yup.InferType<typeof partDrawingSchema>;
 export type InspectionDiagramFormData = yup.InferType<typeof inspectionDiagramSchema>;
+export type MouldeFormData = yup.InferType<typeof mouldeSchema>;
 export type PartMasterFormData = yup.InferType<typeof partMasterFormSchema>;
 
 // Default values
@@ -186,6 +198,7 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	rawMaterials: [],
 	drilling: [],
 	cutting: [],
+	mouldes: [],
 	files: [],
 	inspectionDiagrams: undefined
 };
@@ -213,7 +226,8 @@ export const generalInfoSchema = yup.object({
 	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
 	layupType: yup.string().max(100, 'Layup type must be less than 100 characters').optional(),
 	model: yup.string().max(100, 'Model must be less than 100 characters').optional(),
-	sapReferenceNumber: yup.string().max(50, 'SAP reference number must be less than 50 characters').optional()
+	sapReferenceNumber: yup.string().max(50, 'SAP reference number must be less than 50 characters').optional(),
+	mouldes: yup.array(mouldeSchema).default([])
 });
 
 export const rawMaterialsSchema = yup.object({

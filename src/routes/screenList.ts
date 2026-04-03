@@ -32,6 +32,9 @@ export const imports = {
 	partMaster: Loadable(lazy(() => import('../pages/masters/part-master/components/list-part'))),
 	createPart: Loadable(lazy(() => import('../pages/masters/part-master/components/create-part'))),
 	viewPart: Loadable(lazy(() => import('../pages/masters/part-master/components/view-part'))),
+	mouldeReconciliation: Loadable(
+		lazy(() => import('../pages/masters/moulde-reconciliation/components/list-moulde-reconciliation'))
+	),
 	prcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/list-prc-execution'))),
 	viewPrcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/view-prc-execution'))),
 	executePrc: Loadable(lazy(() => import('../pages/prc-execution/components/execute-prc')))
@@ -230,6 +233,15 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				element: imports.createPart,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
+			},
+			{
+				icon: Build,
+				text: 'Moulde Reconciliation',
+				path: 'moulde-reconciliation',
+				element: imports.mouldeReconciliation,
+				permission: 'EDITPROCESSSEQUENCE',
+				order: 6,
+				showInSidebar: true
 			}
 		]
 	},

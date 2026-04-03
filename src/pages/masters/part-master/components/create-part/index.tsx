@@ -34,6 +34,7 @@ import {
 import { useFetchCustomersQuery } from '../../../../../store/api/business/part-master/part.api';
 import { uploadPartDrawings } from '../../../../../utils/uploadPartDrawings';
 import { useImageGallery } from '../../../../../hooks/useImageGallery';
+import { getPartMouldes, upsertPartMouldes } from '../../../../../mocks/moulde-reconciliation.mock';
 
 /**
  * Handles image upload and updates form data with API filenames
@@ -207,6 +208,7 @@ const transformFormDataToApiRequest = (
 			isLatest: formData.isLatest ?? true,
 			catalyst: formData.catalyst,
 			prcTemplate: formData.prcTemplate,
+			mouldes: formData.mouldes || [],
 			files: uploadedDrawings,
 			inspectionDiagrams: transformInspectionDiagrams(formData.inspectionDiagrams)
 		},
@@ -383,6 +385,7 @@ const CreatePart = () => {
 					version: c.version,
 					isLatest: c.isLatest
 				})),
+				mouldes: [],
 				files: partMaster.files || [],
 				inspectionDiagrams: partMaster.inspectionDiagrams
 					? Array.isArray(partMaster.inspectionDiagrams)
@@ -408,6 +411,22 @@ const CreatePart = () => {
 			}
 		}
 	}, [isEditMode, isFetchSuccess, partData, customersData, reset, setGallery]);
+
+	useEffect(() => {
+		const loadMouldes = async () => {
+			if (!isEditMode || !partData?.detail?.partMaster?.partNumber) return;
+			const existingMouldes = await getPartMouldes(partData.detail.partMaster.partNumber);
+			setValue(
+				'mouldes',
+				existingMouldes.map(item => ({
+					mouldeCode: item.mouldeCode,
+					reconciliationCount: item.reconciliationCount,
+					currentCount: item.currentCount
+				}))
+			);
+		};
+		loadMouldes();
+	}, [isEditMode, partData, setValue]);
 
 	const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
 		setActiveTab(newValue);
@@ -469,6 +488,9 @@ const CreatePart = () => {
 					showConfirmButton: false
 				});
 			}
+
+			// Mock-only moulde persistence independent of backend payload.
+			await upsertPartMouldes(data.partNumber, data.mouldes || []);
 
 			navigate('/part-master');
 		} catch (err: unknown) {

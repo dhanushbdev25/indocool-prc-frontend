@@ -10,10 +10,12 @@ import {
 	Grid,
 	Divider,
 	FormControlLabel,
-	Switch
+	Switch,
+	IconButton,
+	Button
 } from '@mui/material';
-import { Info as InfoIcon, Image as ImageIcon } from '@mui/icons-material';
-import { Controller, Control, FieldErrors } from 'react-hook-form';
+import { Info as InfoIcon, Image as ImageIcon, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Controller, Control, FieldErrors, useFieldArray } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import { useFetchCustomersQuery } from '.././../../../../../store/api/business/part-master/part.api';
 import PartImageUpload from './PartImageUpload';
@@ -29,6 +31,10 @@ interface GeneralInfoProps {
 
 const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: GeneralInfoProps) => {
 	const { data: customersData, isLoading: isCustomersLoading } = useFetchCustomersQuery();
+	const { fields: mouldeFields, append, remove } = useFieldArray({
+		control,
+		name: 'mouldes'
+	});
 
 	return (
 		<Box>
@@ -332,6 +338,74 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 								/>
 							)}
 						/>
+					</Grid>
+
+					{/* Moulde Mapping */}
+					<Grid size={{ xs: 12 }}>
+						<Divider sx={{ my: 2 }} />
+						<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+							<Box>
+								<Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+									Moulde Mapping
+								</Typography>
+								<Typography variant="caption" sx={{ color: '#666' }}>
+									Add mouldes and reconciliation counts for this part
+								</Typography>
+							</Box>
+							<Button
+								variant="outlined"
+								size="small"
+								startIcon={<AddIcon />}
+								onClick={() => append({ mouldeCode: '', reconciliationCount: 1, currentCount: 0 })}
+							>
+								Add Moulde
+							</Button>
+						</Box>
+
+						{mouldeFields.map((field, index) => (
+							<Grid container spacing={2} sx={{ mb: 1 }} key={field.id}>
+								<Grid size={{ xs: 12, md: 5 }}>
+									<Controller
+										name={`mouldes.${index}.mouldeCode`}
+										control={control}
+										render={({ field: mouldeField }) => (
+											<TextField
+												{...mouldeField}
+												fullWidth
+												label="Moulde Code"
+												placeholder="e.g., MLD-001"
+												error={!!errors.mouldes?.[index]?.mouldeCode}
+												helperText={errors.mouldes?.[index]?.mouldeCode?.message}
+											/>
+										)}
+									/>
+								</Grid>
+								<Grid size={{ xs: 12, md: 5 }}>
+									<Controller
+										name={`mouldes.${index}.reconciliationCount`}
+										control={control}
+										render={({ field: countField }) => (
+											<TextField
+												{...countField}
+												fullWidth
+												type="number"
+												label="Reconciliation Count"
+												inputProps={{ min: 1 }}
+												error={!!errors.mouldes?.[index]?.reconciliationCount}
+												helperText={errors.mouldes?.[index]?.reconciliationCount?.message}
+											/>
+										)}
+									/>
+								</Grid>
+								<Grid size={{ xs: 12, md: 2 }}>
+									<Box sx={{ display: 'flex', justifyContent: 'center', height: '100%', alignItems: 'center' }}>
+										<IconButton color="error" onClick={() => remove(index)} aria-label="remove moulde">
+											<DeleteIcon />
+										</IconButton>
+									</Box>
+								</Grid>
+							</Grid>
+						))}
 					</Grid>
 				</Grid>
 			</Paper>

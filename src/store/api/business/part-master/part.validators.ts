@@ -95,6 +95,15 @@ export const inspectionDiagramSchema = z
 	})
 	.loose();
 
+export const mouldeSchema = z
+	.object({
+		mouldeCode: z.string().min(1, 'Moulde code is required'),
+		reconciliationCount: z.number().min(1, 'Reconciliation count must be at least 1'),
+		currentCount: z.number().default(0),
+		lastReconciledAt: z.string().optional()
+	})
+	.loose();
+
 export const partMasterSchema = z
 	.object({
 		id: z.number().optional(),
@@ -118,6 +127,7 @@ export const partMasterSchema = z
 		createdAt: z.string().nullable().optional(),
 		updatedAt: z.string().nullable().optional(),
 		customerName: z.string().nullable().optional(),
+		mouldes: z.array(mouldeSchema).optional().default([]),
 		files: z.array(partDrawingSchema).nullable().optional(),
 		inspectionDiagrams: z
 			.union([inspectionDiagramSchema, z.array(inspectionDiagramSchema)])
@@ -230,6 +240,7 @@ export type Drilling = z.infer<typeof drillingSchema>;
 export type Cutting = z.infer<typeof cuttingSchema>;
 export type PartDrawing = z.infer<typeof partDrawingSchema>;
 export type InspectionDiagram = z.infer<typeof inspectionDiagramSchema>;
+export type Moulde = z.infer<typeof mouldeSchema>;
 export type PartMaster = z.infer<typeof partMasterSchema>;
 export type CustomerCombo = z.infer<typeof customerComboSchema>;
 export type PartDetail = z.infer<typeof partDetailSchema>;

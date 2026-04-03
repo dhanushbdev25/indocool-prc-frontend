@@ -53,12 +53,19 @@ export interface ExtendedPartMasterFormData {
 	rawMaterials: RawMaterialFormData[];
 	drilling: DrillingFormData[];
 	cutting: CuttingFormData[];
+	mouldes: MouldeFormData[];
 	createdAt?: string;
 	updatedAt?: string;
 	// Additional fields for display
 	catalystName?: string;
 	prcTemplateName?: string;
 	customerName?: string;
+}
+
+export interface MouldeFormData {
+	mouldeCode: string;
+	reconciliationCount: number;
+	currentCount?: number;
 }
 
 export interface RawMaterialFormData {
