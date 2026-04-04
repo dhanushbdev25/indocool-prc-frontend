@@ -12,7 +12,10 @@ import {
 	Select,
 	MenuItem,
 	Divider,
-	Avatar
+	Avatar,
+	Autocomplete,
+	Alert,
+	CircularProgress
 } from '@mui/material';
 import { Engineering as EngineeringIcon, Schedule as ScheduleIcon, Person as PersonIcon } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -20,6 +23,8 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
+import { useFetchMouldComboQuery } from '../../../../../../store/api/business/mould/mould.api';
+import { type MouldComboItem } from '../../../../../../store/api/business/mould/mould.validators';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
 
 const shiftOptions = [
@@ -36,41 +41,66 @@ interface ExecutionSetupStepProps {
 
 const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSetupStepProps) => {
 	const { userInfo } = useCurrentRole();
+	const partId = executionData.partId;
+	const {
+		data: mouldOptions = [],
+		isLoading: isMouldComboLoading,
+		isFetching: isMouldComboFetching
+	} = useFetchMouldComboQuery({ partId }, { skip: !partId });
+
 	const [productionSetId, setProductionSetId] = useState('');
-	const [mouldId, setMouldId] = useState('');
+	const [selectedMould, setSelectedMould] = useState<MouldComboItem | null>(null);
+	const [fallbackMouldId, setFallbackMouldId] = useState('');
 	const [shift, setShift] = useState('Morning');
 	const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	const isReadOnly = step.status === 'completed';
+	const mouldComboBusy = isMouldComboLoading || isMouldComboFetching;
 
 	useEffect(() => {
 		const saved = executionData.prcAggregatedSteps?.prcmetadata as Record<string, unknown> | undefined;
-		if (saved && Object.keys(saved).length > 0) {
+		const hasSaved = saved && Object.keys(saved).length > 0;
+		const mouldIdStr =
+			(hasSaved && typeof saved.mouldId === 'string' ? saved.mouldId : '') || executionData.mouldId || '';
+
+		if (hasSaved) {
 			setTimeout(() => {
 				if (typeof saved.productionSetId === 'string') setProductionSetId(saved.productionSetId);
-				if (typeof saved.mouldId === 'string') setMouldId(saved.mouldId);
 				if (typeof saved.shift === 'string') setShift(saved.shift);
 				if (typeof saved.date === 'string' && saved.date) {
 					setSelectedDate(dayjs(saved.date));
 				}
+				if (mouldIdStr) setFallbackMouldId(mouldIdStr);
 			}, 0);
 		} else {
 			setTimeout(() => {
 				setProductionSetId(executionData.productionSetId || '');
-				setMouldId(executionData.mouldId || '');
 				setShift(executionData.shift || 'Morning');
 				if (executionData.date) {
 					setSelectedDate(dayjs(executionData.date));
 				}
+				if (mouldIdStr) setFallbackMouldId(mouldIdStr);
 			}, 0);
 		}
 	}, [step.status, executionData]);
 
+	useEffect(() => {
+		if (!fallbackMouldId) {
+			setSelectedMould(null);
+			return;
+		}
+		if (mouldOptions.length === 0) return;
+		const match = mouldOptions.find(o => String(o.data.mouldId) === String(fallbackMouldId));
+		setSelectedMould(match ?? null);
+	}, [mouldOptions, fallbackMouldId]);
+
 	const validate = () => {
 		const next: Record<string, string> = {};
 		if (!productionSetId.trim()) next.productionSetId = 'Production Set ID is required';
-		if (!mouldId.trim()) next.mouldId = 'Mould ID is required';
+		if (!partId) next.mouldId = 'Part is missing; cannot load moulds for this execution';
+		const mouldCode = selectedMould?.data.mouldId?.trim();
+		if (partId && !mouldCode) next.mouldId = 'Mould is required';
 		if (!shift) next.shift = 'Shift is required';
 		setErrors(next);
 		return Object.keys(next).length === 0;
@@ -79,9 +109,10 @@ const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSe
 	const handleSubmit = () => {
 		if (!validate()) return;
 		const dateStr = selectedDate.format('YYYY-MM-DD');
+		const mouldIdValue = selectedMould?.data.mouldId?.trim() ?? '';
 		onStepComplete({
 			productionSetId: productionSetId.trim(),
-			mouldId: mouldId.trim(),
+			mouldId: mouldIdValue,
 			shift,
 			date: dateStr,
 			recordedByUserId: userInfo.id
@@ -140,17 +171,60 @@ const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSe
 								/>
 							</Grid>
 							<Grid size={{ xs: 12, md: 6 }}>
-								<TextField
-									fullWidth
-									label="Mould ID"
-									value={mouldId}
-									onChange={e => setMouldId(e.target.value)}
-									error={!!errors.mouldId}
-									helperText={errors.mouldId}
-									disabled={isReadOnly}
-									required
-									sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-								/>
+								{!partId ? (
+									<Alert severity="warning" sx={{ borderRadius: 2 }}>
+										Part is missing for this execution, so the mould list cannot be loaded.
+									</Alert>
+								) : isReadOnly && !selectedMould && fallbackMouldId ? (
+									<TextField
+										fullWidth
+										label="Mould ID"
+										value={fallbackMouldId}
+										disabled
+										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+										helperText="Saved mould is not in the current list for this part"
+									/>
+								) : (
+									<Autocomplete<MouldComboItem, false, false, false>
+										options={mouldOptions}
+										loading={mouldComboBusy}
+										value={selectedMould}
+										onChange={(_, value) => {
+											setSelectedMould(value);
+											setFallbackMouldId(value?.data.mouldId ?? '');
+											if (errors.mouldId) setErrors(prev => ({ ...prev, mouldId: '' }));
+										}}
+										getOptionLabel={option => option.label}
+										isOptionEqualToValue={(a, b) => a.value === b.value}
+										disabled={isReadOnly}
+										renderInput={params => (
+											<TextField
+												{...params}
+												label="Mould"
+												required
+												error={!!errors.mouldId}
+												helperText={
+													errors.mouldId ||
+													(mouldOptions.length === 0 && !mouldComboBusy
+														? 'No moulds linked to this part'
+														: 'Select a mould for this part')
+												}
+												sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+												InputProps={{
+													...params.InputProps,
+													endAdornment: (
+														<>
+															{mouldComboBusy ? (
+																<CircularProgress color="inherit" size={20} sx={{ mr: 1 }} />
+															) : null}
+															{params.InputProps.endAdornment}
+														</>
+													)
+												}}
+											/>
+										)}
+									/>
+								)}
 							</Grid>
 						</Grid>
 					</CardContent>

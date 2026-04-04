@@ -78,8 +78,8 @@ export const inspectionDiagramSchema = yup.object({
 		.default([])
 });
 
-export const mouldeSchema = yup.object({
-	mouldeCode: yup.string().required('Moulde code is required'),
+export const mouldSchema = yup.object({
+	mouldCode: yup.string().required('Mould code is required'),
 	reconciliationCount: yup
 		.number()
 		.typeError('Reconciliation count must be a number')
@@ -152,7 +152,7 @@ export const partMasterFormSchema = yup.object({
 	rawMaterials: yup.array(rawMaterialFormSchema).default([]),
 	drilling: yup.array(drillingFormSchema).default([]),
 	cutting: yup.array(cuttingFormSchema).default([]),
-	mouldes: yup.array(mouldeSchema).default([]),
+	moulds: yup.array(mouldSchema).default([]),
 	files: yup.array(partDrawingSchema).default([]),
 	inspectionDiagrams: inspectionDiagramSchema.optional(),
 	createdAt: yup.string().optional(),
@@ -165,7 +165,7 @@ export type DrillingFormData = yup.InferType<typeof drillingFormSchema>;
 export type CuttingFormData = yup.InferType<typeof cuttingFormSchema>;
 export type PartDrawingFormData = yup.InferType<typeof partDrawingSchema>;
 export type InspectionDiagramFormData = yup.InferType<typeof inspectionDiagramSchema>;
-export type MouldeFormData = yup.InferType<typeof mouldeSchema>;
+export type MouldFormData = yup.InferType<typeof mouldSchema>;
 export type PrcTemplateStepFormData = yup.InferType<typeof prcTemplateStepFormSchema>;
 export type PartMasterFormData = yup.InferType<typeof partMasterFormSchema>;
 
@@ -234,7 +234,7 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	rawMaterials: [],
 	drilling: [],
 	cutting: [],
-	mouldes: [],
+	moulds: [],
 	files: [],
 	inspectionDiagrams: undefined
 };
@@ -263,7 +263,7 @@ export const generalInfoSchema = yup.object({
 	layupType: yup.string().max(100, 'Layup type must be less than 100 characters').optional(),
 	model: yup.string().max(100, 'Model must be less than 100 characters').optional(),
 	sapReferenceNumber: yup.string().max(50, 'SAP reference number must be less than 50 characters').optional(),
-	mouldes: yup.array(mouldeSchema).default([])
+	moulds: yup.array(mouldSchema).default([])
 });
 
 export const rawMaterialsSchema = yup.object({

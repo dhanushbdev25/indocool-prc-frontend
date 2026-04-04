@@ -52,16 +52,23 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 	const getNotOkCommentKey = (key: string) => `${key}_notOkComment`;
 
+	const readApiCommentField = (obj: Record<string, unknown>): string => {
+		const c = obj.comments;
+		if (typeof c === 'string') return c;
+		const legacy = obj.notOkComment;
+		return typeof legacy === 'string' ? legacy : '';
+	};
+
 	const parseOkNotOkValue = (rawValue: unknown): { value: string; notOkComment: string } => {
 		if (typeof rawValue === 'string') {
 			return { value: rawValue, notOkComment: '' };
 		}
 		if (typeof rawValue === 'object' && rawValue !== null) {
-			const valueCandidate = (rawValue as Record<string, unknown>).value;
-			const commentCandidate = (rawValue as Record<string, unknown>).notOkComment;
+			const rec = rawValue as Record<string, unknown>;
+			const valueCandidate = rec.value;
 			return {
 				value: typeof valueCandidate === 'string' ? valueCandidate : '',
-				notOkComment: typeof commentCandidate === 'string' ? commentCandidate : ''
+				notOkComment: readApiCommentField(rec)
 			};
 		}
 		return { value: '', notOkComment: '' };
@@ -212,9 +219,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 										);
 									}
 								}
-								const notOkComment = (parameterData as Record<string, unknown>).notOkComment;
-								if (typeof notOkComment === 'string') {
-									paramFormData.notOkComment = notOkComment;
+								const topComment = readApiCommentField(parameterData as Record<string, unknown>);
+								if (topComment) {
+									paramFormData.notOkComment = topComment;
 								}
 							} else {
 								// Handle direct column data (fallback)
@@ -333,13 +340,19 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						value: value
 					};
 					if (value !== 'not ok') {
-						delete (newFormData[parameterId.toString()] as Record<string, unknown>).notOkComment;
+						const entry = newFormData[parameterId.toString()] as Record<string, unknown>;
+						delete entry.notOkComment;
+						delete entry.comments;
+						delete newFormData[getNotOkCommentKey(parameterId.toString())];
 					}
 				} else {
 					// Create new object structure
 					newFormData[parameterId.toString()] = {
 						value: value
 					};
+					if (value !== 'not ok') {
+						delete newFormData[getNotOkCommentKey(parameterId.toString())];
+					}
 				}
 			} else {
 				// For multi-column parameters, use the flat structure
@@ -692,12 +705,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					if (value !== 'ok' && value !== 'not ok') {
 						newErrors[key] = 'Value must be either OK or Not OK';
 					} else if (value === 'not ok') {
-						const notOkComment =
-							typeof paramData === 'object' && paramData !== null && 'notOkComment' in paramData
-								? String((paramData as Record<string, unknown>).notOkComment || '')
+						const fromObject =
+							typeof paramData === 'object' && paramData !== null
+								? readApiCommentField(paramData as Record<string, unknown>)
 								: '';
 						const commentFromKey = String(formData[getNotOkCommentKey(key)] || '');
-						if (!notOkComment.trim() && !commentFromKey.trim()) {
+						if (!fromObject.trim() && !commentFromKey.trim()) {
 							newErrors[getNotOkCommentKey(key)] = 'Comment is required for Not OK';
 						}
 					}
@@ -738,7 +751,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 									const commentValue = formData[getNotOkCommentKey(key)];
 									rowObj[column.name] = {
 										value,
-										notOkComment: typeof commentValue === 'string' ? commentValue.trim() : ''
+										comments: typeof commentValue === 'string' ? commentValue.trim() : ''
 									};
 								} else {
 									rowObj[column.name] = value;
@@ -766,7 +779,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								const commentValue = formData[getNotOkCommentKey(key)];
 								valueObj[column.name] = {
 									value,
-									notOkComment: typeof commentValue === 'string' ? commentValue.trim() : ''
+									comments: typeof commentValue === 'string' ? commentValue.trim() : ''
 								};
 							} else {
 								valueObj[column.name] = value;
@@ -790,13 +803,15 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						if ((formValue as Record<string, unknown>).annotations) {
 							paramData.annotations = (formValue as Record<string, unknown>).annotations;
 						}
-						if ((formValue as Record<string, unknown>).notOkComment) {
-							paramData.notOkComment = (formValue as Record<string, unknown>).notOkComment;
+						const fv = formValue as Record<string, unknown>;
+						const existingComment = readApiCommentField(fv);
+						if (existingComment) {
+							paramData.comments = existingComment;
 						}
 						if (param.type === 'ok/not ok') {
 							const commentValue = formData[getNotOkCommentKey(key)];
 							if (typeof commentValue === 'string') {
-								paramData.notOkComment = commentValue.trim();
+								paramData.comments = commentValue.trim();
 							}
 						}
 					} else {
@@ -804,7 +819,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						paramData.value = formValue;
 						if (param.type === 'ok/not ok' && formValue === 'not ok') {
 							const commentValue = formData[getNotOkCommentKey(key)];
-							paramData.notOkComment = typeof commentValue === 'string' ? commentValue.trim() : '';
+							paramData.comments = typeof commentValue === 'string' ? commentValue.trim() : '';
 						}
 					}
 
@@ -1040,12 +1055,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																		placeholder="Enter comments for Not OK selection"
 																		value={String(
 																			formData[commentKey] ||
-																				(typeof paramData === 'object' &&
-																				paramData !== null &&
-																				'notOkComment' in paramData
-																					? (paramData as Record<string, unknown>).notOkComment
-																					: '') ||
-																				''
+																				(typeof paramData === 'object' && paramData !== null
+																					? readApiCommentField(paramData as Record<string, unknown>)
+																					: '')
 																		)}
 																		onChange={e => handleNotOkCommentChange(param.id.toString(), e.target.value)}
 																		error={!!errors[commentKey]}

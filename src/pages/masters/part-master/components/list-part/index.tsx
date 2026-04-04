@@ -14,7 +14,7 @@ import {
 	type Drilling,
 	type Cutting
 } from '../../../../../store/api/business/part-master/part.validators';
-import { getPartMouldeSummary } from '../../../../../mocks/moulde-reconciliation.mock';
+import { getPartMouldSummary } from '../../../../../mocks/mould-reconciliation.mock';
 
 const ListPart = () => {
 	const navigate = useNavigate();
@@ -35,7 +35,7 @@ const ListPart = () => {
 		return partData.detail
 			.filter((item: { partMaster: PartMaster }) => item.partMaster.id !== undefined)
 			.map((item: { partMaster: PartMaster; rawMaterials: RawMaterial[]; drilling: Drilling[]; cutting: Cutting[] }) => {
-				const mouldeSummary = getPartMouldeSummary(item.partMaster.partNumber);
+				const mouldSummary = getPartMouldSummary(item.partMaster.partNumber);
 				return {
 					id: item.partMaster.id!,
 					partNumber: item.partMaster.partNumber,
@@ -48,8 +48,8 @@ const ListPart = () => {
 					totalRawMaterials: item.rawMaterials.length,
 					totalDrilling: item.drilling.length,
 					totalCutting: item.cutting.length,
-					totalMouldes: mouldeSummary.totalMouldes,
-					dueMouldes: mouldeSummary.dueMouldes,
+					totalMoulds: mouldSummary.totalMoulds,
+					dueMoulds: mouldSummary.dueMoulds,
 					createdAt: item.partMaster.createdAt || '',
 					updatedAt: item.partMaster.updatedAt || ''
 				};
@@ -121,7 +121,9 @@ const ListPart = () => {
 						version: fullPartDetail.partMaster.version,
 						isLatest: fullPartDetail.partMaster.isLatest,
 						catalyst: fullPartDetail.partMaster.catalyst,
-						prcTemplate: fullPartDetail.partMaster.prcTemplate
+						prcTemplate: fullPartDetail.partMaster.prcTemplate,
+						mouldDetails: fullPartDetail.partMaster.mouldDetails ?? [],
+						sapReferenceNumber: fullPartDetail.partMaster.sapReferenceNumber ?? ''
 					},
 					rawMaterials: fullPartDetail.rawMaterials.map(rm => ({
 						materialName: rm.materialName,

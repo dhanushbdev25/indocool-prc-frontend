@@ -1,0 +1,120 @@
+import { memo, useMemo } from 'react';
+import { Box, Button, Chip, Typography } from '@mui/material';
+import { Build as MouldIcon } from '@mui/icons-material';
+import { type MRT_ColumnDef } from 'material-react-table';
+import TableComponent from '../../../../../../components/table/TableComponent';
+import {
+	type MouldReconciliationRow,
+	isMouldDueForReconciliation
+} from '../../../../../../store/api/business/mould/mould.validators';
+
+interface MouldReconciliationTableProps {
+	data: MouldReconciliationRow[];
+	reconcilingKey: string | null;
+	onReconcile: (row: MouldReconciliationRow) => void;
+}
+
+const getRowKey = (row: MouldReconciliationRow) => String(row.id);
+
+const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile }: MouldReconciliationTableProps) => {
+	const columns = useMemo<MRT_ColumnDef<MouldReconciliationRow>[]>(
+		() => [
+			{
+				accessorKey: 'partNumber',
+				header: 'Part code',
+				size: 180
+			},
+			{
+				accessorKey: 'mouldCode',
+				header: 'Mould ID',
+				size: 160
+			},
+			{
+				accessorKey: 'reconciliationCount',
+				header: 'Reconciliation count',
+				size: 170
+			},
+			{
+				accessorKey: 'currentCount',
+				header: 'Current count',
+				size: 140,
+				Cell: ({ row }) => (
+					<Chip
+						label={row.original.currentCount}
+						color={row.original.currentCount >= row.original.reconciliationCount ? 'warning' : 'default'}
+						size="small"
+					/>
+				)
+			},
+			{
+				id: 'due',
+				header: 'Due',
+				size: 100,
+				Cell: ({ row }) => {
+					const due = isMouldDueForReconciliation(row.original);
+					return (
+						<Chip
+							label={due ? 'Yes' : 'No'}
+							color={due ? 'warning' : 'default'}
+							size="small"
+							variant={due ? 'filled' : 'outlined'}
+						/>
+					);
+				}
+			},
+			{
+				accessorKey: 'lastReconciledAt',
+				header: 'Last reconciled',
+				size: 180,
+				Cell: ({ row }) => (
+					<Typography variant="body2">
+						{row.original.lastReconciledAt ? new Date(row.original.lastReconciledAt).toLocaleString() : '—'}
+					</Typography>
+				)
+			},
+			{
+				id: 'actions',
+				header: 'Actions',
+				size: 140,
+				enableSorting: false,
+				Cell: ({ row }) => {
+					const rowKey = getRowKey(row.original);
+					const isLoading = reconcilingKey === rowKey;
+					const canReconcile = isMouldDueForReconciliation(row.original);
+					return (
+						<Button
+							variant="contained"
+							size="small"
+							onClick={() => onReconcile(row.original)}
+							disabled={isLoading || !canReconcile}
+							title={!canReconcile ? 'Not due for reconciliation yet' : undefined}
+						>
+							{isLoading ? 'Reconciling...' : 'Reconcile'}
+						</Button>
+					);
+				}
+			}
+		],
+		[onReconcile, reconcilingKey]
+	);
+
+	if (!data.length) {
+		return (
+			<Box sx={{ textAlign: 'center', py: 8 }}>
+				<MouldIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
+				<Typography variant="h6" sx={{ color: '#666', mb: 1 }}>
+					No moulds found
+				</Typography>
+				<Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+					Try adjusting search or filters, or refresh the list
+				</Typography>
+			</Box>
+		);
+	}
+
+	return <TableComponent tableColumns={columns} data={data} />;
+});
+
+MouldReconciliationTable.displayName = 'MouldReconciliationTable';
+
+export default MouldReconciliationTable;

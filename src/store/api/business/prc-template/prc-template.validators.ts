@@ -14,6 +14,8 @@ export const prcTemplateStepSchema = z
 		blockCatalystMixing: z.boolean(),
 		requestSupervisorApproval: z.boolean(),
 		stepId: z.number().nullable(),
+		group: z.string().optional(),
+		operationText: z.string().optional(),
 		createdAt: z.string().optional(),
 		updatedAt: z.string().optional(),
 		data: z.any().optional() // Add data field to handle inspection parameters
@@ -86,7 +88,30 @@ export const prcTemplateStepRequestSchema = z.object({
 	stepId: z.number().nullable(),
 	type: z.string(),
 	blockCatalystMixing: z.boolean().optional(),
+	requestSupervisorApproval: z.boolean().optional(),
+	/** Operation group code from operations combo (e.g. "40") */
+	group: z.string().optional(),
+	/** Human-readable operation label (optional, when available) */
+	operationText: z.string().optional()
+});
+
+/** Step payload nested under operations (no group — parent carries operation) */
+export const prcTemplateNestedStepRequestSchema = z.object({
+	version: z.number(),
+	isLatest: z.boolean(),
+	sequence: z.number(),
+	stepId: z.number().nullable(),
+	type: z.string(),
+	blockCatalystMixing: z.boolean().optional(),
 	requestSupervisorApproval: z.boolean().optional()
+});
+
+/** One operation group with sequences and inspections (Part Master create flow) */
+export const prcTemplateOperationRequestSchema = z.object({
+	operation: z.string(),
+	operationText: z.string().optional(),
+	sequences: z.array(prcTemplateNestedStepRequestSchema),
+	inspections: z.array(prcTemplateNestedStepRequestSchema)
 });
 
 export const prcTemplateRequestSchema = z.object({
@@ -99,11 +124,21 @@ export const prcTemplateRequestSchema = z.object({
 	isActive: z.boolean()
 });
 
-// Create request schema
-export const createPrcTemplateRequestSchema = z.object({
-	prcTemplate: prcTemplateRequestSchema,
-	prcTemplateSteps: z.array(prcTemplateStepRequestSchema)
-});
+// Create request: legacy flat `prcTemplateSteps` OR nested `operations` (XOR)
+export const createPrcTemplateRequestSchema = z
+	.object({
+		prcTemplate: prcTemplateRequestSchema,
+		prcTemplateSteps: z.array(prcTemplateStepRequestSchema).optional(),
+		operations: z.array(prcTemplateOperationRequestSchema).optional()
+	})
+	.refine(
+		data => {
+			const hasSteps = (data.prcTemplateSteps?.length ?? 0) > 0;
+			const hasOps = (data.operations?.length ?? 0) > 0;
+			return (hasSteps && !hasOps) || (!hasSteps && hasOps);
+		},
+		{ message: 'Provide exactly one of prcTemplateSteps or operations' }
+	);
 
 // Update request schema
 export const updatePrcTemplateRequestSchema = z.object({
@@ -161,7 +196,29 @@ export const deletePrcTemplateTaskResponseSchema = z
 	})
 	.loose();
 
+// Operations combo schemas
+export const operationsComboItemSchema = z
+	.object({
+		label: z.string(),
+		value: z.string(),
+		data: z
+			.object({
+				operation: z.string(),
+				operationText: z.string()
+			})
+			.loose()
+	})
+	.loose();
+
+export const operationsComboResponseSchema = z
+	.object({
+		data: z.array(operationsComboItemSchema)
+	})
+	.loose();
+
 // Type exports
+export type OperationsComboItem = z.infer<typeof operationsComboItemSchema>;
+export type OperationsComboResponse = z.infer<typeof operationsComboResponseSchema>;
 export type PrcTemplateStep = z.infer<typeof prcTemplateStepSchema>;
 export type PrcTemplate = z.infer<typeof prcTemplateSchema>;
 export type PrcTemplateDetail = z.infer<typeof prcTemplateDetailSchema>;
@@ -170,6 +227,8 @@ export type PrcTemplateListResponse = z.infer<typeof prcTemplateListResponseSche
 export type PrcTemplateByIdResponse = z.infer<typeof prcTemplateByIdResponseSchema>;
 export type PrcTemplateInspectionsResponse = z.infer<typeof prcTemplateInspectionsResponseSchema>;
 export type PrcTemplateStepRequest = z.infer<typeof prcTemplateStepRequestSchema>;
+export type PrcTemplateNestedStepRequest = z.infer<typeof prcTemplateNestedStepRequestSchema>;
+export type PrcTemplateOperationRequest = z.infer<typeof prcTemplateOperationRequestSchema>;
 export type PrcTemplateRequest = z.infer<typeof prcTemplateRequestSchema>;
 export type CreatePrcTemplateRequest = z.infer<typeof createPrcTemplateRequestSchema>;
 export type UpdatePrcTemplateRequest = z.infer<typeof updatePrcTemplateRequestSchema>;

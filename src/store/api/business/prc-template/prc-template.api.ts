@@ -7,6 +7,7 @@ import {
 	createPrcTemplateResponseSchema,
 	updatePrcTemplateResponseSchema,
 	deletePrcTemplateTaskResponseSchema,
+	operationsComboResponseSchema,
 	type PrcTemplateListResponse,
 	type PrcTemplateByIdResponse,
 	type PrcTemplateInspectionsResponse,
@@ -15,7 +16,8 @@ import {
 	type CreatePrcTemplateResponse,
 	type UpdatePrcTemplateResponse,
 	type DeletePrcTemplateTaskRequest,
-	type DeletePrcTemplateTaskResponse
+	type DeletePrcTemplateTaskResponse,
+	type OperationsComboResponse
 } from './prc-template.validators';
 
 // API parameters
@@ -25,6 +27,10 @@ export interface FetchPrcTemplateByIdParams {
 
 export interface FetchPrcTemplateInspectionsParams {
 	id: number;
+}
+
+export interface FetchOperationsComboParams {
+	partId?: number;
 }
 
 export const prcTemplateApi = createApi({
@@ -121,6 +127,22 @@ export const prcTemplateApi = createApi({
 				'PrcTemplate'
 			]
 		}),
+		// Fetch operations combo for a part
+		fetchOperationsCombo: builder.query<OperationsComboResponse, FetchOperationsComboParams>({
+			query: ({ partId }) => ({
+				url: 'prcTemplate/operations/combo',
+				method: 'GET',
+				params: partId ? { partId } : undefined
+			}),
+			transformResponse: (response: unknown) => {
+				const parsed = operationsComboResponseSchema.safeParse(response);
+				if (!parsed.success) {
+					console.error('Zod validation failed for operations combo response:', parsed.error);
+					throw new Error('Invalid operations combo response structure');
+				}
+				return parsed.data;
+			}
+		}),
 		// Delete PRC template task (set status to INACTIVE)
 		deletePrcTemplateTask: builder.mutation<DeletePrcTemplateTaskResponse, DeletePrcTemplateTaskRequest>({
 			query: data => ({
@@ -149,6 +171,7 @@ export const {
 	useFetchPrcTemplatesQuery,
 	useFetchPrcTemplateByIdQuery,
 	useFetchPrcTemplateInspectionsQuery,
+	useFetchOperationsComboQuery,
 	useCreatePrcTemplateMutation,
 	useUpdatePrcTemplateMutation,
 	useDeletePrcTemplateTaskMutation

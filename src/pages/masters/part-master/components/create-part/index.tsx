@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
 	Box,
@@ -34,14 +34,67 @@ import {
 import { useFetchCustomersQuery } from '../../../../../store/api/business/part-master/part.api';
 import {
 	useFetchPrcTemplateByIdQuery,
+	useFetchOperationsComboQuery,
 	useCreatePrcTemplateMutation
 } from '../../../../../store/api/business/prc-template/prc-template.api';
 import { useFetchProcessSequencesQuery } from '../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../store/api/business/inspection-master/inspection.api';
 import { uploadPartDrawings } from '../../../../../utils/uploadPartDrawings';
 import { ImageItem } from '../../../../../hooks/useImageGallery';
-import { getPartMouldes, upsertPartMouldes } from '../../../../../mocks/moulde-reconciliation.mock';
-import { DEFAULT_OPERATION_GROUP } from './types';
+import { getPartMoulds, upsertPartMoulds } from '../../../../../mocks/mould-reconciliation.mock';
+import type { PrcTemplateOperationRequest } from '../../../../../store/api/business/prc-template/prc-template.validators';
+
+/** Build nested operations[] for create PRC template: global sequence from flat order, then per-operation sequences/inspections arrays. */
+function buildPrcTemplateOperationsFromSteps(
+	steps: PartMasterFormData['prcTemplateSteps'],
+	operationTextByValue: Map<string, string>
+): PrcTemplateOperationRequest[] {
+	const list = steps || [];
+	const withGlobalSequence = list.map((step, index) => ({
+		step,
+		globalSequence: index + 3
+	}));
+
+	const groupOrder: string[] = [];
+	const byGroup = new Map<string, typeof withGlobalSequence>();
+	for (const item of withGlobalSequence) {
+		const g = item.step.group ?? '';
+		if (!byGroup.has(g)) {
+			byGroup.set(g, []);
+			groupOrder.push(g);
+		}
+		byGroup.get(g)!.push(item);
+	}
+
+	return groupOrder.map(groupId => {
+		const items = byGroup.get(groupId)!;
+		const sequences: PrcTemplateOperationRequest['sequences'] = [];
+		const inspections: PrcTemplateOperationRequest['inspections'] = [];
+		for (const { step, globalSequence } of items) {
+			const payload = {
+				version: step.version ?? 1,
+				isLatest: step.isLatest ?? true,
+				sequence: globalSequence,
+				stepId: step.stepId,
+				type: step.type,
+				blockCatalystMixing: step.blockCatalystMixing ?? false,
+				requestSupervisorApproval: step.requestSupervisorApproval ?? false
+			};
+			if (step.type === 'sequence') {
+				sequences.push(payload);
+			} else {
+				inspections.push(payload);
+			}
+		}
+		const operationText = operationTextByValue.get(groupId);
+		return {
+			operation: groupId,
+			...(operationText ? { operationText } : {}),
+			sequences,
+			inspections
+		};
+	});
+}
 
 interface TabPanelProps {
 	children?: React.ReactNode;
@@ -118,6 +171,13 @@ const CreatePart = () => {
 		getValues
 	} = methods;
 
+	const formPartId = useWatch({ control, name: 'id' });
+	const operationsQueryPartId = formPartId ?? (id ? Number(id) : undefined);
+	const { data: operationsData } = useFetchOperationsComboQuery(
+		{ partId: operationsQueryPartId! },
+		{ skip: !operationsQueryPartId }
+	);
+
 	useEffect(() => {
 		if (Object.keys(errors).length > 0) {
 			console.log('Form errors (Yup):', errors);
@@ -157,6 +217,8 @@ const CreatePart = () => {
 				templateNotes = tpl.notes || '';
 				isTemplateActive = tpl.isActive;
 
+				const defaultGroup = operationsData?.data?.[0]?.value || 'unknown';
+
 				prcTemplateSteps = prcTemplateData.detail.prcTemplateSteps.map(step => {
 					let itemName = '';
 					let itemId = '';
@@ -190,7 +252,7 @@ const CreatePart = () => {
 						itemName,
 						itemId,
 						itemType,
-						group: DEFAULT_OPERATION_GROUP
+						group: defaultGroup
 					};
 				});
 			}
@@ -252,7 +314,7 @@ const CreatePart = () => {
 					version: c.version,
 					isLatest: c.isLatest
 				})),
-				mouldes: [],
+				moulds: [],
 				files: partMaster.files || [],
 				inspectionDiagrams: partMaster.inspectionDiagrams
 					? Array.isArray(partMaster.inspectionDiagrams)
@@ -264,35 +326,50 @@ const CreatePart = () => {
 			};
 			reset(formData);
 		}
-	}, [isEditMode, isFetchSuccess, partData, customersData, isPrcTemplateFetchSuccess, prcTemplateData, sequencesData, inspectionsData, reset]);
+	}, [isEditMode, isFetchSuccess, partData, customersData, isPrcTemplateFetchSuccess, prcTemplateData, operationsData, sequencesData, inspectionsData, reset]);
 
 	useEffect(() => {
-		const loadMouldes = async () => {
+		const loadMoulds = async () => {
 			if (!isEditMode || !partData?.detail?.partMaster?.partNumber) return;
-			const pm = partData.detail.partMaster;
-			const fromApi = pm.mouldedetails;
-			if (fromApi && fromApi.length > 0) {
+			const pm = partData.detail.partMaster as typeof partData.detail.partMaster & {
+				mouldDetails?: Array<{ mouldCode: string; reconciliationCount: number; currentCount?: number }>;
+				mouldedetails?: Array<{ mouldeCode?: string; mouldCode?: string; reconciliationCount: number; currentCount?: number }>;
+			};
+			const fromNewApi = pm.mouldDetails;
+			const fromLegacyApi = pm.mouldedetails;
+			if (fromNewApi && fromNewApi.length > 0) {
 				setValue(
-					'mouldes',
-					fromApi.map(item => ({
-						mouldeCode: item.mouldeCode,
+					'moulds',
+					fromNewApi.map(item => ({
+						mouldCode: item.mouldCode,
 						reconciliationCount: item.reconciliationCount,
 						currentCount: item.currentCount ?? 0
 					}))
 				);
 				return;
 			}
-			const existingMouldes = await getPartMouldes(pm.partNumber);
+			if (fromLegacyApi && fromLegacyApi.length > 0) {
+				setValue(
+					'moulds',
+					fromLegacyApi.map(item => ({
+						mouldCode: item.mouldCode ?? item.mouldeCode ?? '',
+						reconciliationCount: item.reconciliationCount,
+						currentCount: item.currentCount ?? 0
+					}))
+				);
+				return;
+			}
+			const existingMoulds = await getPartMoulds(pm.partNumber);
 			setValue(
-				'mouldes',
-				existingMouldes.map(item => ({
-					mouldeCode: item.mouldeCode,
+				'moulds',
+				existingMoulds.map(item => ({
+					mouldCode: item.mouldCode,
 					reconciliationCount: item.reconciliationCount,
 					currentCount: item.currentCount
 				}))
 			);
 		};
-		loadMouldes();
+		loadMoulds();
 	}, [isEditMode, partData, setValue]);
 
 	const handleAddStepImage = useCallback((stepKey: string, file: File) => {
@@ -380,20 +457,16 @@ const CreatePart = () => {
 					isActive: data.isTemplateActive ?? true
 				};
 
-				const templateSteps = (data.prcTemplateSteps || []).map((step, index) => ({
-					version: step.version,
-					isLatest: step.isLatest,
-					sequence: index + 3,
-					stepId: step.stepId,
-					type: step.type,
-					blockCatalystMixing: step.blockCatalystMixing ?? false,
-					requestSupervisorApproval: step.requestSupervisorApproval ?? false
-				}));
+				const operationTextByValue = new Map(
+					(operationsData?.data ?? []).map(op => [op.value, op.data.operationText] as const)
+				);
+
+				const operations = buildPrcTemplateOperationsFromSteps(data.prcTemplateSteps, operationTextByValue);
 
 				try {
 					const createResult = await createPrcTemplate({
 						prcTemplate: templateRequestData,
-						prcTemplateSteps: templateSteps
+						operations
 					}).unwrap();
 
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -461,8 +534,8 @@ const CreatePart = () => {
 					isLatest: updatedData.isLatest ?? true,
 					catalyst: updatedData.catalyst,
 					prcTemplate: prcTemplateId,
-					mouldedetails: (updatedData.mouldes || []).map(m => ({
-						mouldeCode: m.mouldeCode,
+					mouldDetails: (updatedData.moulds || []).map(m => ({
+						mouldCode: m.mouldCode,
 						reconciliationCount: Number(m.reconciliationCount) || 0
 					})),
 					files: [],
@@ -494,7 +567,7 @@ const CreatePart = () => {
 				});
 			}
 
-			await upsertPartMouldes(data.partNumber, data.mouldes || []);
+			await upsertPartMoulds(data.partNumber, data.moulds || []);
 			navigate('/part-master');
 		} catch (err: unknown) {
 			console.error('API Error:', err);

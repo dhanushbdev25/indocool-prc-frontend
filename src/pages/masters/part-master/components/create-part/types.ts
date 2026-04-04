@@ -32,23 +32,13 @@ export const isPrcTemplateItem = (item: LinkedMasterSelectableItem): item is Sel
 	return 'templateId' in item;
 };
 
-// --- Operation Groups (hardcoded, will come from API eventually) ---
+// --- Operation Groups (fetched from prcTemplate/operations/combo API) ---
 
 export interface OperationGroup {
 	id: string;
 	name: string;
 	label: string;
 }
-
-export const OPERATION_GROUPS: OperationGroup[] = [
-	{ id: 'general', name: 'General Operations', label: 'General Operations' },
-	{ id: 'moulding', name: 'Moulding Operations', label: 'Moulding Operations' },
-	{ id: 'cutting', name: 'Cutting Operations', label: 'Cutting Operations' },
-	{ id: 'finishing', name: 'Finishing Operations', label: 'Finishing Operations' },
-	{ id: 'assembly', name: 'Assembly Operations', label: 'Assembly Operations' }
-];
-
-export const DEFAULT_OPERATION_GROUP = 'general';
 
 // --- PRC Template Step types (adapted from prc-template-master) ---
 
@@ -127,7 +117,7 @@ export interface ExtendedPartMasterFormData {
 	rawMaterials: RawMaterialFormData[];
 	drilling: DrillingFormData[];
 	cutting: CuttingFormData[];
-	mouldes: MouldeFormData[];
+	moulds: MouldFormData[];
 	createdAt?: string;
 	updatedAt?: string;
 	catalystName?: string;
@@ -135,8 +125,8 @@ export interface ExtendedPartMasterFormData {
 	customerName?: string;
 }
 
-export interface MouldeFormData {
-	mouldeCode: string;
+export interface MouldFormData {
+	mouldCode: string;
 	reconciliationCount: number;
 	currentCount?: number;
 }

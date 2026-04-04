@@ -24,8 +24,8 @@ export interface PartData {
 	totalRawMaterials: number;
 	totalDrilling: number;
 	totalCutting: number;
-	totalMouldes?: number;
-	dueMouldes?: number;
+	totalMoulds?: number;
+	dueMoulds?: number;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -226,16 +226,16 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 				)
 			},
 			{
-				accessorKey: 'mouldes',
-				header: 'Mouldes',
+				accessorKey: 'moulds',
+				header: 'Moulds',
 				size: 140,
 				Cell: ({ row }) => (
 					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
 						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-							Total: {row.original.totalMouldes || 0}
+							Total: {row.original.totalMoulds || 0}
 						</Typography>
 						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>
-							Due: {row.original.dueMouldes || 0}
+							Due: {row.original.dueMoulds || 0}
 						</Typography>
 					</Box>
 				)

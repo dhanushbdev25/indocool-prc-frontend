@@ -26,9 +26,9 @@ interface GeneralInfoProps {
 
 const GeneralInfo = ({ control, errors }: GeneralInfoProps) => {
 	const { data: customersData, isLoading: isCustomersLoading } = useFetchCustomersQuery();
-	const { fields: mouldeFields, append, remove } = useFieldArray({
+	const { fields: mouldFields, append, remove } = useFieldArray({
 		control,
-		name: 'mouldes'
+		name: 'moulds'
 	});
 
 	return (
@@ -335,49 +335,49 @@ const GeneralInfo = ({ control, errors }: GeneralInfoProps) => {
 						/>
 					</Grid>
 
-					{/* Moulde Mapping */}
+					{/* Mould mapping */}
 					<Grid size={{ xs: 12 }}>
 						<Divider sx={{ my: 2 }} />
 						<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
 							<Box>
 								<Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-									Moulde Mapping
+									Mould mapping
 								</Typography>
 								<Typography variant="caption" sx={{ color: '#666' }}>
-									Add mouldes and reconciliation counts for this part
+									Add moulds and reconciliation counts for this part
 								</Typography>
 							</Box>
 							<Button
 								variant="outlined"
 								size="small"
 								startIcon={<AddIcon />}
-								onClick={() => append({ mouldeCode: '', reconciliationCount: 1, currentCount: 0 })}
+								onClick={() => append({ mouldCode: '', reconciliationCount: 1, currentCount: 0 })}
 							>
-								Add Moulde
+								Add mould
 							</Button>
 						</Box>
 
-						{mouldeFields.map((field, index) => (
+						{mouldFields.map((field, index) => (
 							<Grid container spacing={2} sx={{ mb: 1 }} key={field.id}>
 								<Grid size={{ xs: 12, md: 5 }}>
 									<Controller
-										name={`mouldes.${index}.mouldeCode`}
+										name={`moulds.${index}.mouldCode`}
 										control={control}
-										render={({ field: mouldeField }) => (
+										render={({ field: mouldField }) => (
 											<TextField
-												{...mouldeField}
+												{...mouldField}
 												fullWidth
-												label="Moulde Code"
+												label="Mould code"
 												placeholder="e.g., MLD-001"
-												error={!!errors.mouldes?.[index]?.mouldeCode}
-												helperText={errors.mouldes?.[index]?.mouldeCode?.message}
+												error={!!errors.moulds?.[index]?.mouldCode}
+												helperText={errors.moulds?.[index]?.mouldCode?.message}
 											/>
 										)}
 									/>
 								</Grid>
 								<Grid size={{ xs: 12, md: 5 }}>
 									<Controller
-										name={`mouldes.${index}.reconciliationCount`}
+										name={`moulds.${index}.reconciliationCount`}
 										control={control}
 										render={({ field: countField }) => (
 											<TextField
@@ -386,15 +386,15 @@ const GeneralInfo = ({ control, errors }: GeneralInfoProps) => {
 												type="number"
 												label="Reconciliation Count"
 												inputProps={{ min: 1 }}
-												error={!!errors.mouldes?.[index]?.reconciliationCount}
-												helperText={errors.mouldes?.[index]?.reconciliationCount?.message}
+												error={!!errors.moulds?.[index]?.reconciliationCount}
+												helperText={errors.moulds?.[index]?.reconciliationCount?.message}
 											/>
 										)}
 									/>
 								</Grid>
 								<Grid size={{ xs: 12, md: 2 }}>
 									<Box sx={{ display: 'flex', justifyContent: 'center', height: '100%', alignItems: 'center' }}>
-										<IconButton color="error" onClick={() => remove(index)} aria-label="remove moulde">
+										<IconButton color="error" onClick={() => remove(index)} aria-label="remove mould">
 											<DeleteIcon />
 										</IconButton>
 									</Box>

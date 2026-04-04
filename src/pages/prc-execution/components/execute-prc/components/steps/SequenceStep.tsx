@@ -48,12 +48,11 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		return '';
 	};
 
-	const getNotOkComment = (value: unknown): string => {
-		if (typeof value === 'object' && value !== null && 'notOkComment' in value) {
-			const comment = (value as Record<string, unknown>).notOkComment;
-			return typeof comment === 'string' ? comment : '';
-		}
-		return '';
+	const readApiComment = (obj: Record<string, unknown>): string => {
+		const fromComments = obj.comments;
+		if (typeof fromComments === 'string') return fromComments;
+		const legacy = obj.notOkComment;
+		return typeof legacy === 'string' ? legacy : '';
 	};
 
 	// Compute initial data from existing data
@@ -146,13 +145,10 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 									? String((candidateValue as Record<string, unknown>).value || '')
 									: '';
 						const resolvedNotOkComment = (() => {
-							if ('notOkComment' in actualData) {
-								const comment = (actualData as Record<string, unknown>).notOkComment;
-								return typeof comment === 'string' ? comment : '';
-							}
-							if (typeof candidateValue === 'object' && candidateValue !== null && 'notOkComment' in candidateValue) {
-								const nestedComment = (candidateValue as Record<string, unknown>).notOkComment;
-								return typeof nestedComment === 'string' ? nestedComment : '';
+							const fromRoot = readApiComment(actualData as Record<string, unknown>);
+							if (fromRoot) return fromRoot;
+							if (typeof candidateValue === 'object' && candidateValue !== null) {
+								return readApiComment(candidateValue as Record<string, unknown>);
 							}
 							return '';
 						})();
@@ -217,7 +213,8 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	const handleValueChange = (value: string) => {
 		setFormData(prev => ({
 			...prev,
-			value: value
+			value: value,
+			...(value !== 'not ok' ? { notOkComment: '' } : {})
 		}));
 
 		// Clear error when user starts typing
@@ -504,7 +501,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				const notOkComment = typeof formData.notOkComment === 'string' ? formData.notOkComment.trim() : '';
 				submitData = {
 					value: selectedValue,
-					notOkComment
+					comments: notOkComment
 				};
 			} else {
 				// For single values, send string directly

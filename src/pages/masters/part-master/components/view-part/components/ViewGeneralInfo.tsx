@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Box, Grid, Typography, Chip, Paper } from '@mui/material';
 import { PartMaster, PartDrawing } from '../../../../../../store/api/business/part-master/part.validators';
 import PartImageUpload from '../../create-part/components/PartImageUpload';
-import { getPartMouldes, PartMouldeMapping } from '../../../../../../mocks/moulde-reconciliation.mock';
+import { getPartMoulds, PartMouldMapping } from '../../../../../../mocks/mould-reconciliation.mock';
 
 interface ViewGeneralInfoProps {
 	partMaster: PartMaster;
@@ -10,14 +10,14 @@ interface ViewGeneralInfoProps {
 }
 
 const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
-	const [mouldes, setMouldes] = useState<PartMouldeMapping[]>([]);
+	const [moulds, setMoulds] = useState<PartMouldMapping[]>([]);
 
 	useEffect(() => {
-		const loadMouldes = async () => {
-			const data = await getPartMouldes(partMaster.partNumber);
-			setMouldes(data);
+		const loadMoulds = async () => {
+			const data = await getPartMoulds(partMaster.partNumber);
+			setMoulds(data);
 		};
-		loadMouldes();
+		loadMoulds();
 	}, [partMaster.partNumber]);
 
 	// Convert files to gallery format for display
@@ -214,17 +214,17 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 					</Grid>
 				)}
 
-				{mouldes.length > 0 && (
+				{moulds.length > 0 && (
 					<Grid size={{ xs: 12 }}>
 						<Box sx={{ mb: 2 }}>
 							<Typography variant="body2" sx={{ color: '#666', fontWeight: 500, mb: 1 }}>
-								Moulde Mapping
+								Mould mapping
 							</Typography>
 							<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-								{mouldes.map(moulde => (
+								{moulds.map(mould => (
 									<Chip
-										key={`${moulde.partNumber}-${moulde.mouldeCode}`}
-										label={`${moulde.mouldeCode} | Count: ${moulde.reconciliationCount}`}
+										key={`${mould.partNumber}-${mould.mouldCode}`}
+										label={`${mould.mouldCode} | Count: ${mould.reconciliationCount}`}
 										variant="outlined"
 									/>
 								))}

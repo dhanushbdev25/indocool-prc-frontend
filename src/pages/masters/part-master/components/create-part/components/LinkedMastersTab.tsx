@@ -32,12 +32,13 @@ import { PartMasterFormData } from '../schemas';
 import { useFetchCatalystChartsQuery } from '../../../../../../store/api/business/catalyst-master/catalyst.api';
 import { useFetchProcessSequencesQuery } from '../../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../../store/api/business/inspection-master/inspection.api';
+import { useFetchOperationsComboQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import LinkedMasterCard from './LinkedMasterCard';
 import DefaultStepItem from './DefaultStepItem';
 import OperationGroupComponent from './OperationGroup';
 import {
 	SelectableCatalyst,
-	OPERATION_GROUPS,
+	OperationGroup,
 	SequenceItem,
 	InspectionItem,
 	StepSelectableItem,
@@ -71,6 +72,18 @@ const LinkedMastersTab = ({
 	const { data: sequencesData, isLoading: isSequencesLoading } = useFetchProcessSequencesQuery();
 	const { data: inspectionsData, isLoading: isInspectionsLoading } = useFetchInspectionsQuery();
 
+	const partId = control._formValues.id as number | undefined;
+	const { data: operationsData, isLoading: isOperationsLoading } = useFetchOperationsComboQuery(
+		{ partId },
+		{ skip: !partId }
+	);
+
+	const operationGroups: OperationGroup[] = (operationsData?.data || []).map(op => ({
+		id: op.value,
+		name: op.data.operationText,
+		label: op.label
+	}));
+
 	const { fields, append, remove, move } = useFieldArray({
 		control,
 		name: 'prcTemplateSteps'
@@ -79,7 +92,7 @@ const LinkedMastersTab = ({
 	const hasInitializedGroups = useRef(false);
 	useEffect(() => {
 		if (hasInitializedGroups.current) return;
-		if (fields.length > 0) {
+		if (fields.length > 0 && operationGroups.length > 0) {
 			const groupsFromSteps = [
 				...new Set(
 					fields
@@ -92,7 +105,7 @@ const LinkedMastersTab = ({
 				hasInitializedGroups.current = true;
 			}
 		}
-	}, [fields]);
+	}, [fields, operationGroups.length]);
 
 	const selectedCatalyst = control._formValues.catalyst;
 
@@ -132,7 +145,7 @@ const LinkedMastersTab = ({
 
 	const allStepFields = fields.map(field => field as unknown as ExtendedPrcTemplateStep);
 
-	const availableGroupsToAdd = OPERATION_GROUPS.filter(g => !addedGroups.includes(g.id));
+	const availableGroupsToAdd = operationGroups.filter(g => !addedGroups.includes(g.id));
 
 	const handleCatalystSelect = (item: SelectableCatalyst) => {
 		setValue('catalyst', item.id);
@@ -437,43 +450,78 @@ const LinkedMastersTab = ({
 					</Typography>
 				</Box>
 
-				<Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-start' }}>
-					<FormControl size="small" sx={{ minWidth: 280 }}>
-						<InputLabel>Select Operation</InputLabel>
-						<Select
-							value={selectedGroupToAdd}
-							onChange={e => setSelectedGroupToAdd(e.target.value)}
-							label="Select Operation"
-							sx={{ borderRadius: '8px' }}
-							disabled={availableGroupsToAdd.length === 0}
+				{isOperationsLoading ? (
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+						<CircularProgress size={16} />
+						<Typography variant="body2" color="text.secondary">Loading operations...</Typography>
+					</Box>
+				) : !partId ? (
+					<Alert severity="info" sx={{ mb: 3 }}>
+						Save the part first to load available operations.
+					</Alert>
+				) : operationGroups.length === 0 ? (
+					<Alert severity="warning" sx={{ mb: 3 }}>
+						No operations available for this part.
+					</Alert>
+				) : (
+					<Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-start' }}>
+						<FormControl size="small" sx={{ minWidth: 280 }}>
+							<InputLabel>Select Operation</InputLabel>
+							<Select
+								value={selectedGroupToAdd}
+								onChange={e => setSelectedGroupToAdd(e.target.value)}
+								label="Select Operation"
+								sx={{ borderRadius: '8px' }}
+								disabled={availableGroupsToAdd.length === 0}
+							>
+								{availableGroupsToAdd.map(group => (
+									<MenuItem key={group.id} value={group.id}>
+										{group.label}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+						<Button
+							variant="contained"
+							startIcon={<AddIcon />}
+							onClick={handleAddGroup}
+							disabled={!selectedGroupToAdd}
+							sx={{
+								textTransform: 'none',
+								backgroundColor: '#4caf50',
+								height: 40,
+								'&:hover': { backgroundColor: '#388e3c' }
+							}}
 						>
-							{availableGroupsToAdd.map(group => (
-								<MenuItem key={group.id} value={group.id}>
-									{group.label}
-								</MenuItem>
-							))}
-						</Select>
-					</FormControl>
-					<Button
-						variant="contained"
-						startIcon={<AddIcon />}
-						onClick={handleAddGroup}
-						disabled={!selectedGroupToAdd}
-						sx={{
-							textTransform: 'none',
-							backgroundColor: '#4caf50',
-							height: 40,
-							'&:hover': { backgroundColor: '#388e3c' }
-						}}
-					>
-						Add Operation
-					</Button>
-				</Box>
+							Add Operation
+						</Button>
+					</Box>
+				)}
 
 				{/* Rendered Added Groups */}
 				{addedGroups.map(groupId => {
-					const group = OPERATION_GROUPS.find(g => g.id === groupId);
-					if (!group) return null;
+					const group = operationGroups.find(g => g.id === groupId);
+					if (!group) {
+						return (
+							<OperationGroupComponent
+								key={groupId}
+								group={{ id: groupId, name: groupId, label: `Operation ${groupId}` }}
+								steps={getStepsForGroup(groupId)}
+								allStepFields={allStepFields}
+								sequenceItems={sequenceItems}
+								inspectionItems={inspectionItems}
+								isLoading={isSequencesLoading || isInspectionsLoading}
+								onAddStep={handleAddStep}
+								onRemoveStep={handleRemoveStep}
+								onReorderStep={handleReorderStep}
+								onRemoveGroup={handleRemoveGroup}
+								control={control}
+								stepGalleries={stepGalleries}
+								onAddStepImage={onAddStepImage}
+								onRemoveStepImage={onRemoveStepImage}
+							/>
+						);
+					}
 					return (
 						<OperationGroupComponent
 							key={group.id}
@@ -495,7 +543,7 @@ const LinkedMastersTab = ({
 					);
 				})}
 
-				{addedGroups.length === 0 && (
+				{addedGroups.length === 0 && !isOperationsLoading && partId && operationGroups.length > 0 && (
 					<Alert severity="info" sx={{ mt: 1 }}>
 						No operation groups added yet. Select an operation from the dropdown above and click "Add Operation".
 					</Alert>

@@ -177,11 +177,15 @@ const StepPreview = ({
 			return { value: rawValue, notOkComment: '' };
 		}
 		if (typeof rawValue === 'object' && rawValue !== null) {
-			const value = (rawValue as Record<string, unknown>).value;
-			const notOkComment = (rawValue as Record<string, unknown>).notOkComment;
+			const rec = rawValue as Record<string, unknown>;
+			const value = rec.value;
+			const comments = rec.comments;
+			const legacy = rec.notOkComment;
+			const commentStr =
+				typeof comments === 'string' ? comments : typeof legacy === 'string' ? legacy : '';
 			return {
 				value: typeof value === 'string' ? value : '',
-				notOkComment: typeof notOkComment === 'string' ? notOkComment : ''
+				notOkComment: commentStr
 			};
 		}
 		return { value: '', notOkComment: '' };
@@ -859,6 +863,7 @@ const StepPreview = ({
 														const value = parsedValue.value;
 														notOkComment =
 															parsedValue.notOkComment ||
+															(typeof paramObj.comments === 'string' ? String(paramObj.comments) : '') ||
 															(typeof paramObj.notOkComment === 'string' ? String(paramObj.notOkComment) : '');
 														displayValue = value === 'ok' ? 'OK' : value === 'not ok' ? 'Not OK' : value;
 													} else {
