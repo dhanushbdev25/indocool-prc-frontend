@@ -1,238 +1,277 @@
-import { z } from 'zod/v4';
+export interface PrcTemplateStep {
+	id?: number;
+	templateId?: number;
+	version: number;
+	isLatest: boolean;
+	sequence: number;
+	sequenceId?: number | null;
+	inspectionId?: number | null;
+	type: string;
+	blockCatalystMixing: boolean;
+	requestSupervisorApproval: boolean;
+	stepId: number | null;
+	group?: string;
+	operationText?: string;
+	createdAt?: string;
+	updatedAt?: string;
+	data?: unknown;
+	[key: string]: unknown;
+}
 
-// PRC Template Step schema
-export const prcTemplateStepSchema = z
-	.object({
-		id: z.number().optional(),
-		templateId: z.number().optional(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		sequence: z.number(),
-		sequenceId: z.number().nullable().optional(),
-		inspectionId: z.number().nullable().optional(),
-		type: z.string(),
-		blockCatalystMixing: z.boolean(),
-		requestSupervisorApproval: z.boolean(),
-		stepId: z.number().nullable(),
-		group: z.string().optional(),
-		operationText: z.string().optional(),
-		createdAt: z.string().optional(),
-		updatedAt: z.string().optional(),
-		data: z.any().optional() // Add data field to handle inspection parameters
-	})
-	.loose();
+export interface PrcTemplate {
+	id?: number;
+	status: string;
+	templateId: string;
+	templateName: string;
+	notes?: string;
+	version: number;
+	isLatest: boolean;
+	isActive: boolean;
+	createdBy?: number | null;
+	updatedBy?: number | null;
+	createdAt?: string;
+	updatedAt?: string;
+	[key: string]: unknown;
+}
 
-// PRC Template schema
-export const prcTemplateSchema = z
-	.object({
-		id: z.number().optional(),
-		status: z.string(),
-		templateId: z.string(),
-		templateName: z.string(),
-		notes: z.string().optional(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		isActive: z.boolean(),
-		createdBy: z.number().nullable().optional(),
-		updatedBy: z.number().nullable().optional(),
-		createdAt: z.string().optional(),
-		updatedAt: z.string().optional()
-	})
-	.loose();
+export interface PrcTemplateDetail {
+	prcTemplate: PrcTemplate;
+	prcTemplateSteps: PrcTemplateStep[];
+	[key: string]: unknown;
+}
 
-// PRC Template detail schema combining template + steps
-export const prcTemplateDetailSchema = z
-	.object({
-		prcTemplate: prcTemplateSchema,
-		prcTemplateSteps: z.array(prcTemplateStepSchema)
-	})
-	.loose();
+export interface PrcTemplateHeader {
+	ACTIVE: number;
+	NEW: number;
+	INACTIVE: number;
+}
 
-// Header schema for counts
-export const prcTemplateHeaderSchema = z
-	.object({
-		ACTIVE: z.number(),
-		NEW: z.number(),
-		INACTIVE: z.number()
-	})
-	.loose();
+export interface PrcTemplateListResponse {
+	header: PrcTemplateHeader;
+	detail: PrcTemplateDetail[];
+}
 
-// List response schema
-export const prcTemplateListResponseSchema = z
-	.object({
-		header: prcTemplateHeaderSchema,
-		detail: z.array(prcTemplateDetailSchema)
-	})
-	.loose();
+export interface PrcTemplateByIdResponse {
+	header: PrcTemplateHeader;
+	detail: PrcTemplateDetail;
+}
 
-// Single template response schema
-export const prcTemplateByIdResponseSchema = z
-	.object({
-		header: prcTemplateHeaderSchema,
-		detail: prcTemplateDetailSchema
-	})
-	.loose();
+export interface PrcTemplateInspectionsResponse {
+	detail: PrcTemplateDetail;
+}
 
-// PRC Template inspections response schema (without header)
-export const prcTemplateInspectionsResponseSchema = z
-	.object({
-		detail: prcTemplateDetailSchema
-	})
-	.loose();
+export interface PrcTemplateStepRequest {
+	version: number;
+	isLatest: boolean;
+	sequence: number;
+	stepId: number | null;
+	type: string;
+	blockCatalystMixing?: boolean;
+	requestSupervisorApproval?: boolean;
+	group?: string;
+	operationText?: string;
+}
 
-// Request schemas for create/update operations
-export const prcTemplateStepRequestSchema = z.object({
-	version: z.number(),
-	isLatest: z.boolean(),
-	sequence: z.number(),
-	stepId: z.number().nullable(),
-	type: z.string(),
-	blockCatalystMixing: z.boolean().optional(),
-	requestSupervisorApproval: z.boolean().optional(),
-	/** Operation group code from operations combo (e.g. "40") */
-	group: z.string().optional(),
-	/** Human-readable operation label (optional, when available) */
-	operationText: z.string().optional()
-});
+export interface PrcTemplateNestedStepRequest {
+	version: number;
+	isLatest: boolean;
+	sequence: number;
+	stepId: number | null;
+	type: string;
+	blockCatalystMixing?: boolean;
+	requestSupervisorApproval?: boolean;
+}
 
-/** Step payload nested under operations (no group — parent carries operation) */
-export const prcTemplateNestedStepRequestSchema = z.object({
-	version: z.number(),
-	isLatest: z.boolean(),
-	sequence: z.number(),
-	stepId: z.number().nullable(),
-	type: z.string(),
-	blockCatalystMixing: z.boolean().optional(),
-	requestSupervisorApproval: z.boolean().optional()
-});
+export interface PrcTemplateOperationRequest {
+	operation: string;
+	operationText?: string;
+	sequences: PrcTemplateNestedStepRequest[];
+	inspections: PrcTemplateNestedStepRequest[];
+}
 
-/** One operation group with sequences and inspections (Part Master create flow) */
-export const prcTemplateOperationRequestSchema = z.object({
-	operation: z.string(),
-	operationText: z.string().optional(),
-	sequences: z.array(prcTemplateNestedStepRequestSchema),
-	inspections: z.array(prcTemplateNestedStepRequestSchema)
-});
+export interface PrcTemplateRequest {
+	status: string;
+	templateId: string;
+	templateName: string;
+	notes?: string;
+	version: number;
+	isLatest: boolean;
+	isActive: boolean;
+}
 
-export const prcTemplateRequestSchema = z.object({
-	status: z.string(),
-	templateId: z.string(),
-	templateName: z.string(),
-	notes: z.string().optional(),
-	version: z.number(),
-	isLatest: z.boolean(),
-	isActive: z.boolean()
-});
+/** Exactly one of `prcTemplateSteps` or `operations` must be non-empty (enforced at API / caller). */
+export type CreatePrcTemplateRequest =
+	| {
+			prcTemplate: PrcTemplateRequest;
+			prcTemplateSteps: PrcTemplateStepRequest[];
+			operations?: undefined;
+	  }
+	| {
+			prcTemplate: PrcTemplateRequest;
+			operations: PrcTemplateOperationRequest[];
+			prcTemplateSteps?: undefined;
+	  };
 
-// Create request: legacy flat `prcTemplateSteps` OR nested `operations` (XOR)
-export const createPrcTemplateRequestSchema = z
-	.object({
-		prcTemplate: prcTemplateRequestSchema,
-		prcTemplateSteps: z.array(prcTemplateStepRequestSchema).optional(),
-		operations: z.array(prcTemplateOperationRequestSchema).optional()
-	})
-	.refine(
-		data => {
-			const hasSteps = (data.prcTemplateSteps?.length ?? 0) > 0;
-			const hasOps = (data.operations?.length ?? 0) > 0;
-			return (hasSteps && !hasOps) || (!hasSteps && hasOps);
-		},
-		{ message: 'Provide exactly one of prcTemplateSteps or operations' }
+export interface UpdatePrcTemplateRequest {
+	id: number;
+	prcTemplate: PrcTemplateRequest;
+	prcTemplateSteps: PrcTemplateStepRequest[];
+}
+
+export interface DeletePrcTemplateTaskRequest {
+	prcTemplate: PrcTemplateRequest & { id: number };
+	prcTemplateSteps: PrcTemplateStepRequest[];
+}
+
+/** Mutation responses: `data` may be full detail, template only, or empty. */
+export interface CreatePrcTemplateResponse {
+	message: string;
+	data?: PrcTemplateDetail | PrcTemplate | Record<string, unknown>;
+}
+
+export interface UpdatePrcTemplateResponse {
+	message: string;
+	data?: PrcTemplateDetail | PrcTemplate | Record<string, unknown>;
+}
+
+export interface DeletePrcTemplateTaskResponse {
+	message: string;
+	data?: PrcTemplateDetail | PrcTemplate | Record<string, unknown>;
+}
+
+export interface OperationsComboItem {
+	label: string;
+	value: string;
+	data: {
+		operation: string;
+		operationText: string;
+		[key: string]: unknown;
+	};
+	[key: string]: unknown;
+}
+
+export interface OperationsComboResponse {
+	data: OperationsComboItem[];
+}
+
+function isPrcTemplate(value: unknown): value is PrcTemplate {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return (
+		typeof o.status === 'string' &&
+		typeof o.templateId === 'string' &&
+		typeof o.templateName === 'string' &&
+		typeof o.version === 'number' &&
+		typeof o.isLatest === 'boolean' &&
+		typeof o.isActive === 'boolean'
 	);
+}
 
-// Update request schema
-export const updatePrcTemplateRequestSchema = z.object({
-	id: z.number(),
-	prcTemplate: prcTemplateRequestSchema,
-	prcTemplateSteps: z.array(prcTemplateStepRequestSchema)
-});
+function isPrcTemplateStep(value: unknown): value is PrcTemplateStep {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return (
+		typeof o.version === 'number' &&
+		typeof o.isLatest === 'boolean' &&
+		typeof o.sequence === 'number' &&
+		typeof o.type === 'string' &&
+		typeof o.blockCatalystMixing === 'boolean' &&
+		typeof o.requestSupervisorApproval === 'boolean' &&
+		(o.stepId === null || typeof o.stepId === 'number')
+	);
+}
 
-// Delete request schema (for setting status to INACTIVE)
-export const deletePrcTemplateTaskRequestSchema = z.object({
-	prcTemplate: prcTemplateRequestSchema.extend({
-		id: z.number()
-	}),
-	prcTemplateSteps: z.array(prcTemplateStepRequestSchema)
-});
+function isPrcTemplateDetail(value: unknown): value is PrcTemplateDetail {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const d = value as Record<string, unknown>;
+	return isPrcTemplate(d.prcTemplate) && Array.isArray(d.prcTemplateSteps) && d.prcTemplateSteps.every(isPrcTemplateStep);
+}
 
-// Response schemas
-// Create response might return just the template without steps, or even simpler structure
-export const createPrcTemplateResponseSchema = z
-	.object({
-		message: z.string(),
-		data: z
-			.union([
-				prcTemplateDetailSchema, // Full detail with steps
-				prcTemplateSchema, // Just the template
-				z.object({}).loose() // Empty object if API doesn't return data
-			])
-			.optional() // Data might be optional
-	})
-	.loose();
+function isPrcTemplateHeader(value: unknown): value is PrcTemplateHeader {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const h = value as Record<string, unknown>;
+	return (
+		typeof h.ACTIVE === 'number' &&
+		typeof h.NEW === 'number' &&
+		typeof h.INACTIVE === 'number'
+	);
+}
 
-export const updatePrcTemplateResponseSchema = z
-	.object({
-		message: z.string(),
-		data: z
-			.union([
-				prcTemplateDetailSchema, // Full detail with steps
-				prcTemplateSchema, // Just the template
-				z.object({}).loose() // Empty object if API doesn't return data
-			])
-			.optional() // Data might be optional
-	})
-	.loose();
+export function isPrcTemplateListResponse(value: unknown): value is PrcTemplateListResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!isPrcTemplateHeader(o.header) || !Array.isArray(o.detail)) {
+		return false;
+	}
+	return o.detail.every(isPrcTemplateDetail);
+}
 
-export const deletePrcTemplateTaskResponseSchema = z
-	.object({
-		message: z.string(),
-		data: z
-			.union([
-				prcTemplateDetailSchema, // Full detail with steps
-				prcTemplateSchema, // Just the template
-				z.object({}).loose() // Empty object if API doesn't return data
-			])
-			.optional() // Data might be optional
-	})
-	.loose();
+export function isPrcTemplateByIdResponse(value: unknown): value is PrcTemplateByIdResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return isPrcTemplateHeader(o.header) && isPrcTemplateDetail(o.detail);
+}
 
-// Operations combo schemas
-export const operationsComboItemSchema = z
-	.object({
-		label: z.string(),
-		value: z.string(),
-		data: z
-			.object({
-				operation: z.string(),
-				operationText: z.string()
-			})
-			.loose()
-	})
-	.loose();
+export function isPrcTemplateInspectionsResponse(value: unknown): value is PrcTemplateInspectionsResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return isPrcTemplateDetail(o.detail);
+}
 
-export const operationsComboResponseSchema = z
-	.object({
-		data: z.array(operationsComboItemSchema)
-	})
-	.loose();
+export function isPrcTemplateMutationResponse(
+	value: unknown
+): value is CreatePrcTemplateResponse | UpdatePrcTemplateResponse | DeletePrcTemplateTaskResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (typeof o.message !== 'string') {
+		return false;
+	}
+	if (o.data === undefined) {
+		return true;
+	}
+	if (o.data === null || typeof o.data !== 'object' || Array.isArray(o.data)) {
+		return false;
+	}
+	return true;
+}
 
-// Type exports
-export type OperationsComboItem = z.infer<typeof operationsComboItemSchema>;
-export type OperationsComboResponse = z.infer<typeof operationsComboResponseSchema>;
-export type PrcTemplateStep = z.infer<typeof prcTemplateStepSchema>;
-export type PrcTemplate = z.infer<typeof prcTemplateSchema>;
-export type PrcTemplateDetail = z.infer<typeof prcTemplateDetailSchema>;
-export type PrcTemplateHeader = z.infer<typeof prcTemplateHeaderSchema>;
-export type PrcTemplateListResponse = z.infer<typeof prcTemplateListResponseSchema>;
-export type PrcTemplateByIdResponse = z.infer<typeof prcTemplateByIdResponseSchema>;
-export type PrcTemplateInspectionsResponse = z.infer<typeof prcTemplateInspectionsResponseSchema>;
-export type PrcTemplateStepRequest = z.infer<typeof prcTemplateStepRequestSchema>;
-export type PrcTemplateNestedStepRequest = z.infer<typeof prcTemplateNestedStepRequestSchema>;
-export type PrcTemplateOperationRequest = z.infer<typeof prcTemplateOperationRequestSchema>;
-export type PrcTemplateRequest = z.infer<typeof prcTemplateRequestSchema>;
-export type CreatePrcTemplateRequest = z.infer<typeof createPrcTemplateRequestSchema>;
-export type UpdatePrcTemplateRequest = z.infer<typeof updatePrcTemplateRequestSchema>;
-export type DeletePrcTemplateTaskRequest = z.infer<typeof deletePrcTemplateTaskRequestSchema>;
-export type CreatePrcTemplateResponse = z.infer<typeof createPrcTemplateResponseSchema>;
-export type UpdatePrcTemplateResponse = z.infer<typeof updatePrcTemplateResponseSchema>;
-export type DeletePrcTemplateTaskResponse = z.infer<typeof deletePrcTemplateTaskResponseSchema>;
+export function isOperationsComboResponse(value: unknown): value is OperationsComboResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	return o.data.every(item => {
+		if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+			return false;
+		}
+		const row = item as Record<string, unknown>;
+		if (typeof row.label !== 'string' || typeof row.value !== 'string') {
+			return false;
+		}
+		const data = row.data;
+		if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+			return false;
+		}
+		const d = data as Record<string, unknown>;
+		return typeof d.operation === 'string' && typeof d.operationText === 'string';
+	});
+}

@@ -1,236 +1,269 @@
-import { z } from 'zod/v4';
+export interface Column {
+	name: string;
+	type: string;
+	defaultValue?: string | number;
+	tolerance?: string | number;
+	[key: string]: unknown;
+}
 
-// Column schema for inspection parameters
-export const columnSchema = z
-	.object({
-		name: z.string(),
-		type: z.string(),
-		defaultValue: z.union([z.string(), z.number()]).optional(),
-		tolerance: z.union([z.string(), z.number()]).optional()
-	})
-	.loose();
+export interface PartImage {
+	name: string;
+	url: string;
+	[key: string]: unknown;
+}
 
-// Part image schema
-export const partImageSchema = z
-	.object({
-		name: z.string(),
-		url: z.string().url()
-	})
-	.loose();
+export type Files = Record<string, string> | undefined;
 
-// Files schema for inspection parameters
-export const filesSchema = z.record(z.string(), z.string()).optional();
+export interface InspectionParameter {
+	id?: number;
+	inspectionId?: number;
+	order: number | null;
+	version?: number;
+	isLatest?: boolean;
+	parameterName: string;
+	specification?: string;
+	tolerance?: string | number;
+	type: string;
+	files?: Files;
+	columns: Column[];
+	role: string;
+	ctq: boolean;
+	createdAt?: string;
+	updatedAt?: string;
+	[key: string]: unknown;
+}
 
-// Inspection parameter schema
-export const inspectionParameterSchema = z
-	.object({
-		id: z.number().optional(),
-		inspectionId: z.number().optional(),
-		order: z.number().nullable(),
-		version: z.number().optional(),
-		isLatest: z.boolean().optional(),
-		parameterName: z.string(),
-		specification: z.string().optional(),
-		tolerance: z.union([z.string(), z.number()]).optional(),
-		type: z.string(),
-		files: filesSchema,
-		columns: z.array(columnSchema),
-		role: z.string(),
-		ctq: z.boolean(),
-		createdAt: z.string().optional(),
-		updatedAt: z.string().optional()
-	})
-	.loose();
+export interface Inspection {
+	id?: number;
+	inspectionName: string;
+	status: string;
+	inspectionId: string;
+	type: string;
+	version: number;
+	isLatest: boolean;
+	showPartImages?: boolean;
+	partImages?: PartImage[];
+	approveByProduction?: boolean;
+	approveByQuality?: boolean;
+	createdBy?: number | null;
+	updatedBy?: number | null;
+	createdAt?: string;
+	updatedAt?: string;
+	[key: string]: unknown;
+}
 
-// Inspection schema
-export const inspectionSchema = z
-	.object({
-		id: z.number().optional(),
-		inspectionName: z.string(),
-		status: z.string(),
-		inspectionId: z.string(),
-		type: z.string(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		showPartImages: z.boolean().optional(),
-		partImages: z.array(partImageSchema).optional(),
-		approveByProduction: z.boolean().optional(),
-		approveByQuality: z.boolean().optional(),
-		createdBy: z.number().nullable().optional(),
-		updatedBy: z.number().nullable().optional(),
-		createdAt: z.string().optional(),
-		updatedAt: z.string().optional()
-	})
-	.loose();
+export interface InspectionDetail {
+	inspection: Inspection;
+	inspectionParameters: InspectionParameter[];
+	[key: string]: unknown;
+}
 
-// Inspection detail schema combining inspection + inspectionParameters
-export const inspectionDetailSchema = z
-	.object({
-		inspection: inspectionSchema,
-		inspectionParameters: z.array(inspectionParameterSchema)
-	})
-	.loose();
+export interface InspectionHeader {
+	ACTIVE: number;
+	NEW?: number;
+	INACTIVE: number;
+}
 
-// Header schema for counts (NEW is optional — some API deployments omit it)
-export const inspectionHeaderSchema = z
-	.object({
-		ACTIVE: z.number(),
-		NEW: z.number().optional(),
-		INACTIVE: z.number()
-	})
-	.loose();
+export interface InspectionListResponse {
+	header: InspectionHeader;
+	detail: InspectionDetail[];
+}
 
-// List response schema
-export const inspectionListResponseSchema = z
-	.object({
-		header: inspectionHeaderSchema,
-		detail: z.array(inspectionDetailSchema)
-	})
-	.loose();
+export interface InspectionByIdResponse {
+	header: InspectionHeader;
+	detail: InspectionDetail;
+}
 
-// Single inspection response schema
-export const inspectionByIdResponseSchema = z
-	.object({
-		header: inspectionHeaderSchema,
-		detail: inspectionDetailSchema
-	})
-	.loose();
+export interface ColumnRequest {
+	name: string;
+	type: string;
+	defaultValue?: string | number;
+	tolerance?: string | number;
+}
 
-// Request schemas for create/update operations
-export const columnRequestSchema = z.object({
-	name: z.string(),
-	type: z.string(),
-	defaultValue: z.union([z.string(), z.number()]).optional(),
-	tolerance: z.union([z.string(), z.number()]).optional()
-});
+export interface InspectionParameterRequest {
+	order: number;
+	parameterName: string;
+	specification?: string;
+	tolerance?: string | number;
+	type: string;
+	files?: Files;
+	columns: ColumnRequest[];
+	role: string;
+	ctq: boolean;
+}
 
-export const inspectionParameterRequestSchema = z.object({
-	order: z.number(),
-	parameterName: z.string(),
-	specification: z.string().optional(),
-	tolerance: z.union([z.string(), z.number()]).optional(),
-	type: z.string(),
-	files: filesSchema,
-	columns: z.array(columnRequestSchema),
-	role: z.string(),
-	ctq: z.boolean()
-});
+export interface InspectionRequest {
+	inspectionName: string;
+	status: string;
+	inspectionId: string;
+	type: string;
+	version: number;
+	isLatest: boolean;
+	showPartImages?: boolean;
+	partImages?: PartImage[];
+	approveByProduction?: boolean;
+	approveByQuality?: boolean;
+	createdBy?: number | null;
+	updatedBy?: number | null;
+}
 
-export const inspectionRequestSchema = z.object({
-	inspectionName: z.string(),
-	status: z.string(),
-	inspectionId: z.string(),
-	type: z.string(),
-	version: z.number(),
-	isLatest: z.boolean(),
-	showPartImages: z.boolean().optional(),
-	partImages: z.array(partImageSchema).optional(),
-	approveByProduction: z.boolean().optional(),
-	approveByQuality: z.boolean().optional(),
-	createdBy: z.number().nullable().optional(),
-	updatedBy: z.number().nullable().optional()
-});
+export interface InspectionRequestWithId extends InspectionRequest {
+	id: number;
+}
 
-export const inspectionRequestWithIdSchema = z.object({
-	id: z.number(),
-	inspectionName: z.string(),
-	status: z.string(),
-	inspectionId: z.string(),
-	type: z.string(),
-	version: z.number(),
-	isLatest: z.boolean(),
-	showPartImages: z.boolean().optional(),
-	partImages: z.array(partImageSchema).optional(),
-	approveByProduction: z.boolean().optional(),
-	approveByQuality: z.boolean().optional(),
-	createdBy: z.number().nullable().optional(),
-	updatedBy: z.number().nullable().optional()
-});
+export interface CreateInspectionRequest {
+	inspection: InspectionRequest;
+	inspectionParameters: InspectionParameterRequest[];
+}
 
-export const createInspectionRequestSchema = z.object({
-	inspection: inspectionRequestSchema,
-	inspectionParameters: z.array(inspectionParameterRequestSchema)
-});
+export interface UpdateInspectionRequest {
+	id: number;
+	inspection: InspectionRequestWithId;
+	inspectionParameters: InspectionParameterRequest[];
+}
 
-export const updateInspectionRequestSchema = z.object({
-	id: z.number(),
-	inspection: inspectionRequestWithIdSchema,
-	inspectionParameters: z.array(inspectionParameterRequestSchema)
-});
+export interface InspectionBasic {
+	id: number;
+	inspectionName: string;
+	status: string;
+	inspectionId: string;
+	type: string;
+	version: number;
+	isLatest: boolean;
+	showPartImages?: boolean;
+	partImages?: PartImage[];
+	approveByProduction?: boolean;
+	approveByQuality?: boolean;
+	createdBy?: number | null;
+	updatedBy?: number | null;
+	createdAt: string;
+	updatedAt: string;
+	[key: string]: unknown;
+}
 
-// Response schemas for create/update operations
-export const inspectionBasicSchema = z
-	.object({
-		id: z.number(),
-		inspectionName: z.string(),
-		status: z.string(),
-		inspectionId: z.string(),
-		type: z.string(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		showPartImages: z.boolean().optional(),
-		partImages: z.array(partImageSchema).optional(),
-		approveByProduction: z.boolean().optional(),
-		approveByQuality: z.boolean().optional(),
-		createdBy: z.number().nullable().optional(),
-		updatedBy: z.number().nullable().optional(),
-		createdAt: z.string(),
-		updatedAt: z.string()
-	})
-	.loose();
+export interface CreateInspectionResponse {
+	message: string;
+	data: InspectionBasic;
+}
 
-export const createInspectionResponseSchema = z
-	.object({
-		message: z.string(),
-		data: inspectionBasicSchema
-	})
-	.loose();
+export interface UpdateInspectionResponse {
+	message: string;
+	data: InspectionBasic;
+}
 
-export const updateInspectionResponseSchema = z
-	.object({
-		message: z.string(),
-		data: inspectionBasicSchema
-	})
-	.loose();
+export interface DeleteInspectionTaskRequest {
+	inspection: InspectionRequestWithId;
+	inspectionParameters: InspectionParameterRequest[];
+}
 
-// Delete task request schema - sets status to INACTIVE and sends remaining data
-export const deleteInspectionTaskRequestSchema = z.object({
-	inspection: inspectionRequestWithIdSchema,
-	inspectionParameters: z.array(inspectionParameterRequestSchema)
-});
+export interface DeleteInspectionTaskResponse {
+	message: string;
+	data: InspectionBasic;
+}
 
-// Delete task response schema
-export const deleteInspectionTaskResponseSchema = z
-	.object({
-		message: z.string(),
-		data: inspectionBasicSchema
-	})
-	.loose();
+function isColumn(value: unknown): value is Column {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const c = value as Record<string, unknown>;
+	return typeof c.name === 'string' && typeof c.type === 'string';
+}
 
-// TypeScript types inferred from Zod schemas
-export type Column = z.infer<typeof columnSchema>;
-export type PartImage = z.infer<typeof partImageSchema>;
-export type Files = z.infer<typeof filesSchema>;
-export type InspectionParameter = z.infer<typeof inspectionParameterSchema>;
-export type Inspection = z.infer<typeof inspectionSchema>;
-export type InspectionDetail = z.infer<typeof inspectionDetailSchema>;
-export type InspectionHeader = z.infer<typeof inspectionHeaderSchema>;
-export type InspectionListResponse = z.infer<typeof inspectionListResponseSchema>;
-export type InspectionByIdResponse = z.infer<typeof inspectionByIdResponseSchema>;
+function isInspectionParameter(value: unknown): value is InspectionParameter {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const p = value as Record<string, unknown>;
+	return (
+		typeof p.parameterName === 'string' &&
+		typeof p.type === 'string' &&
+		typeof p.role === 'string' &&
+		typeof p.ctq === 'boolean' &&
+		(p.order === null || typeof p.order === 'number') &&
+		Array.isArray(p.columns) &&
+		p.columns.every(isColumn)
+	);
+}
 
-// Request types
-export type ColumnRequest = z.infer<typeof columnRequestSchema>;
-export type InspectionParameterRequest = z.infer<typeof inspectionParameterRequestSchema>;
-export type InspectionRequest = z.infer<typeof inspectionRequestSchema>;
-export type InspectionRequestWithId = z.infer<typeof inspectionRequestWithIdSchema>;
-export type CreateInspectionRequest = z.infer<typeof createInspectionRequestSchema>;
-export type UpdateInspectionRequest = z.infer<typeof updateInspectionRequestSchema>;
+function isInspection(value: unknown): value is Inspection {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const i = value as Record<string, unknown>;
+	return (
+		typeof i.inspectionName === 'string' &&
+		typeof i.status === 'string' &&
+		typeof i.inspectionId === 'string' &&
+		typeof i.type === 'string' &&
+		typeof i.version === 'number' &&
+		typeof i.isLatest === 'boolean'
+	);
+}
 
-// Response types
-export type InspectionBasic = z.infer<typeof inspectionBasicSchema>;
-export type CreateInspectionResponse = z.infer<typeof createInspectionResponseSchema>;
-export type UpdateInspectionResponse = z.infer<typeof updateInspectionResponseSchema>;
+function isInspectionDetail(value: unknown): value is InspectionDetail {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const d = value as Record<string, unknown>;
+	return isInspection(d.inspection) && Array.isArray(d.inspectionParameters) && d.inspectionParameters.every(isInspectionParameter);
+}
 
-// Delete task types
-export type DeleteInspectionTaskRequest = z.infer<typeof deleteInspectionTaskRequestSchema>;
-export type DeleteInspectionTaskResponse = z.infer<typeof deleteInspectionTaskResponseSchema>;
+function isInspectionHeader(value: unknown): value is InspectionHeader {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const h = value as Record<string, unknown>;
+	return (
+		typeof h.ACTIVE === 'number' &&
+		typeof h.INACTIVE === 'number' &&
+		(h.NEW === undefined || typeof h.NEW === 'number')
+	);
+}
+
+export function isInspectionListResponse(value: unknown): value is InspectionListResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!isInspectionHeader(o.header) || !Array.isArray(o.detail)) {
+		return false;
+	}
+	return o.detail.every(isInspectionDetail);
+}
+
+export function isInspectionByIdResponse(value: unknown): value is InspectionByIdResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return isInspectionHeader(o.header) && isInspectionDetail(o.detail);
+}
+
+function isInspectionBasic(value: unknown): value is InspectionBasic {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const b = value as Record<string, unknown>;
+	return (
+		typeof b.id === 'number' &&
+		typeof b.inspectionName === 'string' &&
+		typeof b.status === 'string' &&
+		typeof b.inspectionId === 'string' &&
+		typeof b.type === 'string' &&
+		typeof b.version === 'number' &&
+		typeof b.isLatest === 'boolean' &&
+		typeof b.createdAt === 'string' &&
+		typeof b.updatedAt === 'string'
+	);
+}
+
+export function isInspectionMutationResponse(
+	value: unknown
+): value is CreateInspectionResponse | UpdateInspectionResponse | DeleteInspectionTaskResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return typeof o.message === 'string' && isInspectionBasic(o.data);
+}

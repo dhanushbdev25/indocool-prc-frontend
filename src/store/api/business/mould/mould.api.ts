@@ -1,8 +1,8 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
-	mouldListResponseSchema,
-	mouldComboResponseSchema,
+	isMouldListResponse,
+	isMouldComboResponse,
 	mapMouldApiItemToRow,
 	type MouldReconciliationRow,
 	type MouldComboItem
@@ -19,12 +19,11 @@ export const mouldApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = mouldListResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for mould list response:', parsed.error);
+				if (!isMouldListResponse(response)) {
+					console.error('Invalid mould list response structure', response);
 					throw new Error('Invalid mould list response structure');
 				}
-				return parsed.data.data.map(mapMouldApiItemToRow);
+				return response.data.map(mapMouldApiItemToRow);
 			},
 			providesTags: ['Mould']
 		}),
@@ -36,12 +35,11 @@ export const mouldApi = createApi({
 				params: { partId }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = mouldComboResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for mould combo response:', parsed.error);
+				if (!isMouldComboResponse(response)) {
+					console.error('Invalid mould combo response structure', response);
 					throw new Error('Invalid mould combo response structure');
 				}
-				return parsed.data.data;
+				return response.data;
 			},
 			providesTags: (_result, _err, { partId }) => [{ type: 'MouldCombo', id: partId }]
 		}),

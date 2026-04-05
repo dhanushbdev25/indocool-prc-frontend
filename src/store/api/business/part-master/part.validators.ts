@@ -1,254 +1,271 @@
-import { z } from 'zod';
+export interface SplittingConfigRow {
+	order: number;
+	splitQuantity: string | number;
+}
 
-// Base schemas for individual entities
-export const rawMaterialSchema = z
-	.object({
-		id: z.number().optional(),
-		partId: z.number().optional(),
-		materialName: z.string().min(1, 'Material name is required'),
-		materialCode: z.string().min(1, 'Material code is required'),
-		quantity: z.string().min(1, 'Quantity is required'),
-		uom: z.string().min(1, 'UOM is required'),
-		version: z.number().default(1),
-		isLatest: z.boolean().default(true),
-		batching: z.boolean().default(false),
-		splitting: z.boolean().default(false),
-		splittingConfiguration: z
-			.array(
-				z
-					.object({
-						order: z.number(),
-						splitQuantity: z.union([z.string(), z.number()]).transform(val => String(val))
-					})
-					.loose()
-			)
-			.nullable()
-			.optional(),
-		createdAt: z.string().optional(),
-		updatedAt: z.string().optional()
-	})
-	.loose();
+export interface RawMaterial {
+	id?: number;
+	partId?: number;
+	materialName: string;
+	materialCode: string;
+	quantity: string;
+	uom: string;
+	version?: number;
+	isLatest?: boolean;
+	batching?: boolean;
+	splitting?: boolean;
+	splittingConfiguration?: SplittingConfigRow[] | null;
+	createdAt?: string;
+	updatedAt?: string;
+	[key: string]: unknown;
+}
 
-export const drillingSchema = z
-	.object({
-		id: z.number().optional(),
-		partId: z.number().optional(),
-		characteristics: z.string().min(1, 'Characteristics is required'),
-		specification: z.string().min(1, 'Specification is required'),
-		noOfHoles: z.string().min(1, 'Number of holes is required'),
-		diaOfHoles: z.string().min(1, 'Diameter of holes is required'),
-		tolerance: z.string().min(1, 'Tolerance is required'),
-		version: z.number().default(1),
-		isLatest: z.boolean().default(true),
-		createdAt: z.string().optional(),
-		updatedAt: z.string().optional()
-	})
-	.loose();
+export interface Drilling {
+	id?: number;
+	partId?: number;
+	characteristics: string;
+	specification: string;
+	noOfHoles: string;
+	diaOfHoles: string;
+	tolerance: string;
+	version?: number;
+	isLatest?: boolean;
+	createdAt?: string;
+	updatedAt?: string;
+	[key: string]: unknown;
+}
 
-export const cuttingSchema = z
-	.object({
-		id: z.number().optional(),
-		partId: z.number().optional(),
-		characteristics: z.string().min(1, 'Characteristics is required'),
-		specification: z.string().min(1, 'Specification is required'),
-		tolerance: z.string().min(1, 'Tolerance is required'),
-		version: z.number().default(1),
-		isLatest: z.boolean().default(true),
-		createdAt: z.string().optional(),
-		updatedAt: z.string().optional()
-	})
-	.loose();
+export interface Cutting {
+	id?: number;
+	partId?: number;
+	characteristics: string;
+	specification: string;
+	tolerance: string;
+	version?: number;
+	isLatest?: boolean;
+	createdAt?: string;
+	updatedAt?: string;
+	[key: string]: unknown;
+}
 
-export const partDrawingSchema = z
-	.object({
-		fileName: z.string().optional(),
-		filePath: z.string().optional(),
-		originalFileName: z.string().optional()
-	})
-	.loose();
+export interface PartDrawing {
+	fileName?: string;
+	filePath?: string;
+	originalFileName?: string;
+	[key: string]: unknown;
+}
 
-export const inspectionDiagramSchema = z
-	.object({
-		partId: z.number().optional(),
-		files: z
-			.array(
-				z
-					.object({
-						inspectionParameterId: z.number().optional(),
-						fileName: z
-							.array(
-								z
-									.object({
-										fileName: z.string().optional(),
-										filePath: z.string().optional(),
-										originalFileName: z.string().optional()
-									})
-									.loose()
-							)
-							.optional()
-					})
-					.loose()
-			)
-			.nullable()
-			.optional()
-			.default([])
-	})
-	.loose();
+export interface InspectionDiagramFileEntry {
+	fileName?: string;
+	filePath?: string;
+	originalFileName?: string;
+	[key: string]: unknown;
+}
 
-export const mouldSchema = z
-	.object({
-		mouldCode: z.string().min(1, 'Mould code is required'),
-		reconciliationCount: z.number().min(1, 'Reconciliation count must be at least 1'),
-		currentCount: z.number().optional(),
-		lastReconciledAt: z.string().optional()
-	})
-	.loose();
+export interface InspectionDiagramFileGroup {
+	inspectionParameterId?: number;
+	fileName?: InspectionDiagramFileEntry[];
+	[key: string]: unknown;
+}
 
-export const partMasterSchema = z
-	.object({
-		id: z.number().optional(),
-		partNumber: z.string().min(1, 'Part number is required'),
-		drawingNumber: z.string().min(1, 'Drawing number is required'),
-		drawingRevision: z.number().default(1),
-		partRevision: z.number().default(1),
-		status: z.enum(['ACTIVE', 'NEW', 'INACTIVE']).default('NEW'),
-		customer: z.string().min(1, 'Customer is required'),
-		description: z.string().min(1, 'Description is required'),
-		notes: z.string().nullable().optional(),
-		layupType: z.string().nullable().optional(),
-		model: z.string().nullable().optional(),
-		sapReferenceNumber: z.string().nullable().optional(),
-		version: z.number().default(1),
-		isLatest: z.boolean().default(true),
-		catalyst: z.number().nullable().optional(),
-		prcTemplate: z.number().nullable().optional(),
-		createdBy: z.number().nullable().optional(),
-		updatedBy: z.number().nullable().optional(),
-		createdAt: z.string().nullable().optional(),
-		updatedAt: z.string().nullable().optional(),
-		customerName: z.string().nullable().optional(),
-		mouldDetails: z.array(mouldSchema).optional().default([]),
-		files: z.array(partDrawingSchema).nullable().optional(),
-		inspectionDiagrams: z
-			.union([inspectionDiagramSchema, z.array(inspectionDiagramSchema)])
-			.nullable()
-			.optional()
-	})
-	.loose();
+export interface InspectionDiagram {
+	partId?: number;
+	files?: InspectionDiagramFileGroup[] | null;
+	[key: string]: unknown;
+}
 
-// Customer combo schema (new format)
-export const customerComboSchema = z
-	.object({
-		label: z.string(),
-		value: z.string(),
-		data: z.record(z.string(), z.unknown()).optional()
-	})
-	.loose();
+export interface Mould {
+	mouldCode: string;
+	reconciliationCount: number;
+	currentCount?: number;
+	lastReconciledAt?: string;
+	[key: string]: unknown;
+}
 
-// Response schemas
-export const partDetailSchema = z
-	.object({
-		partMaster: partMasterSchema,
-		rawMaterials: z.array(rawMaterialSchema),
-		drilling: z.array(drillingSchema),
-		cutting: z.array(cuttingSchema),
-		files: z.array(partDrawingSchema).nullable().optional().default([]),
-		inspectionDiagrams: z
-			.union([inspectionDiagramSchema, z.array(inspectionDiagramSchema)])
-			.nullable()
-			.optional()
-	})
-	.loose();
+export type PartStatus = 'ACTIVE' | 'NEW' | 'INACTIVE';
 
-export const partsResponseSchema = z
-	.object({
-		header: z
-			.object({
-				ACTIVE: z.number(),
-				NEW: z.number(),
-				INACTIVE: z.number()
-			})
-			.loose(),
-		detail: z.array(partDetailSchema)
-	})
-	.loose();
+export interface PartMaster {
+	id?: number;
+	partNumber: string;
+	drawingNumber: string;
+	drawingRevision?: number;
+	partRevision?: number;
+	status?: PartStatus;
+	customer: string;
+	description: string;
+	notes?: string | null;
+	layupType?: string | null;
+	model?: string | null;
+	sapReferenceNumber?: string | null;
+	version?: number;
+	isLatest?: boolean;
+	catalyst?: number | null;
+	prcTemplate?: number | null;
+	createdBy?: number | null;
+	updatedBy?: number | null;
+	createdAt?: string | null;
+	updatedAt?: string | null;
+	customerName?: string | null;
+	mouldDetails?: Mould[];
+	files?: PartDrawing[] | null;
+	inspectionDiagrams?: InspectionDiagram | InspectionDiagram[] | null;
+}
 
-export const partByIdResponseSchema = z
-	.object({
-		header: z
-			.object({
-				ACTIVE: z.number(),
-				NEW: z.number(),
-				INACTIVE: z.number()
-			})
-			.loose(),
-		detail: partDetailSchema
-	})
-	.loose();
+export interface CustomerCombo {
+	label: string;
+	value: string;
+	data?: Record<string, unknown>;
+	[key: string]: unknown;
+}
 
-export const customersResponseSchema = z
-	.object({
-		data: z.array(customerComboSchema)
-	})
-	.loose();
+export interface PartDetail {
+	partMaster: PartMaster;
+	rawMaterials: RawMaterial[];
+	drilling: Drilling[];
+	cutting: Cutting[];
+	files?: PartDrawing[] | null;
+	inspectionDiagrams?: InspectionDiagram | InspectionDiagram[] | null;
+	[key: string]: unknown;
+}
 
-// Create/Update response schema (single part object)
-export const createPartResponseSchema = z
-	.object({
-		message: z.string(),
-		data: partMasterSchema
-	})
-	.loose();
+export interface PartListHeader {
+	ACTIVE: number;
+	NEW: number;
+	INACTIVE: number;
+}
 
-export const updatePartResponseSchema = z
-	.object({
-		message: z.string(),
-		data: partMasterSchema
-	})
-	.loose();
+export interface PartsResponse {
+	header: PartListHeader;
+	detail: PartDetail[];
+}
 
-// Request schemas
-export const createPartRequestSchema = z.object({
-	data: z.object({
-		partMaster: partMasterSchema.omit({ id: true, createdAt: true, updatedAt: true, customerName: true }),
-		rawMaterials: z.array(rawMaterialSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-		drilling: z.array(drillingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-		cutting: z.array(cuttingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true }))
-	})
-});
+export interface PartByIdResponse {
+	header: PartListHeader;
+	detail: PartDetail;
+}
 
-export const updatePartRequestSchema = z.object({
-	id: z.number(),
-	data: z.object({
-		partMaster: partMasterSchema.omit({ createdAt: true, updatedAt: true, customerName: true }),
-		rawMaterials: z.array(rawMaterialSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-		drilling: z.array(drillingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-		cutting: z.array(cuttingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true }))
-	})
-});
+export interface CustomersResponse {
+	data: CustomerCombo[];
+}
 
-export const deletePartRequestSchema = z.object({
-	partMaster: partMasterSchema.omit({ createdAt: true, updatedAt: true, customerName: true }),
-	rawMaterials: z.array(rawMaterialSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-	drilling: z.array(drillingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true })),
-	cutting: z.array(cuttingSchema.omit({ id: true, partId: true, createdAt: true, updatedAt: true }))
-});
+export interface CreatePartResponse {
+	message: string;
+	data: PartMaster;
+}
 
-// Type exports
-export type RawMaterial = z.infer<typeof rawMaterialSchema>;
-export type Drilling = z.infer<typeof drillingSchema>;
-export type Cutting = z.infer<typeof cuttingSchema>;
-export type PartDrawing = z.infer<typeof partDrawingSchema>;
-export type InspectionDiagram = z.infer<typeof inspectionDiagramSchema>;
-export type Mould = z.infer<typeof mouldSchema>;
-export type PartMaster = z.infer<typeof partMasterSchema>;
-export type CustomerCombo = z.infer<typeof customerComboSchema>;
-export type PartDetail = z.infer<typeof partDetailSchema>;
-export type PartsResponse = z.infer<typeof partsResponseSchema>;
-export type PartByIdResponse = z.infer<typeof partByIdResponseSchema>;
-export type CustomersResponse = z.infer<typeof customersResponseSchema>;
-export type CreatePartResponse = z.infer<typeof createPartResponseSchema>;
-export type UpdatePartResponse = z.infer<typeof updatePartResponseSchema>;
-export type CreatePartRequest = z.infer<typeof createPartRequestSchema>;
-export type UpdatePartRequest = z.infer<typeof updatePartRequestSchema>;
-export type DeletePartRequest = z.infer<typeof deletePartRequestSchema>;
+export interface UpdatePartResponse {
+	message: string;
+	data: PartMaster;
+}
+
+/** Raw material row for create/update payloads (no persisted ids). */
+export type RawMaterialInput = Omit<RawMaterial, 'id' | 'partId' | 'createdAt' | 'updatedAt'>;
+export type DrillingInput = Omit<Drilling, 'id' | 'partId' | 'createdAt' | 'updatedAt'>;
+export type CuttingInput = Omit<Cutting, 'id' | 'partId' | 'createdAt' | 'updatedAt'>;
+
+export type PartMasterCreatePayload = Omit<PartMaster, 'id' | 'createdAt' | 'updatedAt' | 'customerName'>;
+
+export interface CreatePartRequest {
+	data: {
+		partMaster: PartMasterCreatePayload;
+		rawMaterials: RawMaterialInput[];
+		drilling: DrillingInput[];
+		cutting: CuttingInput[];
+	};
+}
+
+export type PartMasterUpdatePayload = Omit<PartMaster, 'createdAt' | 'updatedAt' | 'customerName'>;
+
+export interface UpdatePartRequest {
+	id: number;
+	data: {
+		partMaster: PartMasterUpdatePayload;
+		rawMaterials: RawMaterialInput[];
+		drilling: DrillingInput[];
+		cutting: CuttingInput[];
+	};
+}
+
+export interface DeletePartRequest {
+	partMaster: PartMasterUpdatePayload;
+	rawMaterials: RawMaterialInput[];
+	drilling: DrillingInput[];
+	cutting: CuttingInput[];
+}
+
+function isPartListHeader(value: unknown): value is PartListHeader {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const h = value as Record<string, unknown>;
+	return (
+		typeof h.ACTIVE === 'number' &&
+		typeof h.NEW === 'number' &&
+		typeof h.INACTIVE === 'number'
+	);
+}
+
+function isPartDetail(value: unknown): value is PartDetail {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const d = value as Record<string, unknown>;
+	return (
+		d.partMaster !== null &&
+		typeof d.partMaster === 'object' &&
+		!Array.isArray(d.partMaster) &&
+		Array.isArray(d.rawMaterials) &&
+		Array.isArray(d.drilling) &&
+		Array.isArray(d.cutting)
+	);
+}
+
+export function isPartsResponse(value: unknown): value is PartsResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!isPartListHeader(o.header) || !Array.isArray(o.detail)) {
+		return false;
+	}
+	return o.detail.every(isPartDetail);
+}
+
+export function isPartByIdResponse(value: unknown): value is PartByIdResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return isPartListHeader(o.header) && isPartDetail(o.detail);
+}
+
+export function isCustomersResponse(value: unknown): value is CustomersResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	return o.data.every(
+		(item): item is CustomerCombo =>
+			item !== null &&
+			typeof item === 'object' &&
+			!Array.isArray(item) &&
+			typeof (item as Record<string, unknown>).label === 'string' &&
+			typeof (item as Record<string, unknown>).value === 'string'
+	);
+}
+
+export function isPartMutationResponse(value: unknown): value is CreatePartResponse | UpdatePartResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return (
+		typeof o.message === 'string' &&
+		o.data !== null &&
+		typeof o.data === 'object' &&
+		!Array.isArray(o.data)
+	);
+}

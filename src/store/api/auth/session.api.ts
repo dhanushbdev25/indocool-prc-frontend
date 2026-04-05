@@ -1,5 +1,5 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { sessionData, userSessionContextparser } from '../userSessionContextParser';
+import { sessionData, isSessionData } from '../userSessionContextParser';
 import { baseQuery } from '../baseApi';
 import Cookie from '../../../utils/Cookie';
 
@@ -14,12 +14,11 @@ export const sessionApi = createApi({
 			keepUnusedDataFor: 1800,
 
 			transformResponse: (response: unknown) => {
-				const parsed = userSessionContextparser.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed', parsed.error);
+				if (!isSessionData(response)) {
+					console.error('Invalid session context structure', response);
 					throw new Error('Invalid session context structure');
 				}
-				return parsed.data;
+				return response;
 			}
 		})
 	})

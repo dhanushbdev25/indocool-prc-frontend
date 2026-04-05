@@ -1,11 +1,10 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
-	partsResponseSchema,
-	partByIdResponseSchema,
-	customersResponseSchema,
-	createPartResponseSchema,
-	updatePartResponseSchema,
+	isPartsResponse,
+	isPartByIdResponse,
+	isCustomersResponse,
+	isPartMutationResponse,
 	type PartsResponse,
 	type PartByIdResponse,
 	type CustomersResponse,
@@ -33,12 +32,11 @@ export const partApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = partsResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for parts response:', parsed.error);
+				if (!isPartsResponse(response)) {
+					console.error('Invalid parts response structure', response);
 					throw new Error('Invalid parts response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			providesTags: ['Part']
 		}),
@@ -49,12 +47,11 @@ export const partApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = partByIdResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for part by ID response:', parsed.error);
+				if (!isPartByIdResponse(response)) {
+					console.error('Invalid part by ID response structure', response);
 					throw new Error('Invalid part by ID response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'Part', id },
@@ -68,12 +65,11 @@ export const partApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = customersResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for customers response:', parsed.error);
+				if (!isCustomersResponse(response)) {
+					console.error('Invalid customers response structure', response);
 					throw new Error('Invalid customers response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			providesTags: ['Customer']
 		}),
@@ -85,12 +81,11 @@ export const partApi = createApi({
 				body: data
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = createPartResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for create part response:', parsed.error);
+				if (!isPartMutationResponse(response)) {
+					console.error('Invalid create part response structure', response);
 					throw new Error('Invalid create part response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			invalidatesTags: ['Part']
 		}),
@@ -102,12 +97,11 @@ export const partApi = createApi({
 				body: { data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = updatePartResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for update part response:', parsed.error);
+				if (!isPartMutationResponse(response)) {
+					console.error('Invalid update part response structure', response);
 					throw new Error('Invalid update part response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			invalidatesTags: (_, __, { id }) => [{ type: 'Part', id }, { type: 'Part', id: 'LIST' }, 'Part']
 		}),
@@ -119,12 +113,11 @@ export const partApi = createApi({
 				body: { data: { ...data, partMaster: { ...data.partMaster, status: 'INACTIVE' } } }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = updatePartResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for delete part task response:', parsed.error);
+				if (!isPartMutationResponse(response)) {
+					console.error('Invalid delete part task response structure', response);
 					throw new Error('Invalid delete part task response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			invalidatesTags: (_, __, { partMaster }) => [
 				{ type: 'Part', id: partMaster?.id },

@@ -1,194 +1,230 @@
-import { z } from 'zod/v4';
+export interface CatalystConfiguration {
+	id: number;
+	catalystId: number;
+	chartId: string;
+	version: number;
+	isLatest: boolean;
+	minTemperature: string;
+	maxTemperature: string;
+	minHumidity: string;
+	maxHumidity: string;
+	minGelcoat: string;
+	maxGelcoat: string;
+	gelcoatLabel: string;
+	minResinDosage: string;
+	maxResinDosage: string;
+	resinLabel: string;
+	minTopCoat: string | null;
+	maxTopCoat: string | null;
+	topCoatLabel: string | null;
+	blockCatalystMixing: boolean;
+	requestSupervisorApproval: boolean;
+	createdAt: string;
+	updatedAt: string;
+	[key: string]: unknown;
+}
 
-// Zod schemas for catalyst response validation
-export const catalystConfigurationSchema = z
-	.object({
-		id: z.number(),
-		catalystId: z.number(),
-		chartId: z.string(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		minTemperature: z.string(),
-		maxTemperature: z.string(),
-		minHumidity: z.string(),
-		maxHumidity: z.string(),
-		minGelcoat: z.string(),
-		maxGelcoat: z.string(),
-		gelcoatLabel: z.string(),
-		minResinDosage: z.string(),
-		maxResinDosage: z.string(),
-		resinLabel: z.string(),
-		minTopCoat: z.string().nullable(),
-		maxTopCoat: z.string().nullable(),
-		topCoatLabel: z.string().nullable(),
-		blockCatalystMixing: z.boolean(),
-		requestSupervisorApproval: z.boolean(),
-		createdAt: z.string(),
-		updatedAt: z.string()
-	})
-	.loose();
+export interface Catalyst {
+	id: number;
+	status: string;
+	chartId: string;
+	version: number;
+	isLatest: boolean;
+	chartSupplier: string;
+	notes: string;
+	mekpDensity: string;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+	[key: string]: unknown;
+}
 
-export const catalystSchema = z
-	.object({
-		id: z.number(),
-		status: z.string(),
-		chartId: z.string(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		chartSupplier: z.string(),
-		notes: z.string(),
-		mekpDensity: z.string(),
-		isActive: z.boolean(),
-		createdAt: z.string(),
-		updatedAt: z.string()
-	})
-	.loose();
+export interface CatalystDetail {
+	catalyst: Catalyst;
+	catalystConfiguration: CatalystConfiguration[];
+	[key: string]: unknown;
+}
 
-export const catalystDetailSchema = z
-	.object({
-		catalyst: catalystSchema,
-		catalystConfiguration: z.array(catalystConfigurationSchema)
-	})
-	.loose();
+export interface CatalystHeader {
+	ACTIVE: number;
+	NEW: number;
+	INACTIVE: number;
+}
 
-export const catalystHeaderSchema = z
-	.object({
-		ACTIVE: z.number(),
-		NEW: z.number(),
-		INACTIVE: z.number()
-	})
-	.loose();
+export interface CatalystChartResponse {
+	header: CatalystHeader;
+	detail: CatalystDetail[];
+}
 
-export const catalystChartResponseSchema = z
-	.object({
-		header: catalystHeaderSchema,
-		detail: z.array(catalystDetailSchema)
-	})
-	.loose();
+export interface CatalystByIdResponse {
+	header: CatalystHeader;
+	detail: CatalystDetail;
+}
 
-// Schema for single catalyst response (has header and detail structure)
-export const catalystByIdResponseSchema = z
-	.object({
-		header: catalystHeaderSchema,
-		detail: catalystDetailSchema
-	})
-	.loose();
+export interface CatalystConfigurationRequest {
+	minTemperature: number;
+	maxTemperature: number;
+	minHumidity: number;
+	maxHumidity: number;
+	minGelcoat: number;
+	maxGelcoat: number;
+	gelcoatLabel: string;
+	minResinDosage: number;
+	maxResinDosage: number;
+	resinLabel: string;
+	minTopCoat: number;
+	maxTopCoat: number;
+	topCoatLabel: string;
+	blockCatalystMixing: boolean;
+	requestSupervisorApproval: boolean;
+}
 
-// Request schemas for create/update operations
-export const catalystConfigurationRequestSchema = z.object({
-	minTemperature: z.number(),
-	maxTemperature: z.number(),
-	minHumidity: z.number(),
-	maxHumidity: z.number(),
-	minGelcoat: z.number(),
-	maxGelcoat: z.number(),
-	gelcoatLabel: z.string(),
-	minResinDosage: z.number(),
-	maxResinDosage: z.number(),
-	resinLabel: z.string(),
-	minTopCoat: z.number(),
-	maxTopCoat: z.number(),
-	topCoatLabel: z.string(),
-	blockCatalystMixing: z.boolean(),
-	requestSupervisorApproval: z.boolean()
-});
+export interface CatalystRequest {
+	status: string;
+	chartId: string;
+	chartSupplier: string;
+	notes?: string;
+	mekpDensity: number;
+	isActive: boolean;
+}
 
-export const catalystRequestSchema = z.object({
-	status: z.string(),
-	chartId: z.string(),
-	chartSupplier: z.string(),
-	notes: z.string().optional(),
-	mekpDensity: z.number(),
-	isActive: z.boolean()
-});
+export interface CatalystRequestWithId {
+	id: number;
+	version: number;
+	status: string;
+	chartId: string;
+	chartSupplier: string;
+	notes?: string;
+	mekpDensity: number;
+	isActive: boolean;
+}
 
-export const catalystRequestWithIdSchema = z.object({
-	id: z.number(),
-	version: z.number(),
-	status: z.string(),
-	chartId: z.string(),
-	chartSupplier: z.string(),
-	notes: z.string().optional(),
-	mekpDensity: z.number(),
-	isActive: z.boolean()
-});
+export interface CreateCatalystRequest {
+	catalyst: CatalystRequest;
+	catalystConfiguration: CatalystConfigurationRequest[];
+}
 
-export const createCatalystRequestSchema = z.object({
-	catalyst: catalystRequestSchema,
-	catalystConfiguration: z.array(catalystConfigurationRequestSchema)
-});
+export interface UpdateCatalystRequest {
+	id: number;
+	catalyst: CatalystRequestWithId;
+	catalystConfiguration: CatalystConfigurationRequest[];
+}
 
-export const updateCatalystRequestSchema = z.object({
-	id: z.number(),
-	catalyst: catalystRequestWithIdSchema,
-	catalystConfiguration: z.array(catalystConfigurationRequestSchema)
-});
+export interface CatalystBasic {
+	id: number;
+	status: string;
+	chartId: string;
+	version: number;
+	isLatest: boolean;
+	chartSupplier: string;
+	notes: string;
+	mekpDensity: string;
+	isActive: boolean;
+	createdAt: string;
+	updatedAt: string;
+	[key: string]: unknown;
+}
 
-// Response schemas for create/update operations
-export const catalystBasicSchema = z
-	.object({
-		id: z.number(),
-		status: z.string(),
-		chartId: z.string(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		chartSupplier: z.string(),
-		notes: z.string(),
-		mekpDensity: z.string(),
-		isActive: z.boolean(),
-		createdAt: z.string(),
-		updatedAt: z.string()
-	})
-	.loose();
+export interface CreateCatalystResponse {
+	message: string;
+	data: CatalystBasic;
+}
 
-export const createCatalystResponseSchema = z
-	.object({
-		message: z.string(),
-		data: catalystBasicSchema
-	})
-	.loose();
+export interface UpdateCatalystResponse {
+	message: string;
+	data: CatalystBasic;
+}
 
-export const updateCatalystResponseSchema = z
-	.object({
-		message: z.string(),
-		data: catalystBasicSchema
-	})
-	.loose();
+export interface DeleteCatalystTaskRequest {
+	catalyst: CatalystRequestWithId;
+	catalystConfiguration: CatalystConfigurationRequest[];
+}
 
-// Delete task request schema - sets status to INACTIVE and sends remaining data
-export const deleteCatalystTaskRequestSchema = z.object({
-	catalyst: catalystRequestWithIdSchema,
-	catalystConfiguration: z.array(catalystConfigurationRequestSchema)
-});
+export interface DeleteCatalystTaskResponse {
+	message: string;
+	data: CatalystBasic;
+}
 
-// Delete task response schema
-export const deleteCatalystTaskResponseSchema = z
-	.object({
-		message: z.string(),
-		data: catalystBasicSchema
-	})
-	.loose();
+function isCatalystConfiguration(value: unknown): value is CatalystConfiguration {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const c = value as Record<string, unknown>;
+	return typeof c.id === 'number' && typeof c.catalystId === 'number' && typeof c.chartId === 'string';
+}
 
-// TypeScript types inferred from Zod schemas
-export type CatalystConfiguration = z.infer<typeof catalystConfigurationSchema>;
-export type Catalyst = z.infer<typeof catalystSchema>;
-export type CatalystDetail = z.infer<typeof catalystDetailSchema>;
-export type CatalystHeader = z.infer<typeof catalystHeaderSchema>;
-export type CatalystChartResponse = z.infer<typeof catalystChartResponseSchema>;
-export type CatalystByIdResponse = z.infer<typeof catalystByIdResponseSchema>;
+function isCatalyst(value: unknown): value is Catalyst {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const c = value as Record<string, unknown>;
+	return typeof c.id === 'number' && typeof c.status === 'string' && typeof c.chartId === 'string';
+}
 
-// Request types
-export type CatalystConfigurationRequest = z.infer<typeof catalystConfigurationRequestSchema>;
-export type CatalystRequest = z.infer<typeof catalystRequestSchema>;
-export type CatalystRequestWithId = z.infer<typeof catalystRequestWithIdSchema>;
-export type CreateCatalystRequest = z.infer<typeof createCatalystRequestSchema>;
-export type UpdateCatalystRequest = z.infer<typeof updateCatalystRequestSchema>;
+function isCatalystDetail(value: unknown): value is CatalystDetail {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const d = value as Record<string, unknown>;
+	return (
+		isCatalyst(d.catalyst) &&
+		Array.isArray(d.catalystConfiguration) &&
+		d.catalystConfiguration.every(isCatalystConfiguration)
+	);
+}
 
-// Response types
-export type CatalystBasic = z.infer<typeof catalystBasicSchema>;
-export type CreateCatalystResponse = z.infer<typeof createCatalystResponseSchema>;
-export type UpdateCatalystResponse = z.infer<typeof updateCatalystResponseSchema>;
+function isCatalystHeader(value: unknown): value is CatalystHeader {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const h = value as Record<string, unknown>;
+	return (
+		typeof h.ACTIVE === 'number' &&
+		typeof h.NEW === 'number' &&
+		typeof h.INACTIVE === 'number'
+	);
+}
 
-// Delete task types
-export type DeleteCatalystTaskRequest = z.infer<typeof deleteCatalystTaskRequestSchema>;
-export type DeleteCatalystTaskResponse = z.infer<typeof deleteCatalystTaskResponseSchema>;
+export function isCatalystChartResponse(value: unknown): value is CatalystChartResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!isCatalystHeader(o.header) || !Array.isArray(o.detail)) {
+		return false;
+	}
+	return o.detail.every(isCatalystDetail);
+}
+
+export function isCatalystByIdResponse(value: unknown): value is CatalystByIdResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return isCatalystHeader(o.header) && isCatalystDetail(o.detail);
+}
+
+function isCatalystBasic(value: unknown): value is CatalystBasic {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const b = value as Record<string, unknown>;
+	return (
+		typeof b.id === 'number' &&
+		typeof b.status === 'string' &&
+		typeof b.chartId === 'string' &&
+		typeof b.version === 'number' &&
+		typeof b.createdAt === 'string' &&
+		typeof b.updatedAt === 'string'
+	);
+}
+
+export function isCatalystMutationResponse(
+	value: unknown
+): value is CreateCatalystResponse | UpdateCatalystResponse | DeleteCatalystTaskResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return typeof o.message === 'string' && isCatalystBasic(o.data);
+}

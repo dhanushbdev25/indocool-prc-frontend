@@ -261,8 +261,8 @@ const CreatePart = () => {
 				id: partMaster.id,
 				partNumber: partMaster.partNumber,
 				drawingNumber: partMaster.drawingNumber,
-				drawingRevision: partMaster.drawingRevision,
-				partRevision: partMaster.partRevision,
+				drawingRevision: partMaster.drawingRevision ?? 1,
+				partRevision: partMaster.partRevision ?? 1,
 				isActive: partMaster.status === 'ACTIVE',
 				customer: partMaster.customer,
 				description: partMaster.description,
@@ -270,8 +270,8 @@ const CreatePart = () => {
 				layupType: partMaster.layupType || '',
 				model: partMaster.model || '',
 				sapReferenceNumber: partMaster.sapReferenceNumber || '',
-				version: partMaster.version,
-				isLatest: partMaster.isLatest,
+				version: partMaster.version ?? 1,
+				isLatest: partMaster.isLatest ?? true,
 				catalyst: partMaster.catalyst || undefined,
 				prcTemplate: partMaster.prcTemplate || undefined,
 				templateId,
@@ -285,16 +285,16 @@ const CreatePart = () => {
 					materialCode: rm.materialCode,
 					quantity: rm.quantity,
 					uom: rm.uom,
-					batching: rm.batching,
-					splitting: rm.splitting,
+					batching: rm.batching ?? false,
+					splitting: rm.splitting ?? false,
 					splittingConfiguration: rm.splittingConfiguration
 						? rm.splittingConfiguration.map(split => ({
 								order: split.order,
 								splitQuantity: String(split.splitQuantity)
 							}))
 						: null,
-					version: rm.version,
-					isLatest: rm.isLatest
+					version: rm.version ?? 1,
+					isLatest: rm.isLatest ?? true
 				})),
 				drilling: drilling.map(d => ({
 					id: d.id,
@@ -303,23 +303,29 @@ const CreatePart = () => {
 					noOfHoles: d.noOfHoles,
 					diaOfHoles: d.diaOfHoles,
 					tolerance: d.tolerance,
-					version: d.version,
-					isLatest: d.isLatest
+					version: d.version ?? 1,
+					isLatest: d.isLatest ?? true
 				})),
 				cutting: cutting.map(c => ({
 					id: c.id,
 					characteristics: c.characteristics,
 					specification: c.specification,
 					tolerance: c.tolerance,
-					version: c.version,
-					isLatest: c.isLatest
+					version: c.version ?? 1,
+					isLatest: c.isLatest ?? true
 				})),
 				moulds: [],
 				files: partMaster.files || [],
 				inspectionDiagrams: partMaster.inspectionDiagrams
-					? Array.isArray(partMaster.inspectionDiagrams)
-						? partMaster.inspectionDiagrams[0]
-						: partMaster.inspectionDiagrams
+					? (() => {
+							const d = Array.isArray(partMaster.inspectionDiagrams)
+								? partMaster.inspectionDiagrams[0]
+								: partMaster.inspectionDiagrams;
+							return {
+								partId: d.partId,
+								files: d.files ?? []
+							};
+						})()
 					: undefined,
 				createdAt: partMaster.createdAt || undefined,
 				updatedAt: partMaster.updatedAt || undefined

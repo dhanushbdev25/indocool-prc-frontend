@@ -1,11 +1,9 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
-	inspectionListResponseSchema,
-	inspectionByIdResponseSchema,
-	createInspectionResponseSchema,
-	updateInspectionResponseSchema,
-	deleteInspectionTaskResponseSchema,
+	isInspectionListResponse,
+	isInspectionByIdResponse,
+	isInspectionMutationResponse,
 	type InspectionListResponse,
 	type InspectionByIdResponse,
 	type CreateInspectionRequest,
@@ -33,12 +31,11 @@ export const inspectionApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = inspectionListResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for inspections response:', parsed.error);
+				if (!isInspectionListResponse(response)) {
+					console.error('Invalid inspections response structure', response);
 					throw new Error('Invalid inspections response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			providesTags: ['Inspection']
 		}),
@@ -49,12 +46,11 @@ export const inspectionApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = inspectionByIdResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for inspection by ID response:', parsed.error);
+				if (!isInspectionByIdResponse(response)) {
+					console.error('Invalid inspection by ID response structure', response);
 					throw new Error('Invalid inspection by ID response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'Inspection', id },
@@ -69,12 +65,11 @@ export const inspectionApi = createApi({
 				body: { data: data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = createInspectionResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for create inspection response:', parsed.error);
+				if (!isInspectionMutationResponse(response)) {
+					console.error('Invalid create inspection response structure', response);
 					throw new Error('Invalid create inspection response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			invalidatesTags: ['Inspection']
 		}),
@@ -86,12 +81,11 @@ export const inspectionApi = createApi({
 				body: { data: data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = updateInspectionResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for update inspection response:', parsed.error);
+				if (!isInspectionMutationResponse(response)) {
+					console.error('Invalid update inspection response structure', response);
 					throw new Error('Invalid update inspection response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			invalidatesTags: (_, __, { id }) => [{ type: 'Inspection', id }, { type: 'Inspection', id: 'LIST' }, 'Inspection']
 		}),
@@ -103,12 +97,11 @@ export const inspectionApi = createApi({
 				body: { data: { ...data, inspection: { ...data.inspection, status: 'INACTIVE' } } }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = deleteInspectionTaskResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for delete inspection task response:', parsed.error);
+				if (!isInspectionMutationResponse(response)) {
+					console.error('Invalid delete inspection task response structure', response);
 					throw new Error('Invalid delete inspection task response structure');
 				}
-				return parsed.data;
+				return response;
 			},
 			invalidatesTags: (_, __, { inspection }) => [
 				{ type: 'Inspection', id: inspection?.id },

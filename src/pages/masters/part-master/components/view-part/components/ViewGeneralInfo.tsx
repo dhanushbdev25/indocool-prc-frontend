@@ -28,6 +28,8 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 		fileName: file.fileName || `Image ${index}`
 	}));
 
+	const statusDisplay = partMaster.status ?? 'NEW';
+
 	const getStatusColor = (status: string) => {
 		switch (status) {
 			case 'ACTIVE':
@@ -98,9 +100,9 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 							Status
 						</Typography>
 						<Chip
-							label={partMaster.status}
+							label={statusDisplay}
 							color={
-								getStatusColor(partMaster.status) as
+								getStatusColor(statusDisplay) as
 									| 'default'
 									| 'primary'
 									| 'secondary'

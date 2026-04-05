@@ -1,30 +1,22 @@
-import { z } from 'zod';
-
 /** Raw item from GET /mould */
-export const mouldApiItemSchema = z
-	.object({
-		id: z.number(),
-		partId: z.number(),
-		partCode: z.string(),
-		mouldId: z.string(),
-		reconciliationCount: z.number(),
-		currentCount: z.number(),
-		totalCount: z.number().optional(),
-		lastReconciled: z.string().nullable().optional(),
-		reconcileNowFlag: z.boolean(),
-		createdAt: z.string().optional(),
-		updatedAt: z.string().optional()
-	})
-	.loose();
+export interface MouldApiItem {
+	id: number;
+	partId: number;
+	partCode: string;
+	mouldId: string;
+	reconciliationCount: number;
+	currentCount: number;
+	totalCount?: number;
+	lastReconciled?: string | null;
+	reconcileNowFlag: boolean;
+	createdAt?: string;
+	updatedAt?: string;
+	[key: string]: unknown;
+}
 
-export const mouldListResponseSchema = z
-	.object({
-		data: z.array(mouldApiItemSchema)
-	})
-	.loose();
-
-export type MouldApiItem = z.infer<typeof mouldApiItemSchema>;
-export type MouldListResponse = z.infer<typeof mouldListResponseSchema>;
+export interface MouldListResponse {
+	data: MouldApiItem[];
+}
 
 /** Row shape for the mould reconciliation table */
 export interface MouldReconciliationRow {
@@ -53,24 +45,84 @@ export const isMouldDueForReconciliation = (row: MouldReconciliationRow): boolea
 	row.reconcileNowFlag || row.currentCount >= row.reconciliationCount;
 
 /** GET /mould/combo?partId= — comboFormatter formatComboData */
-export const mouldComboDataSchema = z
-	.object({
-		mouldId: z.string(),
-		partCode: z.string().optional(),
-		reconciliationCount: z.number().optional(),
-		currentCount: z.number().optional(),
-		totalCount: z.number().optional()
-	})
-	.passthrough();
+export interface MouldComboData {
+	mouldId: string;
+	partCode?: string;
+	reconciliationCount?: number;
+	currentCount?: number;
+	totalCount?: number;
+	[key: string]: unknown;
+}
 
-export const mouldComboItemSchema = z.object({
-	label: z.string(),
-	value: z.union([z.number(), z.string()]),
-	data: mouldComboDataSchema
-});
+export interface MouldComboItem {
+	label: string;
+	value: number | string;
+	data: MouldComboData;
+}
 
-export const mouldComboResponseSchema = z.object({
-	data: z.array(mouldComboItemSchema)
-});
+export interface MouldComboResponse {
+	data: MouldComboItem[];
+}
 
-export type MouldComboItem = z.infer<typeof mouldComboItemSchema>;
+export function isMouldListResponse(value: unknown): value is MouldListResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	for (const item of o.data) {
+		if (!isMouldApiItem(item)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function isMouldApiItem(value: unknown): value is MouldApiItem {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return (
+		typeof o.id === 'number' &&
+		typeof o.partId === 'number' &&
+		typeof o.partCode === 'string' &&
+		typeof o.mouldId === 'string' &&
+		typeof o.reconciliationCount === 'number' &&
+		typeof o.currentCount === 'number' &&
+		typeof o.reconcileNowFlag === 'boolean'
+	);
+}
+
+export function isMouldComboResponse(value: unknown): value is MouldComboResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	for (const item of o.data) {
+		if (!isMouldComboItem(item)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function isMouldComboItem(value: unknown): value is MouldComboItem {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (typeof o.label !== 'string' || (typeof o.value !== 'number' && typeof o.value !== 'string')) {
+		return false;
+	}
+	if (o.data === null || typeof o.data !== 'object' || Array.isArray(o.data)) {
+		return false;
+	}
+	const d = o.data as Record<string, unknown>;
+	return typeof d.mouldId === 'string';
+}
