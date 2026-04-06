@@ -1,10 +1,11 @@
 import Cookie from './Cookie';
 import { PartDrawingFormData } from '../pages/masters/part-master/components/create-part/schemas';
+import { toFileStoragePath } from './fileUrl';
 
 export interface UploadResponse {
 	message: string;
 	fileName: string;
-	filePath: string;
+	key: string;
 }
 
 export interface UploadError {
@@ -51,7 +52,7 @@ export const uploadPartDrawings = async (
 
 			uploads.push({
 				fileName: result.fileName,
-				filePath: result.filePath,
+				filePath: toFileStoragePath(result.key),
 				originalFileName: file.name
 			});
 		} catch (error) {
@@ -96,6 +97,6 @@ export const uploadSinglePartDrawing = async (file: File): Promise<PartDrawingFo
 
 	return {
 		fileName: result.fileName,
-		filePath: result.filePath
+		filePath: toFileStoragePath(result.key)
 	};
 };

@@ -34,7 +34,6 @@ import {
 } from '../types';
 import StepSelectionCard from './StepSelectionCard';
 import SelectedStepItem from './SelectedStepItem';
-import { ImageItem } from '../../../../../../hooks/useImageGallery';
 
 interface OperationGroupProps {
 	group: OperationGroupType;
@@ -48,9 +47,6 @@ interface OperationGroupProps {
 	onReorderStep: (fromIndex: number, toIndex: number) => void;
 	onRemoveGroup: (groupId: string) => void;
 	control: Control<PartMasterFormData>;
-	stepGalleries: Record<string, ImageItem[]>;
-	onAddStepImage: (stepKey: string, file: File) => void;
-	onRemoveStepImage: (stepKey: string, id: number | string) => void;
 }
 
 const OperationGroupComponent = ({
@@ -64,10 +60,7 @@ const OperationGroupComponent = ({
 	onRemoveStep,
 	onReorderStep,
 	onRemoveGroup,
-	control,
-	stepGalleries,
-	onAddStepImage,
-	onRemoveStepImage
+	control
 }: OperationGroupProps) => {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState(0);
@@ -156,26 +149,23 @@ const OperationGroupComponent = ({
 
 				{steps.length > 0 ? (
 					<Box>
-						{steps.map(step => {
-							const globalIndex = allStepFields.findIndex(
-								s => s.stepId === step.stepId && s.itemType === step.itemType && s.group === step.group
-							);
-							const stepKey = `${step.group}-${step.itemType}-${step.stepId}`;
-							return (
-								<SelectedStepItem
-									key={stepKey}
-									step={step}
-									index={globalIndex}
-									totalSteps={allStepFields.length}
-									onReorder={onReorderStep}
-									onRemove={onRemoveStep}
-									control={control}
-									stepGallery={stepGalleries[stepKey] || []}
-									onAddStepImage={(file: File) => onAddStepImage(stepKey, file)}
-									onRemoveStepImage={(id: number | string) => onRemoveStepImage(stepKey, id)}
-								/>
-							);
-						})}
+					{steps.map(step => {
+						const globalIndex = allStepFields.findIndex(
+							s => s.stepId === step.stepId && s.itemType === step.itemType && s.group === step.group
+						);
+						const stepKey = `${step.group}-${step.itemType}-${step.stepId}`;
+						return (
+							<SelectedStepItem
+								key={stepKey}
+								step={step}
+								index={globalIndex}
+								totalSteps={allStepFields.length}
+								onReorder={onReorderStep}
+								onRemove={onRemoveStep}
+								control={control}
+							/>
+						);
+					})}
 					</Box>
 				) : (
 					<Box

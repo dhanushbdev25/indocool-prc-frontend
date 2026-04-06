@@ -40,6 +40,7 @@ import { type StepPreviewData } from '../../../types/execution.types';
 import ImageDisplay from './ImageDisplay';
 import { debugDataTransformation } from '../../../utils/dataTransformers';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
+import { toFileRenderUrl } from '../../../../../utils/fileUrl';
 
 interface StepPreviewProps {
 	previewData: StepPreviewData;
@@ -1285,9 +1286,15 @@ const StepPreview = ({
 																	?.originalFileName || annotation.imageFileName;
 
 															// Construct image URL - use annotation.imageUrl if available, otherwise construct from filePath
-															let imageUrl =
-																annotation.imageUrl ||
-																`${process.env.API_BASE_URL_PRE_AUTH}${paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath || ''}`;
+															let imageUrl = annotation.imageUrl
+																? toFileRenderUrl(annotation.imageUrl)
+																: '';
+															if (!imageUrl) {
+																const matchedFilePath = paramMeta?.files?.find(
+																	file => file.fileName === annotation.imageFileName
+																)?.filePath;
+																imageUrl = toFileRenderUrl(matchedFilePath);
+															}
 
 															// Normalize URL - replace backslashes with forward slashes
 															imageUrl = imageUrl.replace(/\\/g, '/');
@@ -1299,7 +1306,9 @@ const StepPreview = ({
 																paramMeta,
 																imageUrl,
 																annotationImageUrl: annotation.imageUrl,
-																constructedUrl: `${process.env.API_BASE_URL_PRE_AUTH}${paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath || ''}`
+																constructedUrl: toFileRenderUrl(
+																	paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath
+																)
 															});
 
 															return (

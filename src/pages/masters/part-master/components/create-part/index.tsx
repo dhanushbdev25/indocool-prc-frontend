@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm, FormProvider, useWatch } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -24,6 +24,7 @@ import GeneralInfo from './components/GeneralInfo';
 import RawMaterialsTab from './components/RawMaterialsTab';
 import TechnicalDataTab from './components/TechnicalDataTab';
 import LinkedMastersTab from './components/LinkedMastersTab';
+import InspectionImageMappingTab from './components/InspectionImageMappingTab';
 import { partMasterFormSchema, defaultPartMasterFormData } from './schemas';
 import { PartMasterFormData } from './schemas';
 import {
@@ -35,66 +36,268 @@ import { useFetchCustomersQuery } from '../../../../../store/api/business/part-m
 import {
 	useFetchPrcTemplateByIdQuery,
 	useFetchOperationsComboQuery,
-	useCreatePrcTemplateMutation
+	useCreatePrcTemplateMutation,
+	useUpdatePrcTemplateMutation
 } from '../../../../../store/api/business/prc-template/prc-template.api';
 import { useFetchProcessSequencesQuery } from '../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../store/api/business/inspection-master/inspection.api';
 import { uploadPartDrawings } from '../../../../../utils/uploadPartDrawings';
-import { ImageItem } from '../../../../../hooks/useImageGallery';
-import { getPartMoulds, upsertPartMoulds } from '../../../../../mocks/mould-reconciliation.mock';
-import type { PrcTemplateOperationRequest } from '../../../../../store/api/business/prc-template/prc-template.validators';
+import { useImageGallery } from '../../../../../hooks/useImageGallery';
+import { toFileRenderUrl, toFileStoragePath } from '../../../../../utils/fileUrl';
+import type { PartMaster } from '../../../../../store/api/business/part-master/part.validators';
 
-/** Build nested operations[] for create PRC template: global sequence from flat order, then per-operation sequences/inspections arrays. */
-function buildPrcTemplateOperationsFromSteps(
-	steps: PartMasterFormData['prcTemplateSteps'],
-	operationTextByValue: Map<string, string>
-): PrcTemplateOperationRequest[] {
-	const list = steps || [];
-	const withGlobalSequence = list.map((step, index) => ({
-		step,
-		globalSequence: index + 3
+function mapMouldDetailsToFormMoulds(partMaster: PartMaster): PartMasterFormData['moulds'] {
+	return (partMaster.mouldDetails ?? []).map(item => ({
+		mouldCode: item.mouldCode,
+		reconciliationCount: Number(item.reconciliationCount) || 0,
+		currentCount: Number(item.currentCount ?? 0) || 0
 	}));
+}
 
-	const groupOrder: string[] = [];
-	const byGroup = new Map<string, typeof withGlobalSequence>();
-	for (const item of withGlobalSequence) {
-		const g = item.step.group ?? '';
-		if (!byGroup.has(g)) {
-			byGroup.set(g, []);
-			groupOrder.push(g);
-		}
-		byGroup.get(g)!.push(item);
+/**
+ * Handles image upload and updates form data with API filenames
+ */
+const handleImageUploadAndUpdateForm = async (
+	formData: PartMasterFormData,
+	gallery: ReturnType<typeof useImageGallery>['gallery'],
+	setGallery: ReturnType<typeof useImageGallery>['setGallery'],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	setValue: any,
+	setError: (error: string | null) => void,
+	setIsUploadingImages: (loading: boolean) => void
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<any[] | null> => {
+	if (gallery.length === 0) return [];
+
+	const newFiles = gallery.map(item => item.file).filter(Boolean) as File[];
+	const existingFiles = gallery
+		.filter(item => !item.file && item.fileName)
+		.map(item => {
+			let relativeFilePath = item.filePath;
+			if (!relativeFilePath && item.image) {
+				const baseUrl = process.env.API_BASE_URL || '';
+				if (item.image.startsWith(baseUrl)) {
+					relativeFilePath = item.image.substring(baseUrl.length);
+				} else {
+					relativeFilePath = item.image;
+				}
+			}
+			return {
+				fileName: item.fileName || '',
+				filePath: relativeFilePath ? toFileStoragePath(relativeFilePath) : '',
+				originalFileName: item.originalFileName || item.fileName || ''
+			};
+		});
+
+	if (newFiles.length === 0) {
+		return existingFiles;
 	}
 
-	return groupOrder.map(groupId => {
-		const items = byGroup.get(groupId)!;
-		const sequences: PrcTemplateOperationRequest['sequences'] = [];
-		const inspections: PrcTemplateOperationRequest['inspections'] = [];
-		for (const { step, globalSequence } of items) {
-			const payload = {
-				version: step.version ?? 1,
-				isLatest: step.isLatest ?? true,
-				sequence: globalSequence,
-				stepId: step.stepId,
-				type: step.type,
-				blockCatalystMixing: step.blockCatalystMixing ?? false,
-				requestSupervisorApproval: step.requestSupervisorApproval ?? false
-			};
-			if (step.type === 'sequence') {
-				sequences.push(payload);
-			} else {
-				inspections.push(payload);
-			}
+	setIsUploadingImages(true);
+	try {
+		const { uploads, errors: uploadErrors } = await uploadPartDrawings(newFiles);
+
+		if (uploadErrors.length > 0) {
+			const errorMessage = uploadErrors.map(err => `${err.fileName}: ${err.error}`).join('\n');
+			setError(`Some images failed to upload:\n${errorMessage}`);
+			return null;
 		}
-		const operationText = operationTextByValue.get(groupId);
+
+		updateGalleryWithApiFilenames(gallery, uploads, setGallery);
+		updateInspectionDiagramsWithApiFilenames(formData, uploads, setValue);
+
+		return [...existingFiles, ...uploads];
+	} catch {
+		setError('Failed to upload images. Please try again.');
+		return null;
+	} finally {
+		setIsUploadingImages(false);
+	}
+};
+
+const updateGalleryWithApiFilenames = (
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	gallery: any[],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	uploads: any[],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	setGallery: (gallery: any[]) => void
+): void => {
+	const updatedGallery = gallery.map((imageItem, index) => {
+		const uploadResult = uploads[index];
+		if (uploadResult?.fileName) {
+			return {
+				...imageItem,
+				fileName: uploadResult.fileName
+			};
+		}
+		return imageItem;
+	});
+	setGallery(updatedGallery);
+};
+
+const updateInspectionDiagramsWithApiFilenames = (
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	formData: any,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	uploads: any[],
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	setValue: any
+): void => {
+	if (!formData.inspectionDiagrams?.files) return;
+
+	const updatedInspectionDiagrams = {
+		...formData.inspectionDiagrams,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		files: formData.inspectionDiagrams.files.map((file: any) => ({
+			...file,
+			fileName:
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				file.fileName?.map((fileObj: any) => {
+					if (typeof fileObj === 'object' && fileObj.originalFileName) {
+						const uploadResult = uploads.find(
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							(upload: any) => upload.originalFileName === fileObj.originalFileName
+						);
+						if (uploadResult) {
+							return {
+								fileName: uploadResult.fileName,
+								filePath: uploadResult.filePath,
+								originalFileName: uploadResult.originalFileName
+							};
+						}
+					} else if (typeof fileObj === 'string') {
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						const uploadResult = uploads.find((upload: any) => upload.originalFileName === fileObj);
+						if (uploadResult) {
+							return {
+								fileName: uploadResult.fileName,
+								filePath: uploadResult.filePath,
+								originalFileName: uploadResult.originalFileName
+							};
+						}
+					}
+					return fileObj;
+				}) || []
+		}))
+	};
+
+	setValue('inspectionDiagrams', updatedInspectionDiagrams);
+};
+
+const transformFormDataToApiRequest = (
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	formData: any,
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	uploadedDrawings: any[],
+	isEditMode: boolean,
+	prcTemplateId?: number
+) => {
+	return {
+		partMaster: {
+			...(isEditMode && formData.id ? { id: formData.id } : {}),
+			partNumber: formData.partNumber,
+			drawingNumber: formData.drawingNumber,
+			drawingRevision: formData.drawingRevision,
+			partRevision: formData.partRevision,
+			status: formData.isActive ? ('ACTIVE' as const) : ('INACTIVE' as const),
+			customer: formData.customer,
+			description: formData.description,
+			notes: formData.notes || '',
+			layupType: formData.layupType || '',
+			model: formData.model || '',
+			sapReferenceNumber: formData.sapReferenceNumber || '',
+			version: formData.version || 1,
+			isLatest: formData.isLatest ?? true,
+			catalyst: formData.catalyst,
+			prcTemplate: prcTemplateId ?? formData.prcTemplate,
+			mouldDetails: (formData.moulds || []).map((m: { mouldCode: string; reconciliationCount: number }) => ({
+				mouldCode: m.mouldCode,
+				reconciliationCount: Number(m.reconciliationCount) || 0
+			})),
+			files: uploadedDrawings,
+			inspectionDiagrams: transformInspectionDiagrams(formData.inspectionDiagrams)
+		},
+		rawMaterials: transformArrayData(formData.rawMaterials, isEditMode),
+		bom: transformArrayData(formData.bom, isEditMode),
+		drilling: transformArrayData(formData.drilling, isEditMode),
+		cutting: transformArrayData(formData.cutting, isEditMode)
+	};
+};
+
+const buildPrcTemplatePayload = (
+	data: PartMasterFormData,
+	operationsData?: {
+		data?: Array<{
+			value: string;
+			data: { operationText: string };
+		}>;
+	}
+) => {
+	const templateRequestData = {
+		status: data.isTemplateActive ? 'ACTIVE' : 'INACTIVE',
+		templateId: data.templateId!,
+		templateName: data.templateName!,
+		notes: data.templateNotes || '',
+		version: 1,
+		isLatest: true,
+		isActive: data.isTemplateActive ?? true
+	};
+
+	const operationTextByValue = new Map(
+		(operationsData?.data ?? []).map(op => [op.value, op.data.operationText] as const)
+	);
+
+	const templateSteps = (data.prcTemplateSteps || []).map((step, index) => {
+		const operationID = step.group ?? '';
 		return {
-			operation: groupId,
-			...(operationText ? { operationText } : {}),
-			sequences,
-			inspections
+			version: step.version ?? 1,
+			isLatest: step.isLatest ?? true,
+			sequence: index + 3,
+			stepId: step.stepId,
+			type: step.type,
+			blockCatalystMixing: step.blockCatalystMixing ?? false,
+			requestSupervisorApproval: step.requestSupervisorApproval ?? false,
+			operationID,
+			operationText: operationTextByValue.get(operationID) ?? ''
 		};
 	});
-}
+
+	return {
+		prcTemplate: templateRequestData,
+		prcTemplateSteps: templateSteps
+	};
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const transformArrayData = (arrayData: any[], isEditMode: boolean) => {
+	return (arrayData || []).map((item: { id?: number; version?: number; isLatest?: boolean; [key: string]: unknown }) => {
+		const { id, ...itemWithoutId } = item;
+		return {
+			...(isEditMode && id && typeof id === 'number' ? { id } : {}),
+			...itemWithoutId,
+			version: item.version || 1,
+			isLatest: item.isLatest ?? true
+		};
+	});
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const transformInspectionDiagrams = (inspectionDiagrams: any) => {
+	if (!inspectionDiagrams) return undefined;
+
+	return {
+		files:
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			inspectionDiagrams.files?.map((file: any) => ({
+				inspectionParameterId: file.inspectionParameterId || 0,
+				fileName: (file.fileName || []).filter(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(fileObj: any) => fileObj !== undefined && fileObj !== null && typeof fileObj === 'object'
+				)
+			})) || []
+	};
+};
 
 interface TabPanelProps {
 	children?: React.ReactNode;
@@ -121,14 +324,12 @@ const CreatePart = () => {
 	const navigate = useNavigate();
 	const { id } = useParams();
 	const isEditMode = Boolean(id);
+	const { gallery, handleAddImage, handleRemoveImage, setGallery } = useImageGallery();
 
 	const [activeTab, setActiveTab] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 	const [showExitDialog, setShowExitDialog] = useState(false);
 	const [isUploadingImages, setIsUploadingImages] = useState(false);
-
-	// Per-inspection step galleries: keyed by "{group}-{itemType}-{stepId}"
-	const [stepGalleries, setStepGalleries] = useState<Record<string, ImageItem[]>>({});
 
 	const {
 		data: partData,
@@ -152,6 +353,7 @@ const CreatePart = () => {
 	const [createPart, { isLoading: isCreating }] = useCreatePartMutation();
 	const [updatePart, { isLoading: isUpdating }] = useUpdatePartMutation();
 	const [createPrcTemplate] = useCreatePrcTemplateMutation();
+	const [updatePrcTemplate] = useUpdatePrcTemplateMutation();
 
 	const methods = useForm<PartMasterFormData>({
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -172,11 +374,18 @@ const CreatePart = () => {
 	} = methods;
 
 	const formPartId = useWatch({ control, name: 'id' });
+	const formPrcTemplateId = useWatch({ control, name: 'prcTemplate' });
 	const operationsQueryPartId = formPartId ?? (id ? Number(id) : undefined);
 	const { data: operationsData } = useFetchOperationsComboQuery(
 		{ partId: operationsQueryPartId! },
 		{ skip: !operationsQueryPartId }
 	);
+
+	// API-driven tab enablement: tabs 1-4 disabled until PartMaster exists on the backend
+	const partMasterExists = isEditMode
+		? isFetchSuccess && !!partData?.detail?.partMaster?.id
+		: !!formPartId;
+	const isInspectionMappingEnabled = partMasterExists && !!formPrcTemplateId;
 
 	useEffect(() => {
 		if (Object.keys(errors).length > 0) {
@@ -238,6 +447,9 @@ const CreatePart = () => {
 						}
 					}
 
+					const groupFromApi =
+						(step as { operationID?: string }).operationID ?? step.group ?? defaultGroup;
+
 					return {
 						id: step.id,
 						version: step.version,
@@ -252,7 +464,7 @@ const CreatePart = () => {
 						itemName,
 						itemId,
 						itemType,
-						group: defaultGroup
+						group: groupFromApi
 					};
 				});
 			}
@@ -314,7 +526,7 @@ const CreatePart = () => {
 					version: c.version ?? 1,
 					isLatest: c.isLatest ?? true
 				})),
-				moulds: [],
+				moulds: mapMouldDetailsToFormMoulds(partMaster),
 				files: partMaster.files || [],
 				inspectionDiagrams: partMaster.inspectionDiagrams
 					? (() => {
@@ -331,108 +543,24 @@ const CreatePart = () => {
 				updatedAt: partMaster.updatedAt || undefined
 			};
 			reset(formData);
+
+			// Populate gallery with existing files
+			if (partMaster.files && partMaster.files.length > 0) {
+				const galleryItems = partMaster.files.map((file, index) => ({
+					id: `existing-${index}`,
+					file: null,
+					image: toFileRenderUrl(file.filePath),
+					fileName: file.fileName || file.originalFileName || `Image ${index}`,
+					filePath: file.filePath ? file.filePath.replace(/\\/g, '/') : undefined,
+					originalFileName: file.originalFileName || file.fileName || `Image ${index}`
+				}));
+				setGallery(galleryItems);
+			}
 		}
-	}, [isEditMode, isFetchSuccess, partData, customersData, isPrcTemplateFetchSuccess, prcTemplateData, operationsData, sequencesData, inspectionsData, reset]);
-
-	useEffect(() => {
-		const loadMoulds = async () => {
-			if (!isEditMode || !partData?.detail?.partMaster?.partNumber) return;
-			const pm = partData.detail.partMaster as typeof partData.detail.partMaster & {
-				mouldDetails?: Array<{ mouldCode: string; reconciliationCount: number; currentCount?: number }>;
-				mouldedetails?: Array<{ mouldeCode?: string; mouldCode?: string; reconciliationCount: number; currentCount?: number }>;
-			};
-			const fromNewApi = pm.mouldDetails;
-			const fromLegacyApi = pm.mouldedetails;
-			if (fromNewApi && fromNewApi.length > 0) {
-				setValue(
-					'moulds',
-					fromNewApi.map(item => ({
-						mouldCode: item.mouldCode,
-						reconciliationCount: item.reconciliationCount,
-						currentCount: item.currentCount ?? 0
-					}))
-				);
-				return;
-			}
-			if (fromLegacyApi && fromLegacyApi.length > 0) {
-				setValue(
-					'moulds',
-					fromLegacyApi.map(item => ({
-						mouldCode: item.mouldCode ?? item.mouldeCode ?? '',
-						reconciliationCount: item.reconciliationCount,
-						currentCount: item.currentCount ?? 0
-					}))
-				);
-				return;
-			}
-			const existingMoulds = await getPartMoulds(pm.partNumber);
-			setValue(
-				'moulds',
-				existingMoulds.map(item => ({
-					mouldCode: item.mouldCode,
-					reconciliationCount: item.reconciliationCount,
-					currentCount: item.currentCount
-				}))
-			);
-		};
-		loadMoulds();
-	}, [isEditMode, partData, setValue]);
-
-	const handleAddStepImage = useCallback((stepKey: string, file: File) => {
-		const newItem: ImageItem = {
-			id: Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000,
-			file,
-			image: URL.createObjectURL(file),
-			fileName: file.name
-		};
-		setStepGalleries(prev => ({
-			...prev,
-			[stepKey]: [...(prev[stepKey] || []), newItem]
-		}));
-	}, []);
-
-	const handleRemoveStepImage = useCallback((stepKey: string, imageId: number | string) => {
-		setStepGalleries(prev => ({
-			...prev,
-			[stepKey]: (prev[stepKey] || []).filter(item => item.id !== imageId)
-		}));
-	}, []);
+	}, [isEditMode, isFetchSuccess, partData, customersData, isPrcTemplateFetchSuccess, prcTemplateData, operationsData, sequencesData, inspectionsData, reset, setGallery]);
 
 	const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
 		setActiveTab(newValue);
-	};
-
-	const uploadStepImages = async (): Promise<Record<string, { fileName: string; filePath: string; originalFileName: string }[]>> => {
-		const uploadedMap: Record<string, { fileName: string; filePath: string; originalFileName: string }[]> = {};
-
-		for (const [stepKey, gallery] of Object.entries(stepGalleries)) {
-			if (gallery.length === 0) continue;
-
-			const newFiles = gallery.map(item => item.file).filter(Boolean) as File[];
-			const existingFiles = gallery
-				.filter(item => !item.file && item.fileName)
-				.map(item => ({
-					fileName: item.fileName || '',
-					filePath: item.filePath || '',
-					originalFileName: item.originalFileName || item.fileName || ''
-				}));
-
-			if (newFiles.length > 0) {
-				const { uploads, errors: uploadErrors } = await uploadPartDrawings(newFiles);
-				if (uploadErrors.length > 0) {
-					throw new Error(`Image upload failed for step ${stepKey}: ${uploadErrors.map(e => e.error).join(', ')}`);
-				}
-				uploadedMap[stepKey] = [...existingFiles, ...uploads.map(u => ({
-					fileName: u.fileName || '',
-					filePath: u.filePath || '',
-					originalFileName: u.originalFileName || ''
-				}))];
-			} else {
-				uploadedMap[stepKey] = existingFiles;
-			}
-		}
-
-		return uploadedMap;
 	};
 
 	const onSubmit = async (data: PartMasterFormData) => {
@@ -446,113 +574,66 @@ const CreatePart = () => {
 				return;
 			}
 
-			setIsUploadingImages(true);
-
-			// Step 1: Always CREATE a new PRC Template to get a fresh template ID
-			let prcTemplateId: number | undefined;
+			// Step 1: Upsert PRC Template if template data exists
+			let finalPrcTemplateId: number | undefined = data.prcTemplate;
 			const hasTemplateData = data.templateId && data.templateName && (data.prcTemplateSteps || []).length > 0;
 
 			if (hasTemplateData) {
-				const templateRequestData = {
-					status: data.isTemplateActive ? 'ACTIVE' : 'INACTIVE',
-					templateId: data.templateId!,
-					templateName: data.templateName!,
-					notes: data.templateNotes || '',
-					version: 1,
-					isLatest: true,
-					isActive: data.isTemplateActive ?? true
-				};
-
-				const operationTextByValue = new Map(
-					(operationsData?.data ?? []).map(op => [op.value, op.data.operationText] as const)
-				);
-
-				const operations = buildPrcTemplateOperationsFromSteps(data.prcTemplateSteps, operationTextByValue);
+				const prcPayload = buildPrcTemplatePayload(data, operationsData);
 
 				try {
-					const createResult = await createPrcTemplate({
-						prcTemplate: templateRequestData,
-						operations
-					}).unwrap();
-
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const resultData = createResult?.data as any;
-					if (resultData?.prcTemplate?.id) {
-						prcTemplateId = resultData.prcTemplate.id;
-					} else if (resultData?.id) {
-						prcTemplateId = resultData.id;
+					if (finalPrcTemplateId) {
+						await updatePrcTemplate({
+							id: finalPrcTemplateId,
+							...prcPayload
+						}).unwrap();
+					} else {
+						const createResult = await createPrcTemplate(prcPayload).unwrap();
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						const resultData = createResult?.data as any;
+						if (resultData?.prcTemplate?.id) {
+							finalPrcTemplateId = resultData.prcTemplate.id;
+						} else if (resultData?.id) {
+							finalPrcTemplateId = resultData.id;
+						}
+						if (!finalPrcTemplateId) {
+							setError('PRC template was created but ID was not returned.');
+							return;
+						}
+						setValue('prcTemplate', finalPrcTemplateId);
 					}
 				} catch (templateErr) {
-					console.error('PRC Template creation failed:', templateErr);
-					setError('Failed to create PRC template. Please try again.');
-					setIsUploadingImages(false);
+					console.error('PRC Template upsert failed:', templateErr);
+					setError(
+						finalPrcTemplateId
+							? 'Failed to update linked PRC template. Please try again.'
+							: 'Failed to create PRC template. Please try again.'
+					);
 					return;
 				}
 			}
 
-			// Step 2: Upload per-inspection images
-			let uploadedStepFiles: Record<string, { fileName: string; filePath: string; originalFileName: string }[]> = {};
-			try {
-				uploadedStepFiles = await uploadStepImages();
-			} catch (uploadErr) {
-				setError(uploadErr instanceof Error ? uploadErr.message : 'Failed to upload images');
-				setIsUploadingImages(false);
-				return;
-			}
+			// Step 2: Upload images via gallery
+			const currentUploadedDrawings = await handleImageUploadAndUpdateForm(
+				data,
+				gallery,
+				setGallery,
+				setValue,
+				setError,
+				setIsUploadingImages
+			);
+			if (!currentUploadedDrawings) return;
 
-			// Step 3: Build inspection diagrams from uploaded files and link everything to Part Master
-			const inspectionDiagramFiles = Object.entries(uploadedStepFiles)
-				.filter(([key]) => key.includes('-inspection-'))
-				.map(([key, files]) => {
-					const stepIdStr = key.split('-').pop();
-					const stepId = stepIdStr ? parseInt(stepIdStr, 10) : 0;
-					const matchingStep = (data.prcTemplateSteps || []).find(s => s.stepId === stepId && s.type === 'inspection');
-					return {
-						inspectionParameterId: matchingStep?.stepId || stepId,
-						fileName: files.map(f => ({
-							fileName: f.fileName,
-							filePath: f.filePath,
-							originalFileName: f.originalFileName
-						}))
-					};
-				});
-
-			const inspectionDiagrams = inspectionDiagramFiles.length > 0
-				? { partId: data.id || 0, files: inspectionDiagramFiles }
-				: undefined;
-
+			// Step 3: Build part payload
 			const updatedData = getValues();
-			const partRequestData = {
-				partMaster: {
-					...(isEditMode && updatedData.id ? { id: updatedData.id } : {}),
-					partNumber: updatedData.partNumber,
-					drawingNumber: updatedData.drawingNumber,
-					drawingRevision: updatedData.drawingRevision,
-					partRevision: updatedData.partRevision,
-					status: updatedData.isActive ? ('ACTIVE' as const) : ('INACTIVE' as const),
-					customer: updatedData.customer,
-					description: updatedData.description,
-					notes: updatedData.notes || '',
-					layupType: updatedData.layupType || '',
-					model: updatedData.model || '',
-					sapReferenceNumber: updatedData.sapReferenceNumber || '',
-					version: updatedData.version || 1,
-					isLatest: updatedData.isLatest ?? true,
-					catalyst: updatedData.catalyst,
-					prcTemplate: prcTemplateId,
-					mouldDetails: (updatedData.moulds || []).map(m => ({
-						mouldCode: m.mouldCode,
-						reconciliationCount: Number(m.reconciliationCount) || 0
-					})),
-					files: [],
-					inspectionDiagrams: inspectionDiagrams
-				},
-				rawMaterials: transformArrayData(updatedData.rawMaterials, isEditMode),
-				bom: [],
-				drilling: transformArrayData(updatedData.drilling, isEditMode),
-				cutting: transformArrayData(updatedData.cutting, isEditMode)
-			};
+			const partRequestData = transformFormDataToApiRequest(
+				updatedData,
+				currentUploadedDrawings,
+				isEditMode,
+				finalPrcTemplateId
+			);
 
+			// Step 4: Submit to API
 			if (isEditMode && data.id) {
 				await updatePart({ id: data.id, data: partRequestData }).unwrap();
 				Swal.fire({
@@ -573,7 +654,6 @@ const CreatePart = () => {
 				});
 			}
 
-			await upsertPartMoulds(data.partNumber, data.moulds || []);
 			navigate('/part-master');
 		} catch (err: unknown) {
 			console.error('API Error:', err);
@@ -589,8 +669,6 @@ const CreatePart = () => {
 						? (err as { message: string }).message
 						: `Failed to ${isEditMode ? 'update' : 'create'} part`;
 			setError(errorMessage);
-		} finally {
-			setIsUploadingImages(false);
 		}
 	};
 
@@ -678,14 +756,26 @@ const CreatePart = () => {
 					<Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
 						<Tabs value={activeTab} onChange={handleTabChange} aria-label="part tabs">
 							<Tab label="General Info" id="part-tab-0" aria-controls="part-tabpanel-0" />
-							<Tab label="Raw Materials" id="part-tab-1" aria-controls="part-tabpanel-1" />
-							<Tab label="Technical Data" id="part-tab-2" aria-controls="part-tabpanel-2" />
-							<Tab label="Linked Masters" id="part-tab-3" aria-controls="part-tabpanel-3" />
+							<Tab label="Raw Materials" id="part-tab-1" aria-controls="part-tabpanel-1" disabled={!partMasterExists} />
+							<Tab label="Technical Data" id="part-tab-2" aria-controls="part-tabpanel-2" disabled={!partMasterExists} />
+							<Tab label="Linked Masters" id="part-tab-3" aria-controls="part-tabpanel-3" disabled={!partMasterExists} />
+							<Tab
+								label="Inspection Image Mapping"
+								id="part-tab-4"
+								aria-controls="part-tabpanel-4"
+								disabled={!isInspectionMappingEnabled}
+							/>
 						</Tabs>
 					</Box>
 
 					<TabPanel value={activeTab} index={0}>
-						<GeneralInfo control={control} errors={errors} />
+						<GeneralInfo
+							control={control}
+							errors={errors}
+							gallery={gallery}
+							onAddImage={handleAddImage}
+							onRemoveImage={handleRemoveImage}
+						/>
 					</TabPanel>
 					<TabPanel value={activeTab} index={1}>
 						<RawMaterialsTab control={control} errors={errors} />
@@ -698,9 +788,13 @@ const CreatePart = () => {
 							control={control}
 							errors={errors}
 							setValue={setValue}
-							stepGalleries={stepGalleries}
-							onAddStepImage={handleAddStepImage}
-							onRemoveStepImage={handleRemoveStepImage}
+						/>
+					</TabPanel>
+					<TabPanel value={activeTab} index={4}>
+						<InspectionImageMappingTab
+							control={control}
+							setValue={setValue}
+							gallery={gallery}
 						/>
 					</TabPanel>
 				</Paper>
@@ -725,19 +819,6 @@ const CreatePart = () => {
 			</Dialog>
 		</FormProvider>
 	);
-};
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const transformArrayData = (arrayData: any[], isEditMode: boolean) => {
-	return (arrayData || []).map(item => {
-		const { id, ...itemWithoutId } = item;
-		return {
-			...(isEditMode && id && typeof id === 'number' ? { id } : {}),
-			...itemWithoutId,
-			version: item.version || 1,
-			isLatest: item.isLatest ?? true
-		};
-	});
 };
 
 export default CreatePart;

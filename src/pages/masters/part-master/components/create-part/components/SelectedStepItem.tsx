@@ -3,8 +3,6 @@ import { KeyboardArrowUp as UpIcon, KeyboardArrowDown as DownIcon, Delete as Del
 import { Controller, Control } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import { ExtendedPrcTemplateStep } from '../types';
-import PartImageUpload from './PartImageUpload';
-import { ImageItem } from '../../../../../../hooks/useImageGallery';
 
 interface SelectedStepItemProps {
 	step: ExtendedPrcTemplateStep;
@@ -13,9 +11,6 @@ interface SelectedStepItemProps {
 	onReorder: (fromIndex: number, toIndex: number) => void;
 	onRemove: (index: number) => void;
 	control: Control<PartMasterFormData>;
-	stepGallery?: ImageItem[];
-	onAddStepImage?: (file: File) => void;
-	onRemoveStepImage?: (id: number | string) => void;
 }
 
 const SelectedStepItem = ({
@@ -24,10 +19,7 @@ const SelectedStepItem = ({
 	totalSteps,
 	onReorder,
 	onRemove,
-	control,
-	stepGallery,
-	onAddStepImage,
-	onRemoveStepImage
+	control
 }: SelectedStepItemProps) => {
 	const canMoveUp = index > 0;
 	const canMoveDown = index < totalSteps - 1;
@@ -138,23 +130,6 @@ const SelectedStepItem = ({
 					)}
 				/>
 			</Box>
-
-			{step.itemType === 'inspection' && stepGallery && onAddStepImage && onRemoveStepImage && (
-				<Box sx={{ mt: 2, pt: 2, borderTop: '1px dashed #e0e0e0' }}>
-					<Typography variant="body2" sx={{ fontWeight: 600, color: '#333', mb: 1 }}>
-						Part Drawings for this Inspection
-					</Typography>
-					<Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
-						Upload images specific to this inspection step
-					</Typography>
-					<PartImageUpload
-						gallery={stepGallery}
-						onAddImage={onAddStepImage}
-						onRemoveImage={onRemoveStepImage}
-						view={false}
-					/>
-				</Box>
-			)}
 		</Box>
 	);
 };

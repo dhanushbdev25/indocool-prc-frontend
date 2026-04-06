@@ -10,6 +10,8 @@ export interface PrcTemplateStep {
 	blockCatalystMixing: boolean;
 	requestSupervisorApproval: boolean;
 	stepId: number | null;
+	/** Operation group code (e.g. combo value); legacy may use `group` */
+	operationID?: string;
 	group?: string;
 	operationText?: string;
 	createdAt?: string;
@@ -68,25 +70,9 @@ export interface PrcTemplateStepRequest {
 	type: string;
 	blockCatalystMixing?: boolean;
 	requestSupervisorApproval?: boolean;
-	group?: string;
+	/** Operation group id from operations combo (e.g. "40") */
+	operationID?: string;
 	operationText?: string;
-}
-
-export interface PrcTemplateNestedStepRequest {
-	version: number;
-	isLatest: boolean;
-	sequence: number;
-	stepId: number | null;
-	type: string;
-	blockCatalystMixing?: boolean;
-	requestSupervisorApproval?: boolean;
-}
-
-export interface PrcTemplateOperationRequest {
-	operation: string;
-	operationText?: string;
-	sequences: PrcTemplateNestedStepRequest[];
-	inspections: PrcTemplateNestedStepRequest[];
 }
 
 export interface PrcTemplateRequest {
@@ -99,18 +85,10 @@ export interface PrcTemplateRequest {
 	isActive: boolean;
 }
 
-/** Exactly one of `prcTemplateSteps` or `operations` must be non-empty (enforced at API / caller). */
-export type CreatePrcTemplateRequest =
-	| {
-			prcTemplate: PrcTemplateRequest;
-			prcTemplateSteps: PrcTemplateStepRequest[];
-			operations?: undefined;
-	  }
-	| {
-			prcTemplate: PrcTemplateRequest;
-			operations: PrcTemplateOperationRequest[];
-			prcTemplateSteps?: undefined;
-	  };
+export interface CreatePrcTemplateRequest {
+	prcTemplate: PrcTemplateRequest;
+	prcTemplateSteps: PrcTemplateStepRequest[];
+}
 
 export interface UpdatePrcTemplateRequest {
 	id: number;

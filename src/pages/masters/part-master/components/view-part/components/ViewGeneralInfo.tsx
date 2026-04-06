@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react';
 import { Box, Grid, Typography, Chip, Paper } from '@mui/material';
 import { PartMaster, PartDrawing } from '../../../../../../store/api/business/part-master/part.validators';
 import PartImageUpload from '../../create-part/components/PartImageUpload';
-import { getPartMoulds, PartMouldMapping } from '../../../../../../mocks/mould-reconciliation.mock';
+import { toFileRenderUrl } from '../../../../../../utils/fileUrl';
 
 interface ViewGeneralInfoProps {
 	partMaster: PartMaster;
@@ -10,21 +9,13 @@ interface ViewGeneralInfoProps {
 }
 
 const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
-	const [moulds, setMoulds] = useState<PartMouldMapping[]>([]);
-
-	useEffect(() => {
-		const loadMoulds = async () => {
-			const data = await getPartMoulds(partMaster.partNumber);
-			setMoulds(data);
-		};
-		loadMoulds();
-	}, [partMaster.partNumber]);
+	const moulds = partMaster.mouldDetails ?? [];
 
 	// Convert files to gallery format for display
 	const displayGallery = files.map((file, index) => ({
 		id: index,
 		file: null,
-		image: file.filePath ? `${process.env.API_BASE_URL_PRE_AUTH}${file.filePath}` : '', // Prepend base URL to file path
+		image: toFileRenderUrl(file.filePath),
 		fileName: file.fileName || `Image ${index}`
 	}));
 
@@ -223,9 +214,13 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 								Mould mapping
 							</Typography>
 							<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-								{moulds.map(mould => (
+								{moulds.map((mould, index) => (
 									<Chip
-										key={`${mould.partNumber}-${mould.mouldCode}`}
+										key={
+											typeof mould.id === 'number'
+												? `mould-${mould.id}`
+												: `${mould.mouldCode}-${index}`
+										}
 										label={`${mould.mouldCode} | Count: ${mould.reconciliationCount}`}
 										variant="outlined"
 									/>

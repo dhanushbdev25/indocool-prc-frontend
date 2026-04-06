@@ -25,6 +25,7 @@ import {
 	type AnnotationPoint,
 	type AnnotationPolygon
 } from '../../../types/execution.types';
+import { toFileRenderUrl } from '../../../../../utils/fileUrl';
 
 interface ImageAnnotatorProps {
 	images: Array<{
@@ -117,7 +118,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	const imageRef = useRef<Konva.Image>(null);
 
 	const currentImage = images[currentImageIndex];
-	const currentImageUrl = currentImage?.filePath ? `${process.env.API_BASE_URL_PRE_AUTH}${currentImage.filePath}` : '';
+	const currentImageUrl = toFileRenderUrl(currentImage?.filePath);
 
 	// Get annotations for current image
 	const getCurrentImageAnnotations = useCallback(() => {

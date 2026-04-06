@@ -12,9 +12,20 @@ import {
 	type PartMaster,
 	type RawMaterial,
 	type Drilling,
-	type Cutting
+	type Cutting,
+	type Mould
 } from '../../../../../store/api/business/part-master/part.validators';
-import { getPartMouldSummary } from '../../../../../mocks/mould-reconciliation.mock';
+
+function getMouldSummaryFromDetails(mouldDetails: Mould[] | undefined) {
+	const list = mouldDetails ?? [];
+	const totalMoulds = list.length;
+	const dueMoulds = list.filter(
+		m =>
+			Number(m.reconciliationCount ?? 0) > 0 &&
+			Number(m.currentCount ?? 0) >= Number(m.reconciliationCount)
+	).length;
+	return { totalMoulds, dueMoulds };
+}
 
 const ListPart = () => {
 	const navigate = useNavigate();
@@ -35,7 +46,7 @@ const ListPart = () => {
 		return partData.detail
 			.filter((item: { partMaster: PartMaster }) => item.partMaster.id !== undefined)
 			.map((item: { partMaster: PartMaster; rawMaterials: RawMaterial[]; drilling: Drilling[]; cutting: Cutting[] }) => {
-				const mouldSummary = getPartMouldSummary(item.partMaster.partNumber);
+				const mouldSummary = getMouldSummaryFromDetails(item.partMaster.mouldDetails);
 				return {
 					id: item.partMaster.id!,
 					partNumber: item.partMaster.partNumber,

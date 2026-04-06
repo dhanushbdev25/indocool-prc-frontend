@@ -176,6 +176,9 @@ export interface LinkedMastersTabProps {
 export interface GeneralInfoProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
+	gallery: import('../../../../../hooks/useImageGallery').ImageItem[];
+	onAddImage: (file: File) => void;
+	onRemoveImage: (id: number | string) => void;
 }
 
 export interface RawMaterialsTabProps {

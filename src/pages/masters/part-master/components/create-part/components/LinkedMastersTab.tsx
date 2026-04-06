@@ -45,24 +45,17 @@ import {
 	ExtendedPrcTemplateStep,
 	isSequenceItem
 } from '../types';
-import { ImageItem } from '../../../../../../hooks/useImageGallery';
 
 interface LinkedMastersTabProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
 	setValue: UseFormSetValue<PartMasterFormData>;
-	stepGalleries: Record<string, ImageItem[]>;
-	onAddStepImage: (stepKey: string, file: File) => void;
-	onRemoveStepImage: (stepKey: string, id: number | string) => void;
 }
 
 const LinkedMastersTab = ({
 	control,
 	errors,
-	setValue,
-	stepGalleries,
-	onAddStepImage,
-	onRemoveStepImage
+	setValue
 }: LinkedMastersTabProps) => {
 	const [catalystModalOpen, setCatalystModalOpen] = useState(false);
 	const [addedGroups, setAddedGroups] = useState<string[]>([]);
@@ -516,9 +509,6 @@ const LinkedMastersTab = ({
 								onReorderStep={handleReorderStep}
 								onRemoveGroup={handleRemoveGroup}
 								control={control}
-								stepGalleries={stepGalleries}
-								onAddStepImage={onAddStepImage}
-								onRemoveStepImage={onRemoveStepImage}
 							/>
 						);
 					}
@@ -536,9 +526,6 @@ const LinkedMastersTab = ({
 							onReorderStep={handleReorderStep}
 							onRemoveGroup={handleRemoveGroup}
 							control={control}
-							stepGalleries={stepGalleries}
-							onAddStepImage={onAddStepImage}
-							onRemoveStepImage={onRemoveStepImage}
 						/>
 					);
 				})}
