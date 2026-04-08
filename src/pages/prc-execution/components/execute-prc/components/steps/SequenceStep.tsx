@@ -624,7 +624,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							fullWidth
 							multiline
 							rows={3}
-							label="Not OK Comment"
+							label="Comments"
 							placeholder="Enter comments for Not OK selection"
 							value={typeof formData.notOkComment === 'string' ? formData.notOkComment : ''}
 							onChange={e => handleNotOkCommentChange(e.target.value)}

@@ -148,6 +148,8 @@ export const partMasterFormSchema = yup.object({
 		.max(100, 'Template name must be less than 100 characters'),
 	templateNotes: yup.string().max(500, 'Template notes must be less than 500 characters').optional(),
 	isTemplateActive: yup.boolean().default(true),
+	templateVersion: yup.number().default(1),
+	templateIsLatest: yup.boolean().default(true),
 	prcTemplateSteps: yup.array(prcTemplateStepFormSchema).default([]),
 	rawMaterials: yup.array(rawMaterialFormSchema).default([]),
 	drilling: yup.array(drillingFormSchema).default([]),
@@ -230,6 +232,8 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	templateName: '',
 	templateNotes: '',
 	isTemplateActive: true,
+	templateVersion: 1,
+	templateIsLatest: true,
 	prcTemplateSteps: [],
 	rawMaterials: [],
 	drilling: [],
@@ -280,5 +284,7 @@ export const linkedMastersSchema = yup.object({
 	prcTemplate: yup.number().optional(),
 	templateId: yup.string().optional(),
 	templateName: yup.string().optional(),
+	templateVersion: yup.number().default(1),
+	templateIsLatest: yup.boolean().default(true),
 	prcTemplateSteps: yup.array(prcTemplateStepFormSchema).default([])
 });

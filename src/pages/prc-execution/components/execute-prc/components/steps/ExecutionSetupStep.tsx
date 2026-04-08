@@ -33,6 +33,15 @@ const shiftOptions = [
 	{ value: 'Night', label: 'Night' }
 ];
 
+const getMouldCode = (item: MouldComboItem | null): string => {
+	if (!item) return '';
+	const fromData = item.data.mouldId ?? item.data.mouldCode;
+	if (typeof fromData === 'string' && fromData.trim()) {
+		return fromData.trim();
+	}
+	return item.label?.trim() ?? '';
+};
+
 interface ExecutionSetupStepProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
@@ -91,7 +100,7 @@ const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSe
 			return;
 		}
 		if (mouldOptions.length === 0) return;
-		const match = mouldOptions.find(o => String(o.data.mouldId) === String(fallbackMouldId));
+		const match = mouldOptions.find(o => getMouldCode(o) === String(fallbackMouldId));
 		setSelectedMould(match ?? null);
 	}, [mouldOptions, fallbackMouldId]);
 
@@ -99,7 +108,7 @@ const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSe
 		const next: Record<string, string> = {};
 		if (!productionSetId.trim()) next.productionSetId = 'Production Set ID is required';
 		if (!partId) next.mouldId = 'Part is missing; cannot load moulds for this execution';
-		const mouldCode = selectedMould?.data.mouldId?.trim();
+		const mouldCode = getMouldCode(selectedMould);
 		if (partId && !mouldCode) next.mouldId = 'Mould is required';
 		if (!shift) next.shift = 'Shift is required';
 		setErrors(next);
@@ -109,7 +118,7 @@ const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSe
 	const handleSubmit = () => {
 		if (!validate()) return;
 		const dateStr = selectedDate.format('YYYY-MM-DD');
-		const mouldIdValue = selectedMould?.data.mouldId?.trim() ?? '';
+		const mouldIdValue = getMouldCode(selectedMould);
 		onStepComplete({
 			productionSetId: productionSetId.trim(),
 			mouldId: mouldIdValue,
@@ -191,7 +200,7 @@ const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSe
 										value={selectedMould}
 										onChange={(_, value) => {
 											setSelectedMould(value);
-											setFallbackMouldId(value?.data.mouldId ?? '');
+											setFallbackMouldId(getMouldCode(value));
 											if (errors.mouldId) setErrors(prev => ({ ...prev, mouldId: '' }));
 										}}
 										getOptionLabel={option => option.label}

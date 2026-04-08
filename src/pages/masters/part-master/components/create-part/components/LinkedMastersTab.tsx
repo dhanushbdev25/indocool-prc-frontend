@@ -84,6 +84,11 @@ const LinkedMastersTab = ({
 
 	const hasInitializedGroups = useRef(false);
 	useEffect(() => {
+		hasInitializedGroups.current = false;
+		setAddedGroups([]);
+	}, [partId]);
+
+	useEffect(() => {
 		if (hasInitializedGroups.current) return;
 		if (fields.length > 0 && operationGroups.length > 0) {
 			const groupsFromSteps = [
@@ -163,9 +168,8 @@ const LinkedMastersTab = ({
 				.sort((a, b) => b - a);
 			indicesToRemove.forEach(idx => remove(idx));
 			setAddedGroups(prev => prev.filter(id => id !== groupId));
-			setTimeout(() => updateSequenceNumbers(), 0);
 		},
-		[allStepFields, remove] // eslint-disable-line react-hooks/exhaustive-deps
+		[allStepFields, remove]
 	);
 
 	const handleAddStep = useCallback(
@@ -186,32 +190,42 @@ const LinkedMastersTab = ({
 			};
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			append(newStep as any);
-			setTimeout(() => updateSequenceNumbers(), 0);
 		},
-		[fields.length, append] // eslint-disable-line react-hooks/exhaustive-deps
+		[fields.length, append]
 	);
 
 	const handleRemoveStep = useCallback(
 		(index: number) => {
+			if (index < 0 || index >= allStepFields.length) return;
 			remove(index);
-			setTimeout(() => updateSequenceNumbers(), 0);
 		},
-		[remove] // eslint-disable-line react-hooks/exhaustive-deps
+		[allStepFields.length, remove]
 	);
 
 	const handleReorderStep = useCallback(
 		(fromIndex: number, toIndex: number) => {
+			if (
+				fromIndex < 0 ||
+				toIndex < 0 ||
+				fromIndex >= allStepFields.length ||
+				toIndex >= allStepFields.length
+			) {
+				return;
+			}
 			move(fromIndex, toIndex);
-			setTimeout(() => updateSequenceNumbers(), 0);
 		},
-		[move] // eslint-disable-line react-hooks/exhaustive-deps
+		[allStepFields.length, move]
 	);
 
-	const updateSequenceNumbers = () => {
-		fields.forEach((_, index) => {
-			setValue(`prcTemplateSteps.${index}.sequence`, index + 3);
+	useEffect(() => {
+		fields.forEach((field, index) => {
+			const expectedSequence = index + 3;
+			const currentSequence = (field as unknown as ExtendedPrcTemplateStep).sequence;
+			if (currentSequence !== expectedSequence) {
+				setValue(`prcTemplateSteps.${index}.sequence`, expectedSequence);
+			}
 		});
-	};
+	}, [fields, setValue]);
 
 	const getStepsForGroup = (groupId: string) => {
 		return allStepFields.filter(step => step.group === groupId);

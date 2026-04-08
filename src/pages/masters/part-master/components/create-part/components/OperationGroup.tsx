@@ -79,6 +79,17 @@ const OperationGroupComponent = ({
 		);
 	};
 
+	const getGlobalIndexForStep = (step: ExtendedPrcTemplateStep): number => {
+		if (typeof step.id === 'number') {
+			const byPersistedId = allStepFields.findIndex(candidate => candidate.id === step.id);
+			if (byPersistedId !== -1) return byPersistedId;
+		}
+		return allStepFields.findIndex(
+			candidate =>
+				candidate.stepId === step.stepId && candidate.itemType === step.itemType && candidate.group === step.group
+		);
+	};
+
 	const handleItemClick = (item: StepSelectableItem) => {
 		if (isItemSelected(item)) {
 			const globalIndex = allStepFields.findIndex(
@@ -149,11 +160,9 @@ const OperationGroupComponent = ({
 
 				{steps.length > 0 ? (
 					<Box>
-					{steps.map(step => {
-						const globalIndex = allStepFields.findIndex(
-							s => s.stepId === step.stepId && s.itemType === step.itemType && s.group === step.group
-						);
-						const stepKey = `${step.group}-${step.itemType}-${step.stepId}`;
+					{steps.map((step, idx) => {
+						const globalIndex = getGlobalIndexForStep(step);
+						const stepKey = `${step.id ?? 'new'}-${step.group}-${step.itemType}-${step.stepId}-${idx}`;
 						return (
 							<SelectedStepItem
 								key={stepKey}

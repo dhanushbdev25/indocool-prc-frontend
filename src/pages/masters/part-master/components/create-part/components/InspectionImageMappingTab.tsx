@@ -118,11 +118,11 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 				const imageItem = gallery.find(item => item.image === imagePath);
 				if (!imageItem) return null;
 
-				return {
-					fileName: imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`,
-					filePath: imageItem.image,
-					originalFileName: imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`
-				};
+			return {
+				fileName: imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`,
+				filePath: imageItem.filePath || imageItem.image,
+				originalFileName: imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`
+			};
 			})
 			.filter(
 				(fileObj): fileObj is { fileName: string; filePath: string; originalFileName: string } => fileObj !== null

@@ -21,8 +21,9 @@ const SelectedStepItem = ({
 	onRemove,
 	control
 }: SelectedStepItemProps) => {
+	const hasValidIndex = index >= 0 && index < totalSteps;
 	const canMoveUp = index > 0;
-	const canMoveDown = index < totalSteps - 1;
+	const canMoveDown = hasValidIndex && index < totalSteps - 1;
 
 	const getTypeColor = () => {
 		return step.itemType === 'sequence' ? '#1976d2' : '#4caf50';
@@ -82,54 +83,61 @@ const SelectedStepItem = ({
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 					<IconButton
 						size="small"
-						onClick={() => canMoveUp && onReorder(index, index - 1)}
-						disabled={!canMoveUp}
+						onClick={() => hasValidIndex && canMoveUp && onReorder(index, index - 1)}
+						disabled={!hasValidIndex || !canMoveUp}
 						sx={{ color: canMoveUp ? '#666' : '#ccc' }}
 					>
 						<UpIcon />
 					</IconButton>
 					<IconButton
 						size="small"
-						onClick={() => canMoveDown && onReorder(index, index + 1)}
-						disabled={!canMoveDown}
+						onClick={() => hasValidIndex && canMoveDown && onReorder(index, index + 1)}
+						disabled={!hasValidIndex || !canMoveDown}
 						sx={{ color: canMoveDown ? '#666' : '#ccc' }}
 					>
 						<DownIcon />
 					</IconButton>
 					<IconButton
 						size="small"
-						onClick={() => onRemove(index)}
-						sx={{ color: '#f44336', '&:hover': { backgroundColor: '#ffebee' } }}
+						onClick={() => hasValidIndex && onRemove(index)}
+						disabled={!hasValidIndex}
+						sx={{ color: hasValidIndex ? '#f44336' : '#ccc', '&:hover': { backgroundColor: '#ffebee' } }}
 					>
 						<DeleteIcon />
 					</IconButton>
 				</Box>
 			</Box>
 
-			<Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-				<Controller
-					name={`prcTemplateSteps.${index}.blockCatalystMixing`}
-					control={control}
-					render={({ field }) => (
-						<FormControlLabel
-							control={<Checkbox {...field} checked={field.value || false} color="primary" size="small" />}
-							label="Block Catalyst Mixing"
-							sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.85rem', color: '#666' } }}
-						/>
-					)}
-				/>
-				<Controller
-					name={`prcTemplateSteps.${index}.requestSupervisorApproval`}
-					control={control}
-					render={({ field }) => (
-						<FormControlLabel
-							control={<Checkbox {...field} checked={field.value || false} color="primary" size="small" />}
-							label="Request Supervisor Approval"
-							sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.85rem', color: '#666' } }}
-						/>
-					)}
-				/>
-			</Box>
+			{hasValidIndex ? (
+				<Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+					<Controller
+						name={`prcTemplateSteps.${index}.blockCatalystMixing`}
+						control={control}
+						render={({ field }) => (
+							<FormControlLabel
+								control={<Checkbox {...field} checked={field.value || false} color="primary" size="small" />}
+								label="Block Catalyst Mixing"
+								sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.85rem', color: '#666' } }}
+							/>
+						)}
+					/>
+					<Controller
+						name={`prcTemplateSteps.${index}.requestSupervisorApproval`}
+						control={control}
+						render={({ field }) => (
+							<FormControlLabel
+								control={<Checkbox {...field} checked={field.value || false} color="primary" size="small" />}
+								label="Request Supervisor Approval"
+								sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.85rem', color: '#666' } }}
+							/>
+						)}
+					/>
+				</Box>
+			) : (
+				<Typography variant="caption" color="error">
+					Invalid step reference detected. Please remove and re-add this step.
+				</Typography>
+			)}
 		</Box>
 	);
 };

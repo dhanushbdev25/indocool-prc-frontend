@@ -1051,7 +1051,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																		fullWidth
 																		multiline
 																		rows={2}
-																		label="Not OK Comment"
+																		label="Comments"
 																		placeholder="Enter comments for Not OK selection"
 																		value={String(
 																			formData[commentKey] ||
@@ -1299,7 +1299,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																											fullWidth
 																											multiline
 																											rows={2}
-																											label="Not OK Comment"
+																											label="Comments"
 																											placeholder="Enter comments for Not OK selection"
 																											value={String(formData[getNotOkCommentKey(key)] || '')}
 																											onChange={e => handleNotOkCommentChange(key, e.target.value)}
@@ -1464,7 +1464,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																						fullWidth
 																						multiline
 																						rows={2}
-																						label="Not OK Comment"
+																						label="Comments"
 																						placeholder="Enter comments for Not OK selection"
 																						value={String(formData[commentKey] || '')}
 																						onChange={e => handleNotOkCommentChange(key, e.target.value)}

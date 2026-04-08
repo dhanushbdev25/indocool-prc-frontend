@@ -225,47 +225,101 @@ const transformFormDataToApiRequest = (
 	};
 };
 
-const buildPrcTemplatePayload = (
-	data: PartMasterFormData,
-	operationsData?: {
-		data?: Array<{
-			value: string;
-			data: { operationText: string };
-		}>;
-	}
-) => {
-	const templateRequestData = {
-		status: data.isTemplateActive ? 'ACTIVE' : 'INACTIVE',
-		templateId: data.templateId!,
-		templateName: data.templateName!,
-		notes: data.templateNotes || '',
-		version: 1,
-		isLatest: true,
-		isActive: data.isTemplateActive ?? true
-	};
+type OperationComboData = {
+	data?: Array<{
+		value: string;
+		data: { operationText: string };
+	}>;
+};
 
+type NormalizedPrcTemplateStep = {
+	version: number;
+	isLatest: boolean;
+	sequence: number;
+	stepId: number;
+	type: 'sequence' | 'inspection';
+	blockCatalystMixing: boolean;
+	requestSupervisorApproval: boolean;
+	operationID: string;
+	operationText?: string;
+};
+
+const normalizePrcTemplateSteps = (
+	data: PartMasterFormData,
+	operationsData?: OperationComboData
+): { steps: NormalizedPrcTemplateStep[]; error: string | null } => {
+	const steps = data.prcTemplateSteps || [];
 	const operationTextByValue = new Map(
 		(operationsData?.data ?? []).map(op => [op.value, op.data.operationText] as const)
 	);
 
-	const templateSteps = (data.prcTemplateSteps || []).map((step, index) => {
-		const operationID = step.group ?? '';
-		return {
+	const normalized: NormalizedPrcTemplateStep[] = [];
+
+	for (let index = 0; index < steps.length; index += 1) {
+		const step = steps[index];
+		if (!step || typeof step !== 'object') {
+			return { steps: [], error: `PRC step ${index + 1} is empty. Please remove it and try again.` };
+		}
+
+		const stepNumber = index + 1;
+		const stepId = step.stepId;
+		const stepType = step.type;
+		const group = step.group;
+
+		if (typeof stepId !== 'number' || Number.isNaN(stepId) || stepId <= 0) {
+			return { steps: [], error: `PRC step ${stepNumber} has an invalid Step ID.` };
+		}
+		if (stepType !== 'sequence' && stepType !== 'inspection') {
+			return { steps: [], error: `PRC step ${stepNumber} has an invalid Step Type.` };
+		}
+		if (typeof group !== 'string' || group.trim().length === 0) {
+			return { steps: [], error: `PRC step ${stepNumber} has no Operation Group selected.` };
+		}
+
+		const operationText = operationTextByValue.get(group);
+
+		normalized.push({
 			version: step.version ?? 1,
 			isLatest: step.isLatest ?? true,
 			sequence: index + 3,
-			stepId: step.stepId,
-			type: step.type,
+			stepId,
+			type: stepType,
 			blockCatalystMixing: step.blockCatalystMixing ?? false,
 			requestSupervisorApproval: step.requestSupervisorApproval ?? false,
-			operationID,
-			operationText: operationTextByValue.get(operationID) ?? ''
-		};
-	});
+			operationID: group,
+			...(typeof operationText === 'string' && operationText.trim().length > 0 ? { operationText } : {})
+		});
+	}
+
+	return { steps: normalized, error: null };
+};
+
+const buildPrcTemplatePayload = (
+	data: PartMasterFormData,
+	normalizedSteps: NormalizedPrcTemplateStep[]
+) => {
+	const resolvedTemplateId =
+		typeof data.templateId === 'string' && data.templateId.trim().length > 0
+			? data.templateId.trim()
+			: (data.partNumber || data.drawingNumber || '').trim();
+	const resolvedTemplateName =
+		typeof data.templateName === 'string' && data.templateName.trim().length > 0
+			? data.templateName.trim()
+			: (data.partNumber || data.description || data.drawingNumber || '').trim();
+
+	const templateRequestData = {
+		status: data.isTemplateActive ? 'ACTIVE' : 'INACTIVE',
+		templateId: resolvedTemplateId,
+		templateName: resolvedTemplateName,
+		notes: data.templateNotes || '',
+		version: data.templateVersion ?? 1,
+		isLatest: data.templateIsLatest ?? true,
+		isActive: data.isTemplateActive ?? true
+	};
 
 	return {
 		prcTemplate: templateRequestData,
-		prcTemplateSteps: templateSteps
+		prcTemplateSteps: normalizedSteps
 	};
 };
 
@@ -416,6 +470,8 @@ const CreatePart = () => {
 			let templateName = '';
 			let templateNotes = '';
 			let isTemplateActive = true;
+			let templateVersion = 1;
+			let templateIsLatest = true;
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			let prcTemplateSteps: any[] = [];
 
@@ -425,8 +481,8 @@ const CreatePart = () => {
 				templateName = tpl.templateName;
 				templateNotes = tpl.notes || '';
 				isTemplateActive = tpl.isActive;
-
-				const defaultGroup = operationsData?.data?.[0]?.value || 'unknown';
+				templateVersion = tpl.version ?? 1;
+				templateIsLatest = tpl.isLatest ?? true;
 
 				prcTemplateSteps = prcTemplateData.detail.prcTemplateSteps.map(step => {
 					let itemName = '';
@@ -447,15 +503,14 @@ const CreatePart = () => {
 						}
 					}
 
-					const groupFromApi =
-						(step as { operationID?: string }).operationID ?? step.group ?? defaultGroup;
+					const groupFromApi = (step as { operationID?: string }).operationID ?? step.group ?? '';
 
 					return {
 						id: step.id,
 						version: step.version,
 						isLatest: step.isLatest,
 						sequence: step.sequence,
-						stepId: step.stepId || 0,
+						stepId: step.stepId ?? undefined,
 						type: step.type,
 						blockCatalystMixing: step.blockCatalystMixing,
 						requestSupervisorApproval: step.requestSupervisorApproval,
@@ -490,6 +545,8 @@ const CreatePart = () => {
 				templateName,
 				templateNotes,
 				isTemplateActive,
+				templateVersion,
+				templateIsLatest,
 				prcTemplateSteps,
 				rawMaterials: rawMaterials.map(rm => ({
 					id: rm.id,
@@ -576,10 +633,22 @@ const CreatePart = () => {
 
 			// Step 1: Upsert PRC Template if template data exists
 			let finalPrcTemplateId: number | undefined = data.prcTemplate;
-			const hasTemplateData = data.templateId && data.templateName && (data.prcTemplateSteps || []).length > 0;
+			const hasTemplateBasics = Boolean(
+				(typeof data.templateId === 'string' && data.templateId.trim().length > 0) ||
+					(typeof data.templateName === 'string' && data.templateName.trim().length > 0)
+			);
+			const hasPrcSteps = (data.prcTemplateSteps || []).length > 0;
+			const shouldCreateMissingPrc = !finalPrcTemplateId && hasPrcSteps;
+			const shouldUpdateExistingPrc = Boolean(finalPrcTemplateId && (hasPrcSteps || hasTemplateBasics));
+			const shouldUpsertTemplate = shouldCreateMissingPrc || shouldUpdateExistingPrc;
 
-			if (hasTemplateData) {
-				const prcPayload = buildPrcTemplatePayload(data, operationsData);
+			if (shouldUpsertTemplate) {
+				const { steps: normalizedPrcSteps, error: prcValidationError } = normalizePrcTemplateSteps(data, operationsData);
+				if (prcValidationError) {
+					setError(prcValidationError);
+					return;
+				}
+				const prcPayload = buildPrcTemplatePayload(data, normalizedPrcSteps);
 
 				try {
 					if (finalPrcTemplateId) {
@@ -606,8 +675,8 @@ const CreatePart = () => {
 					console.error('PRC Template upsert failed:', templateErr);
 					setError(
 						finalPrcTemplateId
-							? 'Failed to update linked PRC template. Please try again.'
-							: 'Failed to create PRC template. Please try again.'
+							? 'Failed to update linked PRC template. Part update was not saved.'
+							: 'Failed to create PRC template. Part update was not saved.'
 					);
 					return;
 				}

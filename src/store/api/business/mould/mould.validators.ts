@@ -46,7 +46,8 @@ export const isMouldDueForReconciliation = (row: MouldReconciliationRow): boolea
 
 /** GET /mould/combo?partId= — comboFormatter formatComboData */
 export interface MouldComboData {
-	mouldId: string;
+	mouldId?: string;
+	mouldCode?: string;
 	partCode?: string;
 	reconciliationCount?: number;
 	currentCount?: number;
@@ -124,5 +125,5 @@ function isMouldComboItem(value: unknown): value is MouldComboItem {
 		return false;
 	}
 	const d = o.data as Record<string, unknown>;
-	return typeof d.mouldId === 'string';
+	return typeof d.mouldId === 'string' || typeof d.mouldCode === 'string';
 }

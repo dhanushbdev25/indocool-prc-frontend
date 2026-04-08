@@ -104,7 +104,43 @@ const StepDetailView = ({
 		return step.stepGroup.steps.every(subStep => groupData[subStep.id.toString()] !== undefined);
 	};
 
+	const isCurrentSubStepFilled = (): boolean => {
+		if (!isSequenceGroup || !currentSubStep || !step.prcTemplateStepId || !step.stepGroup) {
+			return false;
+		}
+		const stepData = executionData.prcAggregatedSteps?.[step.prcTemplateStepId.toString()] as Record<string, unknown>;
+		if (!stepData) return false;
+		const groupData = stepData[step.stepGroup.id.toString()] as Record<string, unknown>;
+		if (!groupData) return false;
+		return groupData[currentSubStep.id.toString()] !== undefined;
+	};
+
+	const isNonSequenceStepFilled = (): boolean => {
+		if (isSequenceGroup) return false;
+		switch (step.type) {
+			case 'setup': {
+				const meta = executionData.prcAggregatedSteps?.prcmetadata as Record<string, unknown> | undefined;
+				return !!meta && typeof meta === 'object' && Object.keys(meta).length > 0;
+			}
+		case 'rawMaterials':
+			return executionData.prcAggregatedSteps?.rawMaterials !== undefined;
+		case 'bom':
+			return executionData.prcAggregatedSteps?.bom !== undefined;
+			case 'inspection': {
+				const prcTemplateStepId = step.stepData?.prcTemplateStepId;
+				if (!prcTemplateStepId) return false;
+				const inspData = executionData.prcAggregatedSteps?.[prcTemplateStepId.toString()] as Record<string, unknown>;
+				return !!inspData && Object.keys(inspData).length > 0;
+			}
+			default:
+				return false;
+		}
+	};
+
 	const handleNextSubStep = async () => {
+		if (isSequenceGroup && !isCurrentSubStepFilled()) return;
+		if (!isSequenceGroup && !isNonSequenceStepFilled()) return;
+
 		if (isSequenceGroup) {
 			if (currentSubStepIndex < subSteps.length - 1) {
 				// Go to next sub-step
@@ -131,10 +167,9 @@ const StepDetailView = ({
 
 	const canGoPreviousSubStep = isSequenceGroup ? currentSubStepIndex > 0 : canGoPrevious;
 
-	// For sequence groups, check if we can go to next sub-step OR if all steps are filled (to go to preview)
 	const canGoNextSubStep = isSequenceGroup
-		? currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled()
-		: canGoNext;
+		? isCurrentSubStepFilled() && (currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled())
+		: isNonSequenceStepFilled() && canGoNext;
 
 	const renderStepContent = () => {
 		if (isSequenceGroup && currentSubStep) {
