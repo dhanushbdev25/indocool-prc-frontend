@@ -120,6 +120,15 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					}
 				}
 
+				if (stepData.targetValueType === 'table' && Array.isArray(actualData)) {
+					return {
+						formData: {},
+						measurements: [{ id: '1', value: '' }],
+						responsiblePersonData,
+						tableData: actualData as Array<Record<string, string>>
+					};
+				}
+
 				if (stepData.multipleMeasurements && Array.isArray(actualData)) {
 					// Load multiple measurements from array
 					const loadedMeasurements = actualData.map((value: string | number, index: number) => ({
@@ -167,7 +176,8 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		return {
 			formData: {},
 			measurements: [{ id: '1', value: '' }],
-			responsiblePersonData: defaultResponsiblePersonData
+			responsiblePersonData: defaultResponsiblePersonData,
+			tableData: undefined as Array<Record<string, string>> | undefined
 		};
 	}, [executionData.prcAggregatedSteps, step]);
 
@@ -182,12 +192,33 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		}>
 	>(initialData.responsiblePersonData);
 
+	const initTableData = useMemo(() => {
+		if (initialData.tableData) return initialData.tableData;
+		const tc = step.stepData?.tableConfig;
+		if (!tc || step.stepData?.targetValueType !== 'table') return undefined;
+		return tc.rows.map(row => {
+			const rowObj: Record<string, string> = {};
+			tc.columns.forEach(col => {
+				const cell = row.cells[col.name];
+				rowObj[col.name] = cell?.readOnly ? cell.value : (cell?.value || '');
+			});
+			return rowObj;
+		});
+	}, [initialData.tableData, step.stepData?.tableConfig, step.stepData?.targetValueType]);
+
+	const [tableData, setTableData] = useState<Array<Record<string, string>> | undefined>(initTableData);
+
 	// Update form data when initial data changes
 	useEffect(() => {
 		setFormData(initialData.formData);
 		setMeasurements(initialData.measurements);
 		setResponsiblePersonData(initialData.responsiblePersonData);
-	}, [initialData]);
+		if (initialData.tableData) {
+			setTableData(initialData.tableData);
+		} else if (initTableData) {
+			setTableData(initTableData);
+		}
+	}, [initialData, initTableData]);
 
 	const stepData = step.stepData;
 	if (!stepData) {
@@ -198,7 +229,8 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	const isSubStepFilled =
 		initialData &&
 		((initialData.formData && Object.keys(initialData.formData).length > 0) ||
-			(initialData.measurements && initialData.measurements.some(m => m.value && m.value.trim() !== '')));
+			(initialData.measurements && initialData.measurements.some(m => m.value && m.value.trim() !== '')) ||
+			!!initialData.tableData);
 	const isReadOnly = step.status === 'completed' || isSubStepFilled;
 
 	// Debug logging
@@ -318,8 +350,35 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		}));
 	};
 
+	const handleTableCellChange = (rowIndex: number, colName: string, value: string) => {
+		setTableData(prev => {
+			if (!prev) return prev;
+			const updated = [...prev];
+			updated[rowIndex] = { ...updated[rowIndex], [colName]: value };
+			return updated;
+		});
+	};
+
 	const validateForm = () => {
 		const newErrors: Record<string, string> = {};
+
+		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
+			stepData.tableConfig.columns.forEach(col => {
+				tableData.forEach((row, rowIdx) => {
+					const rowConfig = stepData.tableConfig!.rows[rowIdx];
+					const cellConfig = rowConfig?.cells[col.name];
+					if (cellConfig?.readOnly) return;
+					const val = row[col.name];
+					if (!val || val.trim() === '') {
+						newErrors[`table_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} is required`;
+					} else if (col.type === 'number' && isNaN(parseFloat(val))) {
+						newErrors[`table_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a number`;
+					}
+				});
+			});
+			setErrors(newErrors);
+			return Object.keys(newErrors).length === 0;
+		}
 
 		// Check if this is a Measurement step with range type that requires acceptance value validation
 		const isMeasurementRange =
@@ -491,6 +550,25 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 	const handleSubmit = () => {
 		if (validateForm()) {
+			if (stepData.targetValueType === 'table' && tableData) {
+				const formDataToSubmit: FormData = {
+					data: tableData,
+					stepId: stepData.stepId,
+					stepGroupId: stepData.stepGroupId,
+					prcTemplateStepId: stepData.prcTemplateStepId
+				};
+				if (stepData.responsiblePerson) {
+					formDataToSubmit.responsiblePersons = responsiblePersonData.map(p => ({
+						id: p.id,
+						role: p.role,
+						employeeName: p.employeeName,
+						employeeCode: p.employeeCode
+					}));
+				}
+				onStepComplete(formDataToSubmit);
+				return;
+			}
+
 			let submitData: string | string[] | Record<string, unknown>;
 
 			if (stepData.multipleMeasurements) {
@@ -583,6 +661,94 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	};
 
 	const renderInput = () => {
+		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
+			const tc = stepData.tableConfig;
+			return (
+				<Box sx={{ overflowX: 'auto' }}>
+					<Box
+						component="table"
+						sx={{
+							width: '100%',
+							borderCollapse: 'collapse',
+							'& th, & td': { border: '1px solid #e0e0e0', p: 1, textAlign: 'left', fontSize: '0.875rem' },
+							'& th': { backgroundColor: '#f5f5f5', fontWeight: 600 }
+						}}
+					>
+						<thead>
+							<tr>
+								{tc.columns.map(col => (
+									<th key={col.name}>
+										{col.name}
+										<Typography variant="caption" sx={{ display: 'block', color: '#999', fontWeight: 400 }}>
+											{col.type}
+										</Typography>
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{tableData.map((row, rowIdx) => (
+								<tr key={rowIdx}>
+									{tc.columns.map(col => {
+										const rowConfig = tc.rows[rowIdx];
+										const cellConfig = rowConfig?.cells[col.name];
+										const cellValue = row[col.name] || '';
+										const isCellReadOnly = cellConfig?.readOnly || isReadOnly;
+
+										if (isCellReadOnly) {
+											return (
+												<td key={col.name} style={{ backgroundColor: '#f9f9f9' }}>
+													<Typography variant="body2" sx={{ color: '#333' }}>
+														{cellValue || '-'}
+													</Typography>
+												</td>
+											);
+										}
+
+										if (col.type === 'ok/not ok') {
+											return (
+												<td key={col.name}>
+													<RadioGroup
+														row
+														value={cellValue}
+														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
+														sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
+													>
+														<FormControlLabel value="ok" control={<Radio size="small" />} label="OK" />
+														<FormControlLabel value="not ok" control={<Radio size="small" />} label="Not OK" />
+													</RadioGroup>
+													{errors[`table_${rowIdx}_${col.name}`] && (
+														<Typography variant="caption" color="error">
+															{errors[`table_${rowIdx}_${col.name}`]}
+														</Typography>
+													)}
+												</td>
+											);
+										}
+
+										return (
+											<td key={col.name}>
+												<TextField
+													size="small"
+													fullWidth
+													type={col.type === 'number' ? 'number' : 'text'}
+													value={cellValue}
+													onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
+													error={!!errors[`table_${rowIdx}_${col.name}`]}
+													helperText={errors[`table_${rowIdx}_${col.name}`]}
+													sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px' } }}
+												/>
+											</td>
+										);
+									})}
+								</tr>
+							))}
+						</tbody>
+					</Box>
+				</Box>
+			);
+		}
+
 		if (stepData.targetValueType === 'ok/not ok') {
 			const selectedValue = getOkNotOkValue(formData.value);
 			return (

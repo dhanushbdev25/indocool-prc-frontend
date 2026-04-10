@@ -309,6 +309,7 @@ Configured target value types:
 - `range`
 - `exact value`
 - `ok/not ok`
+- `table` (fixed-table with per-cell read-only configuration)
 
 ### Inspection Master
 
@@ -321,7 +322,8 @@ Configured parameter/column types include:
 - `boolean`
 - `ok/not ok`
 - `datetime`
-- `table`
+- `table` (dynamic-row table with user-defined columns)
+- `fixed-table` (fixed-row table with `tableConfig` and per-cell read-only)
 
 ---
 
@@ -333,7 +335,72 @@ Configured parameter/column types include:
 
 ---
 
-## 12. Executive Summary
+## 12. Fixed-Table Feature (Sequence & Inspection)
+
+### Overview
+
+The fixed-table feature allows masters to define a table with a fixed number of columns and rows, where individual cells can be marked as read-only with pre-configured values. During PRC execution, operators fill in only the editable cells while read-only cells display their configured values.
+
+### Shared Data Model
+
+All fixed-table definitions use a common `TableConfig` interface defined in `src/types/table-config.types.ts`:
+
+```typescript
+interface TableColumn { name: string; type: 'text' | 'number' | 'ok/not ok' | 'datetime'; }
+interface TableCellConfig { value: string; readOnly: boolean; }
+interface TableRowConfig { cells: Record<string, TableCellConfig>; }
+interface TableConfig { columns: TableColumn[]; rows: TableRowConfig[]; }
+```
+
+### Sequence Master Integration
+
+- **Target Value Type**: `'table'` added to `targetValueTypeOptions` in `types.ts`
+- **Schema**: `tableConfigSchema` added to `schemas.ts`, conditionally required when `targetValueType === 'table'`; min/max acceptance values become optional
+- **UI**: `TableConfigEditor` component in `SequenceStepGroups.tsx` allows defining columns (name + type) and rows (cell value + read-only toggle)
+- **Persistence**: `tableConfig` explicitly mapped in `onSubmit` and edit-load `reset` in `create-sequence/index.tsx`
+- **API Types**: `tableConfig?: TableConfig | null` added to `ProcessStep` and `ProcessStepRequest` in `sequence.validators.ts`
+- **Review/View**: `SequenceReview.tsx` shows "Table (X cols, Y rows)" summary; `ViewSequenceStepGroups.tsx` uses purple (`#7b1fa2`) color badge
+
+### Inspection Master Integration
+
+- **Parameter Type**: `'fixed-table'` (distinct from existing dynamic-row `'table'` type) added to `parameterTypeOptions` in `schemas.ts`
+- **Schema**: `tableConfig` field added to `inspectionParameterSchema`, conditionally required when `type === 'fixed-table'`
+- **UI**: `FixedTableConfigEditor` component in `InspectionParameters.tsx`; existing `columns` section and `tolerance` field hidden for `'fixed-table'` type
+- **Persistence**: `tableConfig` explicitly mapped in `onSubmit` and edit-load `reset` in `create-inspection/index.tsx`
+- **API Types**: `tableConfig?: TableConfig | null` added to `InspectionParameter` and `InspectionParameterRequest` in `inspection.validators.ts`
+- **Review/View**: `InspectionReview.tsx` shows column/row count summary; `ViewInspectionParameters.tsx` uses purple badge
+
+### Execution Runtime Flow
+
+1. **Timeline Building** (`buildTimelineSteps.ts`): `tableConfig` is passed through to `TimelineStep.stepData` (sequence) and `TimelineStep.inspectionParameters[]` (inspection)
+2. **StepDetailView**: `tableConfig` included in synthetic `TimelineStep.stepData` for sequence sub-steps
+3. **SequenceStep.tsx** (`targetValueType === 'table'`):
+   - Initializes `tableData` state from existing aggregated data or `tableConfig` defaults
+   - Renders MUI Table with editable inputs (TextField, RadioGroup, DateTimePicker) for non-read-only cells
+   - Validates required fields and number types before submission
+   - Submits as `{ data: [...rows] }` where each row is `Record<string, string>`
+4. **InspectionStep.tsx** (`parameterType === 'fixed-table'`):
+   - Initializes from `prcAggregatedSteps` value array or `tableConfig` defaults
+   - Renders expandable MUI Table within the inspection parameter row
+   - Submits as `{ value: [...rows] }`
+5. **dataBuilders.ts**: Dedicated `'fixed-table'` branch reads pre-structured row arrays directly
+6. **execute-prc/index.tsx**: Both primary and navigation `detailedMeasurements` builders detect `targetValueType === 'table'` and pass through `tableConfig` + raw table data
+7. **StepPreview.tsx**:
+   - Sequence: renders inline table with column headers, row data, and read-only cell styling (italic + grey background)
+   - Inspection: `isFixedTableType` flag enables collapsible detail row showing the fixed table with `tableConfig`-driven column headers and cell read-only indicators
+
+### Key Differences: `table` vs `fixed-table`
+
+| Aspect | `table` (Inspection) | `fixed-table` (Inspection) | `table` (Sequence) |
+|--------|---------------------|---------------------------|-------------------|
+| Rows | Dynamic (user adds rows) | Fixed (defined in master) | Fixed (defined in master) |
+| Cell read-only | No | Yes (per-cell) | Yes (per-cell) |
+| Column source | `columns[]` on parameter | `tableConfig.columns` | `tableConfig.columns` |
+| Data format | `{ value: { col: val } }` per row | `{ value: [...rows] }` | `{ data: [...rows] }` |
+
+---
+
+## 13. Executive Summary
 
 The PRC execution module uses a single orchestrated runtime flow that:
 

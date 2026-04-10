@@ -75,31 +75,32 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 		for (const prcTemplateStep of sortedSteps) {
 			if (prcTemplateStep.type === 'sequence' && prcTemplateStep.data) {
 				// For sequence type, create step groups as main timeline steps
-				const sequenceData = prcTemplateStep.data as {
-					stepGroups: Array<{
+			const sequenceData = prcTemplateStep.data as {
+				stepGroups: Array<{
+					id: number;
+					steps: Array<{
 						id: number;
-						steps: Array<{
-							id: number;
-							ctq: boolean;
-							stepType: string;
-							targetValueType: string;
-							uom: string;
-							minValue?: string;
-							maxValue?: string;
-							minimumAcceptanceValue?: string | null;
-							maximumAcceptanceValue?: string | null;
-							multipleMeasurements: boolean;
-							notes: string;
-							parameterDescription: string;
-							evaluationMethod: string;
-							allowAttachments: boolean;
-							responsiblePerson?: boolean;
-						}>;
-						processName: string;
-						processDescription: string;
-						sequenceTiming: number;
+						ctq: boolean;
+						stepType: string;
+						targetValueType: string;
+						uom: string;
+						minValue?: string;
+						maxValue?: string;
+						minimumAcceptanceValue?: string | null;
+						maximumAcceptanceValue?: string | null;
+						multipleMeasurements: boolean;
+						tableConfig?: Record<string, unknown> | null;
+						notes: string;
+						parameterDescription: string;
+						evaluationMethod: string;
+						allowAttachments: boolean;
+						responsiblePerson?: boolean;
 					}>;
-				};
+					processName: string;
+					processDescription: string;
+					sequenceTiming: number;
+				}>;
+			};
 				if (sequenceData.stepGroups) {
 					for (const stepGroup of sequenceData.stepGroups) {
 						const isCompleted = isSequenceStepGroupCompleted(
@@ -210,30 +211,32 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						evaluationMethod: '',
 						allowAttachments: false
 					},
-					inspectionParameters:
-						inspectionData.inspectionParameters?.map((param, index) => ({
-							id: param.id,
-							parameterName: param.parameterName,
-							type: param.type,
-							ctq: param.ctq,
-							role: param.role,
-							columns: param.columns || [],
-							specification: param.specification,
-							order: param.order ?? index + 1,
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							tolerance: (param as any).tolerance || '',
-							files: param.files || [],
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							version: (param as any).version || 1,
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							isLatest: (param as any).isLatest !== undefined ? (param as any).isLatest : true,
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							createdAt: (param as any).createdAt || new Date().toISOString(),
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							updatedAt: (param as any).updatedAt || new Date().toISOString(),
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							inspectionId: (param as any).inspectionId || prcTemplateStep.id
-						})) || [],
+				inspectionParameters:
+					inspectionData.inspectionParameters?.map((param, index) => ({
+						id: param.id,
+						parameterName: param.parameterName,
+						type: param.type,
+						ctq: param.ctq,
+						role: param.role,
+						columns: param.columns || [],
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						tableConfig: (param as any).tableConfig || null,
+						specification: param.specification,
+						order: param.order ?? index + 1,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						tolerance: (param as any).tolerance || '',
+						files: param.files || [],
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						version: (param as any).version || 1,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						isLatest: (param as any).isLatest !== undefined ? (param as any).isLatest : true,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						createdAt: (param as any).createdAt || new Date().toISOString(),
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						updatedAt: (param as any).updatedAt || new Date().toISOString(),
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						inspectionId: (param as any).inspectionId || prcTemplateStep.id
+					})) || [],
 					inspectionMetadata: inspectionData.inspection
 						? {
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any

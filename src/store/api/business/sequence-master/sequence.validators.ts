@@ -1,3 +1,5 @@
+import { TableConfig } from '../../../../types/table-config.types';
+
 export interface ProcessStep {
 	id: number;
 	processStepGroupId: number;
@@ -12,6 +14,7 @@ export interface ProcessStep {
 	maximumAcceptanceValue: string | null;
 	multipleMeasurements: boolean;
 	multipleMeasurementMaxCount: number | null;
+	tableConfig?: TableConfig | null;
 	uom?: string;
 	ctq: boolean;
 	allowAttachments: boolean;
@@ -79,6 +82,7 @@ export interface ProcessStepRequest {
 	maximumAcceptanceValue: number | null;
 	multipleMeasurements: boolean;
 	multipleMeasurementMaxCount: number | null;
+	tableConfig?: TableConfig | null;
 	uom?: string;
 	ctq: boolean;
 	allowAttachments: boolean;

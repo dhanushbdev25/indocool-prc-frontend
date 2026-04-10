@@ -96,9 +96,67 @@ export const inspectionParameterSchema = yup.object({
 	type: yup
 		.string()
 		.required('Parameter type is required')
-		.oneOf(['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime'], 'Invalid parameter type'),
+		.oneOf(
+			['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime', 'fixed-table'],
+			'Invalid parameter type'
+		),
 	files: filesSchema.optional(),
 	columns: yup.array(columnSchema).min(0, 'Columns array cannot be negative'),
+	tableConfig: yup
+		.object({
+			columns: yup
+				.array(
+					yup.object({
+						name: yup.string().required('Column name is required').min(1).max(100),
+						type: yup
+							.string()
+							.required('Column type is required')
+							.oneOf(['text', 'number', 'ok/not ok', 'datetime'])
+					})
+				)
+				.min(1, 'At least one column is required'),
+			rows: yup
+				.array(
+					yup.object({
+						cells: yup.lazy(() =>
+							yup.object().test('valid-cells', 'Each cell must have value and readOnly fields', value => {
+								if (!value || typeof value !== 'object') return true;
+								return Object.values(value).every(
+									cell =>
+										cell !== null &&
+										typeof cell === 'object' &&
+										'readOnly' in (cell as Record<string, unknown>) &&
+										'value' in (cell as Record<string, unknown>)
+								);
+							})
+						)
+					})
+				)
+				.min(1, 'At least one row is required')
+		})
+		.nullable()
+		.default(undefined)
+		.when('type', {
+			is: 'fixed-table',
+			then: schema =>
+				schema
+					.nonNullable()
+					.required('Table configuration is required for fixed-table type')
+					.test('has-columns', 'At least one column is required', value => {
+						return (
+							value !== null &&
+							value !== undefined &&
+							Array.isArray(value.columns) &&
+							value.columns.length > 0
+						);
+					})
+					.test('has-rows', 'At least one row is required', value => {
+						return (
+							value !== null && value !== undefined && Array.isArray(value.rows) && value.rows.length > 0
+						);
+					}),
+			otherwise: schema => schema.nullable().optional()
+		}),
 	role: yup
 		.string()
 		.required('Role is required')
@@ -174,6 +232,7 @@ export const defaultInspectionParameter: InspectionParameterFormData = {
 	type: 'text',
 	files: {},
 	columns: [],
+	tableConfig: undefined,
 	role: 'QUALITY_ENGINEER',
 	ctq: false
 };
@@ -244,6 +303,7 @@ export const parameterTypeOptions = [
 	{ value: 'boolean', label: 'Boolean' },
 	{ value: 'files', label: 'Files' },
 	{ value: 'table', label: 'Table' },
+	{ value: 'fixed-table', label: 'Fixed Table' },
 	{ value: 'ok/not ok', label: 'Ok/Not Ok' },
 	{ value: 'datetime', label: 'Date & Time' }
 ];

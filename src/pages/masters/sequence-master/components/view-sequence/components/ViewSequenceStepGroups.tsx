@@ -66,6 +66,8 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 				return '#4caf50';
 			case 'ok/not ok':
 				return '#ff9800';
+			case 'table':
+				return '#7b1fa2';
 			default:
 				return '#9e9e9e';
 		}
@@ -164,8 +166,25 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 							</Box>
 						</Grid>
 
-						{/* Target Values */}
-						{(step.targetValueType === 'range' || step.targetValueType === 'exact value') && (
+					{/* Table Config Summary */}
+					{step.targetValueType === 'table' && (step as Record<string, unknown>).tableConfig && (
+						<Grid size={{ xs: 12 }}>
+							<Box>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
+									Table Structure
+								</Typography>
+								<Paper sx={{ p: 2, backgroundColor: '#f3e8ff', border: '1px solid #ce93d8' }}>
+									<Typography variant="body2" sx={{ color: '#6a1b9a', fontWeight: 600 }}>
+										{((step as Record<string, unknown>).tableConfig as { columns?: unknown[]; rows?: unknown[] })?.columns?.length || 0} columns,{' '}
+										{((step as Record<string, unknown>).tableConfig as { columns?: unknown[]; rows?: unknown[] })?.rows?.length || 0} rows
+									</Typography>
+								</Paper>
+							</Box>
+						</Grid>
+					)}
+
+					{/* Target Values */}
+					{(step.targetValueType === 'range' || step.targetValueType === 'exact value') && (
 							<Grid size={{ xs: 12 }}>
 								<Box>
 									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>

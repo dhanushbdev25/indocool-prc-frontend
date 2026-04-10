@@ -20,8 +20,10 @@ import {
 	ExpandMore as ExpandMoreIcon,
 	CheckCircle as CheckCircleIcon,
 	Cancel as CancelIcon,
-	AccessTime as AccessTimeIcon
+	AccessTime as AccessTimeIcon,
+	Lock as LockIcon
 } from '@mui/icons-material';
+import React from 'react';
 import { useWatch } from 'react-hook-form';
 import { SequenceReviewProps } from '../types';
 import { ProcessStepFormData } from '../schemas';
@@ -181,8 +183,16 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 												</TableRow>
 											</TableHead>
 											<TableBody>
-												{stepGroup.processSteps.map((step: ProcessStepFormData, stepIndex: number) => (
-													<TableRow key={stepIndex}>
+												{stepGroup.processSteps.map((step: ProcessStepFormData, stepIndex: number) => {
+													const tc = (step as Record<string, unknown>).tableConfig as {
+														columns?: Array<{ name: string; type: string }>;
+														rows?: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }>;
+													} | null;
+													const isTable = step.targetValueType === 'table' && tc?.columns && tc.columns.length > 0;
+
+													return (
+													<React.Fragment key={stepIndex}>
+													<TableRow>
 														<TableCell>{step.stepNumber}</TableCell>
 														<TableCell>
 															<Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -205,17 +215,23 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 																}}
 															/>
 														</TableCell>
-														<TableCell>
-															{step.targetValueType === 'ok/not ok' ? (
-																<Typography variant="body2">OK/Not OK</Typography>
-															) : step.targetValueType === 'exact value' ? (
-																<Typography variant="body2">{step.minimumAcceptanceValue}</Typography>
-															) : (
-																<Typography variant="body2">
-																	{step.minimumAcceptanceValue} - {step.maximumAcceptanceValue}
-																</Typography>
-															)}
-														</TableCell>
+													<TableCell>
+														{step.targetValueType === 'ok/not ok' ? (
+															<Typography variant="body2">OK/Not OK</Typography>
+														) : isTable ? (
+															<Chip
+																label={`Table \u00b7 ${tc!.columns!.length} cols, ${tc!.rows?.length || 0} rows`}
+																size="small"
+																sx={{ backgroundColor: '#ede7f6', color: '#5e35b1', fontSize: '0.75rem', fontWeight: 500 }}
+															/>
+														) : step.targetValueType === 'exact value' ? (
+															<Typography variant="body2">{step.minimumAcceptanceValue}</Typography>
+														) : (
+															<Typography variant="body2">
+																{step.minimumAcceptanceValue} - {step.maximumAcceptanceValue}
+															</Typography>
+														)}
+													</TableCell>
 														<TableCell>{step.uom || 'N/A'}</TableCell>
 														<TableCell>
 															<Chip
@@ -263,7 +279,73 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 															/>
 														</TableCell>
 													</TableRow>
-												))}
+													{isTable && (
+														<TableRow>
+															<TableCell colSpan={8} sx={{ py: 1.5, px: 2, backgroundColor: '#fafafa', borderBottom: '2px solid #e0e0e0' }}>
+																<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
+																	<Table size="small">
+																		<TableHead>
+																			<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
+																				<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#333', py: 0.75, width: 40, textAlign: 'center' }}>
+																					#
+																				</TableCell>
+																				{tc!.columns!.map((col, ci) => (
+																					<TableCell key={ci} sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#333', py: 0.75 }}>
+																						{col.name}
+																						<Typography variant="caption" sx={{ display: 'block', color: '#888', fontWeight: 400, lineHeight: 1, fontSize: '0.65rem' }}>
+																							{col.type}
+																						</Typography>
+																					</TableCell>
+																				))}
+																			</TableRow>
+																		</TableHead>
+																		<TableBody>
+																			{(tc!.rows || []).map((row, ri) => (
+																				<TableRow key={ri} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
+																					<TableCell sx={{ textAlign: 'center', color: '#999', fontSize: '0.7rem', py: 0.5 }}>
+																						{ri + 1}
+																					</TableCell>
+																					{tc!.columns!.map((col, ci) => {
+																						const cell = row.cells[col.name] || { value: '', readOnly: false };
+																						return (
+																							<TableCell key={ci} sx={{ py: 0.5, fontSize: '0.8rem' }}>
+																								<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+																									{cell.readOnly && (
+																										<LockIcon sx={{ fontSize: 12, color: '#1976d2' }} />
+																									)}
+																									<Typography
+																										variant="body2"
+																										sx={{
+																											fontSize: '0.8rem',
+																											...(cell.readOnly
+																												? { color: '#1565c0', fontWeight: 500 }
+																												: { color: '#999', fontStyle: 'italic' })
+																										}}
+																									>
+																										{cell.value || (cell.readOnly ? '-' : 'Editable')}
+																									</Typography>
+																								</Box>
+																							</TableCell>
+																						);
+																					})}
+																				</TableRow>
+																			))}
+																			{(!tc!.rows || tc!.rows.length === 0) && (
+																				<TableRow>
+																					<TableCell colSpan={tc!.columns!.length + 1} sx={{ textAlign: 'center', py: 2, color: '#aaa' }}>
+																						No rows defined
+																					</TableCell>
+																				</TableRow>
+																			)}
+																		</TableBody>
+																	</Table>
+																</TableContainer>
+															</TableCell>
+														</TableRow>
+													)}
+													</React.Fragment>
+													);
+												})}
 											</TableBody>
 										</Table>
 									</TableContainer>

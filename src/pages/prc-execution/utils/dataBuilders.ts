@@ -111,6 +111,15 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 				}
 			} else {
 				// Data is in flat format - process it
+				// Fixed-table: data is pre-structured as { [paramId]_fixedTable: [...rows] }
+				if (param.type === 'fixed-table') {
+					const ftKey = `${paramId}_fixedTable`;
+					const ftData = formData[ftKey];
+					if (Array.isArray(ftData)) {
+						paramData.value = ftData;
+					}
+				}
+
 				const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
 				if (isTableType && param.columns) {

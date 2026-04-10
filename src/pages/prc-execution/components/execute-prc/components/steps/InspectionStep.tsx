@@ -32,7 +32,8 @@ import {
 	type TimelineStep,
 	type ExecutionData,
 	type FormData,
-	type ImageAnnotation
+	type ImageAnnotation,
+	type FixedTableRowAnnotation
 } from '../../../../types/execution.types';
 import ImageAnnotator from '../ImageAnnotator';
 import { transformPrcAggregatedData, debugDataTransformation } from '../../../../utils/dataTransformers';
@@ -51,6 +52,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 	// Default all annotations to open (no need for expand/collapse state)
 
 	const getNotOkCommentKey = (key: string) => `${key}_notOkComment`;
+	const getFixedTableRowAnnotationsKey = (parameterId: number) => `${parameterId}_fixedTable_rowAnnotations`;
 
 	const readApiCommentField = (obj: Record<string, unknown>): string => {
 		const c = obj.comments;
@@ -124,6 +126,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								extractedAnnotations.push(...(value as ImageAnnotation[]));
 								hasAnnotations = true;
 								console.log(`Loading annotations for parameter ${parameterId}:`, value);
+							} else if (columnName === 'rowAnnotations' && Array.isArray(value)) {
+								// Handle fixed-table row-level annotations
+								const paramIdNum = Number(parameterId);
+								if (!isNaN(paramIdNum)) {
+									newFormData[getFixedTableRowAnnotationsKey(paramIdNum)] = value as FixedTableRowAnnotation[];
+								}
 							} else if (columnName === 'value' && typeof value === 'object' && value !== null) {
 								// Check if this is a table type parameter (value is an array)
 								const param = step.inspectionParameters?.find(p => p.id.toString() === parameterId);
@@ -275,12 +283,43 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				const hasRows = Object.keys(updatedFormData).some(key => key.match(new RegExp(`^${param.id}_row_\\d+_`)));
 
 				if (!hasRows) {
-					// Add one default row (empty values)
 					param.columns.forEach(column => {
 						const key = `${param.id}_row_0_${column.name}`;
 						updatedFormData[key] = '';
 					});
 					console.log(`Added default row for table parameter ${param.id}`);
+				}
+			}
+
+			// For fixed-table type parameters, initialize from tableConfig or existing data
+			if (param.type === 'fixed-table' && param.tableConfig) {
+				const ftKey = `${param.id}_fixedTable`;
+				const ftRowAnnotationsKey = getFixedTableRowAnnotationsKey(param.id);
+				if (!updatedFormData[ftKey]) {
+					let loaded = false;
+					const existingParamData = updatedFormData[param.id.toString()];
+					if (existingParamData && typeof existingParamData === 'object' && 'value' in (existingParamData as Record<string, unknown>)) {
+						const existingRows = (existingParamData as Record<string, unknown>).value;
+						if (Array.isArray(existingRows)) {
+							updatedFormData[ftKey] = existingRows;
+							loaded = true;
+						}
+						const existingRowAnnotations = (existingParamData as Record<string, unknown>).rowAnnotations;
+						if (Array.isArray(existingRowAnnotations)) {
+							updatedFormData[ftRowAnnotationsKey] = existingRowAnnotations;
+						}
+					}
+					if (!loaded) {
+						const defaultRows = param.tableConfig.rows.map(row => {
+							const rowObj: Record<string, string> = {};
+							param.tableConfig!.columns.forEach(col => {
+								const cell = row.cells[col.name];
+								rowObj[col.name] = cell?.readOnly ? cell.value : (cell?.value || '');
+							});
+							return rowObj;
+						});
+						updatedFormData[ftKey] = defaultRows;
+					}
 				}
 			}
 		});
@@ -607,10 +646,61 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		});
 	};
 
+	const handleFixedTableCellChange = (paramId: number, rowIndex: number, colName: string, value: string) => {
+		const ftKey = `${paramId}_fixedTable`;
+		setFormData(prev => {
+			const rows = (prev[ftKey] as Array<Record<string, string>> | undefined) || [];
+			const updated = [...rows];
+			updated[rowIndex] = { ...updated[rowIndex], [colName]: value };
+			return { ...prev, [ftKey]: updated };
+		});
+	};
+
+	const getFixedTableRowAnnotations = (paramId: number, rowIndex: number): ImageAnnotation[] => {
+		const rowAnnotationsKey = getFixedTableRowAnnotationsKey(paramId);
+		const rowAnnotations = (formData[rowAnnotationsKey] as FixedTableRowAnnotation[] | undefined) || [];
+		const entry = rowAnnotations.find(item => item.rowIndex === rowIndex);
+		return Array.isArray(entry?.annotations) ? entry.annotations : [];
+	};
+
+	const handleFixedTableRowAnnotationSave = (paramId: number, rowIndex: number, newAnnotations: ImageAnnotation[]) => {
+		const rowAnnotationsKey = getFixedTableRowAnnotationsKey(paramId);
+		setFormData(prev => {
+			const current = (prev[rowAnnotationsKey] as FixedTableRowAnnotation[] | undefined) || [];
+			const withoutRow = current.filter(item => item.rowIndex !== rowIndex);
+			const cleaned: FixedTableRowAnnotation[] =
+				newAnnotations.length > 0 ? [...withoutRow, { rowIndex, annotations: newAnnotations }] : withoutRow;
+			cleaned.sort((a, b) => a.rowIndex - b.rowIndex);
+			return {
+				...prev,
+				[rowAnnotationsKey]: cleaned
+			};
+		});
+	};
+
 	const validateForm = () => {
 		const newErrors: Record<string, string> = {};
 
 		step.inspectionParameters?.forEach(param => {
+			if (param.type === 'fixed-table' && param.tableConfig) {
+				const ftKey = `${param.id}_fixedTable`;
+				const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
+				param.tableConfig.columns.forEach(col => {
+					rows.forEach((row, rowIdx) => {
+						const rowConfig = param.tableConfig!.rows[rowIdx];
+						const cellConfig = rowConfig?.cells[col.name];
+						if (cellConfig?.readOnly) return;
+						const val = row[col.name];
+						if (!val || val.trim() === '') {
+							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} is required`;
+						} else if (col.type === 'number' && isNaN(parseFloat(val))) {
+							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a number`;
+						}
+					});
+				});
+				return;
+			}
+
 			const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
 			if (isTableType && param.columns) {
@@ -734,6 +824,17 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			// Process each parameter
 			step.inspectionParameters?.forEach(param => {
 				const paramData: Record<string, unknown> = {};
+
+				if (param.type === 'fixed-table' && param.tableConfig) {
+					const ftKey = `${param.id}_fixedTable`;
+					const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
+					paramData.value = rows;
+					if (Object.keys(paramData).length > 0) {
+						nestedData[param.id.toString()] = paramData;
+					}
+					return;
+				}
+
 				const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
 				if (isTableType && param.columns) {
@@ -938,8 +1039,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					<TableBody>
 						{step.inspectionParameters?.map((param, index) => {
 							const hasImages = Array.isArray(param.files) && param.files.length > 0;
+							const isFixedTableType = param.type === 'fixed-table' && param.tableConfig;
 							const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
-							const hasMultipleColumns = !isTableType && param.columns && param.columns.length > 0;
+							const hasMultipleColumns = !isTableType && !isFixedTableType && param.columns && param.columns.length > 0;
 							const isExpanded = expandedRows.has(param.id);
 							const isMultiColumnExpanded = expandedMultiColumnRows.has(param.id);
 							const annotationCount = getAnnotationCount(param.id);
@@ -969,8 +1071,20 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											{param.ctq && <Chip label="CTQ" size="small" color="warning" sx={{ fontSize: '0.75rem' }} />}
 										</TableCell>
 										<TableCell>
-											{isTableType ? (
-												// Table type parameter - show row count and expand button
+											{isFixedTableType ? (
+												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+													<Typography variant="caption" sx={{ color: '#666' }}>
+														Fixed Table ({param.tableConfig!.columns.length} cols, {param.tableConfig!.rows.length} rows)
+													</Typography>
+													<IconButton
+														size="small"
+														onClick={() => toggleMultiColumnRowExpansion(param.id)}
+														sx={{ color: 'primary' }}
+													>
+														{isMultiColumnExpanded ? <ExpandLess /> : <ExpandMore />}
+													</IconButton>
+												</Box>
+											) : isTableType ? (
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 													<Typography variant="caption" sx={{ color: '#666' }}>
 														{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
@@ -1184,16 +1298,142 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 										</TableCell>
 									</TableRow>
 
-									{/* Expandable Table Type Row */}
-									{isTableType && (
+								{/* Expandable Fixed Table Type Row */}
+								{isFixedTableType && param.tableConfig && (
+									<TableRow key={`${param.id}-fixed-table`}>
+										<TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
+											<Collapse in={isMultiColumnExpanded} timeout="auto" unmountOnExit>
+												<Box sx={{ p: 2, backgroundColor: '#f0f4ff' }}>
+													<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#1a237e' }}>
+														{param.parameterName} - Fixed Table
+													</Typography>
+													<TableContainer component={Paper} variant="outlined">
+														<Table size="small">
+															<TableHead>
+																<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
+																	{param.tableConfig.columns.map(col => (
+																		<TableCell key={col.name} sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+																			{col.name}
+																			<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400 }}>
+																				{col.type}
+																			</Typography>
+																		</TableCell>
+																	))}
+																</TableRow>
+															</TableHead>
+															<TableBody>
+																{(() => {
+																	const ftKey = `${param.id}_fixedTable`;
+																	const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
+																	return rows.map((row, rowIdx) => (
+																		<TableRow key={rowIdx}>
+																			{param.tableConfig!.columns.map(col => {
+																				const rowConfig = param.tableConfig!.rows[rowIdx];
+																				const cellConfig = rowConfig?.cells[col.name];
+																				const cellValue = row[col.name] || '';
+																				const isCellReadOnly = cellConfig?.readOnly || isReadOnly;
+																				const errKey = `ft_${param.id}_${rowIdx}_${col.name}`;
+
+																				if (isCellReadOnly) {
+																					return (
+																						<TableCell key={col.name} sx={{ backgroundColor: '#f5f5f5' }}>
+																							<Typography variant="body2">{cellValue || '-'}</Typography>
+																						</TableCell>
+																					);
+																				}
+
+																				if (col.type === 'ok/not ok') {
+																					return (
+																						<TableCell key={col.name}>
+																							<RadioGroup
+																								row
+																								value={cellValue}
+																								onChange={e => handleFixedTableCellChange(param.id, rowIdx, col.name, e.target.value)}
+																								sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
+																							>
+																								<FormControlLabel value="ok" control={<Radio size="small" />} label="OK" />
+																								<FormControlLabel value="not ok" control={<Radio size="small" />} label="Not OK" />
+																							</RadioGroup>
+																							{errors[errKey] && (
+																								<Typography variant="caption" color="error">{errors[errKey]}</Typography>
+																							)}
+																						</TableCell>
+																					);
+																				}
+
+																				if (col.type === 'datetime') {
+																					return (
+																						<TableCell key={col.name}>
+																							<LocalizationProvider dateAdapter={AdapterDayjs}>
+																								<DateTimePicker
+																									value={cellValue ? dayjs(cellValue) : null}
+																									onChange={newValue => {
+																										const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																										handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
+																									}}
+																									disabled={isReadOnly}
+																									slotProps={{
+																										textField: {
+																											size: 'small',
+																											error: !!errors[errKey],
+																											helperText: errors[errKey],
+																											variant: 'outlined',
+																											fullWidth: true
+																										}
+																									}}
+																								/>
+																							</LocalizationProvider>
+																						</TableCell>
+																					);
+																				}
+
+																				return (
+																					<TableCell key={col.name}>
+																						<TextField
+																							type={col.type === 'number' ? 'number' : 'text'}
+																							value={cellValue}
+																							onChange={e => handleFixedTableCellChange(param.id, rowIdx, col.name, e.target.value)}
+																							error={!!errors[errKey]}
+																							helperText={errors[errKey]}
+																							size="small"
+																							disabled={isReadOnly}
+																							variant="outlined"
+																							fullWidth
+																							inputProps={{
+																								min: 0,
+																								step: col.type === 'number' ? 0.01 : undefined
+																							}}
+																						/>
+																					</TableCell>
+																				);
+																			})}
+																		</TableRow>
+																	));
+																})()}
+															</TableBody>
+														</Table>
+													</TableContainer>
+												</Box>
+											</Collapse>
+										</TableCell>
+									</TableRow>
+								)}
+
+								{/* Expandable Table Type Row (styled like fixed table) */}
+								{isTableType && (
 										<TableRow key={`${param.id}-table`}>
 											<TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
 												<Collapse in={isMultiColumnExpanded} timeout="auto" unmountOnExit>
-													<Box sx={{ p: 2, backgroundColor: '#f8f9fa' }}>
-														<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-															<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-																{param.parameterName} - Table
-															</Typography>
+													<Box sx={{ p: 2, backgroundColor: '#f0f4ff' }}>
+														<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+															<Box>
+																<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1a237e' }}>
+																	{param.parameterName} - Table
+																</Typography>
+																<Typography variant="caption" sx={{ color: '#5c6bc0', display: 'block', mt: 0.25 }}>
+																	Add rows as needed; column types match your inspection definition.
+																</Typography>
+															</Box>
 															{!isReadOnly && (
 																<Button
 																	variant="outlined"
@@ -1202,7 +1442,10 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																	onClick={() => handleAddTableRow(param.id)}
 																	sx={{
 																		textTransform: 'none',
-																		borderRadius: '4px'
+																		borderRadius: '8px',
+																		borderColor: '#1976d2',
+																		color: '#1976d2',
+																		'&:hover': { borderColor: '#1565c0', backgroundColor: '#f3f8ff' }
 																	}}
 																>
 																	Add Row
@@ -1211,37 +1454,37 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 														</Box>
 
 														{tableRowCount === 0 && !isReadOnly ? (
-															<Box sx={{ textAlign: 'center', py: 4, color: '#999' }}>
-																<Typography variant="body2">No rows added. Click "Add Row" to start.</Typography>
+															<Box sx={{ textAlign: 'center', py: 3, color: '#7986cb', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: '8px', border: '1px dashed #c5cae9' }}>
+																<Typography variant="body2">No rows yet. Click &quot;Add Row&quot; to start.</Typography>
 															</Box>
 														) : (
-															<TableContainer component={Paper} variant="outlined">
+															<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
 																<Table size="small">
 																	<TableHead>
-																		<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+																		<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
 																			{param.columns?.map(column => (
-																				<TableCell key={column.name} sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+																				<TableCell key={column.name} sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>
 																					{column.name}
-																					{column.defaultValue && (
-																						<Typography
-																							variant="caption"
-																							sx={{ display: 'block', color: '#666', fontWeight: 400 }}
-																						>
-																							Default: {column.defaultValue}
+																					<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400 }}>
+																						{column.type}
+																					</Typography>
+																					{column.defaultValue ? (
+																						<Typography variant="caption" sx={{ display: 'block', color: '#888', fontWeight: 400, fontSize: '0.65rem' }}>
+																							Default: {String(column.defaultValue)}
 																						</Typography>
-																					)}
+																					) : null}
 																				</TableCell>
 																			))}
 																			{!isReadOnly && (
-																				<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', width: 80 }}>
-																					Actions
+																				<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 72, textAlign: 'center' }}>
+																					Remove
 																				</TableCell>
 																			)}
 																		</TableRow>
 																	</TableHead>
 																	<TableBody>
 																		{Array.from({ length: tableRowCount }, (_, rowIndex) => (
-																			<TableRow key={rowIndex}>
+																			<TableRow key={rowIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
 																				{param.columns?.map(column => {
 																					const key = `${param.id}_row_${rowIndex}_${column.name}`;
 																					const currentValue = String(formData[key] || '');

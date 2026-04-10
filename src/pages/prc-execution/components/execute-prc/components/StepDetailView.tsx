@@ -181,26 +181,27 @@ const StepDetailView = ({
 				description: currentSubStep.notes || step.description,
 				status: step.status,
 				ctq: currentSubStep.ctq,
-				stepData: {
-					prcTemplateStepId: step.prcTemplateStepId!,
-					stepGroupId: step.stepGroup!.id,
-					stepId: currentSubStep.id,
-					stepType: currentSubStep.stepType,
-					targetValueType: currentSubStep.targetValueType,
-					uom: currentSubStep.uom,
-					minValue: currentSubStep.minValue,
-					maxValue: currentSubStep.maxValue,
-					minimumAcceptanceValue: currentSubStep.minimumAcceptanceValue,
-					maximumAcceptanceValue: currentSubStep.maximumAcceptanceValue,
-					multipleMeasurements: currentSubStep.multipleMeasurements,
-					multipleMeasurementMaxCount: currentSubStep.multipleMeasurementMaxCount,
-					notes: currentSubStep.notes,
-					parameterDescription: currentSubStep.parameterDescription,
-					evaluationMethod: currentSubStep.evaluationMethod,
-					allowAttachments: currentSubStep.allowAttachments,
-					stepNumber: currentSubStep.stepNumber,
-					responsiblePerson: currentSubStep.responsiblePerson
-				}
+			stepData: {
+				prcTemplateStepId: step.prcTemplateStepId!,
+				stepGroupId: step.stepGroup!.id,
+				stepId: currentSubStep.id,
+				stepType: currentSubStep.stepType,
+				targetValueType: currentSubStep.targetValueType,
+				uom: currentSubStep.uom,
+				minValue: currentSubStep.minValue,
+				maxValue: currentSubStep.maxValue,
+				minimumAcceptanceValue: currentSubStep.minimumAcceptanceValue,
+				maximumAcceptanceValue: currentSubStep.maximumAcceptanceValue,
+				multipleMeasurements: currentSubStep.multipleMeasurements,
+				multipleMeasurementMaxCount: currentSubStep.multipleMeasurementMaxCount,
+				tableConfig: currentSubStep.tableConfig,
+				notes: currentSubStep.notes,
+				parameterDescription: currentSubStep.parameterDescription,
+				evaluationMethod: currentSubStep.evaluationMethod,
+				allowAttachments: currentSubStep.allowAttachments,
+				stepNumber: currentSubStep.stepNumber,
+				responsiblePerson: currentSubStep.responsiblePerson
+			}
 			};
 
 			return (

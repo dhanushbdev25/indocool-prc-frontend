@@ -449,7 +449,54 @@ const StepPreview = ({
 													{measurement.parameterDescription}
 												</Typography>
 											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+										<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+											{measurement.targetValueType === 'table' && Array.isArray(measurement.value) ? (
+												<Box>
+													<Chip
+														label={`Table (${measurement.value.length} rows)`}
+														size="small"
+														sx={{ backgroundColor: '#f3e8ff', color: '#7b1fa2', fontSize: '0.7rem', height: 20 }}
+													/>
+													{measurement.tableConfig && (
+														<Box
+															component="table"
+															sx={{
+																mt: 1,
+																width: '100%',
+																borderCollapse: 'collapse',
+																fontSize: '0.75rem',
+																'& th, & td': { border: '1px solid #e0e0e0', p: 0.5, textAlign: 'left' },
+																'& th': { backgroundColor: '#f5f5f5', fontWeight: 600 }
+															}}
+														>
+															<thead>
+																<tr>
+																	{measurement.tableConfig.columns?.map((col: { name: string }) => (
+																		<th key={col.name}>{col.name}</th>
+																	))}
+																</tr>
+															</thead>
+															<tbody>
+																{measurement.value.map((row: Record<string, string>, rIdx: number) => (
+																	<tr key={rIdx}>
+																		{measurement.tableConfig.columns?.map((col: { name: string }) => {
+																			const cellConfig = measurement.tableConfig.rows?.[rIdx]?.cells?.[col.name];
+																			return (
+																				<td
+																					key={col.name}
+																					style={cellConfig?.readOnly ? { backgroundColor: '#f9f9f9', fontStyle: 'italic' } : undefined}
+																				>
+																					{row[col.name] || '-'}
+																				</td>
+																			);
+																		})}
+																	</tr>
+																))}
+															</tbody>
+														</Box>
+													)}
+												</Box>
+											) : (
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
 													{measurement.stepType === 'Check' || measurement.stepType === 'Inspection' ? (
 														<Chip
@@ -472,18 +519,19 @@ const StepPreview = ({
 														</Typography>
 													)}
 												</Box>
-												{(() => {
-													const parsedValue = parseOkNotOkValue(measurement.value);
-													const shouldShowComment =
-														parsedValue.value === 'not ok' && parsedValue.notOkComment.trim().length > 0;
-													if (!shouldShowComment) return null;
-													return (
-														<Typography variant="caption" sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}>
-															Comment: {parsedValue.notOkComment}
-														</Typography>
-													);
-												})()}
-											</TableCell>
+											)}
+											{(() => {
+												const parsedValue = parseOkNotOkValue(measurement.value);
+												const shouldShowComment =
+													parsedValue.value === 'not ok' && parsedValue.notOkComment.trim().length > 0;
+												if (!shouldShowComment) return null;
+												return (
+													<Typography variant="caption" sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}>
+														Comment: {parsedValue.notOkComment}
+													</Typography>
+												);
+											})()}
+										</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{measurement.stepType}</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
 												{measurement.evaluationMethod}
@@ -795,39 +843,42 @@ const StepPreview = ({
 										const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
 
 										// Handle different data structures
-										let displayValue = '';
-										let hasAnnotations = false;
-										let isMultiColumn = false;
-										let isTableType = false;
-										let tableRowCount = 0;
-										let ctqStatus = paramMeta?.ctq || false;
-										let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
-										let parameterType = paramMeta?.type || 'text';
-										let specification = paramMeta?.specification || 'N/A';
-										let notOkComment = '';
+									let displayValue = '';
+									let hasAnnotations = false;
+									let isMultiColumn = false;
+									let isTableType = false;
+									let isFixedTableType = false;
+									let tableRowCount = 0;
+									let ctqStatus = paramMeta?.ctq || false;
+									let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
+									let parameterType = paramMeta?.type || 'text';
+									let specification = paramMeta?.specification || 'N/A';
+									let notOkComment = '';
 
-										// Check if this is a table type parameter
-										if (parameterType === 'table' && paramMeta?.columns && paramMeta.columns.length > 0) {
-											isTableType = true;
+									if (parameterType === 'table' && paramMeta?.columns && paramMeta.columns.length > 0) {
+										isTableType = true;
+									}
+
+									if (parameterType === 'fixed-table' && (paramMeta as Record<string, unknown>)?.tableConfig) {
+										isFixedTableType = true;
+									}
+
+									if (typeof parameterData === 'object' && parameterData !== null) {
+										const paramObj = parameterData as Record<string, unknown>;
+
+										if (paramObj.annotations && Array.isArray(paramObj.annotations)) {
+											hasAnnotations = true;
 										}
 
-										if (typeof parameterData === 'object' && parameterData !== null) {
-											// Handle object structure: { "value": "1", "annotations": [...] }
-											const paramObj = parameterData as Record<string, unknown>;
-
-											// Check for annotations
-											if (paramObj.annotations && Array.isArray(paramObj.annotations)) {
-												hasAnnotations = true;
-											}
-
-											// Handle value
-											if (paramObj.value) {
-												if (isTableType && Array.isArray(paramObj.value)) {
-													// Table type: value is an array of row objects
-													isMultiColumn = true; // Use same expansion logic
-													tableRowCount = (paramObj.value as unknown[]).length;
-													displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
-												} else if (
+										if (paramObj.value) {
+											if (isFixedTableType && Array.isArray(paramObj.value)) {
+												tableRowCount = (paramObj.value as unknown[]).length;
+												displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
+											} else if (isTableType && Array.isArray(paramObj.value)) {
+												isMultiColumn = true;
+												tableRowCount = (paramObj.value as unknown[]).length;
+												displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
+											} else if (
 													typeof paramObj.value === 'object' &&
 													paramObj.value !== null &&
 													!Array.isArray(paramObj.value)
@@ -887,16 +938,16 @@ const StepPreview = ({
 											<React.Fragment key={parameterId}>
 												{/* Main Row */}
 												<TableRow
-													sx={{
-														'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
-														'&:hover': { backgroundColor: '#f0f0f0' },
-														cursor: isMultiColumn || isTableType ? 'pointer' : 'default'
-													}}
-													onClick={isMultiColumn || isTableType ? () => toggleMultiValueParam(parameterId) : undefined}
-												>
-													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-														<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-															{(isMultiColumn || isTableType) && (
+												sx={{
+													'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
+													'&:hover': { backgroundColor: '#f0f0f0' },
+													cursor: isMultiColumn || isTableType || isFixedTableType ? 'pointer' : 'default'
+												}}
+												onClick={isMultiColumn || isTableType || isFixedTableType ? () => toggleMultiValueParam(parameterId) : undefined}
+											>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+														{(isMultiColumn || isTableType || isFixedTableType) && (
 																<IconButton size="small" sx={{ p: 0.25 }}>
 																	{expandedMultiValueParams.has(parameterId) ? <ExpandLess /> : <ExpandMore />}
 																</IconButton>
@@ -946,6 +997,19 @@ const StepPreview = ({
 																	}}
 																/>
 															)}
+															{isFixedTableType && (
+																<Chip
+																	label="Fixed Table"
+																	size="small"
+																	sx={{
+																		backgroundColor: '#f3e8ff',
+																		color: '#7b1fa2',
+																		fontSize: '0.6rem',
+																		height: 16,
+																		'& .MuiChip-label': { px: 0.5 }
+																	}}
+																/>
+															)}
 															{isMultiColumn && !isTableType && (
 																<Chip
 																	label="Multi"
@@ -975,12 +1039,16 @@ const StepPreview = ({
 														</Box>
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{parameterType}</TableCell>
-													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-														{isTableType ? (
-															<Typography variant="body2" sx={{ fontWeight: 600, color: '#0277bd' }}>
-																{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
-															</Typography>
-														) : isMultiColumn ? (
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													{isFixedTableType ? (
+														<Typography variant="body2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
+															{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
+														</Typography>
+													) : isTableType ? (
+														<Typography variant="body2" sx={{ fontWeight: 600, color: '#0277bd' }}>
+															{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
+														</Typography>
+													) : isMultiColumn ? (
 															<Typography variant="body2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
 																{
 																	Object.keys(
@@ -1046,39 +1114,114 @@ const StepPreview = ({
 													</TableCell>
 												</TableRow>
 
-												{/* Collapsible Detail Row for Multi-Column and Table Parameters */}
-												{isMultiColumn && (
+											{/* Collapsible Detail Row for Fixed-Table Parameters */}
+											{isFixedTableType && (
+												<TableRow>
+													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+														<Collapse in={expandedMultiValueParams.has(parameterId)} timeout="auto" unmountOnExit>
+															<Box sx={{ p: 2, backgroundColor: '#f0f4ff', borderRadius: '8px', m: 1 }}>
+																<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a237e' }}>
+																	{parameterName} - Fixed Table Data
+																</Typography>
+																{(() => {
+																	const tc = (paramMeta as Record<string, unknown>)?.tableConfig as {
+																		columns?: Array<{ name: string; type: string }>;
+																		rows?: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }>;
+																	} | null;
+																	const rows = Array.isArray((parameterData as Record<string, unknown>).value)
+																		? ((parameterData as Record<string, unknown>).value as Record<string, string>[])
+																		: [];
+																	if (!tc?.columns) return <Typography variant="body2" color="text.secondary">No table configuration</Typography>;
+																	return (
+																		<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
+																			<Table size="small">
+																				<TableHead>
+																					<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
+																						{tc.columns.map(col => (
+																							<TableCell key={col.name} sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75, px: 1, borderRight: '1px solid #e0e0e0' }}>
+																								{col.name}
+																								<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}>
+																									{col.type}
+																								</Typography>
+																							</TableCell>
+																						))}
+																					</TableRow>
+																				</TableHead>
+																				<TableBody>
+																					{rows.map((row, rIdx) => (
+																						<TableRow key={rIdx} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
+																							{tc.columns!.map(col => {
+																								const cellConfig = tc.rows?.[rIdx]?.cells?.[col.name];
+																								const cellValue = row[col.name] || '';
+																								return (
+																									<TableCell
+																										key={col.name}
+																										sx={{
+																											fontSize: '0.75rem',
+																											py: 0.5,
+																											px: 1,
+																											borderRight: '1px solid #e0e0e0',
+																											maxWidth: 150,
+																											...(cellConfig?.readOnly ? { backgroundColor: '#f5f5f5', fontStyle: 'italic' } : {})
+																										}}
+																									>
+																										<Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cellValue}>
+																											{cellValue || '-'}
+																										</Typography>
+																									</TableCell>
+																								);
+																							})}
+																						</TableRow>
+																					))}
+																				</TableBody>
+																			</Table>
+																		</TableContainer>
+																	);
+																})()}
+															</Box>
+														</Collapse>
+													</TableCell>
+												</TableRow>
+											)}
+
+											{/* Collapsible Detail Row for Multi-Column and Table Parameters */}
+											{isMultiColumn && (
 													<TableRow>
 														<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
 															<Collapse in={expandedMultiValueParams.has(parameterId)} timeout="auto" unmountOnExit>
 																<Box
 																	sx={{
 																		p: 2,
-																		backgroundColor: '#f8f9fa',
-																		border: '1px solid #e0e0e0',
-																		borderRadius: 1,
+																		backgroundColor: isTableType ? '#f0f4ff' : '#f8f9fa',
+																		border: isTableType ? 'none' : '1px solid #e0e0e0',
+																		borderRadius: '8px',
 																		m: 1
 																	}}
 																>
-																	<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#333' }}>
+																	<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: isTableType ? '#1a237e' : '#333' }}>
 																		{parameterName} - {isTableType ? 'Table Data' : 'Detailed Values'}
 																	</Typography>
-																	<TableContainer component={Paper} variant="outlined">
+																	<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
 																		<Table size="small">
 																			<TableHead>
-																				<TableRow sx={{ backgroundColor: '#fafafa' }}>
+																				<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
 																					{paramMeta?.columns?.map(column => (
 																						<TableCell
 																							key={column.name}
 																							sx={{
 																								fontWeight: 600,
 																								fontSize: '0.75rem',
-																								py: 0.5,
+																								py: 0.75,
 																								px: 1,
 																								borderRight: '1px solid #e0e0e0'
 																							}}
 																						>
 																							{column.name}
+																							{isTableType && (
+																								<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}>
+																									{column.type}
+																								</Typography>
+																							)}
 																						</TableCell>
 																					))}
 																				</TableRow>
@@ -1093,7 +1236,7 @@ const StepPreview = ({
 																							unknown
 																						>[]
 																					).map((row, rowIndex) => (
-																						<TableRow key={rowIndex}>
+																						<TableRow key={rowIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
 																							{paramMeta?.columns?.map(column => {
 																								const value = row[column.name];
 																								const parsedValue =

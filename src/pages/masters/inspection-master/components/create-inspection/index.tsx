@@ -76,22 +76,23 @@ const CreateInspection = () => {
 				partImages: inspectionData.detail.inspection.partImages,
 				approveByProduction: inspectionData.detail.inspection.approveByProduction ?? false,
 				approveByQuality: inspectionData.detail.inspection.approveByQuality ?? false,
-				inspectionParameters: inspectionData.detail.inspectionParameters.map((param, index) => ({
-					order: param.order ?? index + 1,
-					parameterName: param.parameterName,
-					specification: param.specification,
-					tolerance: param.tolerance,
-					type: param.type,
-					files: param.files || {},
-					columns: param.columns.map(col => ({
-						name: col.name,
-						type: col.type,
-						defaultValue: col.defaultValue || '',
-						tolerance: col.tolerance || ''
-					})),
-					role: param.role,
-					ctq: param.ctq
+			inspectionParameters: inspectionData.detail.inspectionParameters.map((param, index) => ({
+				order: param.order ?? index + 1,
+				parameterName: param.parameterName,
+				specification: param.specification,
+				tolerance: param.tolerance,
+				type: param.type,
+				files: param.files || {},
+				columns: param.columns.map(col => ({
+					name: col.name,
+					type: col.type,
+					defaultValue: col.defaultValue || '',
+					tolerance: col.tolerance || ''
 				})),
+				tableConfig: param.tableConfig || undefined,
+				role: param.role,
+				ctq: param.ctq
+			})),
 				createdAt: inspectionData.detail.inspection.createdAt,
 				updatedAt: inspectionData.detail.inspection.updatedAt
 			};
@@ -168,22 +169,23 @@ const CreateInspection = () => {
 				approveByQuality: data.approveByQuality ?? false
 			};
 
-			const inspectionParameters = (data.inspectionParameters || []).map(param => ({
-				order: param.order,
-				parameterName: param.parameterName,
-				specification: param.specification,
-				tolerance: param.tolerance ? String(param.tolerance) : undefined,
-				type: param.type,
-				files: param.files || {},
-				columns: (param.columns || []).map(col => ({
-					name: col.name,
-					type: col.type,
-					defaultValue: col.defaultValue ? String(col.defaultValue) : undefined,
-					tolerance: col.tolerance ? String(col.tolerance) : undefined
-				})),
-				role: param.role,
-				ctq: param.ctq ?? false
-			}));
+		const inspectionParameters = (data.inspectionParameters || []).map(param => ({
+			order: param.order,
+			parameterName: param.parameterName,
+			specification: param.specification,
+			tolerance: param.tolerance ? String(param.tolerance) : undefined,
+			type: param.type,
+			files: param.files || {},
+			columns: (param.columns || []).map(col => ({
+				name: col.name,
+				type: col.type,
+				defaultValue: col.defaultValue ? String(col.defaultValue) : undefined,
+				tolerance: col.tolerance ? String(col.tolerance) : undefined
+			})),
+			tableConfig: param.tableConfig || undefined,
+			role: param.role,
+			ctq: param.ctq ?? false
+		}));
 
 			console.log('Saving inspection data:', { inspectionRequestData, inspectionParameters });
 

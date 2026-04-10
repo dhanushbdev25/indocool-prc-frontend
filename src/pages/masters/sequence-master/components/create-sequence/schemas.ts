@@ -1,5 +1,46 @@
 import * as yup from 'yup';
 
+// Table configuration schemas
+const tableCellConfigSchema = yup.object({
+	value: yup.string().default(''),
+	readOnly: yup.boolean().required().default(false)
+});
+
+const tableRowConfigSchema = yup.object({
+	cells: yup.lazy(() =>
+		yup.object().test('valid-cells', 'Each cell must have value and readOnly fields', value => {
+			if (!value || typeof value !== 'object') return true;
+			return Object.values(value).every(
+				cell =>
+					cell !== null &&
+					typeof cell === 'object' &&
+					'readOnly' in (cell as Record<string, unknown>) &&
+					'value' in (cell as Record<string, unknown>)
+			);
+		})
+	)
+});
+
+const tableColumnSchema = yup.object({
+	name: yup
+		.string()
+		.required('Column name is required')
+		.min(1, 'Column name is required')
+		.max(100, 'Column name must be less than 100 characters'),
+	type: yup
+		.string()
+		.required('Column type is required')
+		.oneOf(['text', 'number', 'ok/not ok', 'datetime'], 'Invalid column type')
+});
+
+const tableConfigSchema = yup
+	.object({
+		columns: yup.array(tableColumnSchema).min(1, 'At least one column is required'),
+		rows: yup.array(tableRowConfigSchema).min(1, 'At least one row is required')
+	})
+	.nullable()
+	.default(null);
+
 // Process Step validation schema
 export const processStepSchema = yup
 	.object({
@@ -25,7 +66,7 @@ export const processStepSchema = yup
 		targetValueType: yup
 			.string()
 			.required('Target value type is required')
-			.oneOf(['range', 'exact value', 'ok/not ok'], 'Invalid target value type'),
+			.oneOf(['range', 'exact value', 'ok/not ok', 'table'], 'Invalid target value type'),
 		minimumAcceptanceValue: yup
 			.number()
 			.nullable()
@@ -54,6 +95,20 @@ export const processStepSchema = yup
 						.min(1, 'Maximum count must be at least 1'),
 				otherwise: schema => schema.nullable()
 			}),
+		tableConfig: tableConfigSchema.when('targetValueType', {
+			is: 'table',
+			then: schema =>
+				schema
+					.nonNullable()
+					.required('Table configuration is required when target value type is Table')
+					.test('has-columns', 'At least one column is required', value => {
+						return value !== null && value !== undefined && Array.isArray(value.columns) && value.columns.length > 0;
+					})
+					.test('has-rows', 'At least one row is required', value => {
+						return value !== null && value !== undefined && Array.isArray(value.rows) && value.rows.length > 0;
+					}),
+			otherwise: schema => schema.nullable().default(null)
+		}),
 		uom: yup.string().optional().max(20, 'Unit of measurement must be less than 20 characters'),
 		ctq: yup.boolean(),
 		allowAttachments: yup.boolean(),
@@ -161,6 +216,7 @@ export const defaultProcessStep: ProcessStepFormData = {
 	maximumAcceptanceValue: null,
 	multipleMeasurements: false,
 	multipleMeasurementMaxCount: null,
+	tableConfig: null,
 	uom: '',
 	ctq: false,
 	allowAttachments: false,

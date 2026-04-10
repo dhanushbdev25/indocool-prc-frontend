@@ -1,5 +1,7 @@
 // TypeScript interfaces for PRC Execution screen
 
+import { TableConfig } from '../../../types/table-config.types';
+
 // Annotation types
 export interface AnnotationPoint {
 	type: 'point';
@@ -28,6 +30,11 @@ export interface ImageAnnotation {
 	regions: AnnotationRegion[];
 }
 
+export interface FixedTableRowAnnotation {
+	rowIndex: number;
+	annotations: ImageAnnotation[];
+}
+
 export interface StepGroup {
 	id: number;
 	processName: string;
@@ -45,6 +52,7 @@ export interface StepGroup {
 		maximumAcceptanceValue?: string;
 		multipleMeasurements: boolean;
 		multipleMeasurementMaxCount?: number;
+		tableConfig?: TableConfig | null;
 		notes: string;
 		parameterDescription: string;
 		evaluationMethod: string;
@@ -86,6 +94,7 @@ export interface StepPreviewData {
 			defaultValue?: string;
 			tolerance?: string;
 		}>;
+		tableConfig?: TableConfig | null;
 		specification: string;
 		order: number;
 		tolerance?: string;
@@ -151,29 +160,30 @@ export interface TimelineStep {
 	// For individual sequence steps (when within a step group)
 	stepData?: {
 		prcTemplateStepId: number;
-		stepGroupId?: number; // Only for sequence steps
-		stepId?: number; // Only for sequence steps
-		stepType?: string; // Measurement, Check, Operation, Inspection (only for sequence steps)
-		targetValueType?: string; // range, exact value, ok/not ok (only for sequence steps)
-		uom?: string; // Only for sequence steps
-		minValue?: string; // Only for sequence steps
-		maxValue?: string; // Only for sequence steps
-		minimumAcceptanceValue?: string; // Only for sequence steps
-		maximumAcceptanceValue?: string; // Only for sequence steps
-		multipleMeasurements?: boolean; // Only for sequence steps
-		multipleMeasurementMaxCount?: number; // Only for sequence steps
-		notes?: string; // Only for sequence steps
-		parameterDescription?: string; // Only for sequence steps
-		evaluationMethod?: string; // Only for sequence steps
-		allowAttachments?: boolean; // Only for sequence steps
-		stepNumber?: number; // Only for sequence steps
-		responsiblePerson?: boolean; // Only for sequence steps
+		stepGroupId?: number;
+		stepId?: number;
+		stepType?: string;
+		targetValueType?: string;
+		uom?: string;
+		minValue?: string;
+		maxValue?: string;
+		minimumAcceptanceValue?: string;
+		maximumAcceptanceValue?: string;
+		multipleMeasurements?: boolean;
+		multipleMeasurementMaxCount?: number;
+		tableConfig?: TableConfig | null;
+		notes?: string;
+		parameterDescription?: string;
+		evaluationMethod?: string;
+		allowAttachments?: boolean;
+		stepNumber?: number;
+		responsiblePerson?: boolean;
 	};
 	// For inspection steps
 	inspectionParameters?: Array<{
 		id: number;
 		parameterName: string;
-		type: string; // number, image, text
+		type: string;
 		ctq: boolean;
 		role: string;
 		columns: Array<{
@@ -182,6 +192,7 @@ export interface TimelineStep {
 			defaultValue?: string;
 			tolerance?: string;
 		}>;
+		tableConfig?: TableConfig | null;
 		specification: string;
 		order: number;
 		tolerance?: string;
@@ -343,6 +354,8 @@ export interface FormData {
 	[key: string]: unknown;
 	// Support for annotation data
 	annotations?: ImageAnnotation[];
+	// Support for fixed-table row level annotations
+	rowAnnotations?: FixedTableRowAnnotation[];
 	// Support for responsible person data - now supports both single object (backward compatibility) and array
 	responsiblePersonData?:
 		| {

@@ -132,22 +132,23 @@ const CreateSequence = () => {
 					processName: group.processName,
 					processDescription: group.processDescription,
 					sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60), // Convert seconds to HH:MM
-					processSteps: group.steps.map(step => ({
-						parameterDescription: step.parameterDescription,
-						stepNumber: step.stepNumber,
-						stepType: step.stepType,
-						evaluationMethod: step.evaluationMethod,
-						targetValueType: step.targetValueType,
-						minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
-						maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
-						multipleMeasurements: step.multipleMeasurements ?? false,
-						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
-						uom: step.uom,
-						ctq: step.ctq ?? false,
-						allowAttachments: step.allowAttachments ?? false,
-						responsiblePerson: step.responsiblePerson ?? false,
-						notes: step.notes
-					}))
+				processSteps: group.steps.map(step => ({
+					parameterDescription: step.parameterDescription,
+					stepNumber: step.stepNumber,
+					stepType: step.stepType,
+					evaluationMethod: step.evaluationMethod,
+					targetValueType: step.targetValueType,
+					minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
+					maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
+					multipleMeasurements: step.multipleMeasurements ?? false,
+					multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
+					tableConfig: step.tableConfig || null,
+					uom: step.uom,
+					ctq: step.ctq ?? false,
+					allowAttachments: step.allowAttachments ?? false,
+					responsiblePerson: step.responsiblePerson ?? false,
+					notes: step.notes
+				}))
 				})),
 				createdAt: sequenceData.detail.createdAt,
 				updatedAt: sequenceData.detail.updatedAt
@@ -226,22 +227,23 @@ const CreateSequence = () => {
 						processName: group.processName,
 						processDescription: group.processDescription,
 						sequenceTiming: convertTimeToSeconds(group.sequenceTiming),
-						processSteps: (group.processSteps || []).map((step, stepIndex) => ({
-							parameterDescription: step.parameterDescription,
-							stepNumber: stepIndex + 1, // Auto-calculate step number
-							stepType: step.stepType,
-							evaluationMethod: step.evaluationMethod,
-							targetValueType: step.targetValueType,
-							minimumAcceptanceValue: step.minimumAcceptanceValue ?? null,
-							maximumAcceptanceValue: step.maximumAcceptanceValue ?? null,
-							multipleMeasurements: step.multipleMeasurements ?? false,
-							multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
-							uom: step.uom,
-							ctq: step.ctq ?? false,
-							allowAttachments: step.allowAttachments ?? false,
-							responsiblePerson: step.responsiblePerson ?? false,
-							notes: step.notes || ''
-						}))
+					processSteps: (group.processSteps || []).map((step, stepIndex) => ({
+						parameterDescription: step.parameterDescription,
+						stepNumber: stepIndex + 1,
+						stepType: step.stepType,
+						evaluationMethod: step.evaluationMethod,
+						targetValueType: step.targetValueType,
+						minimumAcceptanceValue: step.minimumAcceptanceValue ?? null,
+						maximumAcceptanceValue: step.maximumAcceptanceValue ?? null,
+						multipleMeasurements: step.multipleMeasurements ?? false,
+						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
+						tableConfig: step.tableConfig || null,
+						uom: step.uom,
+						ctq: step.ctq ?? false,
+						allowAttachments: step.allowAttachments ?? false,
+						responsiblePerson: step.responsiblePerson ?? false,
+						notes: step.notes || ''
+					}))
 					}))
 				}
 			};

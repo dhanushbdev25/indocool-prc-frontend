@@ -1,3 +1,5 @@
+import { TableConfig } from '../../../../types/table-config.types';
+
 export interface Column {
 	name: string;
 	type: string;
@@ -14,6 +16,17 @@ export interface PartImage {
 
 export type Files = Record<string, string> | undefined;
 
+export interface RowImageAnnotation {
+	imageFileName: string;
+	imageUrl: string;
+	regions: unknown[];
+}
+
+export interface FixedTableRowAnnotation {
+	rowIndex: number;
+	annotations: RowImageAnnotation[];
+}
+
 export interface InspectionParameter {
 	id?: number;
 	inspectionId?: number;
@@ -25,7 +38,9 @@ export interface InspectionParameter {
 	tolerance?: string | number;
 	type: string;
 	files?: Files;
+	rowAnnotations?: FixedTableRowAnnotation[];
 	columns: Column[];
+	tableConfig?: TableConfig | null;
 	role: string;
 	ctq: boolean;
 	createdAt?: string;
@@ -88,7 +103,9 @@ export interface InspectionParameterRequest {
 	tolerance?: string | number;
 	type: string;
 	files?: Files;
+	rowAnnotations?: FixedTableRowAnnotation[];
 	columns: ColumnRequest[];
+	tableConfig?: TableConfig | null;
 	role: string;
 	ctq: boolean;
 }

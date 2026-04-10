@@ -28,7 +28,16 @@ export const stepTypeOptions = [
 export const targetValueTypeOptions = [
 	{ value: 'range', label: 'Range' },
 	{ value: 'exact value', label: 'Exact Value' },
-	{ value: 'ok/not ok', label: 'OK/Not OK' }
+	{ value: 'ok/not ok', label: 'OK/Not OK' },
+	{ value: 'table', label: 'Table' }
+];
+
+// Column type options for table target value type
+export const tableColumnTypeOptions = [
+	{ value: 'text', label: 'Text' },
+	{ value: 'number', label: 'Number' },
+	{ value: 'ok/not ok', label: 'OK/Not OK' },
+	{ value: 'datetime', label: 'Date & Time' }
 ];
 
 // Common UOM options

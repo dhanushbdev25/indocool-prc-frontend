@@ -18,17 +18,26 @@ import {
 	AccordionDetails,
 	Card,
 	CardContent,
-	Chip
+	Chip,
+	Table,
+	TableHead,
+	TableBody,
+	TableRow,
+	TableCell,
+	TableContainer,
+	Tooltip
 } from '@mui/material';
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
 	ExpandMore as ExpandMoreIcon,
 	PlaylistAdd as StepIcon,
-	Group as GroupIcon
+	Group as GroupIcon,
+	Lock as LockIcon,
+	LockOpen as LockOpenIcon
 } from '@mui/icons-material';
-import { Controller, useFieldArray, Control, FieldErrors } from 'react-hook-form';
-import { SequenceStepGroupsProps, stepTypeOptions, targetValueTypeOptions, uomOptions } from '../types';
+import { Controller, useFieldArray, useWatch, Control, FieldErrors, useFormContext } from 'react-hook-form';
+import { SequenceStepGroupsProps, stepTypeOptions, targetValueTypeOptions, tableColumnTypeOptions, uomOptions } from '../types';
 import { SequenceFormData } from '../schemas';
 
 const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
@@ -191,6 +200,275 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 	);
 };
 
+interface TableConfigEditorProps {
+	control: Control<SequenceFormData>;
+	errors: FieldErrors<SequenceFormData>;
+	groupIndex: number;
+	stepIndex: number;
+}
+
+const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditorProps) => {
+	const { setValue } = useFormContext<SequenceFormData>();
+	const basePath = `processStepGroups.${groupIndex}.processSteps.${stepIndex}` as const;
+	const targetValueType = useWatch({ control, name: `${basePath}.targetValueType` });
+	const tableConfig = useWatch({ control, name: `${basePath}.tableConfig` as `processStepGroups.${number}.processSteps.${number}.tableConfig` });
+
+	if (targetValueType !== 'table') return null;
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const columns: Array<{ name: string; type: string }> = (tableConfig as any)?.columns || [];
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const rows: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }> = (tableConfig as any)?.rows || [];
+
+	const setConfig = (newColumns: typeof columns, newRows: typeof rows) => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		setValue(`${basePath}.tableConfig` as any, { columns: newColumns, rows: newRows }, { shouldDirty: true });
+	};
+
+	const addColumn = () => {
+		const newColumns = [...columns, { name: '', type: 'text' }];
+		const newRows = rows.map(row => ({
+			cells: {
+				...row.cells,
+				[`col_${newColumns.length}`]: { value: '', readOnly: false }
+			}
+		}));
+		setConfig(newColumns, newRows.length > 0 ? newRows : []);
+	};
+
+	const removeColumn = (colIndex: number) => {
+		const colName = columns[colIndex]?.name || `col_${colIndex}`;
+		const newColumns = columns.filter((_, i) => i !== colIndex);
+		const newRows = rows.map(row => {
+			const newCells = { ...row.cells };
+			delete newCells[colName];
+			return { cells: newCells };
+		});
+		setConfig(newColumns, newRows);
+	};
+
+	const updateColumnName = (colIndex: number, oldName: string, newName: string) => {
+		const newColumns = columns.map((col, i) => (i === colIndex ? { ...col, name: newName } : col));
+		const newRows = rows.map(row => {
+			const newCells: Record<string, { value: string; readOnly: boolean }> = {};
+			Object.entries(row.cells).forEach(([key, val]) => {
+				newCells[key === oldName ? newName : key] = val;
+			});
+			return { cells: newCells };
+		});
+		setConfig(newColumns, newRows);
+	};
+
+	const updateColumnType = (colIndex: number, newType: string) => {
+		const newColumns = columns.map((col, i) => (i === colIndex ? { ...col, type: newType } : col));
+		setConfig(newColumns, rows);
+	};
+
+	const addRow = () => {
+		const newCells: Record<string, { value: string; readOnly: boolean }> = {};
+		columns.forEach(col => {
+			newCells[col.name || `col_${columns.indexOf(col)}`] = { value: '', readOnly: false };
+		});
+		setConfig(columns, [...rows, { cells: newCells }]);
+	};
+
+	const removeRow = (rowIndex: number) => {
+		setConfig(columns, rows.filter((_, i) => i !== rowIndex));
+	};
+
+	const updateCell = (rowIndex: number, colName: string, field: 'value' | 'readOnly', val: string | boolean) => {
+		const newRows = rows.map((row, i) => {
+			if (i !== rowIndex) return row;
+			return {
+				cells: {
+					...row.cells,
+					[colName]: { ...row.cells[colName], [field]: val }
+				}
+			};
+		});
+		setConfig(columns, newRows);
+	};
+
+	return (
+		<Grid size={{ xs: 12 }}>
+			<Paper sx={{ p: 2.5, backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '12px' }}>
+				<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+					<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333' }}>
+						Table Configuration
+					</Typography>
+					<Chip
+						label={`${columns.length} col${columns.length !== 1 ? 's' : ''} \u00b7 ${rows.length} row${rows.length !== 1 ? 's' : ''}`}
+						size="small"
+						sx={{ backgroundColor: '#e3f2fd', color: '#1976d2', fontWeight: 500 }}
+					/>
+				</Box>
+
+				{/* Step 1 - Column Setup (compact inline) */}
+				<Box sx={{ mb: 2 }}>
+					<Typography variant="caption" sx={{ fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+						Step 1 &mdash; Define Columns
+					</Typography>
+					<Box sx={{ mt: 1 }}>
+						{columns.map((col, colIndex) => (
+							<Box key={colIndex} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
+								<Typography variant="caption" sx={{ color: '#999', minWidth: 20, textAlign: 'right' }}>
+									{colIndex + 1}.
+								</Typography>
+								<TextField
+									size="small"
+									placeholder="Column name"
+									value={col.name}
+									onChange={e => updateColumnName(colIndex, col.name, e.target.value)}
+									sx={{
+										flex: 1,
+										'& .MuiOutlinedInput-root': { borderRadius: '6px', backgroundColor: 'white' },
+										'& .MuiOutlinedInput-input': { py: '6px', fontSize: '0.875rem' }
+									}}
+								/>
+								<Select
+									size="small"
+									value={col.type}
+									onChange={e => updateColumnType(colIndex, e.target.value)}
+									sx={{ minWidth: 120, borderRadius: '6px', backgroundColor: 'white', '& .MuiSelect-select': { py: '6px', fontSize: '0.875rem' } }}
+								>
+									{tableColumnTypeOptions.map(opt => (
+										<MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+									))}
+								</Select>
+								<IconButton size="small" onClick={() => removeColumn(colIndex)} sx={{ color: '#bbb', '&:hover': { color: '#f44336' } }}>
+									<DeleteIcon sx={{ fontSize: 18 }} />
+								</IconButton>
+							</Box>
+						))}
+						<Button
+							size="small"
+							startIcon={<AddIcon />}
+							onClick={addColumn}
+							sx={{ textTransform: 'none', color: '#1976d2', mt: 0.5 }}
+						>
+							Add Column
+						</Button>
+					</Box>
+				</Box>
+
+				{/* Step 2 - Table Editor (live spreadsheet) */}
+				{columns.length > 0 && (
+					<Box>
+						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+							<Typography variant="caption" sx={{ fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+								Step 2 &mdash; Define Rows &amp; Cell Values
+							</Typography>
+							<Button
+								size="small"
+								startIcon={<AddIcon />}
+								onClick={addRow}
+								sx={{ textTransform: 'none', color: '#1976d2' }}
+							>
+								Add Row
+							</Button>
+						</Box>
+						<Typography variant="caption" sx={{ color: '#888', display: 'block', mb: 1.5 }}>
+							Type a value and click the lock icon to make a cell read-only during execution.
+						</Typography>
+
+						<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
+							<Table size="small">
+								<TableHead>
+									<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
+										<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#333', py: 1, width: 40, textAlign: 'center' }}>
+											#
+										</TableCell>
+										{columns.map((col, ci) => (
+											<TableCell key={ci} sx={{ fontWeight: 600, fontSize: '0.8rem', color: '#333', py: 1 }}>
+												{col.name || <em style={{ color: '#bbb' }}>Untitled</em>}
+											</TableCell>
+										))}
+										<TableCell sx={{ width: 48 }} />
+									</TableRow>
+								</TableHead>
+								<TableBody>
+									{rows.map((row, rowIndex) => (
+										<TableRow key={rowIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
+											<TableCell sx={{ textAlign: 'center', color: '#999', fontSize: '0.75rem', py: 0.5 }}>
+												{rowIndex + 1}
+											</TableCell>
+											{columns.map((col, colIndex) => {
+												const colKey = col.name || `col_${colIndex}`;
+												const cell = row.cells[colKey] || { value: '', readOnly: false };
+												return (
+													<TableCell key={colIndex} sx={{ py: 0.5, px: 1 }}>
+														<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+															<TextField
+																size="small"
+																variant="standard"
+																placeholder={cell.readOnly ? '' : 'Enter value'}
+																value={cell.value}
+																onChange={e => updateCell(rowIndex, colKey, 'value', e.target.value)}
+																sx={{
+																	flex: 1,
+																	'& .MuiInput-input': {
+																		fontSize: '0.85rem',
+																		py: '4px',
+																		...(cell.readOnly ? { color: '#1565c0', fontWeight: 500 } : {})
+																	},
+																	'& .MuiInput-underline:before': {
+																		borderBottomColor: cell.readOnly ? '#90caf9' : '#e0e0e0'
+																	}
+																}}
+															/>
+															<Tooltip title={cell.readOnly ? 'Cell is read-only (click to unlock)' : 'Click to lock as read-only'} arrow>
+																<IconButton
+																	size="small"
+																	onClick={() => updateCell(rowIndex, colKey, 'readOnly', !cell.readOnly)}
+																	sx={{
+																		p: 0.5,
+																		color: cell.readOnly ? '#1976d2' : '#ccc',
+																		'&:hover': { color: cell.readOnly ? '#1565c0' : '#999' }
+																	}}
+																>
+																	{cell.readOnly ? <LockIcon sx={{ fontSize: 16 }} /> : <LockOpenIcon sx={{ fontSize: 16 }} />}
+																</IconButton>
+															</Tooltip>
+														</Box>
+													</TableCell>
+												);
+											})}
+											<TableCell sx={{ py: 0.5 }}>
+												<IconButton
+													size="small"
+													onClick={() => removeRow(rowIndex)}
+													sx={{ p: 0.5, color: '#ccc', '&:hover': { color: '#f44336' } }}
+												>
+													<DeleteIcon sx={{ fontSize: 16 }} />
+												</IconButton>
+											</TableCell>
+										</TableRow>
+									))}
+									{rows.length === 0 && (
+										<TableRow>
+											<TableCell colSpan={columns.length + 2} sx={{ textAlign: 'center', py: 3, color: '#aaa' }}>
+												No rows yet. Click &quot;Add Row&quot; above.
+											</TableCell>
+										</TableRow>
+									)}
+								</TableBody>
+							</Table>
+						</TableContainer>
+					</Box>
+				)}
+
+				{columns.length === 0 && (
+					<Box sx={{ textAlign: 'center', py: 2, color: '#aaa' }}>
+						<Typography variant="body2">
+							Add columns above to start building your table.
+						</Typography>
+					</Box>
+				)}
+			</Paper>
+		</Grid>
+	);
+};
+
 interface StepGroupFormProps {
 	control: Control<SequenceFormData>;
 	errors: FieldErrors<SequenceFormData>;
@@ -226,9 +504,11 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 			maximumAcceptanceValue: null,
 			multipleMeasurements: false,
 			multipleMeasurementMaxCount: null,
+			tableConfig: null,
 			uom: '',
 			ctq: false,
 			allowAttachments: false,
+			responsiblePerson: false,
 			notes: ''
 		});
 	};
@@ -515,87 +795,95 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 								/>
 							</Grid>
 
-							{/* Min/Max Values - Conditional based on targetValueType */}
-							<Controller
-								name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.targetValueType`}
-								control={control}
-								render={({ field: { value: targetValueType } }) => {
-									if (targetValueType === 'ok/not ok') return <></>;
+						{/* Min/Max Values - Conditional based on targetValueType */}
+						<Controller
+							name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.targetValueType`}
+							control={control}
+							render={({ field: { value: targetValueType } }) => {
+								if (targetValueType === 'ok/not ok' || targetValueType === 'table') return <></>;
 
-									return (
-										<>
-											<Grid size={{ xs: 12, md: 6 }}>
-												<Controller
-													name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.minimumAcceptanceValue`}
-													control={control}
-													render={({ field }) => (
-														<TextField
-															{...field}
-															value={field.value ?? ''}
-															onChange={e => {
-																const value = e.target.value;
-																field.onChange(value === '' ? null : parseFloat(value));
-															}}
-															fullWidth
-															label="Minimum Value"
-															required
-															type="number"
-															placeholder="e.g., 1.8"
-															helperText={
-																errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
-																	?.minimumAcceptanceValue?.message
+								return (
+									<>
+										<Grid size={{ xs: 12, md: 6 }}>
+											<Controller
+												name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.minimumAcceptanceValue`}
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value ?? ''}
+														onChange={e => {
+															const value = e.target.value;
+															field.onChange(value === '' ? null : parseFloat(value));
+														}}
+														fullWidth
+														label="Minimum Value"
+														required
+														type="number"
+														placeholder="e.g., 1.8"
+														helperText={
+															errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
+																?.minimumAcceptanceValue?.message
+														}
+														error={
+															!!errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
+																?.minimumAcceptanceValue
+														}
+														sx={{
+															'& .MuiOutlinedInput-root': {
+																borderRadius: '8px'
 															}
-															error={
-																!!errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
-																	?.minimumAcceptanceValue
+														}}
+													/>
+												)}
+											/>
+										</Grid>
+										<Grid size={{ xs: 12, md: 6 }}>
+											<Controller
+												name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.maximumAcceptanceValue`}
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value ?? ''}
+														onChange={e => {
+															const value = e.target.value;
+															field.onChange(value === '' ? null : parseFloat(value));
+														}}
+														fullWidth
+														label="Maximum Value"
+														required
+														type="number"
+														placeholder="e.g., 2.2"
+														helperText={
+															errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
+																?.maximumAcceptanceValue?.message
+														}
+														error={
+															!!errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
+																?.maximumAcceptanceValue
+														}
+														sx={{
+															'& .MuiOutlinedInput-root': {
+																borderRadius: '8px'
 															}
-															sx={{
-																'& .MuiOutlinedInput-root': {
-																	borderRadius: '8px'
-																}
-															}}
-														/>
-													)}
-												/>
-											</Grid>
-											<Grid size={{ xs: 12, md: 6 }}>
-												<Controller
-													name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.maximumAcceptanceValue`}
-													control={control}
-													render={({ field }) => (
-														<TextField
-															{...field}
-															value={field.value ?? ''}
-															onChange={e => {
-																const value = e.target.value;
-																field.onChange(value === '' ? null : parseFloat(value));
-															}}
-															fullWidth
-															label="Maximum Value"
-															required
-															type="number"
-															placeholder="e.g., 2.2"
-															helperText={
-																errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
-																	?.maximumAcceptanceValue?.message
-															}
-															error={
-																!!errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
-																	?.maximumAcceptanceValue
-															}
-															sx={{
-																'& .MuiOutlinedInput-root': {
-																	borderRadius: '8px'
-																}
-															}}
-														/>
-													)}
-												/>
-											</Grid>
-										</>
-									);
-								}}
-							/>
+														}}
+													/>
+												)}
+											/>
+										</Grid>
+									</>
+								);
+							}}
+						/>
+
+						{/* Table Configuration - Shown when targetValueType is 'table' */}
+						<TableConfigEditor
+							control={control}
+							errors={errors}
+							groupIndex={groupIndex}
+							stepIndex={stepIndex}
+						/>
 
 							{/* Multiple Measurements */}
 							<Grid size={{ xs: 12, md: 6 }}>
