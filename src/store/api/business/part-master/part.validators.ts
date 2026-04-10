@@ -62,9 +62,16 @@ export interface InspectionDiagramFileEntry {
 	[key: string]: unknown;
 }
 
+export interface InspectionDiagramRowMapping {
+	rowIndex: number;
+	fileName?: InspectionDiagramFileEntry[];
+	[key: string]: unknown;
+}
+
 export interface InspectionDiagramFileGroup {
 	inspectionParameterId?: number;
 	fileName?: InspectionDiagramFileEntry[];
+	rowMappings?: InspectionDiagramRowMapping[];
 	[key: string]: unknown;
 }
 

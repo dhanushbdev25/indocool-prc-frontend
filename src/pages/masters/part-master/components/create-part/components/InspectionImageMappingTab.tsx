@@ -33,6 +33,10 @@ interface InspectionParameter {
 	type: string;
 	role: string;
 	ctq: boolean;
+	tableConfig?: {
+		rows?: Array<Record<string, unknown>>;
+		columns?: Array<Record<string, unknown>>;
+	};
 }
 
 interface GroupedInspection {
@@ -83,7 +87,8 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 							tolerance: typeof param.tolerance === 'string' ? param.tolerance : undefined,
 							type: param.type,
 							role: param.role,
-							ctq: param.ctq
+							ctq: param.ctq,
+							tableConfig: param.tableConfig || undefined
 						}));
 
 						groupedData.push({
@@ -110,23 +115,25 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 		}
 	}, [prcTemplateData]);
 
-	const handleImageMappingChange = (parameterId: number, selectedImagePaths: string[]) => {
-		const currentDiagram = inspectionDiagrams || { partId: 0, files: [] };
-
-		const selectedFileObjects = selectedImagePaths
+	const mapSelectedImagePaths = (selectedImagePaths: string[]) =>
+		selectedImagePaths
 			.map(imagePath => {
 				const imageItem = gallery.find(item => item.image === imagePath);
 				if (!imageItem) return null;
 
-			return {
-				fileName: imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`,
-				filePath: imageItem.filePath || imageItem.image,
-				originalFileName: imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`
-			};
+				return {
+					fileName: imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`,
+					filePath: imageItem.filePath || imageItem.image,
+					originalFileName: imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`
+				};
 			})
 			.filter(
 				(fileObj): fileObj is { fileName: string; filePath: string; originalFileName: string } => fileObj !== null
 			);
+
+	const handleImageMappingChange = (parameterId: number, selectedImagePaths: string[]) => {
+		const currentDiagram = inspectionDiagrams || { partId: 0, files: [] };
+		const selectedFileObjects = mapSelectedImagePaths(selectedImagePaths);
 
 		const updatedFiles = (currentDiagram.files || []).filter(file => file.inspectionParameterId !== parameterId);
 
@@ -143,6 +150,33 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 		};
 
 		setValue('inspectionDiagrams', finalDiagram);
+	};
+
+	const handleFixedTableRowImageMappingChange = (parameterId: number, rowIndex: number, selectedImagePaths: string[]) => {
+		const currentDiagram = inspectionDiagrams || { partId: 0, files: [] };
+		const selectedFileObjects = mapSelectedImagePaths(selectedImagePaths);
+		const existingMapping = (currentDiagram.files || []).find(file => file.inspectionParameterId === parameterId);
+		const existingRowMappings = Array.isArray(existingMapping?.rowMappings) ? existingMapping.rowMappings : [];
+
+		const nextRowMappings = [
+			...existingRowMappings.filter(row => row.rowIndex !== rowIndex),
+			...(selectedFileObjects.length > 0 ? [{ rowIndex, fileName: selectedFileObjects }] : [])
+		].sort((a, b) => a.rowIndex - b.rowIndex);
+
+		const updatedFiles = (currentDiagram.files || []).filter(file => file.inspectionParameterId !== parameterId);
+		const hasParameterFiles = Array.isArray(existingMapping?.fileName) && existingMapping.fileName.length > 0;
+		if (hasParameterFiles || nextRowMappings.length > 0) {
+			updatedFiles.push({
+				inspectionParameterId: parameterId,
+				fileName: existingMapping?.fileName || [],
+				rowMappings: nextRowMappings
+			});
+		}
+
+		setValue('inspectionDiagrams', {
+			partId: currentDiagram.partId || 0,
+			files: updatedFiles
+		});
 	};
 
 	const getMappedImagesForParameter = (parameterId: number): string[] => {
@@ -167,6 +201,24 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 			.filter((path): path is string => path !== undefined && path !== null);
 
 		return mappedImagePaths;
+	};
+
+	const getMappedImagesForFixedTableRow = (parameterId: number, rowIndex: number): string[] => {
+		const mapping = inspectionDiagrams?.files?.find(file => file.inspectionParameterId === parameterId);
+		const rowMapping = mapping?.rowMappings?.find(row => row.rowIndex === rowIndex);
+		if (!rowMapping || !Array.isArray(rowMapping.fileName)) {
+			return [];
+		}
+
+		return rowMapping.fileName
+			.map(fileObj => {
+				if (typeof fileObj === 'object' && fileObj.originalFileName) {
+					const imageItem = gallery.find(item => item.fileName === fileObj.originalFileName);
+					return imageItem?.image;
+				}
+				return null;
+			})
+			.filter((path): path is string => typeof path === 'string');
 	};
 
 	if (!prcTemplate) {
@@ -268,6 +320,7 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 							<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
 								{inspection.parameters.map(parameter => {
 									const mappedImages = getMappedImagesForParameter(parameter.id);
+									const fixedTableRows = parameter.type === 'fixed-table' ? parameter.tableConfig?.rows || [] : [];
 
 									return (
 										<Box key={parameter.id} sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 2 }}>
@@ -285,62 +338,122 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 												</Typography>
 											)}
 
-											<FormControl fullWidth size="small">
-												<InputLabel>Select Images</InputLabel>
-												<Select
-													multiple
-													value={mappedImages}
-													onChange={e => {
-														const value = e.target.value as string[];
-														handleImageMappingChange(parameter.id, value);
-													}}
-													input={<OutlinedInput label="Select Images" />}
-													renderValue={selected => (
-														<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-															{(selected as string[]).map(value => {
-																const imageItem = gallery.find(item => item.image === value);
-																return (
-																	<Chip
-																		key={value}
-																		label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
-																		size="small"
-																	/>
-																);
-															})}
-														</Box>
-													)}
-												>
-													{gallery.map(imageItem => (
-														<MenuItem key={imageItem.id} value={imageItem.image}>
-															<Checkbox checked={mappedImages.indexOf(imageItem.image) > -1} />
-															<ListItemText
-																primary={imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`}
-															/>
-														</MenuItem>
-													))}
-												</Select>
-											</FormControl>
-
-											{mappedImages.length > 0 && (
-												<Box sx={{ mt: 2 }}>
-													<Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-														Mapped Images:
+											{parameter.type === 'fixed-table' ? (
+												<Box>
+													<Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+														Map images per fixed-table row.
 													</Typography>
-													<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-														{mappedImages.map(filePath => {
-															const imageItem = gallery.find(item => item.image === filePath);
+													<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+														{fixedTableRows.map((_, rowIndex) => {
+															const rowMappedImages = getMappedImagesForFixedTableRow(parameter.id, rowIndex);
 															return (
-																<Chip
-																	key={filePath}
-																	icon={<ImageIcon />}
-																	label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
-																	variant="outlined"
-																	size="small"
-																/>
+																<Box key={`${parameter.id}-row-${rowIndex}`} sx={{ p: 1.5, border: '1px dashed #d0d7de', borderRadius: 1.5 }}>
+																	<Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+																		Row {rowIndex + 1}
+																	</Typography>
+																	<FormControl fullWidth size="small">
+																		<InputLabel>Select Row Images</InputLabel>
+																		<Select
+																			multiple
+																			value={rowMappedImages}
+																			onChange={e =>
+																				handleFixedTableRowImageMappingChange(
+																					parameter.id,
+																					rowIndex,
+																					e.target.value as string[]
+																				)
+																			}
+																			input={<OutlinedInput label="Select Row Images" />}
+																			renderValue={selected => (
+																				<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+																					{(selected as string[]).map(value => {
+																						const imageItem = gallery.find(item => item.image === value);
+																						return (
+																							<Chip
+																								key={value}
+																								label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
+																								size="small"
+																							/>
+																						);
+																					})}
+																				</Box>
+																			)}
+																		>
+																			{gallery.map(imageItem => (
+																				<MenuItem key={imageItem.id} value={imageItem.image}>
+																					<Checkbox checked={rowMappedImages.indexOf(imageItem.image) > -1} />
+																					<ListItemText
+																						primary={imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`}
+																					/>
+																				</MenuItem>
+																			))}
+																		</Select>
+																	</FormControl>
+																</Box>
 															);
 														})}
 													</Box>
 												</Box>
+											) : (
+												<>
+													<FormControl fullWidth size="small">
+														<InputLabel>Select Images</InputLabel>
+														<Select
+															multiple
+															value={mappedImages}
+															onChange={e => {
+																const value = e.target.value as string[];
+																handleImageMappingChange(parameter.id, value);
+															}}
+															input={<OutlinedInput label="Select Images" />}
+															renderValue={selected => (
+																<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+																	{(selected as string[]).map(value => {
+																		const imageItem = gallery.find(item => item.image === value);
+																		return (
+																			<Chip
+																				key={value}
+																				label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
+																				size="small"
+																			/>
+																		);
+																	})}
+																</Box>
+															)}
+														>
+															{gallery.map(imageItem => (
+																<MenuItem key={imageItem.id} value={imageItem.image}>
+																	<Checkbox checked={mappedImages.indexOf(imageItem.image) > -1} />
+																	<ListItemText
+																		primary={imageItem.fileName || imageItem.file?.name || `Image ${imageItem.id}`}
+																	/>
+																</MenuItem>
+															))}
+														</Select>
+													</FormControl>
+
+													{mappedImages.length > 0 && (
+														<Box sx={{ mt: 2 }}>
+															<Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
+																Mapped Images:
+															</Typography>
+															<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+																{mappedImages.map(filePath => {
+																	const imageItem = gallery.find(item => item.image === filePath);
+																	return (
+																		<Chip
+																			key={filePath}
+																			icon={<ImageIcon />}
+																			label={imageItem?.fileName || imageItem?.file?.name || `Image ${imageItem?.id}`}
+																			variant="outlined"
+																			size="small"
+																		/>
+																	);
+																})}
+															</Box>
+														</Box>
+													)}
+												</>
 											)}
 										</Box>
 									);

@@ -9,6 +9,11 @@ function isPrcMetadataComplete(prcAggregatedSteps: Record<string, unknown> | und
 export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[] {
 	const steps: TimelineStep[] = [];
 	let stepNumber = 1;
+	const inspectionDiagramByParameterId = new Map(
+		(executionData.inspectionDiagrams?.files || [])
+			.filter(file => typeof file?.inspectionParameterId === 'number')
+			.map(file => [file.inspectionParameterId as number, file] as const)
+	);
 
 	const setupCompleted = isPrcMetadataComplete(executionData.prcAggregatedSteps as Record<string, unknown> | undefined);
 	steps.push({
@@ -176,6 +181,14 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							filePath: string;
 							originalFileName: string;
 						}>;
+						rowMappings?: Array<{
+							rowIndex: number;
+							fileName: Array<{
+								fileName: string;
+								filePath: string;
+								originalFileName: string;
+							}>;
+						}>;
 					}>;
 				};
 				const isCompleted = isInspectionStepCompleted(
@@ -213,6 +226,20 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 					},
 				inspectionParameters:
 					inspectionData.inspectionParameters?.map((param, index) => ({
+						// Prefer direct inspection parameter mappings; fallback to part-level inspectionDiagrams mappings
+						...(() => {
+							const fallbackDiagram = inspectionDiagramByParameterId.get(param.id);
+							const directFiles = Array.isArray(param.files) ? param.files : [];
+							const directRowMappings = Array.isArray(param.rowMappings) ? param.rowMappings : [];
+							const fallbackFiles = Array.isArray(fallbackDiagram?.fileName) ? fallbackDiagram.fileName : [];
+							const fallbackRowMappings = Array.isArray(fallbackDiagram?.rowMappings)
+								? fallbackDiagram.rowMappings
+								: [];
+							return {
+								files: directFiles.length > 0 ? directFiles : fallbackFiles,
+								rowMappings: directRowMappings.length > 0 ? directRowMappings : fallbackRowMappings
+							};
+						})(),
 						id: param.id,
 						parameterName: param.parameterName,
 						type: param.type,
@@ -225,7 +252,6 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						order: param.order ?? index + 1,
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						tolerance: (param as any).tolerance || '',
-						files: param.files || [],
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						version: (param as any).version || 1,
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any

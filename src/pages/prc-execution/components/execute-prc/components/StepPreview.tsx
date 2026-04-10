@@ -1131,6 +1131,17 @@ const StepPreview = ({
 																	const rows = Array.isArray((parameterData as Record<string, unknown>).value)
 																		? ((parameterData as Record<string, unknown>).value as Record<string, string>[])
 																		: [];
+																	const rowMappings = Array.isArray(paramMeta?.rowMappings) ? paramMeta.rowMappings : [];
+																	const rowAnnotations = Array.isArray((parameterData as Record<string, unknown>).rowAnnotations)
+																		? ((parameterData as Record<string, unknown>).rowAnnotations as Array<{
+																				rowIndex: number;
+																				annotations: Array<{
+																					imageFileName: string;
+																					imageUrl?: string;
+																					regions?: unknown[];
+																				}>;
+																			}>)
+																		: [];
 																	if (!tc?.columns) return <Typography variant="body2" color="text.secondary">No table configuration</Typography>;
 																	return (
 																		<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
@@ -1145,6 +1156,9 @@ const StepPreview = ({
 																								</Typography>
 																							</TableCell>
 																						))}
+																						<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75, px: 1 }}>
+																							Row Images
+																						</TableCell>
 																					</TableRow>
 																				</TableHead>
 																				<TableBody>
@@ -1171,6 +1185,45 @@ const StepPreview = ({
 																									</TableCell>
 																								);
 																							})}
+																							<TableCell sx={{ minWidth: 260 }}>
+																								{(() => {
+																									const mappedFiles = rowMappings.find(m => m.rowIndex === rIdx)?.fileName || [];
+																									const rowAnn = rowAnnotations.find(a => a.rowIndex === rIdx)?.annotations || [];
+																									if (rowAnn.length === 0) {
+																										return (
+																											<Typography variant="caption" sx={{ color: '#999' }}>
+																												No row annotations
+																											</Typography>
+																										);
+																									}
+
+																									return (
+																										<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+																											{rowAnn.map((annotation, annIdx) => {
+																												const mappedFile =
+																													mappedFiles.find(f => f.fileName === annotation.imageFileName) ||
+																													paramMeta?.files?.find(f => f.fileName === annotation.imageFileName);
+																												const imageUrl = annotation.imageUrl
+																													? toFileRenderUrl(annotation.imageUrl)
+																													: toFileRenderUrl(mappedFile?.filePath);
+																												return (
+																													<ImageDisplay
+																														key={`${parameterId}-${rIdx}-${annIdx}-${annotation.imageFileName}`}
+																														imageUrl={imageUrl}
+																														imageFileName={annotation.imageFileName}
+																														originalFileName={
+																															mappedFile?.originalFileName || annotation.imageFileName
+																														}
+																														annotations={annotation.regions || []}
+																														readOnly={true}
+																														showAnnotations={true}
+																													/>
+																												);
+																											})}
+																										</Box>
+																									);
+																								})()}
+																							</TableCell>
 																						</TableRow>
 																					))}
 																				</TableBody>

@@ -146,39 +146,48 @@ const updateInspectionDiagramsWithApiFilenames = (
 ): void => {
 	if (!formData.inspectionDiagrams?.files) return;
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const mapFileEntriesToUploaded = (entries: any[] | undefined) =>
+		(entries || []).map(fileObj => {
+			if (typeof fileObj === 'object' && fileObj.originalFileName) {
+				const uploadResult = uploads.find(
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(upload: any) => upload.originalFileName === fileObj.originalFileName
+				);
+				if (uploadResult) {
+					return {
+						fileName: uploadResult.fileName,
+						filePath: uploadResult.filePath,
+						originalFileName: uploadResult.originalFileName
+					};
+				}
+			} else if (typeof fileObj === 'string') {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const uploadResult = uploads.find((upload: any) => upload.originalFileName === fileObj);
+				if (uploadResult) {
+					return {
+						fileName: uploadResult.fileName,
+						filePath: uploadResult.filePath,
+						originalFileName: uploadResult.originalFileName
+					};
+				}
+			}
+			return fileObj;
+		});
+
 	const updatedInspectionDiagrams = {
 		...formData.inspectionDiagrams,
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		files: formData.inspectionDiagrams.files.map((file: any) => ({
 			...file,
-			fileName:
+			fileName: mapFileEntriesToUploaded(file.fileName),
+			rowMappings: (file.rowMappings || []).map(
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				file.fileName?.map((fileObj: any) => {
-					if (typeof fileObj === 'object' && fileObj.originalFileName) {
-						const uploadResult = uploads.find(
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(upload: any) => upload.originalFileName === fileObj.originalFileName
-						);
-						if (uploadResult) {
-							return {
-								fileName: uploadResult.fileName,
-								filePath: uploadResult.filePath,
-								originalFileName: uploadResult.originalFileName
-							};
-						}
-					} else if (typeof fileObj === 'string') {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						const uploadResult = uploads.find((upload: any) => upload.originalFileName === fileObj);
-						if (uploadResult) {
-							return {
-								fileName: uploadResult.fileName,
-								filePath: uploadResult.filePath,
-								originalFileName: uploadResult.originalFileName
-							};
-						}
-					}
-					return fileObj;
-				}) || []
+				(row: any) => ({
+					...row,
+					fileName: mapFileEntriesToUploaded(row.fileName)
+				})
+			)
 		}))
 	};
 
@@ -340,15 +349,27 @@ const transformArrayData = (arrayData: any[], isEditMode: boolean) => {
 const transformInspectionDiagrams = (inspectionDiagrams: any) => {
 	if (!inspectionDiagrams) return undefined;
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const normalizeFileEntries = (entries: any[]) =>
+		(entries || []).filter(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(fileObj: any) => fileObj !== undefined && fileObj !== null && typeof fileObj === 'object'
+		);
+
 	return {
 		files:
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			inspectionDiagrams.files?.map((file: any) => ({
 				inspectionParameterId: file.inspectionParameterId || 0,
-				fileName: (file.fileName || []).filter(
+				fileName: normalizeFileEntries(file.fileName || []),
+				rowMappings: (file.rowMappings || [])
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(fileObj: any) => fileObj !== undefined && fileObj !== null && typeof fileObj === 'object'
-				)
+					.filter((row: any) => typeof row?.rowIndex === 'number')
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					.map((row: any) => ({
+						rowIndex: row.rowIndex,
+						fileName: normalizeFileEntries(row.fileName || [])
+					}))
 			})) || []
 	};
 };

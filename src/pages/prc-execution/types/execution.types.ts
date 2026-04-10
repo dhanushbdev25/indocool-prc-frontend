@@ -103,6 +103,14 @@ export interface StepPreviewData {
 			filePath: string;
 			originalFileName: string;
 		}>;
+		rowMappings?: Array<{
+			rowIndex: number;
+			fileName: Array<{
+				fileName: string;
+				filePath: string;
+				originalFileName: string;
+			}>;
+		}>;
 		version: number;
 		isLatest: boolean;
 		createdAt: string;
@@ -200,6 +208,14 @@ export interface TimelineStep {
 			fileName: string;
 			filePath: string;
 			originalFileName: string;
+		}>;
+		rowMappings?: Array<{
+			rowIndex: number;
+			fileName: Array<{
+				fileName: string;
+				filePath: string;
+				originalFileName: string;
+			}>;
 		}>;
 		version: number;
 		isLatest: boolean;
@@ -302,6 +318,24 @@ export interface ExecutionData {
 			splitQuantity: string;
 		}> | null;
 	}>;
+	inspectionDiagrams?: {
+		files?: Array<{
+			inspectionParameterId?: number;
+			fileName?: Array<{
+				fileName: string;
+				filePath: string;
+				originalFileName: string;
+			}>;
+			rowMappings?: Array<{
+				rowIndex: number;
+				fileName: Array<{
+					fileName: string;
+					filePath: string;
+					originalFileName: string;
+				}>;
+			}>;
+		}> | null;
+	};
 	prcAggregatedSteps?: Record<string, unknown> & {
 		stepApprovedBy?: Record<string, unknown>;
 		prcmetadata?: Record<string, unknown>;

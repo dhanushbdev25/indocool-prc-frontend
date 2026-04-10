@@ -56,6 +56,17 @@ export const partDrawingSchema = yup.object({
 	originalFileName: yup.string().optional()
 });
 
+const inspectionDiagramFileEntrySchema = yup.object({
+	fileName: yup.string().optional(),
+	filePath: yup.string().optional(),
+	originalFileName: yup.string().optional()
+});
+
+const inspectionDiagramRowMappingSchema = yup.object({
+	rowIndex: yup.number().required(),
+	fileName: yup.array(inspectionDiagramFileEntrySchema).optional()
+});
+
 // Inspection image mapping validation schema
 export const inspectionDiagramSchema = yup.object({
 	partId: yup.number().optional(),
@@ -63,15 +74,8 @@ export const inspectionDiagramSchema = yup.object({
 		.array(
 			yup.object({
 				inspectionParameterId: yup.number().optional(),
-				fileName: yup
-					.array(
-						yup.object({
-							fileName: yup.string().optional(),
-							filePath: yup.string().optional(),
-							originalFileName: yup.string().optional()
-						})
-					)
-					.optional()
+				fileName: yup.array(inspectionDiagramFileEntrySchema).optional(),
+				rowMappings: yup.array(inspectionDiagramRowMappingSchema).optional()
 			})
 		)
 		.nullable()

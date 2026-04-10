@@ -109,14 +109,22 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 				if (existingParamData.annotations && Array.isArray(existingParamData.annotations)) {
 					paramData.annotations = existingParamData.annotations;
 				}
+				if (existingParamData.rowAnnotations && Array.isArray(existingParamData.rowAnnotations)) {
+					paramData.rowAnnotations = existingParamData.rowAnnotations;
+				}
 			} else {
 				// Data is in flat format - process it
 				// Fixed-table: data is pre-structured as { [paramId]_fixedTable: [...rows] }
 				if (param.type === 'fixed-table') {
 					const ftKey = `${paramId}_fixedTable`;
+					const rowAnnotationsKey = `${paramId}_fixedTable_rowAnnotations`;
 					const ftData = formData[ftKey];
 					if (Array.isArray(ftData)) {
 						paramData.value = ftData;
+					}
+					const rowAnnotations = formData[rowAnnotationsKey];
+					if (Array.isArray(rowAnnotations)) {
+						paramData.rowAnnotations = rowAnnotations;
 					}
 				}
 

@@ -161,7 +161,6 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 		if (currentImageUrl) {
 			console.log('Loading image from URL:', currentImageUrl);
 			const img = new window.Image();
-			img.crossOrigin = 'anonymous';
 			img.onload = () => {
 				console.log('Image loaded successfully:', img.width, 'x', img.height);
 				setImageSize({ width: img.width, height: img.height });

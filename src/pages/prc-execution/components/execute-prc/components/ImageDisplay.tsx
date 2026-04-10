@@ -66,7 +66,6 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 		}, 0);
 
 		const img = new Image();
-		img.crossOrigin = 'anonymous';
 
 		let isMounted = true;
 

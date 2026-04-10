@@ -663,6 +663,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		return Array.isArray(entry?.annotations) ? entry.annotations : [];
 	};
 
+	const getFixedTableRowFiles = (paramId: number, rowIndex: number) => {
+		const param = step.inspectionParameters?.find(p => p.id === paramId);
+		const rowMapping = param?.rowMappings?.find(item => item.rowIndex === rowIndex);
+		return Array.isArray(rowMapping?.fileName) ? rowMapping.fileName : [];
+	};
+
 	const handleFixedTableRowAnnotationSave = (paramId: number, rowIndex: number, newAnnotations: ImageAnnotation[]) => {
 		const rowAnnotationsKey = getFixedTableRowAnnotationsKey(paramId);
 		setFormData(prev => {
@@ -827,8 +833,13 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 				if (param.type === 'fixed-table' && param.tableConfig) {
 					const ftKey = `${param.id}_fixedTable`;
+					const ftRowAnnotationsKey = getFixedTableRowAnnotationsKey(param.id);
 					const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
 					paramData.value = rows;
+					const rowAnnotations = formData[ftRowAnnotationsKey];
+					if (Array.isArray(rowAnnotations)) {
+						paramData.rowAnnotations = rowAnnotations;
+					}
 					if (Object.keys(paramData).length > 0) {
 						nestedData[param.id.toString()] = paramData;
 					}
@@ -1319,6 +1330,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																			</Typography>
 																		</TableCell>
 																	))}
+																	<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Row Images</TableCell>
 																</TableRow>
 															</TableHead>
 															<TableBody>
@@ -1407,6 +1419,46 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																					</TableCell>
 																				);
 																			})}
+																			<TableCell sx={{ minWidth: 280 }}>
+																				{(() => {
+																					const rowFiles = getFixedTableRowFiles(param.id, rowIdx);
+																					const rowExistingAnnotations = getFixedTableRowAnnotations(param.id, rowIdx);
+																					if (rowFiles.length === 0) {
+																						return (
+																							<Typography variant="caption" sx={{ color: '#999' }}>
+																								No row images mapped
+																							</Typography>
+																						);
+																					}
+
+																					return (
+																						<Box>
+																							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+																								<CameraAlt color="primary" fontSize="small" />
+																								<Typography variant="caption" sx={{ color: '#666' }}>
+																									{rowFiles.length} mapped file{rowFiles.length !== 1 ? 's' : ''}
+																								</Typography>
+																								{rowExistingAnnotations.length > 0 && (
+																									<Chip
+																										label={rowExistingAnnotations.length}
+																										size="small"
+																										color="primary"
+																										sx={{ fontSize: '0.7rem', height: 20 }}
+																									/>
+																								)}
+																							</Box>
+																							<ImageAnnotator
+																								images={rowFiles}
+																								existingAnnotations={rowExistingAnnotations}
+																								onSave={newAnnotations =>
+																									handleFixedTableRowAnnotationSave(param.id, rowIdx, newAnnotations)
+																								}
+																								readOnly={isReadOnly}
+																							/>
+																						</Box>
+																					);
+																				})()}
+																			</TableCell>
 																		</TableRow>
 																	));
 																})()}
