@@ -11,6 +11,7 @@ import ExecutionSetupStep from './steps/ExecutionSetupStep';
 interface StepDetailViewProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
+	aggregatedStepsSnapshot?: Record<string, unknown>;
 	onBackToList: () => void;
 	onPreviousStep: () => void;
 	onNextStep: () => void;
@@ -22,6 +23,7 @@ interface StepDetailViewProps {
 const StepDetailView = ({
 	step,
 	executionData,
+	aggregatedStepsSnapshot,
 	onBackToList,
 	onPreviousStep,
 	onNextStep,
@@ -212,7 +214,14 @@ const StepDetailView = ({
 		// For non-sequence steps, render the appropriate component
 		switch (step.type) {
 			case 'setup':
-				return <ExecutionSetupStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
+				return (
+					<ExecutionSetupStep
+						step={step}
+						executionData={executionData}
+						aggregatedStepsSnapshot={aggregatedStepsSnapshot}
+						onStepComplete={handleSubStepComplete}
+					/>
+				);
 			case 'rawMaterials':
 				return <RawMaterialsStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
 			case 'bom':

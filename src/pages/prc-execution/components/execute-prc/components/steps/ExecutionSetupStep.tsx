@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
 	Box,
 	Typography,
@@ -25,7 +25,17 @@ import dayjs, { type Dayjs } from 'dayjs';
 import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
 import { useFetchMouldComboQuery } from '../../../../../../store/api/business/mould/mould.api';
 import { type MouldComboItem } from '../../../../../../store/api/business/mould/mould.validators';
-import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
+import {
+	type TimelineStep,
+	type ExecutionData,
+	type FormData,
+	type OperationWiseExecutionRow
+} from '../../../../types/execution.types';
+import {
+	applyCountDeviated,
+	extractSequenceStepGroupsFromExecution,
+	mergeOperationWiseForRead
+} from '../../../../utils/operationWiseMerge';
 
 const shiftOptions = [
 	{ value: 'Morning', label: 'Morning' },
@@ -45,10 +55,17 @@ const getMouldCode = (item: MouldComboItem | null): string => {
 interface ExecutionSetupStepProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
+	/** Live merged aggregated steps from parent (includes optimistic operationWiseData). */
+	aggregatedStepsSnapshot?: Record<string, unknown>;
 	onStepComplete: (formData: FormData) => void;
 }
 
-const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSetupStepProps) => {
+const ExecutionSetupStep = ({
+	step,
+	executionData,
+	aggregatedStepsSnapshot,
+	onStepComplete
+}: ExecutionSetupStepProps) => {
 	const { userInfo } = useCurrentRole();
 	const partId = executionData.partId;
 	const {
@@ -66,6 +83,24 @@ const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSe
 
 	const isReadOnly = step.status === 'completed';
 	const mouldComboBusy = isMouldComboLoading || isMouldComboFetching;
+
+	const mergedOperationWise = useMemo(() => {
+		const merged = mergeOperationWiseForRead(
+			executionData.operationWiseData,
+			aggregatedStepsSnapshot ?? (executionData.prcAggregatedSteps as Record<string, unknown> | undefined)
+		);
+		if (merged.length > 0) return merged;
+		const groups = extractSequenceStepGroupsFromExecution(executionData);
+		return groups.map(
+			(g): OperationWiseExecutionRow => ({
+				id: `tpl-${g.id}`,
+				operationID: Number(g.id) || 0,
+				operationName: g.processName,
+				responsiblePersonCount: 1,
+				responsiblePersons: []
+			})
+		);
+	}, [executionData.operationWiseData, executionData.prcAggregatedSteps, executionData.prcCurrentTemplate, aggregatedStepsSnapshot]);
 
 	useEffect(() => {
 		const saved = executionData.prcAggregatedSteps?.prcmetadata as Record<string, unknown> | undefined;
@@ -124,7 +159,8 @@ const ExecutionSetupStep = ({ step, executionData, onStepComplete }: ExecutionSe
 			mouldId: mouldIdValue,
 			shift,
 			date: dateStr,
-			recordedByUserId: userInfo.id
+			recordedByUserId: userInfo.id,
+			operationWiseData: applyCountDeviated(mergedOperationWise.map(r => ({ ...r })))
 		});
 	};
 

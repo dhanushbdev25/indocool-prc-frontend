@@ -1,108 +1,123 @@
-// Type definitions for PRC Execution (without Zod validation)
-// Since PRC Execution APIs are dynamic, we use flexible types
-
-// Parts combo types
-export interface PartsComboItem {
-	label: string;
-	value: number;
-	data: {
-		partNumber: string;
-		drawingNumber: string;
-		model?: string;
-		description: string;
-		version: number;
-		prcTemplate: number;
-		catalyst: number;
-	};
-}
-
-// Plant combo types
-export interface PlantComboItem {
-	label: string;
-	value: string;
-	data: Record<string, unknown>;
-}
-
-export interface PartsComboResponse {
-	data: PartsComboItem[];
-}
-
-export interface PlantComboResponse {
-	data: PlantComboItem[];
-}
-
-// PRC Execution types (flexible to handle dynamic data)
+/** List row for PRC execution table (GET /prcExecution list) */
 export interface PrcExecution {
 	id: number;
-	customer: string;
-	partId: number;
 	partNumber: string;
-	partDescription: string;
+	updatedAt?: string;
 	version: number;
+	customer: string;
 	productionSetId: string;
 	mouldId: string;
-	date: string;
 	shift: string;
-	inCharge: number;
-	remarks?: string;
-	drawingNumber: string;
+	progress: string | number;
+	stepsCompleted?: number;
+	totalSteps?: number;
 	status: string;
-	prcTemplate: number;
-	catalyst: number;
-	progress: string | number; // Can be either string or number
-	completedCtq: number;
-	totalCtq: number;
-	duration: string | number; // Can be either string or number
-	stepsCompleted: number;
-	totalSteps?: number; // Total number of steps in the process
-	currentStage: number;
-	nextStage: number;
-	createdBy: number;
-	updatedBy: number;
-	createdAt: string;
-	updatedAt: string;
-	// Additional fields from API response
-	mouldingInspectionParentId: number;
-	mouldingInspectionId: number;
-	ctqMap: unknown;
-	sequenceIds: unknown;
-	prcCurrentTemplate?: unknown;
-	rawMaterials?: unknown[];
-	bom?: unknown[];
-	currentStep?: unknown;
-	prcAggregatedSteps?: unknown;
-	stepStartEndTime?: unknown;
-	// Allow for additional dynamic fields
-	[key: string]: unknown;
+	date: string;
 }
 
-export interface PrcExecutionResponse {
-	data: PrcExecution[];
+/** GET /web/combo?type=... — comboFormatter formatComboData */
+
+export interface WebComboItem {
+	label: string;
+	value: number | string;
+	data?: Record<string, unknown>;
 }
 
-// Create PRC Execution types
-export interface CreatePrcExecutionRequest {
-	data: {
-		customer: string;
-		partId: number;
-		catalyst: number;
-		partNumber: string;
-		partDescription: string;
-		version: number;
-		productionSetId: string;
-		mouldId: string;
-		date: string;
-		shift: string;
-		inCharge: number;
-		remarks?: string;
-		drawingNumber: string;
-		status: string;
-		prcTemplate: number;
-		plantCode: string;
-	};
+export interface WebComboResponse {
+	data: WebComboItem[];
 }
 
-export interface CreatePrcExecutionResponse {
-	message?: string;
-	data?: PrcExecution;
+function isWebComboItem(value: unknown): value is WebComboItem {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (typeof o.label !== 'string' || (typeof o.value !== 'number' && typeof o.value !== 'string')) {
+		return false;
+	}
+	if (o.data !== undefined) {
+		if (o.data === null || typeof o.data !== 'object' || Array.isArray(o.data)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+export function isWebComboResponse(value: unknown): value is WebComboResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	for (const item of o.data) {
+		if (!isWebComboItem(item)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** Nested `data` on GET /combo?type=OPERATIONDELAYREASON items */
+
+export interface OperationDelayReasonComboItemData {
+	id: number;
+	type: string;
+	sequence: number;
+}
+
+export interface OperationDelayReasonComboItem {
+	label: string;
+	/** Business code persisted as timingExceededReasonCode (e.g. RM, FG, WIP) */
+	value: string;
+	data: OperationDelayReasonComboItemData;
+}
+
+/** API row or a minimal hydrated `{ label, value }` when restoring from saved execution without combo loaded */
+export type OperationDelayReasonComboOption = OperationDelayReasonComboItem | { label: string; value: string };
+
+export interface OperationDelayReasonComboResponse {
+	data: OperationDelayReasonComboItem[];
+}
+
+function isOperationDelayReasonComboItemData(value: unknown): value is OperationDelayReasonComboItemData {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return (
+		typeof o.id === 'number' &&
+		typeof o.type === 'string' &&
+		typeof o.sequence === 'number'
+	);
+}
+
+function isOperationDelayReasonComboItem(value: unknown): value is OperationDelayReasonComboItem {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (typeof o.label !== 'string' || typeof o.value !== 'string') {
+		return false;
+	}
+	return isOperationDelayReasonComboItemData(o.data);
+}
+
+export function isOperationDelayReasonComboResponse(
+	value: unknown
+): value is OperationDelayReasonComboResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	for (const item of o.data) {
+		if (!isOperationDelayReasonComboItem(item)) {
+			return false;
+		}
+	}
+	return true;
 }

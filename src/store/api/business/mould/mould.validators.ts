@@ -3,19 +3,17 @@ export interface MouldApiItem {
 	id: number;
 	partId: number;
 	partCode: string;
-	mouldId: string;
+	/** Backend may send mouldCode and/or mouldId */
+	mouldCode?: string;
+	mouldId?: string;
 	reconciliationCount: number;
-	currentCount: number;
-	totalCount?: number;
+	currentCount: number | null;
+	totalCount?: number | null;
 	lastReconciled?: string | null;
 	reconcileNowFlag: boolean;
 	createdAt?: string;
 	updatedAt?: string;
 	[key: string]: unknown;
-}
-
-export interface MouldListResponse {
-	data: MouldApiItem[];
 }
 
 /** Row shape for the mould reconciliation table */
@@ -34,12 +32,58 @@ export const mapMouldApiItemToRow = (item: MouldApiItem): MouldReconciliationRow
 	id: item.id,
 	partId: item.partId,
 	partNumber: item.partCode,
-	mouldCode: item.mouldId,
+	mouldCode: item.mouldCode ?? item.mouldId ?? '',
 	reconciliationCount: item.reconciliationCount,
-	currentCount: item.currentCount,
+	currentCount: item.currentCount ?? 0,
 	lastReconciledAt: item.lastReconciled ?? null,
 	reconcileNowFlag: item.reconcileNowFlag
 });
+
+/** Normalize GET /mould body to an array (raw array or `{ data }`); empty if unrecognized. */
+export function extractMouldListArray(response: unknown): unknown[] {
+	if (Array.isArray(response)) {
+		return response;
+	}
+	if (response !== null && typeof response === 'object' && !Array.isArray(response)) {
+		const data = (response as Record<string, unknown>).data;
+		if (Array.isArray(data)) {
+			return data;
+		}
+	}
+	return [];
+}
+
+/** Best-effort parse so list views never throw on backend shape drift. */
+export function coerceMouldApiItem(raw: unknown, fallbackIndex: number): MouldApiItem {
+	const o = raw !== null && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
+	const id = typeof o.id === 'number' ? o.id : fallbackIndex;
+	const partId = typeof o.partId === 'number' ? o.partId : 0;
+	const partCode = typeof o.partCode === 'string' ? o.partCode : '';
+	const mouldCode = typeof o.mouldCode === 'string' ? o.mouldCode : undefined;
+	const mouldId = typeof o.mouldId === 'string' ? o.mouldId : undefined;
+	const reconciliationCount = typeof o.reconciliationCount === 'number' ? o.reconciliationCount : 0;
+	const currentCount =
+		o.currentCount === null || typeof o.currentCount === 'number' ? (o.currentCount as number | null) : null;
+	const totalCount =
+		o.totalCount === null || typeof o.totalCount === 'number' ? (o.totalCount as number | null | undefined) : undefined;
+	const lastReconciled =
+		o.lastReconciled === null || typeof o.lastReconciled === 'string'
+			? (o.lastReconciled as string | null)
+			: undefined;
+	const reconcileNowFlag = o.reconcileNowFlag === true;
+	return {
+		id,
+		partId,
+		partCode,
+		mouldCode,
+		mouldId,
+		reconciliationCount,
+		currentCount,
+		totalCount,
+		lastReconciled,
+		reconcileNowFlag
+	};
+}
 
 export const isMouldDueForReconciliation = (row: MouldReconciliationRow): boolean =>
 	row.reconcileNowFlag || row.currentCount >= row.reconciliationCount;
@@ -63,38 +107,6 @@ export interface MouldComboItem {
 
 export interface MouldComboResponse {
 	data: MouldComboItem[];
-}
-
-export function isMouldListResponse(value: unknown): value is MouldListResponse {
-	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-		return false;
-	}
-	const o = value as Record<string, unknown>;
-	if (!Array.isArray(o.data)) {
-		return false;
-	}
-	for (const item of o.data) {
-		if (!isMouldApiItem(item)) {
-			return false;
-		}
-	}
-	return true;
-}
-
-function isMouldApiItem(value: unknown): value is MouldApiItem {
-	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-		return false;
-	}
-	const o = value as Record<string, unknown>;
-	return (
-		typeof o.id === 'number' &&
-		typeof o.partId === 'number' &&
-		typeof o.partCode === 'string' &&
-		typeof o.mouldId === 'string' &&
-		typeof o.reconciliationCount === 'number' &&
-		typeof o.currentCount === 'number' &&
-		typeof o.reconcileNowFlag === 'boolean'
-	);
 }
 
 export function isMouldComboResponse(value: unknown): value is MouldComboResponse {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import {
 	Box,
 	Paper,
@@ -19,7 +19,13 @@ import {
 	Select,
 	MenuItem,
 	FormControlLabel,
-	Switch
+	Switch,
+	Table,
+	TableBody,
+	TableCell,
+	TableContainer,
+	TableHead,
+	TableRow
 } from '@mui/material';
 import {
 	Add as AddIcon,
@@ -27,8 +33,16 @@ import {
 	Science as CatalystIcon,
 	Assignment as TemplateIcon
 } from '@mui/icons-material';
-import { Controller, Control, FieldErrors, UseFormSetValue, useFieldArray } from 'react-hook-form';
+import {
+	Controller,
+	Control,
+	FieldErrors,
+	UseFormSetValue,
+	useFieldArray,
+	useFormContext
+} from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
+import type { OperationWisePartRow } from '../../../../../../store/api/business/part-master/part.validators';
 import { useFetchCatalystChartsQuery } from '../../../../../../store/api/business/catalyst-master/catalyst.api';
 import { useFetchProcessSequencesQuery } from '../../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../../store/api/business/inspection-master/inspection.api';
@@ -57,6 +71,7 @@ const LinkedMastersTab = ({
 	errors,
 	setValue
 }: LinkedMastersTabProps) => {
+	const { getValues } = useFormContext<PartMasterFormData>();
 	const [catalystModalOpen, setCatalystModalOpen] = useState(false);
 	const [addedGroups, setAddedGroups] = useState<string[]>([]);
 	const [selectedGroupToAdd, setSelectedGroupToAdd] = useState('');
@@ -71,15 +86,24 @@ const LinkedMastersTab = ({
 		{ skip: !partId }
 	);
 
-	const operationGroups: OperationGroup[] = (operationsData?.data || []).map(op => ({
-		id: op.value,
-		name: op.data.operationText,
-		label: op.label
-	}));
+	const operationGroups: OperationGroup[] = useMemo(
+		() =>
+			(operationsData?.data || []).map(op => ({
+				id: op.value,
+				name: op.data.operationText,
+				label: op.label
+			})),
+		[operationsData]
+	);
 
 	const { fields, append, remove, move } = useFieldArray({
 		control,
 		name: 'prcTemplateSteps'
+	});
+
+	const { fields: operationWiseFields, replace: replaceOperationWise } = useFieldArray({
+		control,
+		name: 'operationWiseData'
 	});
 
 	const hasInitializedGroups = useRef(false);
@@ -168,8 +192,16 @@ const LinkedMastersTab = ({
 				.sort((a, b) => b - a);
 			indicesToRemove.forEach(idx => remove(idx));
 			setAddedGroups(prev => prev.filter(id => id !== groupId));
+			const ow = getValues('operationWiseData') as OperationWisePartRow[] | undefined;
+			if (Array.isArray(ow)) {
+				setValue(
+					'operationWiseData',
+					ow.filter(r => String(r.operationID) !== String(groupId)),
+					{ shouldDirty: true }
+				);
+			}
 		},
-		[allStepFields, remove]
+		[allStepFields, remove, getValues, setValue]
 	);
 
 	const handleAddStep = useCallback(
@@ -227,9 +259,42 @@ const LinkedMastersTab = ({
 		});
 	}, [fields, setValue]);
 
+	useEffect(() => {
+		setValue('operationGroupIdsForHeadcount', addedGroups, { shouldDirty: false });
+	}, [addedGroups, setValue]);
+
 	const getStepsForGroup = (groupId: string) => {
 		return allStepFields.filter(step => step.group === groupId);
 	};
+
+	const headcountOperationRows: OperationGroup[] = useMemo(() => {
+		return addedGroups.map(groupId => {
+			const g = operationGroups.find(o => o.id === groupId);
+			return g ?? { id: groupId, name: groupId, label: `Operation ${groupId}` };
+		});
+	}, [addedGroups, operationGroups]);
+
+	useEffect(() => {
+		if (headcountOperationRows.length === 0) {
+			replaceOperationWise([]);
+			return;
+		}
+		const current = getValues('operationWiseData') as OperationWisePartRow[] | undefined;
+		const cur = Array.isArray(current) ? current : [];
+		const next: OperationWisePartRow[] = headcountOperationRows.map(g => {
+			const opNum = Number(g.id);
+			const existing = cur.find(r => String(r.operationID) === String(g.id));
+			return {
+				id: existing?.id ?? `op-${g.id}`,
+				operationID: Number.isFinite(opNum) ? opNum : 0,
+				operationName: g.name || g.label,
+				responsiblePersonCount: existing?.responsiblePersonCount ?? 1
+			};
+		});
+		if (JSON.stringify(cur) !== JSON.stringify(next)) {
+			replaceOperationWise(next);
+		}
+	}, [headcountOperationRows, getValues, replaceOperationWise]);
 
 	return (
 		<Box>
@@ -450,17 +515,12 @@ const LinkedMastersTab = ({
 
 				<Divider sx={{ my: 3 }} />
 
-				{/* Add Operation Group */}
-				<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-					<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
-						Operation Groups ({addedGroups.length} groups, {fields.length} steps)
-					</Typography>
-				</Box>
-
 				{isOperationsLoading ? (
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
 						<CircularProgress size={16} />
-						<Typography variant="body2" color="text.secondary">Loading operations...</Typography>
+						<Typography variant="body2" color="text.secondary">
+							Loading operations...
+						</Typography>
 					</Box>
 				) : !partId ? (
 					<Alert severity="info" sx={{ mb: 3 }}>
@@ -471,38 +531,117 @@ const LinkedMastersTab = ({
 						No operations available for this part.
 					</Alert>
 				) : (
-					<Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-start' }}>
-						<FormControl size="small" sx={{ minWidth: 280 }}>
-							<InputLabel>Select Operation</InputLabel>
-							<Select
-								value={selectedGroupToAdd}
-								onChange={e => setSelectedGroupToAdd(e.target.value)}
-								label="Select Operation"
-								sx={{ borderRadius: '8px' }}
-								disabled={availableGroupsToAdd.length === 0}
+					<>
+						{addedGroups.length > 0 && (
+							<>
+								<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: '#333' }}>
+									Operation member count
+								</Typography>
+								<TableContainer
+									component={Paper}
+									variant="outlined"
+									sx={{ mb: 3, borderRadius: 2, borderColor: '#e0e0e0' }}
+								>
+									<Table size="small">
+										<TableHead>
+											<TableRow sx={{ backgroundColor: '#fafafa' }}>
+												<TableCell sx={{ fontWeight: 600 }}>Operation</TableCell>
+												<TableCell align="right" sx={{ fontWeight: 600, width: 180 }}>
+													Members
+												</TableCell>
+											</TableRow>
+										</TableHead>
+										<TableBody>
+											{operationWiseFields.map((fieldRow, index) => {
+												const group = headcountOperationRows[index];
+												if (!group) return null;
+												return (
+													<TableRow key={fieldRow.id}>
+														<TableCell>{group.label}</TableCell>
+														<TableCell align="right">
+															<Controller
+																name={`operationWiseData.${index}.responsiblePersonCount`}
+																control={control}
+																render={({ field }) => (
+																	<TextField
+																		type="number"
+																		size="small"
+																		inputProps={{ min: 1, step: 1 }}
+																		name={field.name}
+																		inputRef={field.ref}
+																		onBlur={field.onBlur}
+																		value={
+																			field.value === undefined || field.value === null
+																				? ''
+																				: field.value
+																		}
+																		onChange={e => {
+																			const raw = e.target.value;
+																			if (raw === '') {
+																				field.onChange(undefined);
+																				return;
+																			}
+																			const num = parseInt(raw, 10);
+																			field.onChange(Number.isNaN(num) ? undefined : num);
+																		}}
+																		sx={{
+																			width: 120,
+																			'& .MuiOutlinedInput-root': { borderRadius: '8px' }
+																		}}
+																	/>
+																)}
+															/>
+														</TableCell>
+													</TableRow>
+												);
+											})}
+										</TableBody>
+									</Table>
+								</TableContainer>
+							</>
+						)}
+
+						<Divider sx={{ my: 3 }} />
+
+						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+							<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
+								Operation Groups ({addedGroups.length} groups, {fields.length} steps)
+							</Typography>
+						</Box>
+
+						<Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'flex-start' }}>
+							<FormControl size="small" sx={{ minWidth: 280 }}>
+								<InputLabel>Select Operation</InputLabel>
+								<Select
+									value={selectedGroupToAdd}
+									onChange={e => setSelectedGroupToAdd(e.target.value)}
+									label="Select Operation"
+									sx={{ borderRadius: '8px' }}
+									disabled={availableGroupsToAdd.length === 0}
+								>
+									{availableGroupsToAdd.map(group => (
+										<MenuItem key={group.id} value={group.id}>
+											{group.label}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
+							<Button
+								variant="contained"
+								startIcon={<AddIcon />}
+								onClick={handleAddGroup}
+								disabled={!selectedGroupToAdd}
+								sx={{
+									textTransform: 'none',
+									backgroundColor: '#4caf50',
+									height: 40,
+									'&:hover': { backgroundColor: '#388e3c' }
+								}}
 							>
-								{availableGroupsToAdd.map(group => (
-									<MenuItem key={group.id} value={group.id}>
-										{group.label}
-									</MenuItem>
-								))}
-							</Select>
-						</FormControl>
-						<Button
-							variant="contained"
-							startIcon={<AddIcon />}
-							onClick={handleAddGroup}
-							disabled={!selectedGroupToAdd}
-							sx={{
-								textTransform: 'none',
-								backgroundColor: '#4caf50',
-								height: 40,
-								'&:hover': { backgroundColor: '#388e3c' }
-							}}
-						>
-							Add Operation
-						</Button>
-					</Box>
+								Add Operation
+							</Button>
+						</Box>
+					</>
 				)}
 
 				{/* Rendered Added Groups */}

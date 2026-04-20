@@ -67,6 +67,13 @@ export interface StepGroup {
 	}>;
 }
 
+/** Passed from StepPreview when completing a step (remarks + delay reason when timing exceeded). */
+export interface ProceedFromPreviewPayload {
+	timingExceededRemarks?: string;
+	timingExceededReasonCode?: string | number;
+	timingExceededReasonLabel?: string;
+}
+
 export interface StepPreviewData {
 	stepNumber: number;
 	title: string;
@@ -81,6 +88,10 @@ export interface StepPreviewData {
 	actualDuration?: number;
 	expectedDuration?: number;
 	timingExceededRemarks?: string;
+	/** Selected combo value from GET /combo?type=OPERATIONDELAYREASON */
+	timingExceededReasonCode?: string | number;
+	/** Denormalized label for read-only display when combo list is not loaded */
+	timingExceededReasonLabel?: string;
 	// Additional metadata for inspection steps
 	inspectionParameters?: Array<{
 		id: number;
@@ -239,6 +250,28 @@ export interface TimelineStep {
 	};
 }
 
+/** Operation setup (execution): simplified person line — not sequence-step measurement responsible persons */
+export interface OperationWiseExecutionPerson {
+	id?: string;
+	employeeId: string;
+	employeeName: string;
+	workstation: string;
+}
+
+/**
+ * One row per operation from part master + execution runtime fields.
+ * Matches Part Master `OperationWisePartRow` plus assignments and deviation flag.
+ */
+export interface OperationWiseExecutionRow {
+	id: string | number;
+	operationID: number;
+	operationName: string;
+	responsiblePersonCount: number;
+	responsiblePersons?: OperationWiseExecutionPerson[];
+	/** True when saved count of responsiblePersons differs from responsiblePersonCount */
+	countDeviated?: boolean;
+}
+
 export interface ExecutionData {
 	id: number;
 	customer: string;
@@ -269,6 +302,11 @@ export interface ExecutionData {
 	createdAt: string;
 	updatedAt: string;
 	// Additional fields from API response
+	customerVariantId?: number | null;
+	customerVariantName?: string | null;
+	reservation?: string | null;
+	/** From GET root; merged with prcAggregatedSteps.operationWiseData for setup step */
+	operationWiseData?: OperationWiseExecutionRow[];
 	mouldingInspectionParentId: number;
 	mouldingInspectionId: number;
 	ctqMap: unknown;
@@ -339,6 +377,7 @@ export interface ExecutionData {
 	prcAggregatedSteps?: Record<string, unknown> & {
 		stepApprovedBy?: Record<string, unknown>;
 		prcmetadata?: Record<string, unknown>;
+		operationWiseData?: OperationWiseExecutionRow[];
 	};
 	stepStartEndTime?: Record<string, unknown>;
 	catalystData?: {

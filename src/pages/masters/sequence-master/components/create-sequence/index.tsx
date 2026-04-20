@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
@@ -17,6 +17,25 @@ import {
 } from '../../../../../store/api/business/sequence-master/sequence.api';
 
 const steps = ['Basic Information', 'Step Groups & Steps', 'Review & Submit'];
+
+const MAX_SEQUENCE_BUSINESS_ID_LEN = 50;
+const MAX_SEQUENCE_NAME_LEN = 100;
+const CLONE_ID_SUFFIX = '-COPY';
+
+const cloneBusinessId = (sourceId: string): string => {
+	const combined = `${sourceId}${CLONE_ID_SUFFIX}`;
+	if (combined.length <= MAX_SEQUENCE_BUSINESS_ID_LEN) return combined;
+	const maxBase = MAX_SEQUENCE_BUSINESS_ID_LEN - CLONE_ID_SUFFIX.length;
+	return (maxBase > 0 ? sourceId.slice(0, maxBase) : '') + CLONE_ID_SUFFIX;
+};
+
+const cloneSequenceName = (name: string): string => {
+	const suffix = ' (Copy)';
+	const combined = `${name}${suffix}`;
+	if (combined.length <= MAX_SEQUENCE_NAME_LEN) return combined;
+	const maxBase = MAX_SEQUENCE_NAME_LEN - suffix.length;
+	return (maxBase > 0 ? name.slice(0, maxBase) : '') + suffix;
+};
 
 // Helper function to convert time string (HH:MM) to seconds
 const convertTimeToSeconds = (timeString: string): number => {
@@ -36,18 +55,22 @@ const convertSecondsToTime = (seconds: number): string => {
 
 const CreateSequence = () => {
 	const navigate = useNavigate();
+	const { pathname } = useLocation();
 	const { id } = useParams();
-	const isEditMode = Boolean(id);
+	const isCloneMode = Boolean(id) && pathname.includes('/clone-sequence/');
+	const isEditMode = Boolean(id) && !isCloneMode;
 
 	const [activeStep, setActiveStep] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 
-	// Fetch sequence data for edit mode
+	const shouldFetchById = Boolean(id) && (isEditMode || isCloneMode);
+
+	// Fetch sequence data for edit or clone mode
 	const {
 		data: sequenceData,
 		isLoading: isFetching,
 		isSuccess: isFetchSuccess
-	} = useFetchProcessSequenceByIdQuery({ id: Number(id) }, { skip: !isEditMode || !id });
+	} = useFetchProcessSequenceByIdQuery({ id: Number(id) }, { skip: !shouldFetchById });
 
 	// API mutations
 	const [createSequence, { isLoading: isCreating }] = useCreateProcessSequenceMutation();
@@ -115,9 +138,34 @@ const CreateSequence = () => {
 		}
 	}, [errors]);
 
-	// Load data for edit mode when API data is available
+	// Load data for edit or clone when API data is available
 	useEffect(() => {
-		if (isEditMode && isFetchSuccess && sequenceData) {
+		if (!isFetchSuccess || !sequenceData) return;
+
+		const processStepGroups = sequenceData.detail.stepGroups.map(group => ({
+			processName: group.processName,
+			processDescription: group.processDescription,
+			sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60),
+			processSteps: group.steps.map(step => ({
+				parameterDescription: step.parameterDescription,
+				stepNumber: step.stepNumber,
+				stepType: step.stepType,
+				evaluationMethod: step.evaluationMethod,
+				targetValueType: step.targetValueType,
+				minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
+				maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
+				multipleMeasurements: step.multipleMeasurements ?? false,
+				multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
+				tableConfig: step.tableConfig || null,
+				uom: step.uom,
+				ctq: step.ctq ?? false,
+				allowAttachments: step.allowAttachments ?? false,
+				responsiblePerson: step.responsiblePerson ?? false,
+				notes: step.notes
+			}))
+		}));
+
+		if (isEditMode) {
 			const formData: SequenceFormData = {
 				id: sequenceData.detail.id,
 				sequenceId: sequenceData.detail.sequenceId,
@@ -128,34 +176,26 @@ const CreateSequence = () => {
 				notes: sequenceData.detail.notes || '',
 				totalSteps: sequenceData.detail.totalSteps,
 				ctqSteps: sequenceData.detail.ctqSteps,
-				processStepGroups: sequenceData.detail.stepGroups.map(group => ({
-					processName: group.processName,
-					processDescription: group.processDescription,
-					sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60), // Convert seconds to HH:MM
-				processSteps: group.steps.map(step => ({
-					parameterDescription: step.parameterDescription,
-					stepNumber: step.stepNumber,
-					stepType: step.stepType,
-					evaluationMethod: step.evaluationMethod,
-					targetValueType: step.targetValueType,
-					minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
-					maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
-					multipleMeasurements: step.multipleMeasurements ?? false,
-					multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
-					tableConfig: step.tableConfig || null,
-					uom: step.uom,
-					ctq: step.ctq ?? false,
-					allowAttachments: step.allowAttachments ?? false,
-					responsiblePerson: step.responsiblePerson ?? false,
-					notes: step.notes
-				}))
-				})),
+				processStepGroups,
 				createdAt: sequenceData.detail.createdAt,
 				updatedAt: sequenceData.detail.updatedAt
 			};
 			reset(formData);
+		} else if (isCloneMode) {
+			const formData: SequenceFormData = {
+				sequenceId: cloneBusinessId(sequenceData.detail.sequenceId),
+				sequenceName: cloneSequenceName(sequenceData.detail.sequenceName),
+				category: sequenceData.detail.category,
+				type: sequenceData.detail.type,
+				status: sequenceData.detail.status === 'ACTIVE',
+				notes: sequenceData.detail.notes || '',
+				totalSteps: sequenceData.detail.totalSteps,
+				ctqSteps: sequenceData.detail.ctqSteps,
+				processStepGroups
+			};
+			reset(formData);
 		}
-	}, [isEditMode, isFetchSuccess, sequenceData, reset]);
+	}, [isEditMode, isCloneMode, isFetchSuccess, sequenceData, reset]);
 
 	const handleNext = async () => {
 		// Define fields to validate for each step
@@ -310,8 +350,8 @@ const CreateSequence = () => {
 		}
 	};
 
-	// Show skeleton loading state when fetching data in edit mode
-	if (isEditMode && isFetching) {
+	// Show skeleton loading state when fetching data in edit or clone mode
+	if (shouldFetchById && isFetching) {
 		return (
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>

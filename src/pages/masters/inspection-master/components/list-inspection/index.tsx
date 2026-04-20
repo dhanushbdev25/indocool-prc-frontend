@@ -147,6 +147,10 @@ const ListInspection = () => {
 		navigate(`/inspection-master/view-inspection/${inspectionId}`);
 	};
 
+	const handleClone = (inspectionId: number) => {
+		navigate(`/inspection-master/clone-inspection/${inspectionId}`);
+	};
+
 	// Show loading state with skeleton
 	if (isInspectionDataLoading) {
 		return (
@@ -162,7 +166,13 @@ const ListInspection = () => {
 			<InspectionHeader />
 			{inspectionData && <SummaryCards headerData={inspectionData.header} />}
 			<InspectionManagement onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
-			<InspectionTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
+			<InspectionTable
+				data={filteredData}
+				onActionClick={handleActionClick}
+				onEdit={handleEdit}
+				onView={handleView}
+				onClone={handleClone}
+			/>
 
 			{/* Delete Confirmation Dialog */}
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>

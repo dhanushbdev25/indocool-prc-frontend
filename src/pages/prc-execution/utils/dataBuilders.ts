@@ -1,8 +1,9 @@
-import { type TimelineStep, type FormData } from '../types/execution.types';
+import { type TimelineStep, type FormData, type OperationWiseExecutionRow } from '../types/execution.types';
+import { mergeOperationWiseExecutionArrays, normalizeOperationWiseToArray } from './operationWiseMerge';
 
 export function buildAggregatedData(step: TimelineStep, formData: FormData): Record<string, unknown> {
 	if (step.type === 'setup') {
-		return {
+		const out: Record<string, unknown> = {
 			prcmetadata: {
 				productionSetId: formData.productionSetId,
 				mouldId: formData.mouldId,
@@ -11,6 +12,11 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 				recordedByUserId: formData.recordedByUserId
 			}
 		};
+		const ow = formData.operationWiseData;
+		if (ow && Array.isArray(ow)) {
+			out.operationWiseData = ow as OperationWiseExecutionRow[];
+		}
+		return out;
 	}
 
 	if (step.type === 'rawMaterials') {
@@ -297,6 +303,13 @@ export function mergeAggregatedData(
 	const merged = { ...existingData };
 
 	for (const [key, value] of Object.entries(newData)) {
+		if (key === 'operationWiseData' && Array.isArray(value)) {
+			merged[key] = mergeOperationWiseExecutionArrays(
+				normalizeOperationWiseToArray(merged[key]),
+				value as OperationWiseExecutionRow[]
+			);
+			continue;
+		}
 		if (merged[key] && typeof merged[key] === 'object' && typeof value === 'object') {
 			// Special handling for sequence step data to preserve responsiblePersons
 			if (isSequenceStepData(merged[key], value)) {

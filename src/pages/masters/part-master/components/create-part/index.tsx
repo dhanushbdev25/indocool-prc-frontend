@@ -44,7 +44,7 @@ import { useFetchInspectionsQuery } from '../../../../../store/api/business/insp
 import { uploadPartDrawings } from '../../../../../utils/uploadPartDrawings';
 import { useImageGallery } from '../../../../../hooks/useImageGallery';
 import { toFileRenderUrl, toFileStoragePath } from '../../../../../utils/fileUrl';
-import type { PartMaster } from '../../../../../store/api/business/part-master/part.validators';
+import type { PartMaster, OperationWisePartRow } from '../../../../../store/api/business/part-master/part.validators';
 
 function mapMouldDetailsToFormMoulds(partMaster: PartMaster): PartMasterFormData['moulds'] {
 	return (partMaster.mouldDetails ?? []).map(item => ({
@@ -52,6 +52,91 @@ function mapMouldDetailsToFormMoulds(partMaster: PartMaster): PartMasterFormData
 		reconciliationCount: Number(item.reconciliationCount) || 0,
 		currentCount: Number(item.currentCount ?? 0) || 0
 	}));
+}
+
+function mapOperationWiseDataFromApi(partMaster: PartMaster): OperationWisePartRow[] {
+	const raw = partMaster.operationWiseData;
+	if (!raw) return [];
+	if (Array.isArray(raw)) {
+		const out: OperationWisePartRow[] = [];
+		for (const item of raw) {
+			if (!item || typeof item !== 'object') continue;
+			const r = item as unknown as Record<string, unknown>;
+			const operationID = Number(r.operationID);
+			if (!Number.isFinite(operationID)) continue;
+			const idRaw = r.id;
+			const id =
+				typeof idRaw === 'string' || typeof idRaw === 'number' ? idRaw : `op-${operationID}`;
+			const operationName = typeof r.operationName === 'string' ? r.operationName : '';
+			const rc = Number(r.responsiblePersonCount);
+			out.push({
+				id,
+				operationID,
+				operationName,
+				responsiblePersonCount: Number.isFinite(rc) && rc >= 1 ? Math.floor(rc) : 1
+			});
+		}
+		return out;
+	}
+	// Legacy: Record<operationId, { memberCount }>
+	if (typeof raw === 'object' && !Array.isArray(raw)) {
+		const out: OperationWisePartRow[] = [];
+		for (const [key, val] of Object.entries(raw)) {
+			const opNum = Number(key);
+			if (!Number.isFinite(opNum)) continue;
+			const mc =
+				val && typeof val === 'object' && 'memberCount' in val
+					? Number((val as { memberCount: unknown }).memberCount)
+					: NaN;
+			out.push({
+				id: `legacy-${key}`,
+				operationID: opNum,
+				operationName: '',
+				responsiblePersonCount: Number.isFinite(mc) && mc >= 1 ? Math.floor(mc) : 1
+			});
+		}
+		return out;
+	}
+	return [];
+}
+
+/** Operation groups that require member count: steps' `group` plus any ids synced from Linked Masters (e.g. empty groups). */
+function getHeadcountAllowedOperationIds(formData: {
+	prcTemplateSteps?: Array<{ group?: string }>;
+	operationGroupIdsForHeadcount?: string[];
+}): Set<string> {
+	const allowed = new Set<string>();
+	for (const s of formData.prcTemplateSteps ?? []) {
+		const g = s.group;
+		if (typeof g === 'string' && g.length > 0) allowed.add(g);
+	}
+	for (const id of formData.operationGroupIdsForHeadcount ?? []) {
+		if (id) allowed.add(id);
+	}
+	return allowed;
+}
+
+function cleanOperationWiseDataForApi(
+	raw: OperationWisePartRow[] | undefined,
+	allowedOperationIds?: Set<string>
+): OperationWisePartRow[] {
+	if (!raw || !Array.isArray(raw)) return [];
+	if (allowedOperationIds && allowedOperationIds.size === 0) return [];
+	const out: OperationWisePartRow[] = [];
+	for (const row of raw) {
+		if (!row || typeof row !== 'object') continue;
+		const opIdStr = String(row.operationID);
+		if (allowedOperationIds && !allowedOperationIds.has(opIdStr)) continue;
+		const n = Number(row.responsiblePersonCount);
+		if (!Number.isFinite(row.operationID)) continue;
+		out.push({
+			id: row.id,
+			operationID: row.operationID,
+			operationName: String(row.operationName ?? ''),
+			responsiblePersonCount: Number.isFinite(n) && n >= 1 ? Math.max(1, Math.floor(n)) : 1
+		});
+	}
+	return out;
 }
 
 /**
@@ -211,6 +296,7 @@ const transformFormDataToApiRequest = (
 			partRevision: formData.partRevision,
 			status: formData.isActive ? ('ACTIVE' as const) : ('INACTIVE' as const),
 			customer: formData.customer,
+			customerVariantId: formData.customerVariantId,
 			description: formData.description,
 			notes: formData.notes || '',
 			layupType: formData.layupType || '',
@@ -224,6 +310,10 @@ const transformFormDataToApiRequest = (
 				mouldCode: m.mouldCode,
 				reconciliationCount: Number(m.reconciliationCount) || 0
 			})),
+			operationWiseData: cleanOperationWiseDataForApi(
+				formData.operationWiseData,
+				getHeadcountAllowedOperationIds(formData)
+			),
 			files: uploadedDrawings,
 			inspectionDiagrams: transformInspectionDiagrams(formData.inspectionDiagrams)
 		},
@@ -450,6 +540,8 @@ const CreatePart = () => {
 
 	const formPartId = useWatch({ control, name: 'id' });
 	const formPrcTemplateId = useWatch({ control, name: 'prcTemplate' });
+	const watchedPrcTemplateSteps = useWatch({ control, name: 'prcTemplateSteps' });
+	const watchedHeadcountGroupIds = useWatch({ control, name: 'operationGroupIdsForHeadcount' });
 	const operationsQueryPartId = formPartId ?? (id ? Number(id) : undefined);
 	const { data: operationsData } = useFetchOperationsComboQuery(
 		{ partId: operationsQueryPartId! },
@@ -553,6 +645,7 @@ const CreatePart = () => {
 				partRevision: partMaster.partRevision ?? 1,
 				isActive: partMaster.status === 'ACTIVE',
 				customer: partMaster.customer,
+				customerVariantId: partMaster.customerVariantId ?? undefined,
 				description: partMaster.description,
 				notes: partMaster.notes || '',
 				layupType: partMaster.layupType || '',
@@ -605,6 +698,8 @@ const CreatePart = () => {
 					isLatest: c.isLatest ?? true
 				})),
 				moulds: mapMouldDetailsToFormMoulds(partMaster),
+				operationWiseData: mapOperationWiseDataFromApi(partMaster),
+				operationGroupIdsForHeadcount: [],
 				files: partMaster.files || [],
 				inspectionDiagrams: partMaster.inspectionDiagrams
 					? (() => {
@@ -636,6 +731,23 @@ const CreatePart = () => {
 			}
 		}
 	}, [isEditMode, isFetchSuccess, partData, customersData, isPrcTemplateFetchSuccess, prcTemplateData, operationsData, sequencesData, inspectionsData, reset, setGallery]);
+
+	useEffect(() => {
+		if (!operationsQueryPartId) return;
+
+		const allowedSet = getHeadcountAllowedOperationIds({
+			prcTemplateSteps: getValues('prcTemplateSteps') as Array<{ group?: string }>,
+			operationGroupIdsForHeadcount: getValues('operationGroupIdsForHeadcount') as string[] | undefined
+		});
+		if (allowedSet.size === 0) return;
+
+		const current = getValues('operationWiseData') as OperationWisePartRow[] | undefined;
+		const list = Array.isArray(current) ? current : [];
+		const next = list.filter(r => allowedSet.has(String(r.operationID)));
+		if (next.length !== list.length) {
+			setValue('operationWiseData', next, { shouldDirty: false });
+		}
+	}, [operationsQueryPartId, watchedPrcTemplateSteps, watchedHeadcountGroupIds, getValues, setValue]);
 
 	const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
 		setActiveTab(newValue);

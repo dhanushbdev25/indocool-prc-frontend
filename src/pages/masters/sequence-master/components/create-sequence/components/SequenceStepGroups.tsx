@@ -967,7 +967,7 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 								/>
 							</Grid>
 
-							{/* CTQ, Allow Attachments, and Responsible Person */}
+							{/* CTQ and Responsible Person */}
 							<Grid size={{ xs: 12, md: 6 }}>
 								<Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
 									<Controller
@@ -986,16 +986,6 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 														</Typography>
 													</Box>
 												}
-											/>
-										)}
-									/>
-									<Controller
-										name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.allowAttachments`}
-										control={control}
-										render={({ field }) => (
-											<FormControlLabel
-												control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
-												label="Allow Attachments"
 											/>
 										)}
 									/>

@@ -8,7 +8,9 @@ import {
 	Build,
 	PlayArrow,
 	PlayCircleFilled,
-	Dashboard as DashboardIcon
+	Dashboard as DashboardIcon,
+	CloudSync,
+	Monitor as MonitorIcon
 } from '@mui/icons-material';
 
 // Lazy-loaded components
@@ -34,6 +36,8 @@ export const imports = {
 	mouldReconciliation: Loadable(
 		lazy(() => import('../pages/masters/mould-reconciliation/components/list-mould-reconciliation'))
 	),
+	sapJobs: Loadable(lazy(() => import('../pages/sap-jobs/components/list-sap-jobs'))),
+	sapJobRunHistory: Loadable(lazy(() => import('../pages/sap-jobs/components/view-sap-job-history'))),
 	prcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/list-prc-execution'))),
 	viewPrcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/view-prc-execution'))),
 	executePrc: Loadable(lazy(() => import('../pages/prc-execution/components/execute-prc')))
@@ -144,6 +148,13 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				showInSidebar: false
 			},
 			{
+				text: 'Clone Sequence',
+				path: 'sequence-master/clone-sequence/:id',
+				element: imports.createSequence,
+				permission: 'CREATEPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
 				icon: Checklist,
 				text: 'Inspection Master',
 				path: 'inspection-master',
@@ -173,7 +184,13 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			},
-			
+			{
+				text: 'Clone Inspection',
+				path: 'inspection-master/clone-inspection/:id',
+				element: imports.createInspection,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
 			{
 				icon: Build,
 				text: 'Part Master',
@@ -216,9 +233,32 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 		]
 	},
 	{
+		text: 'Monitor',
+		icon: MonitorIcon,
+		order: 2,
+		submodules: [
+			{
+				icon: CloudSync,
+				text: 'SAP integration jobs',
+				path: 'sap-jobs',
+				element: imports.sapJobs,
+				permission: 'EDITPROCESSSEQUENCE',
+				order: 1,
+				showInSidebar: true
+			},
+			{
+				text: 'SAP job run history',
+				path: 'sap-jobs/history/:jobKey',
+				element: imports.sapJobRunHistory,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			}
+		]
+	},
+	{
 		text: 'PRC Execution',
 		icon: PlayArrow,
-		order: 2,
+		order: 3,
 		submodules: [
 			{
 				icon: PlayCircleFilled,

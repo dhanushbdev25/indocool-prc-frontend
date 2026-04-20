@@ -7,7 +7,8 @@ import {
 	Category as CategoryIcon,
 	Edit as EditIcon,
 	Delete as DeleteIcon,
-	Visibility as ViewIcon
+	Visibility as ViewIcon,
+	ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
@@ -21,9 +22,10 @@ interface SequenceTableProps {
 	onActionClick?: (sequenceId: string, action: string) => void;
 	onEdit?: (sequenceId: number) => void;
 	onView?: (sequenceId: number) => void;
+	onClone?: (sequenceId: number) => void;
 }
 
-const SequenceTable = memo(({ data, onActionClick, onEdit, onView }: SequenceTableProps) => {
+const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: SequenceTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<SequenceData | null>(null);
 
@@ -66,6 +68,13 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView }: SequenceTab
 	const handleView = () => {
 		if (selectedRow && onView) {
 			onView(selectedRow.id);
+		}
+		handleMenuClose();
+	};
+
+	const handleClone = () => {
+		if (selectedRow && onClone) {
+			onClone(selectedRow.id);
 		}
 		handleMenuClose();
 	};
@@ -280,6 +289,12 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView }: SequenceTab
 							<EditIcon fontSize="small" />
 						</ListItemIcon>
 						<ListItemText>Edit</ListItemText>
+					</MenuItem>,
+					<MenuItem key="clone" onClick={handleClone}>
+						<ListItemIcon>
+							<ContentCopyIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>Clone</ListItemText>
 					</MenuItem>,
 					<MenuItem key="delete" onClick={handleDelete} sx={{ color: 'error.main' }}>
 						<ListItemIcon>

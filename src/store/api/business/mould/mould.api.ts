@@ -1,7 +1,8 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
-	isMouldListResponse,
+	extractMouldListArray,
+	coerceMouldApiItem,
 	isMouldComboResponse,
 	mapMouldApiItemToRow,
 	type MouldReconciliationRow,
@@ -18,13 +19,10 @@ export const mouldApi = createApi({
 				url: 'mould',
 				method: 'GET'
 			}),
-			transformResponse: (response: unknown) => {
-				if (!isMouldListResponse(response)) {
-					console.error('Invalid mould list response structure', response);
-					throw new Error('Invalid mould list response structure');
-				}
-				return response.data.map(mapMouldApiItemToRow);
-			},
+			transformResponse: (response: unknown) =>
+				extractMouldListArray(response).map((raw, i) =>
+					mapMouldApiItemToRow(coerceMouldApiItem(raw, i))
+				),
 			providesTags: ['Mould']
 		}),
 		/** Moulds for a part (label = mouldId per backend template). Query: partId (part master id). */

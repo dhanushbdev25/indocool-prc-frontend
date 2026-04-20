@@ -108,14 +108,25 @@ export interface PartMaster {
 	isLatest?: boolean;
 	catalyst?: number | null;
 	prcTemplate?: number | null;
+	customerVariantId?: number | null;
 	createdBy?: number | null;
 	updatedBy?: number | null;
 	createdAt?: string | null;
 	updatedAt?: string | null;
 	customerName?: string | null;
 	mouldDetails?: Mould[];
+	/** One row per operation: planned responsible-person count for PRC execution */
+	operationWiseData?: OperationWisePartRow[];
 	files?: PartDrawing[] | null;
 	inspectionDiagrams?: InspectionDiagram | InspectionDiagram[] | null;
+}
+
+/** Part Master API / form row for operation-wise headcount */
+export interface OperationWisePartRow {
+	id: string | number;
+	operationID: number;
+	operationName: string;
+	responsiblePersonCount: number;
 }
 
 export interface CustomerCombo {
@@ -153,6 +164,92 @@ export interface PartByIdResponse {
 
 export interface CustomersResponse {
 	data: CustomerCombo[];
+}
+
+/** Nested payload from `GET parts/sapCombo` combo rows */
+export interface SapComboRowData {
+	partNumber?: string;
+	description?: string;
+}
+
+export interface SapComboRow {
+	label: string;
+	value: string;
+	data?: SapComboRowData;
+	[key: string]: unknown;
+}
+
+export interface SapComboResponse {
+	data: SapComboRow[];
+}
+
+export type SapComboRawRow = { label: string; value: string | number; data?: SapComboRowData } & Record<
+	string,
+	unknown
+>;
+
+function isSapComboRawRow(value: unknown): value is SapComboRawRow {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const row = value as Record<string, unknown>;
+	const labelOk = typeof row.label === 'string';
+	const v = row.value;
+	const valueOk = typeof v === 'string' || typeof v === 'number';
+	if (!labelOk || !valueOk) {
+		return false;
+	}
+	const d = row.data;
+	if (d === undefined || d === null) {
+		return true;
+	}
+	if (typeof d !== 'object' || Array.isArray(d)) {
+		return false;
+	}
+	const du = d as Record<string, unknown>;
+	const pnOk = du.partNumber === undefined || typeof du.partNumber === 'string';
+	const descOk = du.description === undefined || typeof du.description === 'string';
+	return pnOk && descOk;
+}
+
+export function isSapComboResponse(value: unknown): value is { data: SapComboRawRow[] } {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	return o.data.every(isSapComboRawRow);
+}
+
+/** Normalized combo rows (string `value`) after transform from `/customer/variantCombo`. */
+export type CustomerVariantComboResponse = CustomersResponse;
+
+export type CustomerVariantComboRawRow = { label: string; value: string | number } & Record<string, unknown>;
+
+function isCustomerVariantComboRow(value: unknown): value is CustomerVariantComboRawRow {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const row = value as Record<string, unknown>;
+	const labelOk = typeof row.label === 'string';
+	const v = row.value;
+	const valueOk = typeof v === 'string' || typeof v === 'number';
+	return labelOk && valueOk;
+}
+
+export function isCustomerVariantComboResponse(
+	value: unknown
+): value is { data: CustomerVariantComboRawRow[] } {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	return o.data.every(isCustomerVariantComboRow);
 }
 
 export interface CreatePartResponse {

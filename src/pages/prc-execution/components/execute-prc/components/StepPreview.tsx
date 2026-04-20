@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
 	Box,
 	Typography,
@@ -21,7 +21,9 @@ import {
 	ButtonGroup,
 	Menu,
 	MenuItem,
-	Collapse
+	Collapse,
+	Autocomplete,
+	CircularProgress
 } from '@mui/material';
 import {
 	ArrowBack,
@@ -36,7 +38,9 @@ import {
 	Warning,
 	Error as ErrorIcon
 } from '@mui/icons-material';
-import { type StepPreviewData } from '../../../types/execution.types';
+import { type StepPreviewData, type ProceedFromPreviewPayload } from '../../../types/execution.types';
+import { useFetchOperationDelayReasonComboQuery } from '../../../../../store/api/business/prc-execution/prc-execution.api';
+import { type OperationDelayReasonComboOption } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 import ImageDisplay from './ImageDisplay';
 import { debugDataTransformation } from '../../../utils/dataTransformers';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
@@ -48,7 +52,7 @@ interface StepPreviewProps {
 	onApproveProduction: () => void;
 	onApproveCTQ: () => void;
 	onPartialApproveCTQ: () => void;
-	onProceedToNext: (timingExceededRemarks?: string) => void;
+	onProceedToNext: (payload?: ProceedFromPreviewPayload) => void;
 	onBackToStepGroup?: () => void;
 }
 
@@ -94,6 +98,7 @@ const StepPreview = ({
 		});
 	};
 	const [timingExceededRemarks, setTimingExceededRemarks] = useState('');
+	const [selectedDelayReason, setSelectedDelayReason] = useState<OperationDelayReasonComboOption | null>(null);
 	const [ctqMenuAnchor, setCtqMenuAnchor] = useState<null | HTMLElement>(null);
 	const [ctqApprovalMode, setCtqApprovalMode] = useState<'full' | 'partial'>('full');
 
@@ -167,11 +172,55 @@ const StepPreview = ({
 		setCtqMenuAnchor(null);
 	};
 
+	const {
+		data: operationDelayReasonOptions = [],
+		isLoading: isDelayReasonLoading,
+		isFetching: isDelayReasonFetching
+	} = useFetchOperationDelayReasonComboQuery(undefined, {
+		skip: previewData.type !== 'sequence' || !previewData.timingExceeded
+	});
+
+	const delayReasonComboBusy = isDelayReasonLoading || isDelayReasonFetching;
+
+	// Hydrate delay reason from saved execution data only. Do not clear when code is missing — the
+	// combo list loading would otherwise wipe the user's selection before submit.
+	useEffect(() => {
+		if (previewData.type !== 'sequence' || !previewData.timingExceeded) {
+			setSelectedDelayReason(null);
+			return;
+		}
+		const code = previewData.timingExceededReasonCode;
+		if (code === undefined || code === null || code === '') {
+			return;
+		}
+		const match = operationDelayReasonOptions.find(
+			o => o.value === code || String(o.value) === String(code)
+		);
+		if (match) {
+			setSelectedDelayReason(match);
+		} else if (previewData.timingExceededReasonLabel) {
+			setSelectedDelayReason({
+				label: previewData.timingExceededReasonLabel,
+				value: String(code)
+			});
+		} else {
+			setSelectedDelayReason({ label: String(code), value: String(code) });
+		}
+	}, [
+		previewData.type,
+		previewData.timingExceeded,
+		previewData.timingExceededReasonCode,
+		previewData.timingExceededReasonLabel,
+		previewData.stepNumber,
+		operationDelayReasonOptions
+	]);
+
 	const canProceed =
 		productionApproved &&
 		(!previewData.ctq || ctqApproved || partialCtqApproved) &&
 		!previewData.stepCompleted &&
-		(!previewData.timingExceeded || timingExceededRemarks.trim().length > 0);
+		(!previewData.timingExceeded ||
+			(timingExceededRemarks.trim().length > 0 && selectedDelayReason !== null));
 
 	const parseOkNotOkValue = (rawValue: unknown): { value: string; notOkComment: string } => {
 		if (typeof rawValue === 'string') {
@@ -356,6 +405,42 @@ const StepPreview = ({
 									<strong>{formatSecondsToTime(previewData.expectedDuration || 0)}</strong> expected
 								</Typography>
 							</Alert>
+							<Autocomplete<OperationDelayReasonComboOption, false, false, false>
+								fullWidth
+								sx={{ mt: 2 }}
+								options={operationDelayReasonOptions}
+								loading={delayReasonComboBusy}
+								value={selectedDelayReason}
+								onChange={(_, v) => setSelectedDelayReason(v)}
+								getOptionLabel={o => o.label}
+								isOptionEqualToValue={(a, b) => a.value === b.value}
+								disabled={previewData.stepCompleted}
+								renderInput={params => (
+									<TextField
+										{...params}
+										label="Operation delay reason"
+										placeholder="Select a reason code"
+										required={!previewData.stepCompleted}
+										error={!previewData.stepCompleted && !selectedDelayReason}
+										helperText={
+											!previewData.stepCompleted && !selectedDelayReason
+												? 'Required to proceed'
+												: undefined
+										}
+										InputProps={{
+											...params.InputProps,
+											endAdornment: (
+												<>
+													{delayReasonComboBusy ? (
+														<CircularProgress color="inherit" size={20} />
+													) : null}
+													{params.InputProps.endAdornment}
+												</>
+											)
+										}}
+									/>
+								)}
+							/>
 							<TextField
 								fullWidth
 								multiline
@@ -1824,7 +1909,17 @@ const StepPreview = ({
 					<Button
 						variant="contained"
 						color="success"
-						onClick={() => onProceedToNext(timingExceededRemarks)}
+						onClick={() =>
+							onProceedToNext(
+								previewData.timingExceeded
+									? {
+											timingExceededRemarks: timingExceededRemarks.trim(),
+											timingExceededReasonCode: selectedDelayReason?.value,
+											timingExceededReasonLabel: selectedDelayReason?.label
+										}
+									: undefined
+							)
+						}
 						disabled={!canProceed}
 						startIcon={previewData.stepCompleted ? <CheckCircle /> : <ArrowForward />}
 						size="small"

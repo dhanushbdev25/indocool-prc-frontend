@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
 	Box,
 	Paper,
@@ -12,12 +13,20 @@ import {
 	FormControlLabel,
 	Switch,
 	IconButton,
-	Button
+	Button,
+	FormHelperText,
+	Autocomplete,
+	CircularProgress
 } from '@mui/material';
 import { Info as InfoIcon, Image as ImageIcon, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { Controller, Control, FieldErrors, useFieldArray } from 'react-hook-form';
+import { Controller, Control, FieldErrors, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
-import { useFetchCustomersQuery } from '.././../../../../../store/api/business/part-master/part.api';
+import {
+	useFetchCustomersQuery,
+	useFetchCustomerVariantComboQuery,
+	useFetchSapComboQuery
+} from '.././../../../../../store/api/business/part-master/part.api';
+import type { SapComboRow } from '.././../../../../../store/api/business/part-master/part.validators';
 import PartImageUpload from './PartImageUpload';
 import { ImageItem } from '../../../../../../hooks/useImageGallery';
 
@@ -30,7 +39,32 @@ interface GeneralInfoProps {
 }
 
 const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: GeneralInfoProps) => {
+	const { setValue } = useFormContext<PartMasterFormData>();
+	const customerCode = useWatch({ control, name: 'customer' });
+	const prevCustomerRef = useRef<string | undefined>(undefined);
+
 	const { data: customersData, isLoading: isCustomersLoading } = useFetchCustomersQuery();
+	const {
+		data: sapComboData,
+		isLoading: isSapComboLoading,
+		isFetching: isSapComboFetching
+	} = useFetchSapComboQuery();
+	const {
+		data: variantComboData,
+		isLoading: isVariantComboLoading,
+		isFetching: isVariantComboFetching
+	} = useFetchCustomerVariantComboQuery(
+		{ customerCode: customerCode || '' },
+		{ skip: !customerCode }
+	);
+
+	useEffect(() => {
+		if (prevCustomerRef.current !== undefined && prevCustomerRef.current !== customerCode) {
+			setValue('customerVariantId', undefined);
+		}
+		prevCustomerRef.current = customerCode;
+	}, [customerCode, setValue]);
+
 	const { fields: mouldFields, append, remove } = useFieldArray({
 		control,
 		name: 'moulds'
@@ -47,6 +81,89 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
 				<Grid container spacing={3}>
+					{/* SAP Reference Number — combo at top */}
+					<Grid size={{ xs: 12 }}>
+						<Controller
+							name="sapReferenceNumber"
+							control={control}
+							render={({ field }) => {
+								const sapRows = sapComboData?.data ?? [];
+								const selected = field.value ?? '';
+								const hasUnknownSap =
+									Boolean(selected) && !sapRows.some(r => String(r.value) === String(selected));
+								const options: SapComboRow[] = hasUnknownSap
+									? [{ label: selected, value: selected }, ...sapRows]
+									: sapRows;
+								const comboBusy = isSapComboLoading || isSapComboFetching;
+								const value: SapComboRow | null =
+									selected === ''
+										? null
+										: (sapRows.find(r => String(r.value) === String(selected)) ??
+											(hasUnknownSap ? { label: selected, value: selected } : null));
+								return (
+									<Autocomplete<SapComboRow, false, false, false>
+										fullWidth
+										options={options}
+										loading={comboBusy}
+										value={value}
+										onChange={(_, newValue) => {
+											if (!newValue) {
+												field.onChange('');
+												return;
+											}
+											field.onChange(String(newValue.value));
+											const row =
+												sapRows.find(r => String(r.value) === String(newValue.value)) ?? newValue;
+											if (row.data) {
+												if (row.data.partNumber !== undefined) {
+													setValue('partNumber', row.data.partNumber);
+												}
+												if (row.data.description !== undefined) {
+													setValue('description', row.data.description);
+												}
+											}
+										}}
+										getOptionLabel={option => option.label}
+										isOptionEqualToValue={(a, b) => String(a.value) === String(b.value)}
+										ListboxProps={{
+											sx: { maxHeight: 280 }
+										}}
+										renderInput={params => (
+											<TextField
+												{...params}
+												name={field.name}
+												onBlur={field.onBlur}
+												label="SAP Reference Number"
+												placeholder="Search or select SAP reference"
+												error={!!errors.sapReferenceNumber}
+												helperText={
+													errors.sapReferenceNumber?.message ??
+													(comboBusy ? 'Loading SAP references…' : undefined)
+												}
+												sx={{
+													'& .MuiOutlinedInput-root': {
+														borderRadius: '8px'
+													}
+												}}
+												InputProps={{
+													...params.InputProps,
+													endAdornment: (
+														<>
+															{comboBusy ? (
+																<CircularProgress color="inherit" size={20} sx={{ mr: 1 }} />
+															) : null}
+															{params.InputProps.endAdornment}
+														</>
+													)
+												}}
+											/>
+										)}
+									/>
+								);
+							}}
+						/>
+					</Grid>
+
 					{/* Part Number */}
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
@@ -59,11 +176,20 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Part Number"
 									required
 									placeholder="e.g., PN-10045"
-									helperText={errors.partNumber?.message || 'Unique identifier for the part'}
+									helperText={
+										errors.partNumber?.message ||
+										'Set from SAP reference selection'
+									}
 									error={!!errors.partNumber}
+									slotProps={{
+										htmlInput: {
+											readOnly: true
+										}
+									}}
 									sx={{
 										'& .MuiOutlinedInput-root': {
-											borderRadius: '8px'
+											borderRadius: '8px',
+											backgroundColor: '#f5f5f5'
 										}
 									}}
 								/>
@@ -218,6 +344,74 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 						/>
 					</Grid>
 
+					{/* Customer variant */}
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name="customerVariantId"
+							control={control}
+							render={({ field }) => (
+								<FormControl
+									fullWidth
+									error={!!errors.customerVariantId}
+									disabled={
+										!customerCode || isVariantComboLoading || isVariantComboFetching
+									}
+								>
+									<InputLabel shrink>Customer variant</InputLabel>
+									<Select
+										displayEmpty
+										label="Customer variant"
+										value={
+											field.value != null && !Number.isNaN(field.value)
+												? String(field.value)
+												: ''
+										}
+										renderValue={selected => {
+											if (selected === '') {
+												return (
+													<Typography component="span" sx={{ color: 'text.secondary' }}>
+														Select variant
+													</Typography>
+												);
+											}
+											const row = variantComboData?.data?.find(
+												r => String(r.value) === String(selected)
+											);
+											return row?.label ?? String(selected);
+										}}
+										onChange={e => {
+											const v = e.target.value as string;
+											const num = Number(v);
+											field.onChange(Number.isNaN(num) ? undefined : num);
+										}}
+										sx={{
+											borderRadius: '8px'
+										}}
+									>
+										{variantComboData?.data?.map(row => (
+											<MenuItem key={row.value} value={row.value}>
+												{row.label}
+											</MenuItem>
+										))}
+									</Select>
+									{errors.customerVariantId && (
+										<Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+											{errors.customerVariantId.message}
+										</Typography>
+									)}
+									{!errors.customerVariantId && !customerCode && (
+										<FormHelperText>Select a customer to load variants</FormHelperText>
+									)}
+									{!errors.customerVariantId &&
+										customerCode &&
+										(isVariantComboLoading || isVariantComboFetching) && (
+											<FormHelperText>Loading variants…</FormHelperText>
+										)}
+								</FormControl>
+							)}
+						/>
+					</Grid>
+
 					{/* Description */}
 					<Grid size={{ xs: 12 }}>
 						<Controller
@@ -230,11 +424,20 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Description"
 									required
 									placeholder="e.g., Aluminium Bracket Assembly for Cooling System"
-									helperText={errors.description?.message || 'Detailed description of the part'}
+									helperText={
+										errors.description?.message ||
+										'Set from SAP reference selection'
+									}
 									error={!!errors.description}
+									slotProps={{
+										htmlInput: {
+											readOnly: true
+										}
+									}}
 									sx={{
 										'& .MuiOutlinedInput-root': {
-											borderRadius: '8px'
+											borderRadius: '8px',
+											backgroundColor: '#f5f5f5'
 										}
 									}}
 								/>
@@ -278,29 +481,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									placeholder="e.g., RHD (Exterior)"
 									helperText="Part model or variant "
 									error={!!errors.model}
-									sx={{
-										'& .MuiOutlinedInput-root': {
-											borderRadius: '8px'
-										}
-									}}
-								/>
-							)}
-						/>
-					</Grid>
-
-					{/* SAP Reference Number */}
-					<Grid size={{ xs: 12, md: 6 }}>
-						<Controller
-							name="sapReferenceNumber"
-							control={control}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									fullWidth
-									label="SAP Reference Number"
-									placeholder="e.g., SAP-12345"
-									helperText="SAP system reference number "
-									error={!!errors.sapReferenceNumber}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'

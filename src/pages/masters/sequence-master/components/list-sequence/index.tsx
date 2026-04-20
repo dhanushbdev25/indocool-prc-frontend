@@ -160,6 +160,10 @@ const ListSequence = () => {
 		navigate(`/sequence-master/view-sequence/${sequenceId}`);
 	};
 
+	const handleClone = (sequenceId: number) => {
+		navigate(`/sequence-master/clone-sequence/${sequenceId}`);
+	};
+
 	// Show loading state with skeleton
 	if (isSequenceDataLoading) {
 		return (
@@ -179,7 +183,13 @@ const ListSequence = () => {
 				onFilterChange={handleFilterChange}
 				onTypeFilterChange={handleTypeFilterChange}
 			/>
-			<SequenceTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
+			<SequenceTable
+				data={filteredData}
+				onActionClick={handleActionClick}
+				onEdit={handleEdit}
+				onView={handleView}
+				onClone={handleClone}
+			/>
 
 			{/* Delete Confirmation Dialog */}
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>

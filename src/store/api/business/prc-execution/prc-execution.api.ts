@@ -1,10 +1,14 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
+import {
+	isOperationDelayReasonComboResponse,
+	type OperationDelayReasonComboItem
+} from './prc-execution.validators';
 
 export const prcExecutionApi = createApi({
 	reducerPath: 'prcExecutionApi',
 	baseQuery,
-	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant'],
+	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant', 'OperationDelayReasonCombo'],
 	endpoints: builder => ({
 		// Fetch all PRC executions
 		fetchPrcExecutions: builder.query<unknown, void>({
@@ -72,6 +76,23 @@ export const prcExecutionApi = createApi({
 				method: 'GET'
 			}),
 			providesTags: ['Plant']
+		}),
+
+		/** GET /web/combo?type=OPERATIONDELAYREASON — delay reasons for step-group timing overruns */
+		fetchOperationDelayReasonCombo: builder.query<OperationDelayReasonComboItem[], void>({
+			query: () => ({
+				url: '/combo',
+				method: 'GET',
+				params: { type: 'OPERATIONDELAYREASON' }
+			}),
+			transformResponse: (response: unknown) => {
+				if (!isOperationDelayReasonComboResponse(response)) {
+					console.error('Invalid OPERATIONDELAYREASON combo response structure', response);
+					throw new Error('Invalid OPERATIONDELAYREASON combo response structure');
+				}
+				return response.data;
+			},
+			providesTags: ['OperationDelayReasonCombo']
 		})
 	})
 });
@@ -83,5 +104,6 @@ export const {
 	useFetchPartsByCustomerQuery,
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation,
-	useFetchPlantsQuery
+	useFetchPlantsQuery,
+	useFetchOperationDelayReasonComboQuery
 } = prcExecutionApi;

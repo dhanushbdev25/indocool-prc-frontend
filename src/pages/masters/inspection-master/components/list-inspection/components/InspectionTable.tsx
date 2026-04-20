@@ -8,7 +8,8 @@ import {
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
-	Warning as WarningIcon
+	Warning as WarningIcon,
+	ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
@@ -32,9 +33,10 @@ interface InspectionTableProps {
 	onActionClick?: (inspectionId: string, action: string) => void;
 	onEdit?: (inspectionId: number) => void;
 	onView?: (inspectionId: number) => void;
+	onClone?: (inspectionId: number) => void;
 }
 
-const InspectionTable = memo(({ data, onActionClick, onEdit, onView }: InspectionTableProps) => {
+const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: InspectionTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<InspectionData | null>(null);
 
@@ -79,6 +81,13 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView }: Inspectio
 	const handleView = () => {
 		if (selectedRow && onView) {
 			onView(selectedRow.id);
+		}
+		handleMenuClose();
+	};
+
+	const handleClone = () => {
+		if (selectedRow && onClone) {
+			onClone(selectedRow.id);
 		}
 		handleMenuClose();
 	};
@@ -294,6 +303,12 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView }: Inspectio
 							<EditIcon fontSize="small" />
 						</ListItemIcon>
 						<ListItemText>Edit</ListItemText>
+					</MenuItem>,
+					<MenuItem key="clone" onClick={handleClone}>
+						<ListItemIcon>
+							<ContentCopyIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>Clone</ListItemText>
 					</MenuItem>,
 					<MenuItem key="delete" onClick={handleDelete} sx={{ color: 'error.main' }}>
 						<ListItemIcon>

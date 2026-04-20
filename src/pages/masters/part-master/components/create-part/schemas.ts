@@ -110,6 +110,17 @@ export const prcTemplateStepFormSchema = yup.object({
 	updatedAt: yup.string().optional()
 });
 
+export const operationWiseRowFormSchema = yup.object({
+	id: yup.mixed<string | number>().required(),
+	operationID: yup.number().required(),
+	operationName: yup.string().required(),
+	responsiblePersonCount: yup
+		.number()
+		.typeError('Count is required')
+		.min(1, 'Must be at least 1')
+		.required()
+});
+
 // Main form validation schema
 export const partMasterFormSchema = yup.object({
 	id: yup.number().optional(),
@@ -128,6 +139,7 @@ export const partMasterFormSchema = yup.object({
 	partRevision: yup.number().default(1),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),
+	customerVariantId: yup.number().nullable().optional(),
 	description: yup
 		.string()
 		.required('Description is required')
@@ -159,6 +171,9 @@ export const partMasterFormSchema = yup.object({
 	drilling: yup.array(drillingFormSchema).default([]),
 	cutting: yup.array(cuttingFormSchema).default([]),
 	moulds: yup.array(mouldSchema).default([]),
+	operationWiseData: yup.array(operationWiseRowFormSchema).default([]),
+	/** Synced from Linked Masters: operation group ids included in the template (for member count scope) */
+	operationGroupIdsForHeadcount: yup.array(yup.string()).default([]),
 	files: yup.array(partDrawingSchema).default([]),
 	inspectionDiagrams: inspectionDiagramSchema.optional(),
 	createdAt: yup.string().optional(),
@@ -223,6 +238,7 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	partRevision: 1,
 	isActive: true,
 	customer: '',
+	customerVariantId: undefined,
 	description: '',
 	notes: '',
 	layupType: '',
@@ -243,6 +259,8 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	drilling: [],
 	cutting: [],
 	moulds: [],
+	operationWiseData: [],
+	operationGroupIdsForHeadcount: [],
 	files: [],
 	inspectionDiagrams: undefined
 };
@@ -262,6 +280,7 @@ export const generalInfoSchema = yup.object({
 		.max(50, 'Drawing number must be less than 50 characters'),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),
+	customerVariantId: yup.number().nullable().optional(),
 	description: yup
 		.string()
 		.required('Description is required')

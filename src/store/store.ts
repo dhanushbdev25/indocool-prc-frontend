@@ -16,6 +16,7 @@ import { partApi } from './api/business/part-master/part.api';
 import { mouldApi } from './api/business/mould/mould.api';
 import { prcExecutionApi } from './api/business/prc-execution/prc-execution.api';
 import { dashboardApi } from './api/business/dashboard/dashboard.api';
+import { sapJobRunsApi } from './api/business/sap-job-runs/sap-job-runs.api';
 
 // ==============================|| REDUX TOOLKIT - MAIN STORE ||============================== //
 
@@ -56,6 +57,7 @@ export const store = configureStore({
 			mouldApi.middleware,
 			prcExecutionApi.middleware,
 			dashboardApi.middleware,
+			sapJobRunsApi.middleware,
 			rtkQueryErrorLogger
 		] as Middleware[])
 });

@@ -16,7 +16,6 @@ import {
 	Group as GroupIcon,
 	ExpandMore as ExpandMoreIcon,
 	PlaylistAdd as StepIcon,
-	AttachFile as AttachFileIcon,
 	Assessment as AssessmentIcon,
 	Straighten as StraightenIcon,
 	AccessTime as AccessTimeIcon
@@ -269,19 +268,6 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									Additional Options
 								</Typography>
 								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-									{step.allowAttachments && (
-										<Chip
-											icon={<AttachFileIcon sx={{ fontSize: '0.875rem' }} />}
-											label="Attachments Allowed"
-											size="small"
-											sx={{
-												backgroundColor: '#4caf50',
-												color: 'white',
-												fontSize: '0.75rem',
-												height: '24px'
-											}}
-										/>
-									)}
 									{step.responsiblePerson && (
 										<Chip
 											icon={<AssessmentIcon sx={{ fontSize: '0.875rem' }} />}
