@@ -190,6 +190,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 					isSplit: item.splitting || false,
 					temperature: '',
 					humidity: '',
+					canNumber: '',
 					actualQuantity: '',
 					catalystQuantity: '',
 					calculatedMin: 0,
@@ -232,6 +233,10 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 							catalystQuantity: savedEntry.catalystQuantity || '',
 							validationStatus: savedEntry.validationStatus || 'Accepted',
 							humidity: savedEntry.humidity || '',
+							canNumber:
+								savedEntry.canNumber == null || savedEntry.canNumber === ''
+									? ''
+									: String(savedEntry.canNumber),
 							actualQuantity: savedEntry.actualQuantity || 0,
 							temperature: savedEntry.temperature || ''
 						};
@@ -694,6 +699,17 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 															</Box>
 														)
 													}}
+												/>
+											</Grid>
+
+											<Grid size={{ xs: 12, md: 3 }}>
+												<TextField
+													fullWidth
+													label="Can number"
+													value={entry.canNumber}
+													onChange={e => handleInputChange(entry.id, 'canNumber', e.target.value)}
+													helperText="Optional"
+													disabled={isReadOnly || entry.blocked}
 												/>
 											</Grid>
 										</Grid>

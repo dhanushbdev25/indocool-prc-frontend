@@ -1,6 +1,8 @@
 import { Box, Typography, Card, CardContent, Chip, Divider, List, ListItem, ListItemText } from '@mui/material';
 import { CheckCircle, Schedule, TrendingUp } from '@mui/icons-material';
 import { type ExecutionData, type TimelineStep } from '../../../types/execution.types';
+import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
+import { formatExecutionDuration } from '../../../utils/formatExecutionDuration';
 
 interface ExecutionQuickStatsProps {
 	executionData: ExecutionData;
@@ -8,11 +10,8 @@ interface ExecutionQuickStatsProps {
 }
 
 const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStatsProps) => {
-	const formatDuration = (durationMs: number) => {
-		const hours = Math.floor(durationMs / 3600000);
-		const minutes = Math.floor((durationMs % 3600000) / 60000);
-		return `${hours}h ${minutes}m`;
-	};
+	const liveDurationMs = useLiveExecutionDurationMs(executionData);
+	const durationLabel = formatExecutionDuration(liveDurationMs);
 
 	const getProgressColor = (completed: number, total: number) => {
 		const percentage = (completed / total) * 100;
@@ -96,7 +95,7 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 						</Typography>
 					</Box>
 					<Typography variant="h4" sx={{ fontWeight: 600, color: '#666' }}>
-						{formatDuration(executionData.duration)}
+						{durationLabel}
 					</Typography>
 				</CardContent>
 			</Card>

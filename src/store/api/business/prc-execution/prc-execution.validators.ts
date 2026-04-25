@@ -6,8 +6,12 @@ export interface PrcExecution {
 	version: number;
 	customer: string;
 	productionSetId: string;
-	mouldId: string;
-	shift: string;
+	mouldId?: string | null;
+	shift?: string | null;
+	sapSync?: boolean;
+	customerName?: string | null;
+	customerVariantName?: string | null;
+	sapReferenceNumber?: string | null;
 	progress: string | number;
 	stepsCompleted?: number;
 	totalSteps?: number;

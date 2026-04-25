@@ -114,3 +114,61 @@ export function parseSapJobRunsResponse(response: unknown): SapJobRunItem[] {
 	}
 	return out;
 }
+
+/** GET sapJobRuns/confirmationLogs/:prcExecutionId — { data: SapConfirmationLogItem[] } */
+
+export interface SapConfirmationLogItem {
+	id: number;
+	prcExecutionId: number;
+	operationId: string;
+	operationText: string;
+	requestUrl: string;
+	requestBody: Record<string, unknown>;
+	httpStatus: number;
+	success: boolean;
+	errorMessage: string | null;
+	triggeredAt: string;
+	[key: string]: unknown;
+}
+
+function isSapConfirmationLogItem(value: unknown): value is SapConfirmationLogItem {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	const rb = o.requestBody;
+	if (rb === null || typeof rb !== 'object' || Array.isArray(rb)) {
+		return false;
+	}
+	const err = o.errorMessage;
+	return (
+		typeof o.id === 'number' &&
+		typeof o.prcExecutionId === 'number' &&
+		typeof o.operationId === 'string' &&
+		typeof o.operationText === 'string' &&
+		typeof o.requestUrl === 'string' &&
+		typeof o.httpStatus === 'number' &&
+		typeof o.success === 'boolean' &&
+		(err === null || typeof err === 'string') &&
+		typeof o.triggeredAt === 'string'
+	);
+}
+
+export function parseSapConfirmationLogsResponse(response: unknown): SapConfirmationLogItem[] {
+	let arr: unknown[];
+	try {
+		arr = extractListArray(response);
+	} catch {
+		console.error('Invalid SAP confirmation logs response structure', response);
+		throw new Error('Invalid SAP confirmation logs response structure');
+	}
+	const out: SapConfirmationLogItem[] = [];
+	for (const item of arr) {
+		if (!isSapConfirmationLogItem(item)) {
+			console.error('Invalid SAP confirmation log item', item);
+			throw new Error('Invalid SAP confirmation logs response structure');
+		}
+		out.push(item);
+	}
+	return out;
+}

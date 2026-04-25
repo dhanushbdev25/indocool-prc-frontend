@@ -51,6 +51,9 @@ export function transformRegionsToArray(regions: Record<string, any>): Annotatio
 				cls: region.cls,
 				comment: region.comment
 			};
+			if (region.category !== undefined) {
+				transformedRegion.category = region.category;
+			}
 
 			// Transform points based on type
 			if (region.type === 'point' && region.x !== undefined && region.y !== undefined) {
@@ -58,6 +61,10 @@ export function transformRegionsToArray(regions: Record<string, any>): Annotatio
 				transformedRegion.y = region.y;
 			} else if (region.type === 'polygon' && region.points) {
 				transformedRegion.points = transformPointsToArray(region.points);
+			} else if (region.type === 'circle') {
+				if (region.cx !== undefined) transformedRegion.cx = region.cx;
+				if (region.cy !== undefined) transformedRegion.cy = region.cy;
+				if (region.radius !== undefined) transformedRegion.radius = region.radius;
 			}
 
 			return transformedRegion;
@@ -129,6 +136,10 @@ export function transformPrcAggregatedData(prcAggregatedSteps: Record<string, an
 						console.log(`🔄 Transforming annotations for parameter ${parameterId}:`, parameterData.annotations);
 						transformedParam.annotations = transformAnnotationsToArray(parameterData.annotations);
 						console.log(`✅ Transformed annotations for parameter ${parameterId}:`, transformedParam.annotations);
+					}
+
+					if ('defectCounts' in parameterData && parameterData.defectCounts && typeof parameterData.defectCounts === 'object') {
+						transformedParam.defectCounts = parameterData.defectCounts;
 					}
 
 					// Only add if there's actual data

@@ -167,6 +167,10 @@ const ExecutePrc = () => {
 			return existingTimingData.prcmetadata !== undefined;
 		}
 
+		if (step.type === 'sapConfirmations') {
+			return existingTimingData.sapConfirmations !== undefined;
+		}
+
 		return false;
 	};
 
@@ -400,6 +404,50 @@ const ExecutePrc = () => {
 							if (responsiblePersons && Array.isArray(responsiblePersons)) {
 								measurementData.responsiblePersons = responsiblePersons;
 							}
+							detailedMeasurements.push(measurementData);
+							return;
+						}
+
+						// ok/not ok: keep { value, comments } so StepPreview parseOkNotOkValue shows comments (do not unwrap)
+						if (stepDefinition?.targetValueType === 'ok/not ok') {
+							const okNotOkValue = stepData.value || stepData.data;
+							const measurementData = {
+								stepId: stepId,
+								value: okNotOkValue,
+								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
+								stepType: stepDefinition?.stepType || 'Unknown',
+								targetValueType: 'ok/not ok' as const,
+								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
+								uom: stepDefinition?.uom || '',
+								notes: stepDefinition?.notes || '',
+								ctq: stepDefinition?.ctq || false,
+								stepNumber: stepDefinition?.stepNumber || 0,
+								responsiblePersons: [] as Array<{
+									role: string;
+									employeeName: string;
+									employeeCode: string;
+								}>
+							};
+
+							let responsiblePersons = null;
+							if (stepData.responsiblePersons && Array.isArray(stepData.responsiblePersons)) {
+								responsiblePersons = stepData.responsiblePersons;
+							} else if (
+								stepData.data &&
+								typeof stepData.data === 'object' &&
+								'responsiblePersons' in stepData.data &&
+								Array.isArray((stepData.data as Record<string, unknown>).responsiblePersons)
+							) {
+								responsiblePersons = (stepData.data as Record<string, unknown>).responsiblePersons as Array<{
+									role: string;
+									employeeName: string;
+									employeeCode: string;
+								}>;
+							}
+							if (responsiblePersons && Array.isArray(responsiblePersons)) {
+								measurementData.responsiblePersons = responsiblePersons;
+							}
+
 							detailedMeasurements.push(measurementData);
 							return;
 						}
@@ -1506,6 +1554,11 @@ const ExecutePrc = () => {
 		if (step.type === 'setup') {
 			const meta = getCurrentAggregatedData()?.prcmetadata as Record<string, unknown> | undefined;
 			return !!meta && typeof meta === 'object' && Object.keys(meta).length > 0;
+		}
+
+		if (step.type === 'sapConfirmations') {
+			const sap = getCurrentAggregatedData()?.sapConfirmations as Record<string, unknown> | undefined;
+			return sap?.stepCompleted === true;
 		}
 
 		// For other step types (rawMaterials, bom), just check if they have data

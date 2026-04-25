@@ -13,6 +13,8 @@ import { ArrowBack, Pause, Escalator, Person } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { type ExecutionData } from '../../../types/execution.types';
+import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
+import { formatExecutionDuration } from '../../../utils/formatExecutionDuration';
 
 interface ExecutionHeaderProps {
 	executionData: ExecutionData;
@@ -92,6 +94,8 @@ const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 	const theme = useTheme();
 	const navigate = useNavigate();
 	const { userInfo } = useCurrentRole();
+	const liveDurationMs = useLiveExecutionDurationMs(executionData);
+	const durationLabel = formatExecutionDuration(liveDurationMs);
 
 	const calculateProgress = (execution: ExecutionData) => {
 		const progressValue =
@@ -109,12 +113,6 @@ const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 	};
 
 	const progressColor = getProgressColor(progressPercentage);
-
-	const formatDuration = (durationMs: number) => {
-		const hours = Math.floor(durationMs / 3600000);
-		const minutes = Math.floor((durationMs % 3600000) / 60000);
-		return `${hours}h ${minutes}m`;
-	};
 
 	return (
 		<Box
@@ -224,7 +222,7 @@ const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 										: 'warning.dark'
 							}}
 						/>
-						<Chip label={formatDuration(executionData.duration)} size="small" variant="outlined" color="info" />
+						<Chip label={durationLabel} size="small" variant="outlined" color="info" />
 					</Stack>
 
 					<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>

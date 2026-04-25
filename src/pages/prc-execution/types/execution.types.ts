@@ -22,7 +22,19 @@ export interface AnnotationPolygon {
 	category?: string;
 }
 
-export type AnnotationRegion = AnnotationPoint | AnnotationPolygon;
+/** Normalized center (cx, cy) in 0–1 relative to canvas width/height; radius is fraction of min(canvasWidth, canvasHeight) */
+export interface AnnotationCircle {
+	type: 'circle';
+	id: string;
+	cx: number;
+	cy: number;
+	radius: number;
+	cls: string;
+	comment: string;
+	category?: string;
+}
+
+export type AnnotationRegion = AnnotationPoint | AnnotationPolygon | AnnotationCircle;
 
 export interface ImageAnnotation {
 	imageFileName: string;
@@ -33,6 +45,8 @@ export interface ImageAnnotation {
 export interface FixedTableRowAnnotation {
 	rowIndex: number;
 	annotations: ImageAnnotation[];
+	/** Derived client-side from annotations; persisted with row payload when present */
+	defectCounts?: Record<string, number>;
 }
 
 export interface StepGroup {
@@ -145,7 +159,7 @@ export interface StepPreviewData {
 
 export interface TimelineStep {
 	stepNumber: number;
-	type: 'setup' | 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
+	type: 'setup' | 'rawMaterials' | 'bom' | 'sequence' | 'inspection' | 'sapConfirmations';
 	title: string;
 	description: string;
 	status: 'completed' | 'in-progress' | 'pending';
@@ -159,7 +173,12 @@ export interface TimelineStep {
 		name: string;
 		quantity: string;
 		splitQuantity?: string;
+		/** Planned / required quantity UOM */
 		uom: string;
+		/** Display UOM for actual line (API); falls back to `uom` when mapped */
+		actualUom?: string;
+		actualQuantity?: string | number;
+		batchNumber?: string;
 		description?: string;
 		materialType?: string;
 		batching?: boolean;
@@ -335,6 +354,10 @@ export interface ExecutionData {
 		quantity: string;
 		uom: string;
 		batching: boolean;
+		actualQuantity?: string | number;
+		batchNumber?: string;
+		/** Optional; when absent, UI uses `uom` for the actual UOM column */
+		actualUom?: string;
 	}>;
 	bom?: Array<{
 		id: number;
@@ -456,6 +479,8 @@ export interface CatalystMixingEntry {
 	isSplit: boolean;
 	temperature: string;
 	humidity: string;
+	/** Optional can / container identifier captured during mixing */
+	canNumber: string;
 	actualQuantity: string;
 	catalystQuantity: string;
 	calculatedMin: number;

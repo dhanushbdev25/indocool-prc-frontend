@@ -131,21 +131,50 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				)
 			},
 			{
-				accessorKey: 'productionDetails',
-				header: 'Production Details',
+				accessorKey: 'sapSync',
+				header: 'SAP sync',
+				size: 110,
+				Cell: ({ row }) => (
+					<Chip
+						label={row.original.sapSync ? 'Synced' : 'Not synced'}
+						size="small"
+						sx={{
+							backgroundColor: row.original.sapSync ? '#e8f5e9' : '#ffebee',
+							color: row.original.sapSync ? '#2e7d32' : '#c62828',
+							fontSize: '0.75rem',
+							height: '24px'
+						}}
+					/>
+				)
+			},
+			{
+				accessorKey: 'customerName',
+				header: 'Customer name',
 				size: 200,
 				Cell: ({ row }) => (
-					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-							Set: {row.original.productionSetId}
-						</Typography>
-						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-							Mould: {row.original.mouldId}
-						</Typography>
-						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-							Shift: {row.original.shift}
-						</Typography>
-					</Box>
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.customerName?.trim() ? row.original.customerName : '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'customerVariantName',
+				header: 'Customer variant',
+				size: 160,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+						{row.original.customerVariantName?.trim() ? row.original.customerVariantName : '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'sapReferenceNumber',
+				header: 'SAP reference',
+				size: 140,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
+					</Typography>
 				)
 			},
 			{

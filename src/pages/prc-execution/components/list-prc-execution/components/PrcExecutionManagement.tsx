@@ -48,14 +48,14 @@ const PrcExecutionManagement = ({ onSearchChange, onFilterChange }: PrcExecution
 						fontSize: '0.875rem'
 					}}
 				>
-					Search and filter executions by status, part number, customer, or production details
+					Search and filter executions by status, ID, part number, customer, or production details
 				</Typography>
 			</Box>
 
 			{/* Search and Filter Section */}
 			<Box sx={{ p: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
 				<TextField
-					placeholder="Search by Part Number, Customer, Production Set, or Mould ID"
+					placeholder="Search by ID, Part Number, Customer, Production Set, or Mould ID"
 					variant="outlined"
 					size="small"
 					value={searchTerm}

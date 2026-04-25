@@ -68,6 +68,7 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 					maximumAcceptanceValue: null,
 					multipleMeasurements: false,
 					multipleMeasurementMaxCount: null,
+					tableConfig: null,
 					uom: '',
 					ctq: false,
 					allowAttachments: false,
@@ -222,26 +223,41 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 
 	const setConfig = (newColumns: typeof columns, newRows: typeof rows) => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		setValue(`${basePath}.tableConfig` as any, { columns: newColumns, rows: newRows }, { shouldDirty: true });
+		setValue(`${basePath}.tableConfig` as any, { columns: newColumns, rows: newRows }, {
+			shouldDirty: true,
+			shouldTouch: true,
+			shouldValidate: true
+		});
 	};
 
 	const addColumn = () => {
+		const newColIndex = columns.length;
+		const newKey = `col_${newColIndex}`;
 		const newColumns = [...columns, { name: '', type: 'text' }];
 		const newRows = rows.map(row => ({
 			cells: {
 				...row.cells,
-				[`col_${newColumns.length}`]: { value: '', readOnly: false }
+				[newKey]: { value: '', readOnly: false }
 			}
 		}));
 		setConfig(newColumns, newRows.length > 0 ? newRows : []);
 	};
 
 	const removeColumn = (colIndex: number) => {
-		const colName = columns[colIndex]?.name || `col_${colIndex}`;
+		const col = columns[colIndex];
+		const named = col?.name?.trim();
+		const keysToRemove = new Set<string>();
+		if (named) keysToRemove.add(named);
+		else {
+			keysToRemove.add(`col_${colIndex}`);
+			keysToRemove.add(`col_${colIndex + 1}`);
+		}
 		const newColumns = columns.filter((_, i) => i !== colIndex);
 		const newRows = rows.map(row => {
 			const newCells = { ...row.cells };
-			delete newCells[colName];
+			keysToRemove.forEach(k => {
+				delete newCells[k];
+			});
 			return { cells: newCells };
 		});
 		setConfig(newColumns, newRows);
@@ -249,10 +265,18 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 
 	const updateColumnName = (colIndex: number, oldName: string, newName: string) => {
 		const newColumns = columns.map((col, i) => (i === colIndex ? { ...col, name: newName } : col));
+		const placeholder = `col_${colIndex}`;
+		const legacyOffByOne = `col_${colIndex + 1}`;
 		const newRows = rows.map(row => {
 			const newCells: Record<string, { value: string; readOnly: boolean }> = {};
 			Object.entries(row.cells).forEach(([key, val]) => {
-				newCells[key === oldName ? newName : key] = val;
+				let nextKey = key;
+				if (oldName.trim() !== '') {
+					if (key === oldName) nextKey = newName;
+				} else {
+					if (key === placeholder || key === legacyOffByOne) nextKey = newName;
+				}
+				newCells[nextKey] = val;
 			});
 			return { cells: newCells };
 		});
@@ -266,8 +290,8 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 
 	const addRow = () => {
 		const newCells: Record<string, { value: string; readOnly: boolean }> = {};
-		columns.forEach(col => {
-			newCells[col.name || `col_${columns.indexOf(col)}`] = { value: '', readOnly: false };
+		columns.forEach((col, colIndex) => {
+			newCells[col.name || `col_${colIndex}`] = { value: '', readOnly: false };
 		});
 		setConfig(columns, [...rows, { cells: newCells }]);
 	};
@@ -529,9 +553,9 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 								<TextField
 									{...field}
 									fullWidth
-									label="Process Name"
+									label="Process ID"
 									required
-									placeholder="e.g., Gelcoat Preparation"
+									placeholder="e.g., OP-101-GELCOAT"
 									helperText={errors.processStepGroups?.[groupIndex]?.processName?.message}
 									error={!!errors.processStepGroups?.[groupIndex]?.processName}
 									sx={{

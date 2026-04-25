@@ -36,6 +36,7 @@ import {
 	type FixedTableRowAnnotation
 } from '../../../../types/execution.types';
 import ImageAnnotator from '../ImageAnnotator';
+import { countAnnotationsByCategory } from '../defectAnnotationStyles';
 import { transformPrcAggregatedData, debugDataTransformation } from '../../../../utils/dataTransformers';
 
 interface InspectionStepProps {
@@ -126,11 +127,24 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								extractedAnnotations.push(...(value as ImageAnnotation[]));
 								hasAnnotations = true;
 								console.log(`Loading annotations for parameter ${parameterId}:`, value);
+							} else if (columnName === 'defectCounts' && value && typeof value === 'object' && !Array.isArray(value)) {
+								paramFormData.defectCounts = value as Record<string, number>;
 							} else if (columnName === 'rowAnnotations' && Array.isArray(value)) {
 								// Handle fixed-table row-level annotations
 								const paramIdNum = Number(parameterId);
 								if (!isNaN(paramIdNum)) {
-									newFormData[getFixedTableRowAnnotationsKey(paramIdNum)] = value as FixedTableRowAnnotation[];
+									newFormData[getFixedTableRowAnnotationsKey(paramIdNum)] = (
+										value as FixedTableRowAnnotation[]
+									).map(row => {
+										const dc =
+											row.defectCounts && Object.keys(row.defectCounts).length > 0
+												? row.defectCounts
+												: countAnnotationsByCategory(Array.isArray(row.annotations) ? row.annotations : []);
+										return {
+											...row,
+											defectCounts: Object.keys(dc).length > 0 ? dc : undefined
+										};
+									});
 								}
 							} else if (columnName === 'value' && typeof value === 'object' && value !== null) {
 								// Check if this is a table type parameter (value is an array)
@@ -238,6 +252,17 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								console.log(`Loading direct column data: ${parameterId}.${columnName} -> ${key} = ${value}`);
 							}
 						});
+
+						if (
+							hasAnnotations &&
+							Array.isArray(paramFormData.annotations) &&
+							paramFormData.defectCounts === undefined
+						) {
+							const dc = countAnnotationsByCategory(paramFormData.annotations as ImageAnnotation[]);
+							if (Object.keys(dc).length > 0) {
+								paramFormData.defectCounts = dc;
+							}
+						}
 
 						// If this parameter has annotations or a value, store it as an object
 						if (hasAnnotations || paramFormData.value !== undefined) {
@@ -452,13 +477,16 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			return updated;
 		});
 
-		// Also update form data to include annotations
+		// Also update form data to include annotations and derived defect counts
 		setFormData(prev => {
 			const newFormData = { ...prev };
 			if (!newFormData[parameterId.toString()]) {
 				newFormData[parameterId.toString()] = {};
 			}
-			(newFormData[parameterId.toString()] as Record<string, unknown>).annotations = newAnnotations;
+			const paramEntry = newFormData[parameterId.toString()] as Record<string, unknown>;
+			paramEntry.annotations = newAnnotations;
+			const dc = countAnnotationsByCategory(newAnnotations);
+			paramEntry.defectCounts = Object.keys(dc).length > 0 ? dc : undefined;
 
 			console.log('Updated formData with annotations:', newFormData);
 			console.log('Annotations being saved for parameter', parameterId, ':', newAnnotations);
@@ -674,8 +702,18 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		setFormData(prev => {
 			const current = (prev[rowAnnotationsKey] as FixedTableRowAnnotation[] | undefined) || [];
 			const withoutRow = current.filter(item => item.rowIndex !== rowIndex);
+			const dc = countAnnotationsByCategory(newAnnotations);
 			const cleaned: FixedTableRowAnnotation[] =
-				newAnnotations.length > 0 ? [...withoutRow, { rowIndex, annotations: newAnnotations }] : withoutRow;
+				newAnnotations.length > 0
+					? [
+							...withoutRow,
+							{
+								rowIndex,
+								annotations: newAnnotations,
+								defectCounts: Object.keys(dc).length > 0 ? dc : undefined
+							}
+						]
+					: withoutRow;
 			cleaned.sort((a, b) => a.rowIndex - b.rowIndex);
 			return {
 				...prev,
@@ -938,11 +976,19 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					console.log(`Single value parameter ${param.id}:`, paramData.value);
 				}
 
-				// Add annotations if they exist for this parameter
+				// Add annotations / defect counts if they exist for this parameter
 				if (formData[param.id.toString()] && typeof formData[param.id.toString()] === 'object') {
 					const paramFormData = formData[param.id.toString()] as Record<string, unknown>;
 					if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
 						paramData.annotations = paramFormData.annotations;
+					}
+					if (
+						paramFormData.defectCounts &&
+						typeof paramFormData.defectCounts === 'object' &&
+						!Array.isArray(paramFormData.defectCounts) &&
+						Object.keys(paramFormData.defectCounts as object).length > 0
+					) {
+						paramData.defectCounts = paramFormData.defectCounts;
 					}
 				}
 
@@ -1454,6 +1500,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																									handleFixedTableRowAnnotationSave(param.id, rowIdx, newAnnotations)
 																								}
 																								readOnly={isReadOnly}
+																								parameterContext={{
+																									parameterName: param.parameterName,
+																									specification: param.specification,
+																									ctq: param.ctq,
+																									tolerance: param.tolerance,
+																									parameterType: param.type,
+																									fixedTableRowLabel: `Row ${rowIdx + 1}`
+																								}}
 																							/>
 																						</Box>
 																					);
@@ -1893,6 +1947,13 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 															})()}
 															onSave={newAnnotations => handleAnnotationSave(param.id, newAnnotations)}
 															readOnly={isReadOnly}
+															parameterContext={{
+																parameterName: param.parameterName,
+																specification: param.specification,
+																ctq: param.ctq,
+																tolerance: param.tolerance,
+																parameterType: param.type
+															}}
 														/>
 													</Box>
 												</Collapse>

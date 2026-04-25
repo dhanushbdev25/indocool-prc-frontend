@@ -1,11 +1,6 @@
 import * as yup from 'yup';
 
 // Table configuration schemas
-const tableCellConfigSchema = yup.object({
-	value: yup.string().default(''),
-	readOnly: yup.boolean().required().default(false)
-});
-
 const tableRowConfigSchema = yup.object({
 	cells: yup.lazy(() =>
 		yup.object().test('valid-cells', 'Each cell must have value and readOnly fields', value => {
@@ -143,9 +138,9 @@ export const processStepSchema = yup
 export const processStepGroupSchema = yup.object({
 	processName: yup
 		.string()
-		.required('Process name is required')
-		.min(3, 'Process name must be at least 3 characters')
-		.max(1000, 'Process name must be less than 1000 characters'),
+		.required('Process ID is required')
+		.min(3, 'Process ID must be at least 3 characters')
+		.max(1000, 'Process ID must be less than 1000 characters'),
 	processDescription: yup
 		.string()
 		.required('Process description is required')

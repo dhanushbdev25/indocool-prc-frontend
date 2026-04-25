@@ -46,13 +46,27 @@ const ListPrcExecution = () => {
 
 		// Apply search filter
 		if (searchTerm) {
-			filtered = filtered.filter(
-				execution =>
-					execution.partNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					execution.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					execution.productionSetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					execution.mouldId.toLowerCase().includes(searchTerm.toLowerCase())
-			);
+			const q = searchTerm.toLowerCase();
+			filtered = filtered.filter(execution => {
+				const idStr = String(execution.id ?? '').toLowerCase();
+				const partNumber = (execution.partNumber ?? '').toLowerCase();
+				const customer = (execution.customer ?? '').toLowerCase();
+				const productionSetId = (execution.productionSetId ?? '').toLowerCase();
+				const mould = (execution.mouldId ?? '').toLowerCase();
+				const customerName = (execution.customerName ?? '').toLowerCase();
+				const variant = (execution.customerVariantName ?? '').toLowerCase();
+				const sapRef = (execution.sapReferenceNumber ?? '').toLowerCase();
+				return (
+					idStr.includes(q) ||
+					partNumber.includes(q) ||
+					customer.includes(q) ||
+					productionSetId.includes(q) ||
+					mould.includes(q) ||
+					customerName.includes(q) ||
+					variant.includes(q) ||
+					sapRef.includes(q)
+				);
+			});
 		}
 
 		return filtered;

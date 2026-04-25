@@ -23,7 +23,8 @@ import {
 	MenuItem,
 	Collapse,
 	Autocomplete,
-	CircularProgress
+	CircularProgress,
+	Tooltip
 } from '@mui/material';
 import {
 	ArrowBack,
@@ -45,6 +46,65 @@ import ImageDisplay from './ImageDisplay';
 import { debugDataTransformation } from '../../../utils/dataTransformers';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { toFileRenderUrl } from '../../../../../utils/fileUrl';
+
+const COMMENT_PREVIEW_MAX_CHARS = 50;
+
+const truncateCommentForPreview = (text: string, maxChars = COMMENT_PREVIEW_MAX_CHARS) => {
+	const t = text.trim();
+	if (t.length <= maxChars) {
+		return { display: t, full: t, isTruncated: false };
+	}
+	return { display: `${t.slice(0, maxChars)}…`, full: t, isTruncated: true };
+};
+
+const normalizePreviewTargetType = (t: string | undefined): string =>
+	typeof t === 'string' ? t.trim().toLowerCase() : '';
+
+/** Range or exact-value numeric targets (not ok/not ok, not table). */
+const isNumericTargetValueType = (t: string | undefined): boolean => {
+	const n = normalizePreviewTargetType(t);
+	return n === 'range' || n === 'exact value';
+};
+
+const formatSequenceNumericValueForPreview = (value: unknown, uom: string | undefined): string => {
+	if (value === undefined || value === null) return '';
+	const suffix = uom && uom !== 'None' ? ` ${uom}` : '';
+	if (Array.isArray(value)) {
+		const parts = value.map(v => {
+			if (typeof v === 'object' && v !== null && 'value' in v) {
+				return String((v as Record<string, unknown>).value ?? '');
+			}
+			return String(v);
+		});
+		return `${parts.join(', ')}${suffix}`.trim();
+	}
+	return `${String(value)}${suffix}`.trim();
+};
+
+const NotOkCommentPreview = ({ comment }: { comment: string }) => {
+	const { display, full, isTruncated } = truncateCommentForPreview(comment);
+	const body = (
+		<Typography
+			variant="caption"
+			sx={{
+				color: '#d32f2f',
+				display: 'block',
+				mt: 0.5,
+				...(isTruncated ? { cursor: 'help' as const } : {})
+			}}
+		>
+			Comment: {display}
+		</Typography>
+	);
+	if (!isTruncated) {
+		return body;
+	}
+	return (
+		<Tooltip title={full} enterDelay={300} leaveDelay={0}>
+			<span style={{ display: 'block' }}>{body}</span>
+		</Tooltip>
+	);
+};
 
 interface StepPreviewProps {
 	previewData: StepPreviewData;
@@ -239,6 +299,59 @@ const StepPreview = ({
 			};
 		}
 		return { value: '', notOkComment: '' };
+	};
+
+	/** Green check for OK, red error for Not OK, neutral circle when indeterminate (sequence / inspection status column). */
+	const renderOkNotOkResultStatusIcon = (parsed: { value: string; notOkComment: string }) => {
+		if (parsed.value === 'not ok') {
+			return (
+				<Box
+					sx={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						width: 24,
+						height: 24,
+						borderRadius: '50%',
+						backgroundColor: '#ffebee'
+					}}
+				>
+					<ErrorIcon sx={{ color: 'error.main', fontSize: 16 }} />
+				</Box>
+			);
+		}
+		if (parsed.value === 'ok') {
+			return (
+				<Box
+					sx={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						width: 24,
+						height: 24,
+						borderRadius: '50%',
+						backgroundColor: '#e8f5e8'
+					}}
+				>
+					<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+				</Box>
+			);
+		}
+		return (
+			<Box
+				sx={{
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					width: 24,
+					height: 24,
+					borderRadius: '50%',
+					backgroundColor: '#f5f5f5'
+				}}
+			>
+				<CheckCircle sx={{ color: '#9e9e9e', fontSize: 16 }} />
+			</Box>
+		);
 	};
 
 	const renderDataSummary = () => {
@@ -583,7 +696,11 @@ const StepPreview = ({
 												</Box>
 											) : (
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-													{measurement.stepType === 'Check' || measurement.stepType === 'Inspection' ? (
+													{isNumericTargetValueType(measurement.targetValueType) ? (
+														<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+															{formatSequenceNumericValueForPreview(measurement.value, measurement.uom)}
+														</Typography>
+													) : measurement.stepType === 'Check' || measurement.stepType === 'Inspection' ? (
 														<Chip
 															label={(() => {
 																const parsedValue = parseOkNotOkValue(measurement.value);
@@ -599,8 +716,7 @@ const StepPreview = ({
 														/>
 													) : (
 														<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-															{Array.isArray(measurement.value) ? measurement.value.join(', ') : measurement.value}{' '}
-															{measurement.uom && measurement.uom !== 'None' ? measurement.uom : ''}
+															{formatSequenceNumericValueForPreview(measurement.value, measurement.uom)}
 														</Typography>
 													)}
 												</Box>
@@ -610,11 +726,7 @@ const StepPreview = ({
 												const shouldShowComment =
 													parsedValue.value === 'not ok' && parsedValue.notOkComment.trim().length > 0;
 												if (!shouldShowComment) return null;
-												return (
-													<Typography variant="caption" sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}>
-														Comment: {parsedValue.notOkComment}
-													</Typography>
-												);
+												return <NotOkCommentPreview comment={parsedValue.notOkComment} />;
 											})()}
 										</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{measurement.stepType}</TableCell>
@@ -622,9 +734,7 @@ const StepPreview = ({
 												{measurement.evaluationMethod}
 											</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												{measurement.stepType === 'Measurement' &&
-												measurement.minimumAcceptanceValue &&
-												measurement.maximumAcceptanceValue ? (
+												{measurement.minimumAcceptanceValue && measurement.maximumAcceptanceValue ? (
 													<Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
 														{measurement.minimumAcceptanceValue} - {measurement.maximumAcceptanceValue}{' '}
 														{measurement.uom && measurement.uom !== 'None' ? measurement.uom : ''}
@@ -642,21 +752,32 @@ const StepPreview = ({
 													<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
 														{getValidationChip(measurement.validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
 													</Box>
-												) : (
-													<Box
-														sx={{
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															width: 24,
-															height: 24,
-															borderRadius: '50%',
-															backgroundColor: '#e8f5e8'
-														}}
-													>
-														<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
-													</Box>
-												)}
+												) : (() => {
+														const parsed = parseOkNotOkValue(measurement.value);
+														const isOkNotOkRow =
+															measurement.targetValueType === 'ok/not ok' ||
+															(!isNumericTargetValueType(measurement.targetValueType) &&
+																(measurement.stepType === 'Check' || measurement.stepType === 'Inspection') &&
+																(parsed.value === 'ok' || parsed.value === 'not ok'));
+														if (isOkNotOkRow) {
+															return renderOkNotOkResultStatusIcon(parsed);
+														}
+														return (
+															<Box
+																sx={{
+																	display: 'flex',
+																	alignItems: 'center',
+																	justifyContent: 'center',
+																	width: 24,
+																	height: 24,
+																	borderRadius: '50%',
+																	backgroundColor: '#e8f5e8'
+																}}
+															>
+																<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+															</Box>
+														);
+													})()}
 											</TableCell>
 										</TableRow>
 									))
@@ -984,7 +1105,9 @@ const StepPreview = ({
 																			: parsedValue.value;
 																const commentSuffix =
 																	parsedValue.value === 'not ok' && parsedValue.notOkComment.trim()
-																		? ` (Comment: ${parsedValue.notOkComment})`
+																		? ` (Comment: ${
+																				truncateCommentForPreview(parsedValue.notOkComment).display
+																		  })`
 																		: '';
 																return `${col}: ${formatted}${commentSuffix}`;
 															} else if (parameterType === 'datetime') {
@@ -1148,9 +1271,7 @@ const StepPreview = ({
 																	{displayValue}
 																</Typography>
 																{parameterType === 'ok/not ok' && displayValue === 'Not OK' && notOkComment.trim() && (
-																	<Typography variant="caption" sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}>
-																		Comment: {notOkComment}
-																	</Typography>
+																	<NotOkCommentPreview comment={notOkComment} />
 																)}
 															</>
 														)}
@@ -1183,19 +1304,58 @@ const StepPreview = ({
 														</Typography>
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-														<Box
-															sx={{
-																display: 'flex',
-																alignItems: 'center',
-																justifyContent: 'center',
-																width: 24,
-																height: 24,
-																borderRadius: '50%',
-																backgroundColor: '#e8f5e8'
-															}}
-														>
-															<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
-														</Box>
+														{parameterType === 'ok/not ok' && !isTableType && !isFixedTableType ? (
+															(() => {
+																if (isMultiColumn) {
+																	const anyNotOk = displayValue.includes('Not OK');
+																	return renderOkNotOkResultStatusIcon({
+																		value: anyNotOk ? 'not ok' : 'ok',
+																		notOkComment: ''
+																	});
+																}
+																if (displayValue === 'Not OK') {
+																	return renderOkNotOkResultStatusIcon({
+																		value: 'not ok',
+																		notOkComment: ''
+																	});
+																}
+																if (displayValue === 'OK') {
+																	return renderOkNotOkResultStatusIcon({
+																		value: 'ok',
+																		notOkComment: ''
+																	});
+																}
+																return (
+																	<Box
+																		sx={{
+																			display: 'flex',
+																			alignItems: 'center',
+																			justifyContent: 'center',
+																			width: 24,
+																			height: 24,
+																			borderRadius: '50%',
+																			backgroundColor: '#e8f5e8'
+																		}}
+																	>
+																		<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+																	</Box>
+																);
+															})()
+														) : (
+															<Box
+																sx={{
+																	display: 'flex',
+																	alignItems: 'center',
+																	justifyContent: 'center',
+																	width: 24,
+																	height: 24,
+																	borderRadius: '50%',
+																	backgroundColor: '#e8f5e8'
+																}}
+															>
+																<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+															</Box>
+														)}
 													</TableCell>
 												</TableRow>
 
@@ -1415,12 +1575,7 @@ const StepPreview = ({
 																										{column.type === 'ok/not ok' &&
 																											parsedValue.value === 'not ok' &&
 																											parsedValue.notOkComment.trim() && (
-																												<Typography
-																													variant="caption"
-																													sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}
-																												>
-																													Comment: {parsedValue.notOkComment}
-																												</Typography>
+																												<NotOkCommentPreview comment={parsedValue.notOkComment} />
 																											)}
 																									</TableCell>
 																								);
@@ -1475,12 +1630,7 @@ const StepPreview = ({
 																									{column.type === 'ok/not ok' &&
 																										parsedValue.value === 'not ok' &&
 																										parsedValue.notOkComment.trim() && (
-																											<Typography
-																												variant="caption"
-																												sx={{ color: '#d32f2f', display: 'block', mt: 0.5 }}
-																											>
-																												Comment: {parsedValue.notOkComment}
-																											</Typography>
+																											<NotOkCommentPreview comment={parsedValue.notOkComment} />
 																										)}
 																								</TableCell>
 																							);
@@ -1704,6 +1854,18 @@ const StepPreview = ({
 																							Points: {region.points.length} vertices
 																						</Typography>
 																					)}
+																					{region.type === 'circle' &&
+																						region.cx !== undefined &&
+																						region.cy !== undefined &&
+																						region.radius !== undefined && (
+																							<Typography
+																								variant="caption"
+																								sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
+																							>
+																								Circle: center ({Number(region.cx).toFixed(3)},{' '}
+																								{Number(region.cy).toFixed(3)}), r={Number(region.radius).toFixed(3)}
+																							</Typography>
+																						)}
 																					{region.cls && (
 																						<Typography
 																							variant="caption"

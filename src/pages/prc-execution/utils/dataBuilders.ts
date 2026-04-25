@@ -48,6 +48,7 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 					validationStatus: entry.validationStatus,
 					humidity: entry.humidity,
 					temperature: entry.temperature,
+					canNumber: entry.canNumber ?? '',
 					actualQuantity: entry.actualQuantity,
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					acknowledged: (formData as any).acknowledgments?.[entry.id] || false
@@ -114,6 +115,14 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 				}
 				if (existingParamData.annotations && Array.isArray(existingParamData.annotations)) {
 					paramData.annotations = existingParamData.annotations;
+				}
+				if (
+					existingParamData.defectCounts &&
+					typeof existingParamData.defectCounts === 'object' &&
+					!Array.isArray(existingParamData.defectCounts) &&
+					Object.keys(existingParamData.defectCounts as object).length > 0
+				) {
+					paramData.defectCounts = existingParamData.defectCounts;
 				}
 				if (existingParamData.rowAnnotations && Array.isArray(existingParamData.rowAnnotations)) {
 					paramData.rowAnnotations = existingParamData.rowAnnotations;
@@ -204,11 +213,19 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 					}
 				}
 
-				// Handle annotations for this parameter
+				// Handle annotations / defect counts for this parameter
 				if (formData[paramId] && typeof formData[paramId] === 'object') {
 					const paramFormData = formData[paramId] as Record<string, unknown>;
 					if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
 						paramData.annotations = paramFormData.annotations;
+					}
+					if (
+						paramFormData.defectCounts &&
+						typeof paramFormData.defectCounts === 'object' &&
+						!Array.isArray(paramFormData.defectCounts) &&
+						Object.keys(paramFormData.defectCounts as object).length > 0
+					) {
+						paramData.defectCounts = paramFormData.defectCounts;
 					}
 				}
 			}
@@ -221,6 +238,14 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 
 		return {
 			[prcTemplateStepId.toString()]: inspectionData
+		};
+	}
+
+	if (step.type === 'sapConfirmations') {
+		return {
+			sapConfirmations: {
+				stepCompleted: formData.stepCompleted === true
+			}
 		};
 	}
 
@@ -282,6 +307,15 @@ export function buildTimingData(step: TimelineStep, startTime: string, endTime: 
 
 		return {
 			[prcTemplateStepId.toString()]: {
+				startTime,
+				endTime
+			}
+		};
+	}
+
+	if (step.type === 'sapConfirmations') {
+		return {
+			sapConfirmations: {
 				startTime,
 				endTime
 			}
@@ -457,6 +491,14 @@ export function buildApprovalActionTimingData(
 		};
 	}
 
+	if (step.type === 'sapConfirmations') {
+		return {
+			sapConfirmations: {
+				[actionType]: timestamp
+			}
+		};
+	}
+
 	return {};
 }
 
@@ -522,6 +564,14 @@ export function buildUserApprovalData(
 
 		return {
 			[prcTemplateStepId.toString()]: {
+				[actionType]: userId
+			}
+		};
+	}
+
+	if (step.type === 'sapConfirmations') {
+		return {
+			sapConfirmations: {
 				[actionType]: userId
 			}
 		};

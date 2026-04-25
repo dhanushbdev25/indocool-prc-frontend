@@ -1,4 +1,5 @@
 import { type TimelineStep, type ExecutionData } from '../types/execution.types';
+import { isRawMaterialsStepCompleteForNavigation } from './rawMaterialsNavigation';
 
 function isPrcMetadataComplete(prcAggregatedSteps: Record<string, unknown> | undefined): boolean {
 	const meta = prcAggregatedSteps?.prcmetadata;
@@ -27,7 +28,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 
 	// Raw Materials
 	if (executionData.rawMaterials && executionData.rawMaterials.length > 0) {
-		const isCompleted = executionData.prcAggregatedSteps?.rawMaterials !== undefined;
+		const isCompleted = isRawMaterialsStepCompleteForNavigation(executionData);
 		steps.push({
 			stepNumber: stepNumber++,
 			type: 'rawMaterials',
@@ -40,6 +41,9 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 				name: material.materialName,
 				quantity: material.quantity,
 				uom: material.uom,
+				actualUom: material.actualUom ?? material.uom,
+				actualQuantity: material.actualQuantity,
+				batchNumber: material.batchNumber,
 				description: material.materialCode,
 				batching: material.batching
 			}))
@@ -296,6 +300,17 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 			}
 		}
 	}
+
+	const sapAgg = executionData.prcAggregatedSteps?.sapConfirmations as Record<string, unknown> | undefined;
+	const sapStepCompleted = sapAgg?.stepCompleted === true;
+	steps.push({
+		stepNumber: stepNumber++,
+		type: 'sapConfirmations',
+		title: 'SAP confirmations',
+		description: 'Review SAP API confirmation calls and retry failures',
+		status: sapStepCompleted ? 'completed' : 'pending',
+		ctq: false
+	});
 
 	// Mark the first incomplete step as 'in-progress'
 	const firstIncompleteIndex = steps.findIndex(step => step.status === 'pending');

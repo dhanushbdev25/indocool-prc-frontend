@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Box, Typography, Button, Avatar, Chip, IconButton } from '@mui/material';
 import { ArrowBack, ArrowForward, CheckCircle, PlayArrow } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../types/execution.types';
+import { isRawMaterialsStepCompleteForNavigation } from '../../../utils/rawMaterialsNavigation';
 import RawMaterialsStep from './steps/RawMaterialsStep';
 import BomStep from './steps/BomStep';
 import SequenceStep from './steps/SequenceStep';
 import InspectionStep from './steps/InspectionStep';
 import ExecutionSetupStep from './steps/ExecutionSetupStep';
+import SapConfirmationStep from './steps/SapConfirmationStep';
 
 interface StepDetailViewProps {
 	step: TimelineStep;
@@ -125,7 +127,7 @@ const StepDetailView = ({
 				return !!meta && typeof meta === 'object' && Object.keys(meta).length > 0;
 			}
 		case 'rawMaterials':
-			return executionData.prcAggregatedSteps?.rawMaterials !== undefined;
+			return isRawMaterialsStepCompleteForNavigation(executionData);
 		case 'bom':
 			return executionData.prcAggregatedSteps?.bom !== undefined;
 			case 'inspection': {
@@ -133,6 +135,10 @@ const StepDetailView = ({
 				if (!prcTemplateStepId) return false;
 				const inspData = executionData.prcAggregatedSteps?.[prcTemplateStepId.toString()] as Record<string, unknown>;
 				return !!inspData && Object.keys(inspData).length > 0;
+			}
+			case 'sapConfirmations': {
+				const sap = executionData.prcAggregatedSteps?.sapConfirmations as Record<string, unknown> | undefined;
+				return sap?.stepCompleted === true;
 			}
 			default:
 				return false;
@@ -207,7 +213,12 @@ const StepDetailView = ({
 			};
 
 			return (
-				<SequenceStep step={subStepTimelineStep} executionData={executionData} onStepComplete={handleSubStepComplete} />
+				<SequenceStep
+					key={`${step.prcTemplateStepId}-${step.stepGroup!.id}-${currentSubStep.id}`}
+					step={subStepTimelineStep}
+					executionData={executionData}
+					onStepComplete={handleSubStepComplete}
+				/>
 			);
 		}
 
@@ -223,11 +234,13 @@ const StepDetailView = ({
 					/>
 				);
 			case 'rawMaterials':
-				return <RawMaterialsStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
+				return <RawMaterialsStep step={step} onStepComplete={handleSubStepComplete} />;
 			case 'bom':
 				return <BomStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
 			case 'inspection':
 				return <InspectionStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
+			case 'sapConfirmations':
+				return <SapConfirmationStep executionData={executionData} onStepComplete={handleSubStepComplete} />;
 			default:
 				return <div>Unknown step type: {step.type}</div>;
 		}

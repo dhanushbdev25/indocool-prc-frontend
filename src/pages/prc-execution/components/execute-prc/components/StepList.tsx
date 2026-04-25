@@ -54,6 +54,8 @@ const StepList = ({ steps, currentStepIndex, onStepClick }: StepListProps) => {
 				return 'Sequence';
 			case 'inspection':
 				return 'Inspection';
+			case 'sapConfirmations':
+				return 'SAP';
 			default:
 				return step.type;
 		}

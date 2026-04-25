@@ -10,6 +10,9 @@ import { Provider as ReduxProvider } from 'react-redux';
 // Project files
 import App from './App';
 import { store } from './store/store';
+import { installNumberInputWheelGuard } from './utils/numberInputWheelGuard';
+
+installNumberInputWheelGuard();
 
 const container = document.getElementById('root');
 const root = createRoot(container!);
