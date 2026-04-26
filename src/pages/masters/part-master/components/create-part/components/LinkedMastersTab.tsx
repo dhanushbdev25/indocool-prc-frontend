@@ -31,7 +31,8 @@ import {
 	Add as AddIcon,
 	Close as CloseIcon,
 	Science as CatalystIcon,
-	Assignment as TemplateIcon
+	Assignment as TemplateIcon,
+	Visibility as VisibilityIcon
 } from '@mui/icons-material';
 import {
 	Controller,
@@ -39,7 +40,8 @@ import {
 	FieldErrors,
 	UseFormSetValue,
 	useFieldArray,
-	useFormContext
+	useFormContext,
+	useWatch
 } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import type { OperationWisePartRow } from '../../../../../../store/api/business/part-master/part.validators';
@@ -50,6 +52,7 @@ import { useFetchOperationsComboQuery } from '../../../../../../store/api/busine
 import LinkedMasterCard from './LinkedMasterCard';
 import DefaultStepItem from './DefaultStepItem';
 import OperationGroupComponent from './OperationGroup';
+import PrcExecutionPreviewDialog from './PrcExecutionPreviewDialog';
 import {
 	SelectableCatalyst,
 	OperationGroup,
@@ -64,15 +67,19 @@ interface LinkedMastersTabProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
 	setValue: UseFormSetValue<PartMasterFormData>;
+	/** Same part id used for operations combo as CreatePart submit (`formPartId ?? route id`). */
+	operationsPartId?: number;
 }
 
 const LinkedMastersTab = ({
 	control,
 	errors,
-	setValue
+	setValue,
+	operationsPartId
 }: LinkedMastersTabProps) => {
 	const { getValues } = useFormContext<PartMasterFormData>();
 	const [catalystModalOpen, setCatalystModalOpen] = useState(false);
+	const [previewSnapshot, setPreviewSnapshot] = useState<PartMasterFormData | null>(null);
 	const [addedGroups, setAddedGroups] = useState<string[]>([]);
 	const [selectedGroupToAdd, setSelectedGroupToAdd] = useState('');
 
@@ -80,11 +87,26 @@ const LinkedMastersTab = ({
 	const { data: sequencesData, isLoading: isSequencesLoading } = useFetchProcessSequencesQuery();
 	const { data: inspectionsData, isLoading: isInspectionsLoading } = useFetchInspectionsQuery();
 
-	const partId = control._formValues.id as number | undefined;
 	const { data: operationsData, isLoading: isOperationsLoading } = useFetchOperationsComboQuery(
-		{ partId },
-		{ skip: !partId }
+		{ partId: operationsPartId! },
+		{ skip: !operationsPartId }
 	);
+
+	const watchedPrcSteps = useWatch({ control, name: 'prcTemplateSteps' });
+	const watchedTemplateId = useWatch({ control, name: 'templateId' });
+	const watchedTemplateName = useWatch({ control, name: 'templateName' });
+	const watchedPartNumber = useWatch({ control, name: 'partNumber' });
+	const watchedDrawingNumber = useWatch({ control, name: 'drawingNumber' });
+
+	const canPreviewPrcExecution =
+		Array.isArray(watchedPrcSteps) &&
+		watchedPrcSteps.length > 0 &&
+		Boolean(
+			(typeof watchedTemplateId === 'string' && watchedTemplateId.trim().length > 0) ||
+				(typeof watchedTemplateName === 'string' && watchedTemplateName.trim().length > 0) ||
+				(typeof watchedPartNumber === 'string' && watchedPartNumber.trim().length > 0) ||
+				(typeof watchedDrawingNumber === 'string' && watchedDrawingNumber.trim().length > 0)
+		);
 
 	const operationGroups: OperationGroup[] = useMemo(
 		() =>
@@ -110,7 +132,7 @@ const LinkedMastersTab = ({
 	useEffect(() => {
 		hasInitializedGroups.current = false;
 		setAddedGroups([]);
-	}, [partId]);
+	}, [operationsPartId]);
 
 	useEffect(() => {
 		if (hasInitializedGroups.current) return;
@@ -279,16 +301,50 @@ const LinkedMastersTab = ({
 			replaceOperationWise([]);
 			return;
 		}
-		const current = getValues('operationWiseData') as OperationWisePartRow[] | undefined;
+		const current = getValues('operationWiseData') as Partial<OperationWisePartRow>[] | undefined;
 		const cur = Array.isArray(current) ? current : [];
 		const next: OperationWisePartRow[] = headcountOperationRows.map(g => {
 			const opNum = Number(g.id);
 			const existing = cur.find(r => String(r.operationID) === String(g.id));
+			let l1: number | undefined;
+			let l2: number | undefined;
+			let l3: number | undefined;
+			let l4: number | undefined;
+
+			if (
+				existing &&
+				(existing.l1Count != null ||
+					existing.l2Count != null ||
+					existing.l3Count != null ||
+					existing.l4Count != null)
+			) {
+				l1 =
+					existing.l1Count != null ? Math.max(0, Math.floor(Number(existing.l1Count))) : undefined;
+				l2 =
+					existing.l2Count != null ? Math.max(0, Math.floor(Number(existing.l2Count))) : undefined;
+				l3 =
+					existing.l3Count != null ? Math.max(0, Math.floor(Number(existing.l3Count))) : undefined;
+				l4 =
+					existing.l4Count != null ? Math.max(0, Math.floor(Number(existing.l4Count))) : undefined;
+			} else if (
+				existing != null &&
+				existing.responsiblePersonCount != null &&
+				Number.isFinite(Number(existing.responsiblePersonCount)) &&
+				Number(existing.responsiblePersonCount) >= 1
+			) {
+				l1 = Math.floor(Number(existing.responsiblePersonCount));
+			}
+
+			const sum = (l1 ?? 0) + (l2 ?? 0) + (l3 ?? 0) + (l4 ?? 0);
 			return {
 				id: existing?.id ?? `op-${g.id}`,
 				operationID: Number.isFinite(opNum) ? opNum : 0,
 				operationName: g.name || g.label,
-				responsiblePersonCount: existing?.responsiblePersonCount ?? 1
+				l1Count: l1,
+				l2Count: l2,
+				l3Count: l3,
+				l4Count: l4,
+				responsiblePersonCount: sum >= 1 ? sum : undefined
 			};
 		});
 		if (JSON.stringify(cur) !== JSON.stringify(next)) {
@@ -298,6 +354,14 @@ const LinkedMastersTab = ({
 
 	return (
 		<Box>
+			{previewSnapshot && (
+				<PrcExecutionPreviewDialog
+					open
+					onClose={() => setPreviewSnapshot(null)}
+					formSnapshot={previewSnapshot}
+					operationsData={operationsData}
+				/>
+			)}
 			<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
 				<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
 					Linked Masters & Operations
@@ -419,11 +483,32 @@ const LinkedMastersTab = ({
 
 			{/* Section 2: PRC Template Inline Creation */}
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-					<TemplateIcon sx={{ color: '#4caf50' }} />
-					<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
-						Operations & PRC Template
-					</Typography>
+				<Box
+					sx={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'space-between',
+						gap: 2,
+						mb: 3,
+						flexWrap: 'wrap'
+					}}
+				>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						<TemplateIcon sx={{ color: '#4caf50' }} />
+						<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
+							Operations & PRC Template
+						</Typography>
+					</Box>
+					<Button
+						variant="outlined"
+						color="primary"
+						startIcon={<VisibilityIcon />}
+						disabled={!canPreviewPrcExecution}
+						onClick={() => setPreviewSnapshot(getValues())}
+						sx={{ textTransform: 'none' }}
+					>
+						Preview PRC execution
+					</Button>
 				</Box>
 
 				{/* Template Basic Info */}
@@ -522,7 +607,7 @@ const LinkedMastersTab = ({
 							Loading operations...
 						</Typography>
 					</Box>
-				) : !partId ? (
+				) : !operationsPartId ? (
 					<Alert severity="info" sx={{ mb: 3 }}>
 						Save the part first to load available operations.
 					</Alert>
@@ -535,7 +620,7 @@ const LinkedMastersTab = ({
 						{addedGroups.length > 0 && (
 							<>
 								<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: '#333' }}>
-									Operation member count
+									Manpower by skill level (L1–L4)
 								</Typography>
 								<TableContainer
 									component={Paper}
@@ -546,9 +631,11 @@ const LinkedMastersTab = ({
 										<TableHead>
 											<TableRow sx={{ backgroundColor: '#fafafa' }}>
 												<TableCell sx={{ fontWeight: 600 }}>Operation</TableCell>
-												<TableCell align="right" sx={{ fontWeight: 600, width: 180 }}>
-													Members
-												</TableCell>
+												{(['L1', 'L2', 'L3', 'L4'] as const).map(label => (
+													<TableCell key={label} align="right" sx={{ fontWeight: 600, width: 96 }}>
+														{label}
+													</TableCell>
+												))}
 											</TableRow>
 										</TableHead>
 										<TableBody>
@@ -558,40 +645,42 @@ const LinkedMastersTab = ({
 												return (
 													<TableRow key={fieldRow.id}>
 														<TableCell>{group.label}</TableCell>
-														<TableCell align="right">
-															<Controller
-																name={`operationWiseData.${index}.responsiblePersonCount`}
-																control={control}
-																render={({ field }) => (
-																	<TextField
-																		type="number"
-																		size="small"
-																		inputProps={{ min: 1, step: 1 }}
-																		name={field.name}
-																		inputRef={field.ref}
-																		onBlur={field.onBlur}
-																		value={
-																			field.value === undefined || field.value === null
-																				? ''
-																				: field.value
-																		}
-																		onChange={e => {
-																			const raw = e.target.value;
-																			if (raw === '') {
-																				field.onChange(undefined);
-																				return;
+														{(['l1Count', 'l2Count', 'l3Count', 'l4Count'] as const).map(skillKey => (
+															<TableCell key={skillKey} align="right">
+																<Controller
+																	name={`operationWiseData.${index}.${skillKey}`}
+																	control={control}
+																	render={({ field }) => (
+																		<TextField
+																			type="number"
+																			size="small"
+																			inputProps={{ min: 0, step: 1 }}
+																			name={field.name}
+																			inputRef={field.ref}
+																			onBlur={field.onBlur}
+																			value={
+																				field.value === undefined || field.value === null
+																					? ''
+																					: field.value
 																			}
-																			const num = parseInt(raw, 10);
-																			field.onChange(Number.isNaN(num) ? undefined : num);
-																		}}
-																		sx={{
-																			width: 120,
-																			'& .MuiOutlinedInput-root': { borderRadius: '8px' }
-																		}}
-																	/>
-																)}
-															/>
-														</TableCell>
+																			onChange={e => {
+																				const raw = e.target.value;
+																				if (raw === '') {
+																					field.onChange(undefined);
+																					return;
+																				}
+																				const num = parseInt(raw, 10);
+																				field.onChange(Number.isNaN(num) ? undefined : num);
+																			}}
+																			sx={{
+																				width: 88,
+																				'& .MuiOutlinedInput-root': { borderRadius: '8px' }
+																			}}
+																		/>
+																	)}
+																/>
+															</TableCell>
+														))}
 													</TableRow>
 												);
 											})}
@@ -683,7 +772,7 @@ const LinkedMastersTab = ({
 					);
 				})}
 
-				{addedGroups.length === 0 && !isOperationsLoading && partId && operationGroups.length > 0 && (
+				{addedGroups.length === 0 && !isOperationsLoading && operationsPartId && operationGroups.length > 0 && (
 					<Alert severity="info" sx={{ mt: 1 }}>
 						No operation groups added yet. Select an operation from the dropdown above and click "Add Operation".
 					</Alert>

@@ -4,6 +4,7 @@ import { type TimelineStep, type FormData } from '../../../../types/execution.ty
 interface RawMaterialsStepProps {
 	step: TimelineStep;
 	onStepComplete: (formData: FormData) => void | Promise<void>;
+	readOnlyOverride?: boolean;
 }
 
 /** Flat shape expected by `buildAggregatedData` for raw materials (matches prior editable step). */
@@ -26,8 +27,8 @@ const displayCell = (value: unknown): string => {
 	return s === '' ? '—' : s;
 };
 
-const RawMaterialsStep = ({ step, onStepComplete }: RawMaterialsStepProps) => {
-	const isReadOnly = step.status === 'completed';
+const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride }: RawMaterialsStepProps) => {
+	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 
 	const handleProceed = () => {
 		void onStepComplete(buildRawMaterialsProceedFormData(step));

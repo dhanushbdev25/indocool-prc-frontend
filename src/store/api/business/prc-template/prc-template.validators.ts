@@ -117,6 +117,12 @@ export interface DeletePrcTemplateTaskResponse {
 	data?: PrcTemplateDetail | PrcTemplate | Record<string, unknown>;
 }
 
+/** Response from POST prcTemplate/resolveTemplate — hydrated template for execution-style preview */
+export interface ResolvePrcTemplateResponse {
+	message?: string;
+	data: PrcTemplateDetail;
+}
+
 export interface OperationsComboItem {
 	label: string;
 	value: string;
@@ -227,6 +233,17 @@ export function isPrcTemplateMutationResponse(
 		return false;
 	}
 	return true;
+}
+
+export function isResolvePrcTemplateResponse(value: unknown): value is ResolvePrcTemplateResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (o.data === undefined || o.data === null || typeof o.data !== 'object' || Array.isArray(o.data)) {
+		return false;
+	}
+	return isPrcTemplateDetail(o.data);
 }
 
 export function isOperationsComboResponse(value: unknown): value is OperationsComboResponse {

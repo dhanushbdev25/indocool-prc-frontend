@@ -285,9 +285,15 @@ export interface OperationWiseExecutionRow {
 	id: string | number;
 	operationID: number;
 	operationName: string;
-	responsiblePersonCount: number;
+	/** Optional until part master / runtime supplies a planned headcount */
+	responsiblePersonCount?: number;
+	/** When present, should match sum(l1–l4); used for display and deviation when set */
+	l1Count?: number;
+	l2Count?: number;
+	l3Count?: number;
+	l4Count?: number;
 	responsiblePersons?: OperationWiseExecutionPerson[];
-	/** True when saved count of responsiblePersons differs from responsiblePersonCount */
+	/** True when saved count of responsiblePersons differs from expected headcount */
 	countDeviated?: boolean;
 }
 

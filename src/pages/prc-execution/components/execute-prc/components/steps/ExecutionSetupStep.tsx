@@ -58,13 +58,15 @@ interface ExecutionSetupStepProps {
 	/** Live merged aggregated steps from parent (includes optimistic operationWiseData). */
 	aggregatedStepsSnapshot?: Record<string, unknown>;
 	onStepComplete: (formData: FormData) => void;
+	readOnlyOverride?: boolean;
 }
 
 const ExecutionSetupStep = ({
 	step,
 	executionData,
 	aggregatedStepsSnapshot,
-	onStepComplete
+	onStepComplete,
+	readOnlyOverride
 }: ExecutionSetupStepProps) => {
 	const { userInfo } = useCurrentRole();
 	const partId = executionData.partId;
@@ -81,7 +83,7 @@ const ExecutionSetupStep = ({
 	const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
-	const isReadOnly = step.status === 'completed';
+	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 	const mouldComboBusy = isMouldComboLoading || isMouldComboFetching;
 
 	const mergedOperationWise = useMemo(() => {
@@ -96,7 +98,6 @@ const ExecutionSetupStep = ({
 				id: `tpl-${g.id}`,
 				operationID: Number(g.id) || 0,
 				operationName: g.processName,
-				responsiblePersonCount: 1,
 				responsiblePersons: []
 			})
 		);

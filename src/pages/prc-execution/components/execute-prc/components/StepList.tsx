@@ -7,9 +7,11 @@ interface StepListProps {
 	steps: TimelineStep[];
 	currentStepIndex: number;
 	onStepClick: (stepIndex: number) => void;
+	/** When true, all steps are navigable (e.g. unsaved template preview). */
+	previewMode?: boolean;
 }
 
-const StepList = ({ steps, currentStepIndex, onStepClick }: StepListProps) => {
+const StepList = ({ steps, currentStepIndex, onStepClick, previewMode = false }: StepListProps) => {
 	const currentStepRef = useRef<HTMLDivElement>(null);
 
 	// Auto-scroll to current step
@@ -39,6 +41,7 @@ const StepList = ({ steps, currentStepIndex, onStepClick }: StepListProps) => {
 	};
 
 	const isStepClickable = (step: TimelineStep, index: number) => {
+		if (previewMode) return true;
 		return step.status === 'completed' || step.status === 'in-progress' || index === currentStepIndex;
 	};
 

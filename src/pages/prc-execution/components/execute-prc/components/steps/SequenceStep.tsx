@@ -26,6 +26,8 @@ interface SequenceStepProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => void;
+	/** When true, all inputs are disabled (e.g. part master template preview). */
+	readOnlyOverride?: boolean;
 }
 
 // Helper function to validate measurement value against acceptance range
@@ -97,7 +99,7 @@ const normalizeMeasurementsToCount = (
 	return out;
 };
 
-const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps) => {
+const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }: SequenceStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 
@@ -323,7 +325,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							)
 					: initialData.formData && Object.keys(initialData.formData).length > 0))
 	);
-	const isReadOnly = step.status === 'completed' || isSubStepFilled;
+	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed' || isSubStepFilled;
 
 	// Debug logging
 	console.log('SequenceStep Debug:', {

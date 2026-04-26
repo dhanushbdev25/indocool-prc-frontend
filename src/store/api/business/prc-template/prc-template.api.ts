@@ -5,6 +5,7 @@ import {
 	isPrcTemplateByIdResponse,
 	isPrcTemplateInspectionsResponse,
 	isPrcTemplateMutationResponse,
+	isResolvePrcTemplateResponse,
 	isOperationsComboResponse,
 	type PrcTemplateListResponse,
 	type PrcTemplateByIdResponse,
@@ -15,7 +16,8 @@ import {
 	type UpdatePrcTemplateResponse,
 	type DeletePrcTemplateTaskRequest,
 	type DeletePrcTemplateTaskResponse,
-	type OperationsComboResponse
+	type OperationsComboResponse,
+	type ResolvePrcTemplateResponse
 } from './prc-template.validators';
 
 // API parameters
@@ -83,6 +85,21 @@ export const prcTemplateApi = createApi({
 				return response;
 			},
 			providesTags: (_, __, { id }) => [{ type: 'PrcTemplate', id: `inspections-${id}` }]
+		}),
+		// Resolve template payload into hydrated execution shape (preview / unsaved)
+		resolvePrcTemplate: builder.mutation<ResolvePrcTemplateResponse, CreatePrcTemplateRequest>({
+			query: data => ({
+				url: 'prcTemplate/resolveTemplate',
+				method: 'POST',
+				body: { data }
+			}),
+			transformResponse: (response: unknown) => {
+				if (!isResolvePrcTemplateResponse(response)) {
+					console.error('Invalid resolve PRC template response structure', response);
+					throw new Error('Invalid resolve PRC template response structure');
+				}
+				return response;
+			}
 		}),
 		// Create new PRC template
 		createPrcTemplate: builder.mutation<CreatePrcTemplateResponse, CreatePrcTemplateRequest>({
@@ -163,6 +180,7 @@ export const {
 	useFetchPrcTemplateByIdQuery,
 	useFetchPrcTemplateInspectionsQuery,
 	useFetchOperationsComboQuery,
+	useResolvePrcTemplateMutation,
 	useCreatePrcTemplateMutation,
 	useUpdatePrcTemplateMutation,
 	useDeletePrcTemplateTaskMutation

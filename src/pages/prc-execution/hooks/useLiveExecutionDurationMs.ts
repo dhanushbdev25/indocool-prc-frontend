@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { type ExecutionData } from '../types/execution.types';
 
-const TERMINAL_STATUSES = new Set(['COMPLETED', 'INACTIVE']);
+const TERMINAL_STATUSES = new Set(['COMPLETED', 'INACTIVE', 'PREVIEW']);
 
 function isTerminalStatus(status: string): boolean {
 	return TERMINAL_STATUSES.has(status);

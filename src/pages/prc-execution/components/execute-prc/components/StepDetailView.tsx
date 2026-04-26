@@ -20,6 +20,8 @@ interface StepDetailViewProps {
 	onStepComplete: (formData: FormData) => void;
 	canGoPrevious: boolean;
 	canGoNext: boolean;
+	/** Browse-only mode: same step UI as execution, inputs disabled, Prev/Next navigate without completing. */
+	readOnly?: boolean;
 }
 
 const StepDetailView = ({
@@ -31,7 +33,8 @@ const StepDetailView = ({
 	onNextStep,
 	onStepComplete,
 	canGoPrevious,
-	canGoNext
+	canGoNext,
+	readOnly = false
 }: StepDetailViewProps) => {
 	// For sequence step groups, we need to handle sub-steps
 	const isSequenceGroup = step.type === 'sequence' && step.stepGroup;
@@ -146,6 +149,19 @@ const StepDetailView = ({
 	};
 
 	const handleNextSubStep = async () => {
+		if (readOnly) {
+			if (isSequenceGroup) {
+				if (currentSubStepIndex < subSteps.length - 1) {
+					setCurrentSubStepIndex(prev => prev + 1);
+				} else {
+					onNextStep();
+				}
+			} else {
+				onNextStep();
+			}
+			return;
+		}
+
 		if (isSequenceGroup && !isCurrentSubStepFilled()) return;
 		if (!isSequenceGroup && !isNonSequenceStepFilled()) return;
 
@@ -166,6 +182,15 @@ const StepDetailView = ({
 	};
 
 	const handlePreviousSubStep = () => {
+		if (readOnly) {
+			if (isSequenceGroup && currentSubStepIndex > 0) {
+				setCurrentSubStepIndex(prev => prev - 1);
+			} else {
+				onPreviousStep();
+			}
+			return;
+		}
+
 		if (isSequenceGroup && currentSubStepIndex > 0) {
 			setCurrentSubStepIndex(prev => prev - 1);
 		} else {
@@ -175,9 +200,13 @@ const StepDetailView = ({
 
 	const canGoPreviousSubStep = isSequenceGroup ? currentSubStepIndex > 0 : canGoPrevious;
 
-	const canGoNextSubStep = isSequenceGroup
-		? isCurrentSubStepFilled() && (currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled())
-		: isNonSequenceStepFilled() && canGoNext;
+	const canGoNextSubStep = readOnly
+		? isSequenceGroup
+			? currentSubStepIndex < subSteps.length - 1 || canGoNext
+			: canGoNext
+		: isSequenceGroup
+			? isCurrentSubStepFilled() && (currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled())
+			: isNonSequenceStepFilled() && canGoNext;
 
 	const renderStepContent = () => {
 		if (isSequenceGroup && currentSubStep) {
@@ -218,6 +247,7 @@ const StepDetailView = ({
 					step={subStepTimelineStep}
 					executionData={executionData}
 					onStepComplete={handleSubStepComplete}
+					readOnlyOverride={readOnly}
 				/>
 			);
 		}
@@ -231,16 +261,43 @@ const StepDetailView = ({
 						executionData={executionData}
 						aggregatedStepsSnapshot={aggregatedStepsSnapshot}
 						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
 					/>
 				);
 			case 'rawMaterials':
-				return <RawMaterialsStep step={step} onStepComplete={handleSubStepComplete} />;
+				return (
+					<RawMaterialsStep
+						step={step}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
 			case 'bom':
-				return <BomStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
+				return (
+					<BomStep
+						step={step}
+						executionData={executionData}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
 			case 'inspection':
-				return <InspectionStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
+				return (
+					<InspectionStep
+						step={step}
+						executionData={executionData}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
 			case 'sapConfirmations':
-				return <SapConfirmationStep executionData={executionData} onStepComplete={handleSubStepComplete} />;
+				return (
+					<SapConfirmationStep
+						executionData={executionData}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
 			default:
 				return <div>Unknown step type: {step.type}</div>;
 		}

@@ -10,6 +10,60 @@ function isPlainRecord(v: unknown): v is Record<string, unknown> {
 	return v !== null && typeof v === 'object' && !Array.isArray(v);
 }
 
+const SKILL_LEVEL_KEYS = ['l1Count', 'l2Count', 'l3Count', 'l4Count'] as const;
+
+function hasSkillLevelFields(raw: Record<string, unknown>): boolean {
+	return SKILL_LEVEL_KEYS.some(
+		k => k in raw && raw[k] !== undefined && raw[k] !== null && raw[k] !== ''
+	);
+}
+
+function clampNonNegSkillInt(n: unknown): number {
+	const x = Number(n);
+	if (!Number.isFinite(x) || x < 0) return 0;
+	return Math.floor(x);
+}
+
+function parseOptionalLevel(
+	raw: Record<string, unknown>,
+	key: (typeof SKILL_LEVEL_KEYS)[number]
+): number | undefined {
+	if (!(key in raw) || raw[key] === null || raw[key] === '') return undefined;
+	const x = Number(raw[key]);
+	if (!Number.isFinite(x) || x < 0) return undefined;
+	return Math.floor(x);
+}
+
+/** When any L1–L4 field is set on the row, keep `responsiblePersonCount` equal to their sum (no minimum). */
+function syncResponsiblePersonCountFromSkillLevels(
+	row: OperationWiseExecutionRow
+): OperationWiseExecutionRow {
+	const hasAnyLevel = SKILL_LEVEL_KEYS.some(k => row[k] !== undefined);
+	if (!hasAnyLevel) return row;
+	const sum =
+		clampNonNegSkillInt(row.l1Count) +
+		clampNonNegSkillInt(row.l2Count) +
+		clampNonNegSkillInt(row.l3Count) +
+		clampNonNegSkillInt(row.l4Count);
+	return {
+		...row,
+		responsiblePersonCount: sum
+	};
+}
+
+function expectedHeadcountForDeviation(row: OperationWiseExecutionRow): number {
+	const hasAnyLevel = SKILL_LEVEL_KEYS.some(k => row[k] !== undefined);
+	if (hasAnyLevel) {
+		return (
+			clampNonNegSkillInt(row.l1Count) +
+			clampNonNegSkillInt(row.l2Count) +
+			clampNonNegSkillInt(row.l3Count) +
+			clampNonNegSkillInt(row.l4Count)
+		);
+	}
+	return row.responsiblePersonCount ?? 0;
+}
+
 function normalizeExecutionRow(raw: unknown): OperationWiseExecutionRow | null {
 	if (!isPlainRecord(raw)) return null;
 	const operationID = Number(raw.operationID);
@@ -19,7 +73,23 @@ function normalizeExecutionRow(raw: unknown): OperationWiseExecutionRow | null {
 		typeof idRaw === 'string' || typeof idRaw === 'number' ? idRaw : `op-${operationID}`;
 	const operationName = typeof raw.operationName === 'string' ? raw.operationName : '';
 	const rpc = Number(raw.responsiblePersonCount);
-	const responsiblePersonCount = Number.isFinite(rpc) && rpc >= 1 ? Math.floor(rpc) : 1;
+
+	let responsiblePersonCount: number | undefined;
+	let l1Count: number | undefined;
+	let l2Count: number | undefined;
+	let l3Count: number | undefined;
+	let l4Count: number | undefined;
+	if (hasSkillLevelFields(raw)) {
+		l1Count = parseOptionalLevel(raw, 'l1Count');
+		l2Count = parseOptionalLevel(raw, 'l2Count');
+		l3Count = parseOptionalLevel(raw, 'l3Count');
+		l4Count = parseOptionalLevel(raw, 'l4Count');
+		const sum = (l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
+		responsiblePersonCount = sum;
+	} else {
+		responsiblePersonCount = Number.isFinite(rpc) && rpc >= 1 ? Math.floor(rpc) : undefined;
+	}
+
 	let responsiblePersons: OperationWiseExecutionRow['responsiblePersons'];
 	if (Array.isArray(raw.responsiblePersons)) {
 		responsiblePersons = raw.responsiblePersons.map((p, i) => {
@@ -44,6 +114,7 @@ function normalizeExecutionRow(raw: unknown): OperationWiseExecutionRow | null {
 		operationID,
 		operationName,
 		responsiblePersonCount,
+		...(hasSkillLevelFields(raw) ? { l1Count, l2Count, l3Count, l4Count } : {}),
 		responsiblePersons,
 		countDeviated
 	};
@@ -89,12 +160,31 @@ function legacyRecordToRows(rec: Record<string, unknown>): OperationWiseExecutio
 		const operationID = Number(key);
 		if (!Number.isFinite(operationID)) continue;
 		if (!isPlainRecord(val)) continue;
+		if (hasSkillLevelFields(val)) {
+			const l1Count = parseOptionalLevel(val, 'l1Count');
+			const l2Count = parseOptionalLevel(val, 'l2Count');
+			const l3Count = parseOptionalLevel(val, 'l3Count');
+			const l4Count = parseOptionalLevel(val, 'l4Count');
+			const sum = (l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
+			out.push({
+				id: `legacy-${key}`,
+				operationID,
+				operationName: typeof val.operationName === 'string' ? val.operationName : '',
+				l1Count,
+				l2Count,
+				l3Count,
+				l4Count,
+				responsiblePersonCount: sum,
+				responsiblePersons: undefined
+			});
+			continue;
+		}
 		const mc = Number(val.memberCount ?? val.responsiblePersonCount);
 		out.push({
 			id: `legacy-${key}`,
 			operationID,
 			operationName: typeof val.operationName === 'string' ? val.operationName : '',
-			responsiblePersonCount: Number.isFinite(mc) && mc >= 1 ? Math.floor(mc) : 1,
+			responsiblePersonCount: Number.isFinite(mc) && mc >= 1 ? Math.floor(mc) : undefined,
 			responsiblePersons: undefined
 		});
 	}
@@ -133,14 +223,25 @@ export function mergeOperationWiseForRead(
 
 	return rootArr.map(base => {
 		const fromAgg = aggById.get(base.operationID);
-		if (!fromAgg) return { ...base };
-		return {
+		if (!fromAgg) return syncResponsiblePersonCountFromSkillLevels({ ...base });
+		const merged: OperationWiseExecutionRow = {
 			...base,
 			...fromAgg,
 			operationName: base.operationName || fromAgg.operationName,
-			responsiblePersonCount: base.responsiblePersonCount ?? fromAgg.responsiblePersonCount,
+			l1Count: fromAgg.l1Count ?? base.l1Count,
+			l2Count: fromAgg.l2Count ?? base.l2Count,
+			l3Count: fromAgg.l3Count ?? base.l3Count,
+			l4Count: fromAgg.l4Count ?? base.l4Count,
 			responsiblePersons: fromAgg.responsiblePersons ?? base.responsiblePersons,
 			countDeviated: fromAgg.countDeviated
+		};
+		const hasAnyLevel = SKILL_LEVEL_KEYS.some(k => merged[k] !== undefined);
+		if (hasAnyLevel) {
+			return syncResponsiblePersonCountFromSkillLevels(merged);
+		}
+		return {
+			...merged,
+			responsiblePersonCount: base.responsiblePersonCount ?? fromAgg.responsiblePersonCount
 		};
 	});
 }
@@ -162,18 +263,20 @@ export function mergeOperationWiseExecutionArrays(
 	if (incoming.length > 0) {
 		return incoming
 			.map(inc => map.get(inc.operationID))
-			.filter((r): r is OperationWiseExecutionRow => r !== undefined);
+			.filter((r): r is OperationWiseExecutionRow => r !== undefined)
+			.map(syncResponsiblePersonCountFromSkillLevels);
 	}
 	return existing ?? [];
 }
 
-/** Set countDeviated when responsiblePersons.length !== responsiblePersonCount */
+/** Set countDeviated when assigned responsible persons count differs from expected headcount (sum of L1–L4 when set, else `responsiblePersonCount`). */
 export function applyCountDeviated(rows: OperationWiseExecutionRow[]): OperationWiseExecutionRow[] {
 	return rows.map(row => {
-		const n = row.responsiblePersons?.length ?? 0;
-		const expected = row.responsiblePersonCount;
+		const synced = syncResponsiblePersonCountFromSkillLevels(row);
+		const n = synced.responsiblePersons?.length ?? 0;
+		const expected = expectedHeadcountForDeviation(synced);
 		return {
-			...row,
+			...synced,
 			countDeviated: n !== expected
 		};
 	});

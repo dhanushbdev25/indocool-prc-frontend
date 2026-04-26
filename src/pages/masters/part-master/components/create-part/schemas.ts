@@ -110,16 +110,36 @@ export const prcTemplateStepFormSchema = yup.object({
 	updatedAt: yup.string().optional()
 });
 
-export const operationWiseRowFormSchema = yup.object({
-	id: yup.mixed<string | number>().required(),
-	operationID: yup.number().required(),
-	operationName: yup.string().required(),
-	responsiblePersonCount: yup
-		.number()
-		.typeError('Count is required')
-		.min(1, 'Must be at least 1')
-		.required()
-});
+/** Empty field in UI → undefined; no default 0/1 until user enters a value */
+const optionalNonNegSkillInt = () =>
+	yup
+		.mixed<number | undefined>()
+		.transform((val: unknown) => {
+			if (val === '' || val === null || val === undefined) return undefined;
+			if (typeof val === 'string' && val.trim() === '') return undefined;
+			const n = Number(val);
+			return Number.isFinite(n) ? n : undefined;
+		})
+		.test('nonneg-int', 'Must be a non-negative whole number', val => {
+			if (val === undefined) return true;
+			return typeof val === 'number' && Number.isInteger(val) && val >= 0;
+		});
+
+export const operationWiseRowFormSchema = yup
+	.object({
+		id: yup.mixed<string | number>().required(),
+		operationID: yup.number().required(),
+		operationName: yup.string().required(),
+		l1Count: optionalNonNegSkillInt(),
+		l2Count: optionalNonNegSkillInt(),
+		l3Count: optionalNonNegSkillInt(),
+		l4Count: optionalNonNegSkillInt()
+	})
+	.test('skill-sum', 'At least one member is required across L1–L4', function (row) {
+		if (!row) return false;
+		const n = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+		return n(row.l1Count) + n(row.l2Count) + n(row.l3Count) + n(row.l4Count) >= 1;
+	});
 
 // Main form validation schema
 export const partMasterFormSchema = yup.object({

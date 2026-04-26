@@ -115,7 +115,7 @@ export interface PartMaster {
 	updatedAt?: string | null;
 	customerName?: string | null;
 	mouldDetails?: Mould[];
-	/** One row per operation: planned responsible-person count for PRC execution */
+	/** One row per operation: L1–L4 manpower counts + `responsiblePersonCount` (total) for PRC execution */
 	operationWiseData?: OperationWisePartRow[];
 	files?: PartDrawing[] | null;
 	inspectionDiagrams?: InspectionDiagram | InspectionDiagram[] | null;
@@ -126,7 +126,12 @@ export interface OperationWisePartRow {
 	id: string | number;
 	operationID: number;
 	operationName: string;
-	responsiblePersonCount: number;
+	/** Sum of l1–l4 when set; optional until user enters skill counts */
+	responsiblePersonCount?: number;
+	l1Count?: number;
+	l2Count?: number;
+	l3Count?: number;
+	l4Count?: number;
 }
 
 export interface CustomerCombo {

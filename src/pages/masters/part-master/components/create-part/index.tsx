@@ -45,6 +45,7 @@ import { uploadPartDrawings } from '../../../../../utils/uploadPartDrawings';
 import { useImageGallery } from '../../../../../hooks/useImageGallery';
 import { toFileRenderUrl, toFileStoragePath } from '../../../../../utils/fileUrl';
 import type { PartMaster, OperationWisePartRow } from '../../../../../store/api/business/part-master/part.validators';
+import { normalizePrcTemplateSteps, buildPrcTemplatePayload } from '../../utils/prcTemplatePayload';
 
 function mapMouldDetailsToFormMoulds(partMaster: PartMaster): PartMasterFormData['moulds'] {
 	return (partMaster.mouldDetails ?? []).map(item => ({
@@ -52,6 +53,47 @@ function mapMouldDetailsToFormMoulds(partMaster: PartMaster): PartMasterFormData
 		reconciliationCount: Number(item.reconciliationCount) || 0,
 		currentCount: Number(item.currentCount ?? 0) || 0
 	}));
+}
+
+function parseOptionalNonNegInt(n: unknown): number | undefined {
+	if (n === undefined || n === null || n === '') return undefined;
+	const x = Number(n);
+	if (!Number.isFinite(x) || x < 0) return undefined;
+	return Math.floor(x);
+}
+
+/** Parse L1–L4 from API row; legacy total-only rows map into L1 only. Omit defaults (no 0/1 fill). */
+function skillLevelsFromApiRecord(r: Record<string, unknown>): Pick<
+	OperationWisePartRow,
+	'l1Count' | 'l2Count' | 'l3Count' | 'l4Count'
+> {
+	const keys = ['l1Count', 'l2Count', 'l3Count', 'l4Count'] as const;
+	const hasSkillFields = keys.some(
+		k => k in r && r[k] !== undefined && r[k] !== null && r[k] !== ''
+	);
+	if (hasSkillFields) {
+		return {
+			l1Count: parseOptionalNonNegInt(r.l1Count),
+			l2Count: parseOptionalNonNegInt(r.l2Count),
+			l3Count: parseOptionalNonNegInt(r.l3Count),
+			l4Count: parseOptionalNonNegInt(r.l4Count)
+		};
+	}
+	const rc = Number(r.responsiblePersonCount);
+	if (Number.isFinite(rc) && rc >= 1) {
+		return {
+			l1Count: Math.floor(rc),
+			l2Count: undefined,
+			l3Count: undefined,
+			l4Count: undefined
+		};
+	}
+	return {
+		l1Count: undefined,
+		l2Count: undefined,
+		l3Count: undefined,
+		l4Count: undefined
+	};
 }
 
 function mapOperationWiseDataFromApi(partMaster: PartMaster): OperationWisePartRow[] {
@@ -68,12 +110,18 @@ function mapOperationWiseDataFromApi(partMaster: PartMaster): OperationWisePartR
 			const id =
 				typeof idRaw === 'string' || typeof idRaw === 'number' ? idRaw : `op-${operationID}`;
 			const operationName = typeof r.operationName === 'string' ? r.operationName : '';
-			const rc = Number(r.responsiblePersonCount);
+			const { l1Count, l2Count, l3Count, l4Count } = skillLevelsFromApiRecord(r);
+			const sum =
+				(l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
 			out.push({
 				id,
 				operationID,
 				operationName,
-				responsiblePersonCount: Number.isFinite(rc) && rc >= 1 ? Math.floor(rc) : 1
+				l1Count,
+				l2Count,
+				l3Count,
+				l4Count,
+				responsiblePersonCount: sum >= 1 ? sum : undefined
 			});
 		}
 		return out;
@@ -84,15 +132,28 @@ function mapOperationWiseDataFromApi(partMaster: PartMaster): OperationWisePartR
 		for (const [key, val] of Object.entries(raw)) {
 			const opNum = Number(key);
 			if (!Number.isFinite(opNum)) continue;
-			const mc =
-				val && typeof val === 'object' && 'memberCount' in val
-					? Number((val as { memberCount: unknown }).memberCount)
-					: NaN;
+			const valRec =
+				val && typeof val === 'object' && !Array.isArray(val)
+					? (val as Record<string, unknown>)
+					: {};
+			const merged: Record<string, unknown> = { ...valRec };
+			if ('memberCount' in valRec) {
+				merged.responsiblePersonCount = valRec.memberCount;
+			}
+			const operationName =
+				typeof valRec.operationName === 'string' ? valRec.operationName : '';
+			const { l1Count, l2Count, l3Count, l4Count } = skillLevelsFromApiRecord(merged);
+			const sum =
+				(l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
 			out.push({
 				id: `legacy-${key}`,
 				operationID: opNum,
-				operationName: '',
-				responsiblePersonCount: Number.isFinite(mc) && mc >= 1 ? Math.floor(mc) : 1
+				operationName,
+				l1Count,
+				l2Count,
+				l3Count,
+				l4Count,
+				responsiblePersonCount: sum >= 1 ? sum : undefined
 			});
 		}
 		return out;
@@ -127,13 +188,22 @@ function cleanOperationWiseDataForApi(
 		if (!row || typeof row !== 'object') continue;
 		const opIdStr = String(row.operationID);
 		if (allowedOperationIds && !allowedOperationIds.has(opIdStr)) continue;
-		const n = Number(row.responsiblePersonCount);
 		if (!Number.isFinite(row.operationID)) continue;
+		const l1 = parseOptionalNonNegInt(row.l1Count) ?? 0;
+		const l2 = parseOptionalNonNegInt(row.l2Count) ?? 0;
+		const l3 = parseOptionalNonNegInt(row.l3Count) ?? 0;
+		const l4 = parseOptionalNonNegInt(row.l4Count) ?? 0;
+		const sum = l1 + l2 + l3 + l4;
+		if (sum < 1) continue;
 		out.push({
 			id: row.id,
 			operationID: row.operationID,
 			operationName: String(row.operationName ?? ''),
-			responsiblePersonCount: Number.isFinite(n) && n >= 1 ? Math.max(1, Math.floor(n)) : 1
+			l1Count: l1,
+			l2Count: l2,
+			l3Count: l3,
+			l4Count: l4,
+			responsiblePersonCount: sum
 		});
 	}
 	return out;
@@ -321,104 +391,6 @@ const transformFormDataToApiRequest = (
 		bom: transformArrayData(formData.bom, isEditMode),
 		drilling: transformArrayData(formData.drilling, isEditMode),
 		cutting: transformArrayData(formData.cutting, isEditMode)
-	};
-};
-
-type OperationComboData = {
-	data?: Array<{
-		value: string;
-		data: { operationText: string };
-	}>;
-};
-
-type NormalizedPrcTemplateStep = {
-	version: number;
-	isLatest: boolean;
-	sequence: number;
-	stepId: number;
-	type: 'sequence' | 'inspection';
-	blockCatalystMixing: boolean;
-	requestSupervisorApproval: boolean;
-	operationID: string;
-	operationText?: string;
-};
-
-const normalizePrcTemplateSteps = (
-	data: PartMasterFormData,
-	operationsData?: OperationComboData
-): { steps: NormalizedPrcTemplateStep[]; error: string | null } => {
-	const steps = data.prcTemplateSteps || [];
-	const operationTextByValue = new Map(
-		(operationsData?.data ?? []).map(op => [op.value, op.data.operationText] as const)
-	);
-
-	const normalized: NormalizedPrcTemplateStep[] = [];
-
-	for (let index = 0; index < steps.length; index += 1) {
-		const step = steps[index];
-		if (!step || typeof step !== 'object') {
-			return { steps: [], error: `PRC step ${index + 1} is empty. Please remove it and try again.` };
-		}
-
-		const stepNumber = index + 1;
-		const stepId = step.stepId;
-		const stepType = step.type;
-		const group = step.group;
-
-		if (typeof stepId !== 'number' || Number.isNaN(stepId) || stepId <= 0) {
-			return { steps: [], error: `PRC step ${stepNumber} has an invalid Step ID.` };
-		}
-		if (stepType !== 'sequence' && stepType !== 'inspection') {
-			return { steps: [], error: `PRC step ${stepNumber} has an invalid Step Type.` };
-		}
-		if (typeof group !== 'string' || group.trim().length === 0) {
-			return { steps: [], error: `PRC step ${stepNumber} has no Operation Group selected.` };
-		}
-
-		const operationText = operationTextByValue.get(group);
-
-		normalized.push({
-			version: step.version ?? 1,
-			isLatest: step.isLatest ?? true,
-			sequence: index + 3,
-			stepId,
-			type: stepType,
-			blockCatalystMixing: step.blockCatalystMixing ?? false,
-			requestSupervisorApproval: step.requestSupervisorApproval ?? false,
-			operationID: group,
-			...(typeof operationText === 'string' && operationText.trim().length > 0 ? { operationText } : {})
-		});
-	}
-
-	return { steps: normalized, error: null };
-};
-
-const buildPrcTemplatePayload = (
-	data: PartMasterFormData,
-	normalizedSteps: NormalizedPrcTemplateStep[]
-) => {
-	const resolvedTemplateId =
-		typeof data.templateId === 'string' && data.templateId.trim().length > 0
-			? data.templateId.trim()
-			: (data.partNumber || data.drawingNumber || '').trim();
-	const resolvedTemplateName =
-		typeof data.templateName === 'string' && data.templateName.trim().length > 0
-			? data.templateName.trim()
-			: (data.partNumber || data.description || data.drawingNumber || '').trim();
-
-	const templateRequestData = {
-		status: data.isTemplateActive ? 'ACTIVE' : 'INACTIVE',
-		templateId: resolvedTemplateId,
-		templateName: resolvedTemplateName,
-		notes: data.templateNotes || '',
-		version: data.templateVersion ?? 1,
-		isLatest: data.templateIsLatest ?? true,
-		isActive: data.isTemplateActive ?? true
-	};
-
-	return {
-		prcTemplate: templateRequestData,
-		prcTemplateSteps: normalizedSteps
 	};
 };
 
@@ -990,6 +962,7 @@ const CreatePart = () => {
 							control={control}
 							errors={errors}
 							setValue={setValue}
+							operationsPartId={operationsQueryPartId}
 						/>
 					</TabPanel>
 					<TabPanel value={activeTab} index={4}>

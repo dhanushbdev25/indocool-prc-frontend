@@ -43,9 +43,10 @@ interface InspectionStepProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => void;
+	readOnlyOverride?: boolean;
 }
 
-const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepProps) => {
+const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride }: InspectionStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [annotations, setAnnotations] = useState<ImageAnnotation[]>([]);
 	const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -373,7 +374,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		}
 	}, [initialFormData, step.inspectionParameters]);
 
-	const isReadOnly = step.status === 'completed';
+	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 
 	// Debug logging
 	console.log('InspectionStep Debug:', {

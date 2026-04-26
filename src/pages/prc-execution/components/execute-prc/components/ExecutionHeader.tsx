@@ -18,6 +18,10 @@ import { formatExecutionDuration } from '../../../utils/formatExecutionDuration'
 
 interface ExecutionHeaderProps {
 	executionData: ExecutionData;
+	/** When set, Back invokes this instead of navigating to /prc-execution (e.g. dialog preview). */
+	onBackOverride?: () => void;
+	/** Hide Pause / Escalate (not applicable outside live execution). */
+	hideExecutionActions?: boolean;
 }
 
 function formatCustomerContext(execution: ExecutionData): {
@@ -90,10 +94,15 @@ function MetaField({
 	);
 }
 
-const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
+const ExecutionHeader = ({
+	executionData,
+	onBackOverride,
+	hideExecutionActions = false
+}: ExecutionHeaderProps) => {
 	const theme = useTheme();
 	const navigate = useNavigate();
 	const { userInfo } = useCurrentRole();
+	const isPreview = executionData.status === 'PREVIEW';
 	const liveDurationMs = useLiveExecutionDurationMs(executionData);
 	const durationLabel = formatExecutionDuration(liveDurationMs);
 
@@ -138,7 +147,7 @@ const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 				<Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
 					<Button
 						startIcon={<ArrowBack />}
-						onClick={() => navigate('/prc-execution')}
+						onClick={() => (onBackOverride ? onBackOverride() : navigate('/prc-execution'))}
 						color="inherit"
 						size="small"
 						sx={{
@@ -152,7 +161,7 @@ const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 					<Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
 					<Box sx={{ minWidth: 0 }}>
 						<Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', lineHeight: 1.25 }}>
-							PRC #{executionData.id}
+							{isPreview ? 'PRC preview' : `PRC #${executionData.id}`}
 						</Typography>
 						<Typography variant="body2" color="text.secondary" noWrap title={executionData.partNumber}>
 							{executionData.partNumber}
@@ -225,14 +234,16 @@ const ExecutionHeader = ({ executionData }: ExecutionHeaderProps) => {
 						<Chip label={durationLabel} size="small" variant="outlined" color="info" />
 					</Stack>
 
-					<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
-						<Button startIcon={<Pause />} variant="outlined" size="small" color="inherit">
-							Pause
-						</Button>
-						<Button startIcon={<Escalator />} variant="outlined" size="small" color="warning">
-							Escalate
-						</Button>
-					</Stack>
+					{!hideExecutionActions && (
+						<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
+							<Button startIcon={<Pause />} variant="outlined" size="small" color="inherit">
+								Pause
+							</Button>
+							<Button startIcon={<Escalator />} variant="outlined" size="small" color="warning">
+								Escalate
+							</Button>
+						</Stack>
+					)}
 				</Stack>
 			</Stack>
 

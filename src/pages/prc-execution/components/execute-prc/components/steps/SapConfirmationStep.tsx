@@ -25,6 +25,7 @@ import { type ExecutionData, type FormData } from '../../../../types/execution.t
 interface SapConfirmationStepProps {
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => Promise<void>;
+	readOnlyOverride?: boolean;
 }
 
 function LogRow({
@@ -114,14 +115,14 @@ function LogRow({
 	);
 }
 
-const SapConfirmationStep = ({ executionData, onStepComplete }: SapConfirmationStepProps) => {
+const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }: SapConfirmationStepProps) => {
 	const prcExecutionId = executionData.id;
 	const [expandedId, setExpandedId] = useState<number | null>(null);
 	const [completeLoading, setCompleteLoading] = useState(false);
 
 	const { data: logs = [], isLoading, isError, error, refetch } = useFetchSapConfirmationLogsQuery(
 		{ prcExecutionId },
-		{ skip: !prcExecutionId }
+		{ skip: !prcExecutionId || Boolean(readOnlyOverride) }
 	);
 
 	const [retrigger, { isLoading: isRetriggering }] = useRetriggerSapConfirmationsMutation();
@@ -143,6 +144,24 @@ const SapConfirmationStep = ({ executionData, onStepComplete }: SapConfirmationS
 			setCompleteLoading(false);
 		}
 	};
+
+	if (readOnlyOverride) {
+		return (
+			<Box sx={{ p: 2, maxWidth: 1200, mx: 'auto' }}>
+				<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+					SAP confirmation API calls
+				</Typography>
+				<Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+					Review each call to SAP production order confirmation. Retry failed posts, then complete this execution only
+					when every row shows success.
+				</Typography>
+				<Alert severity="info">
+					Confirmation logs are available during live PRC execution after SAP posting runs. This preview only shows the
+					step layout.
+				</Alert>
+			</Box>
+		);
+	}
 
 	return (
 		<Box sx={{ p: 2, maxWidth: 1200, mx: 'auto' }}>

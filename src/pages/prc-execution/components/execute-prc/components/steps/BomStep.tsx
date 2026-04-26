@@ -40,6 +40,7 @@ interface BomStepProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => void;
+	readOnlyOverride?: boolean;
 }
 
 // Helper function to find matching catalyst configuration
@@ -154,14 +155,14 @@ const groupAndSortBOMItems = (
 	return grouped;
 };
 
-const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
+const BomStep = ({ step, executionData, onStepComplete, readOnlyOverride }: BomStepProps) => {
 	const [formData, setFormData] = useState<CatalystMixingFormData>({
 		entries: []
 	});
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 
-	const isReadOnly = step.status === 'completed';
+	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 
 	// Process BOM items into catalyst mixing entries
 	const processedEntries = useMemo(() => {
