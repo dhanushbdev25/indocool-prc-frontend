@@ -144,35 +144,39 @@ const CreateSequence = () => {
 	useEffect(() => {
 		if (!isFetchSuccess || !sequenceData) return;
 
-		const processStepGroups = sequenceData.detail.stepGroups.map(group => ({
-			processName: group.processName,
-			processDescription: group.processDescription,
-			sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60),
-			processSteps: group.steps.map(step => {
-				const stepRec = step as Record<string, unknown>;
-				const rawTable = (step.tableConfig ?? stepRec.table_config) as Parameters<typeof normalizeTableConfig>[0];
-				const tableConfig =
-					step.targetValueType === 'table' ? normalizeTableConfig(rawTable ?? null) : null;
+		const processStepGroups = (sequenceData.detail.stepGroups ?? [])
+			.filter((group): group is NonNullable<typeof group> => group != null)
+			.map(group => ({
+				processName: group.processName,
+				processDescription: group.processDescription,
+				sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60),
+				processSteps: (group.steps ?? [])
+					.filter((step): step is NonNullable<typeof step> => step != null)
+					.map(step => {
+						const stepRec = step as Record<string, unknown>;
+						const rawTable = (step.tableConfig ?? stepRec.table_config) as Parameters<typeof normalizeTableConfig>[0];
+						const tableConfig =
+							step.targetValueType === 'table' ? normalizeTableConfig(rawTable ?? null) : null;
 
-				return {
-					parameterDescription: step.parameterDescription,
-					stepNumber: step.stepNumber,
-					stepType: step.stepType,
-					evaluationMethod: step.evaluationMethod,
-					targetValueType: step.targetValueType,
-					minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
-					maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
-					multipleMeasurements: step.multipleMeasurements ?? false,
-					multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
-					tableConfig,
-					uom: step.uom,
-					ctq: step.ctq ?? false,
-					allowAttachments: step.allowAttachments ?? false,
-					responsiblePerson: step.responsiblePerson ?? false,
-					notes: step.notes
-				};
-			})
-		}));
+						return {
+							parameterDescription: step.parameterDescription,
+							stepNumber: step.stepNumber,
+							stepType: step.stepType,
+							evaluationMethod: step.evaluationMethod,
+							targetValueType: step.targetValueType,
+							minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
+							maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
+							multipleMeasurements: step.multipleMeasurements ?? false,
+							multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
+							tableConfig,
+							uom: step.uom,
+							ctq: step.ctq ?? false,
+							allowAttachments: step.allowAttachments ?? false,
+							responsiblePerson: step.responsiblePerson ?? false,
+							notes: step.notes
+						};
+					})
+			}));
 
 		if (isEditMode) {
 			const formData: SequenceFormData = {

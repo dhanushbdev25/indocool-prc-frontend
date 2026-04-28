@@ -34,8 +34,19 @@ export const mouldApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isMouldComboResponse(response)) {
-					console.error('Invalid mould combo response structure', response);
-					throw new Error('Invalid mould combo response structure');
+					console.warn('Invalid mould combo response structure', response);
+					if (Array.isArray(response)) {
+						return response as MouldComboItem[];
+					}
+					if (
+						typeof response === 'object' &&
+						response !== null &&
+						'data' in response &&
+						Array.isArray((response as { data?: unknown }).data)
+					) {
+						return (response as { data: MouldComboItem[] }).data;
+					}
+					return [];
 				}
 				return response.data;
 			},

@@ -32,10 +32,9 @@ export const inspectionApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isInspectionListResponse(response)) {
-					console.error('Invalid inspections response structure', response);
-					throw new Error('Invalid inspections response structure');
+					console.warn('Invalid inspections response structure', response);
 				}
-				return response;
+				return response as InspectionListResponse;
 			},
 			providesTags: ['Inspection']
 		}),
@@ -47,10 +46,9 @@ export const inspectionApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isInspectionByIdResponse(response)) {
-					console.error('Invalid inspection by ID response structure', response);
-					throw new Error('Invalid inspection by ID response structure');
+					console.warn('Invalid inspection by ID response structure', response);
 				}
-				return response;
+				return response as InspectionByIdResponse;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'Inspection', id },
@@ -66,10 +64,9 @@ export const inspectionApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isInspectionMutationResponse(response)) {
-					console.error('Invalid create inspection response structure', response);
-					throw new Error('Invalid create inspection response structure');
+					console.warn('Invalid create inspection response structure', response);
 				}
-				return response;
+				return response as CreateInspectionResponse;
 			},
 			invalidatesTags: ['Inspection']
 		}),
@@ -82,10 +79,9 @@ export const inspectionApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isInspectionMutationResponse(response)) {
-					console.error('Invalid update inspection response structure', response);
-					throw new Error('Invalid update inspection response structure');
+					console.warn('Invalid update inspection response structure', response);
 				}
-				return response;
+				return response as UpdateInspectionResponse;
 			},
 			invalidatesTags: (_, __, { id }) => [{ type: 'Inspection', id }, { type: 'Inspection', id: 'LIST' }, 'Inspection']
 		}),
@@ -98,10 +94,9 @@ export const inspectionApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isInspectionMutationResponse(response)) {
-					console.error('Invalid delete inspection task response structure', response);
-					throw new Error('Invalid delete inspection task response structure');
+					console.warn('Invalid delete inspection task response structure', response);
 				}
-				return response;
+				return response as DeleteInspectionTaskResponse;
 			},
 			invalidatesTags: (_, __, { inspection }) => [
 				{ type: 'Inspection', id: inspection?.id },

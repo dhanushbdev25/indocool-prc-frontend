@@ -57,6 +57,63 @@ const truncateCommentForPreview = (text: string, maxChars = COMMENT_PREVIEW_MAX_
 	return { display: `${t.slice(0, maxChars)}…`, full: t, isTruncated: true };
 };
 
+const extractBaseName = (value: string): string => {
+	const normalized = value.replace(/\\/g, '/').trim();
+	const parts = normalized.split('/');
+	return (parts[parts.length - 1] || '').trim();
+};
+
+const normalizeImageToken = (value: unknown): string => {
+	if (typeof value !== 'string') return '';
+	return extractBaseName(value).toLowerCase();
+};
+
+const collectImageTokens = (values: unknown[]): string[] => {
+	const unique = new Set<string>();
+	values.forEach(value => {
+		const token = normalizeImageToken(value);
+		if (token) unique.add(token);
+	});
+	return Array.from(unique);
+};
+
+type PreviewImageFile = {
+	fileName?: string;
+	filePath?: string;
+	originalFileName?: string;
+};
+
+type PreviewAnnotation = {
+	imageFileName?: string;
+	imageUrl?: string;
+	regions?: unknown[];
+};
+
+type PreviewRowAnnotationEntry = {
+	rowIndex?: number;
+	annotations?: PreviewAnnotation[];
+};
+
+const buildFileTokens = (file?: PreviewImageFile): string[] =>
+	collectImageTokens([file?.fileName, file?.originalFileName, file?.filePath]);
+
+const buildAnnotationTokens = (annotation?: PreviewAnnotation): string[] =>
+	collectImageTokens([annotation?.imageFileName, annotation?.imageUrl]);
+
+const findMatchingPreviewFile = (
+	files: PreviewImageFile[],
+	annotation?: PreviewAnnotation
+): PreviewImageFile | undefined => {
+	const annotationTokens = new Set(buildAnnotationTokens(annotation));
+	if (annotationTokens.size === 0) return undefined;
+	return files.find(file => buildFileTokens(file).some(token => annotationTokens.has(token)));
+};
+
+const buildPreviewImageUrl = (annotation?: PreviewAnnotation, matchedFile?: PreviewImageFile): string => {
+	const rawUrl = annotation?.imageUrl || matchedFile?.filePath || '';
+	return toFileRenderUrl(rawUrl).replace(/\\/g, '/');
+};
+
 const normalizePreviewTargetType = (t: string | undefined): string =>
 	typeof t === 'string' ? t.trim().toLowerCase() : '';
 
@@ -947,6 +1004,104 @@ const StepPreview = ({
 			// Handle inspection data - show as detailed inspection report table
 			const inspectionParams = previewData.inspectionParameters || [];
 			const inspectionMeta = previewData.inspectionMetadata;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const hasAnyAnnotationData = Object.entries(data).some(([key, parameterData]: [string, any]) => {
+				if (
+					key === 'data' ||
+					key === 'startTime' ||
+					key === 'endTime' ||
+					key === 'stepCompleted' ||
+					key === 'productionApproved' ||
+					key === 'ctqApproved'
+				) {
+					return false;
+				}
+				if (typeof parameterData !== 'object' || parameterData === null) return false;
+				const direct = Array.isArray(parameterData.annotations) && parameterData.annotations.length > 0;
+				const row = Array.isArray(parameterData.rowAnnotations)
+					? parameterData.rowAnnotations.some(
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							ra => Array.isArray((ra as any).annotations) && (ra as any).annotations.length > 0
+					  )
+					: false;
+				return direct || row;
+			});
+
+			type PreviewRegion = Record<string, unknown>;
+			const renderAnnotationRegions = (annotation: PreviewAnnotation) => {
+				if (!annotation?.regions || annotation.regions.length === 0) return null;
+				return (
+					<Box sx={{ mt: 1 }}>
+						<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
+							Annotation Details:
+						</Typography>
+						{annotation.regions.map((region, regionIndex: number) => {
+							const regionObj = region as PreviewRegion;
+							const regionType = String(regionObj.type || '');
+							return (
+							<Box
+								key={regionIndex}
+								sx={{
+									mt: 0.5,
+									p: 1,
+									backgroundColor: '#fff',
+									borderRadius: 0.5,
+									border: '1px solid #e0e0e0'
+								}}
+							>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+									<Chip
+										label={`${regionIndex + 1}`}
+										size="small"
+										sx={{
+											backgroundColor: '#f44336',
+											color: 'white',
+											fontSize: '0.6rem',
+											fontWeight: 'bold',
+											height: 16,
+											minWidth: 20,
+											'& .MuiChip-label': { px: 0.5 }
+										}}
+									/>
+									<Chip
+											label={regionType}
+										size="small"
+										sx={{
+												backgroundColor: regionType === 'point' ? '#e8f5e8' : '#fff3e0',
+												color: regionType === 'point' ? '#4caf50' : '#f57c00',
+											fontSize: '0.6rem',
+											height: 16
+										}}
+									/>
+									<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
+											ID: {String(regionObj.id || '')}
+									</Typography>
+								</Box>
+									{regionObj.comment && (
+									<Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#333', fontStyle: 'italic' }}>
+											"{String(regionObj.comment)}"
+									</Typography>
+								)}
+									{regionObj.category && (
+									<Box sx={{ mt: 0.5 }}>
+										<Chip
+												label={String(regionObj.category)}
+											size="small"
+											sx={{
+												backgroundColor: '#e3f2fd',
+												color: '#1976d2',
+												fontSize: '0.6rem',
+												height: 18
+											}}
+										/>
+									</Box>
+								)}
+							</Box>
+						);
+						})}
+					</Box>
+				);
+			};
 
 			// Debug logging for inspection preview
 			console.log('🖼️ INSPECTION_PREVIEW_DEBUG:', {
@@ -1446,23 +1601,23 @@ const StepPreview = ({
 																										<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
 																											{rowAnn.map((annotation, annIdx) => {
 																												const mappedFile =
-																													mappedFiles.find(f => f.fileName === annotation.imageFileName) ||
-																													paramMeta?.files?.find(f => f.fileName === annotation.imageFileName);
-																												const imageUrl = annotation.imageUrl
-																													? toFileRenderUrl(annotation.imageUrl)
-																													: toFileRenderUrl(mappedFile?.filePath);
+																													findMatchingPreviewFile(mappedFiles, annotation) ||
+																													findMatchingPreviewFile(paramMeta?.files || [], annotation);
+																												const imageUrl = buildPreviewImageUrl(annotation, mappedFile);
 																												return (
-																													<ImageDisplay
-																														key={`${parameterId}-${rIdx}-${annIdx}-${annotation.imageFileName}`}
-																														imageUrl={imageUrl}
-																														imageFileName={annotation.imageFileName}
-																														originalFileName={
-																															mappedFile?.originalFileName || annotation.imageFileName
-																														}
-																														annotations={annotation.regions || []}
-																														readOnly={true}
-																														showAnnotations={true}
-																													/>
+																													<Box key={`${parameterId}-${rIdx}-${annIdx}-${annotation.imageFileName}`}>
+																														<ImageDisplay
+																															imageUrl={imageUrl}
+																															imageFileName={annotation.imageFileName}
+																															originalFileName={
+																																mappedFile?.originalFileName || annotation.imageFileName
+																															}
+																															annotations={annotation.regions || []}
+																															readOnly={true}
+																															showAnnotations={true}
+																														/>
+																														{renderAnnotationRegions(annotation)}
+																													</Box>
 																												);
 																											})}
 																										</Box>
@@ -1653,26 +1808,7 @@ const StepPreview = ({
 					</TableContainer>
 
 					{/* Image Annotations Section */}
-					{Object.entries(data)
-						.filter(
-							([key]) =>
-								key !== 'data' &&
-								key !== 'startTime' &&
-								key !== 'endTime' &&
-								key !== 'stepCompleted' &&
-								key !== 'productionApproved' &&
-								key !== 'ctqApproved'
-						)
-						.some(
-							([_, parameterData]) =>
-								typeof parameterData === 'object' &&
-								parameterData !== null &&
-								'annotations' in parameterData &&
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								Array.isArray((parameterData as any).annotations) &&
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								(parameterData as any).annotations.length > 0
-						) && (
+					{hasAnyAnnotationData && (
 						<Box sx={{ mt: 2 }}>
 							<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 								Image Annotations
@@ -1691,9 +1827,17 @@ const StepPreview = ({
 									// Find the corresponding inspection parameter metadata
 									const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
 
-									if (typeof parameterData === 'object' && parameterData !== null && 'annotations' in parameterData) {
-										// eslint-disable-next-line @typescript-eslint/no-explicit-any
-										const annotations = (parameterData as any).annotations;
+									if (typeof parameterData === 'object' && parameterData !== null) {
+										const parameterDataObj = parameterData as Record<string, unknown>;
+										const annotations = Array.isArray(parameterDataObj.annotations)
+											? (parameterDataObj.annotations as PreviewAnnotation[])
+											: [];
+										const rowAnnotations = Array.isArray(parameterDataObj.rowAnnotations)
+											? (parameterDataObj.rowAnnotations as PreviewRowAnnotationEntry[])
+											: [];
+										const hasRowAnnotations = rowAnnotations.some(
+											ra => Array.isArray(ra.annotations) && ra.annotations.length > 0
+										);
 										console.log('🖼️ StepPreview: Processing annotations for parameter:', {
 											parameterId,
 											parameterData,
@@ -1702,33 +1846,17 @@ const StepPreview = ({
 											length: annotations?.length
 										});
 
-										if (Array.isArray(annotations) && annotations.length > 0) {
+										if ((Array.isArray(annotations) && annotations.length > 0) || hasRowAnnotations) {
 											return (
 												<Box key={parameterId} sx={{ mb: 2 }}>
 													<Paper variant="outlined" sx={{ p: 2 }}>
 														<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: '#1976d2' }}>
 															{paramMeta?.parameterName || `Parameter ${parameterId}`}
 														</Typography>
-														{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-														{annotations.map((annotation: any, annotationIndex: number) => {
-															// Find the original filename by matching the generated filename
-															const originalFileName =
-																paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)
-																	?.originalFileName || annotation.imageFileName;
-
-															// Construct image URL - use annotation.imageUrl if available, otherwise construct from filePath
-															let imageUrl = annotation.imageUrl
-																? toFileRenderUrl(annotation.imageUrl)
-																: '';
-															if (!imageUrl) {
-																const matchedFilePath = paramMeta?.files?.find(
-																	file => file.fileName === annotation.imageFileName
-																)?.filePath;
-																imageUrl = toFileRenderUrl(matchedFilePath);
-															}
-
-															// Normalize URL - replace backslashes with forward slashes
-															imageUrl = imageUrl.replace(/\\/g, '/');
+														{annotations.map((annotation: PreviewAnnotation, annotationIndex: number) => {
+															const matchedFile = findMatchingPreviewFile(paramMeta?.files || [], annotation);
+															const originalFileName = matchedFile?.originalFileName || annotation.imageFileName;
+															const imageUrl = buildPreviewImageUrl(annotation, matchedFile);
 
 															console.log('🖼️ StepPreview: Image URL construction:', {
 																parameterId,
@@ -1766,121 +1894,52 @@ const StepPreview = ({
 																		/>
 																	</Box>
 
-																	{/* Display annotation regions details */}
-																	{annotation.regions && annotation.regions.length > 0 && (
-																		<Box sx={{ mt: 1 }}>
-																			<Typography
-																				variant="caption"
-																				sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}
-																			>
-																				Annotation Details:
-																			</Typography>
-																			{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-																			{annotation.regions.map((region: any, regionIndex: number) => (
-																				<Box
-																					key={regionIndex}
-																					sx={{
-																						mt: 0.5,
-																						p: 1,
-																						backgroundColor: '#fff',
-																						borderRadius: 0.5,
-																						border: '1px solid #e0e0e0'
-																					}}
-																				>
-																					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-																						{/* Annotation number badge */}
-																						<Chip
-																							label={`${regionIndex + 1}`}
-																							size="small"
-																							sx={{
-																								backgroundColor: '#f44336',
-																								color: 'white',
-																								fontSize: '0.6rem',
-																								fontWeight: 'bold',
-																								height: 16,
-																								minWidth: 20,
-																								'& .MuiChip-label': { px: 0.5 }
-																							}}
-																						/>
-																						<Chip
-																							label={region.type}
-																							size="small"
-																							sx={{
-																								backgroundColor: region.type === 'point' ? '#e8f5e8' : '#fff3e0',
-																								color: region.type === 'point' ? '#4caf50' : '#f57c00',
-																								fontSize: '0.6rem',
-																								height: 16
-																							}}
-																						/>
-																						<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
-																							ID: {region.id}
-																						</Typography>
-																					</Box>
-																					{region.comment && (
-																						<Typography
-																							variant="body2"
-																							sx={{ fontSize: '0.8rem', color: '#333', fontStyle: 'italic' }}
-																						>
-																							"{region.comment}"
-																						</Typography>
-																					)}
-																					{region.category && (
-																						<Box sx={{ mt: 0.5 }}>
-																							<Chip
-																								label={region.category}
-																								size="small"
-																								sx={{
-																									backgroundColor: '#e3f2fd',
-																									color: '#1976d2',
-																									fontSize: '0.6rem',
-																									height: 18
-																								}}
-																							/>
-																						</Box>
-																					)}
-																					{region.type === 'point' && (
-																						<Typography
-																							variant="caption"
-																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
-																						>
-																							Position: ({region.x}, {region.y})
-																						</Typography>
-																					)}
-																					{region.type === 'polygon' && region.points && (
-																						<Typography
-																							variant="caption"
-																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
-																						>
-																							Points: {region.points.length} vertices
-																						</Typography>
-																					)}
-																					{region.type === 'circle' &&
-																						region.cx !== undefined &&
-																						region.cy !== undefined &&
-																						region.radius !== undefined && (
-																							<Typography
-																								variant="caption"
-																								sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
-																							>
-																								Circle: center ({Number(region.cx).toFixed(3)},{' '}
-																								{Number(region.cy).toFixed(3)}), r={Number(region.radius).toFixed(3)}
-																							</Typography>
-																						)}
-																					{region.cls && (
-																						<Typography
-																							variant="caption"
-																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
-																						>
-																							Class: {region.cls}
-																						</Typography>
-																					)}
-																				</Box>
-																			))}
-																		</Box>
-																	)}
+																	{renderAnnotationRegions(annotation)}
 																</Box>
 															);
 														})}
+														{hasRowAnnotations && (
+															<Box sx={{ mt: 1.5 }}>
+																<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#6a1b9a' }}>
+																	Row-Mapped Defects
+																</Typography>
+																{rowAnnotations.map((rowEntry: PreviewRowAnnotationEntry) => {
+																	const rowAnns = Array.isArray(rowEntry?.annotations) ? rowEntry.annotations : [];
+																	const rowIndex = Number(rowEntry?.rowIndex);
+																	const rowMappedFiles = Array.isArray(paramMeta?.rowMappings)
+																		? paramMeta.rowMappings.find(rm => rm.rowIndex === rowIndex)?.fileName || []
+																		: [];
+																	if (rowAnns.length === 0) return null;
+																	return (
+																		<Box key={`${parameterId}-row-${rowIndex}`} sx={{ mb: 1.5, p: 1, backgroundColor: '#f7f0ff', borderRadius: 1 }}>
+																			<Typography variant="caption" sx={{ fontWeight: 600, color: '#6a1b9a' }}>
+																				Row {rowIndex + 1}
+																			</Typography>
+																			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 0.75 }}>
+																				{rowAnns.map((annotation: PreviewAnnotation, rowAnnIndex: number) => {
+																					const matchedFile =
+																						findMatchingPreviewFile(rowMappedFiles, annotation) ||
+																						findMatchingPreviewFile(paramMeta?.files || [], annotation);
+																					return (
+																						<Box key={`${parameterId}-row-${rowIndex}-ann-${rowAnnIndex}`}>
+																							<ImageDisplay
+																								imageUrl={buildPreviewImageUrl(annotation, matchedFile)}
+																								imageFileName={annotation.imageFileName}
+																								originalFileName={matchedFile?.originalFileName || annotation.imageFileName}
+																								annotations={annotation.regions || []}
+																								readOnly={true}
+																								showAnnotations={true}
+																							/>
+																							{renderAnnotationRegions(annotation)}
+																						</Box>
+																					);
+																				})}
+																			</Box>
+																		</Box>
+																	);
+																})}
+															</Box>
+														)}
 													</Paper>
 												</Box>
 											);

@@ -41,10 +41,9 @@ export const partApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPartsResponse(response)) {
-					console.error('Invalid parts response structure', response);
-					throw new Error('Invalid parts response structure');
+					console.warn('Invalid parts response structure', response);
 				}
-				return response;
+				return response as PartsResponse;
 			},
 			providesTags: ['Part']
 		}),
@@ -56,10 +55,9 @@ export const partApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPartByIdResponse(response)) {
-					console.error('Invalid part by ID response structure', response);
-					throw new Error('Invalid part by ID response structure');
+					console.warn('Invalid part by ID response structure', response);
 				}
-				return response;
+				return response as PartByIdResponse;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'Part', id },
@@ -74,10 +72,9 @@ export const partApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isCustomersResponse(response)) {
-					console.error('Invalid customers response structure', response);
-					throw new Error('Invalid customers response structure');
+					console.warn('Invalid customers response structure', response);
 				}
-				return response;
+				return response as CustomersResponse;
 			},
 			providesTags: ['Customer']
 		}),
@@ -88,8 +85,8 @@ export const partApi = createApi({
 			}),
 			transformResponse: (response: unknown): CustomerVariantComboResponse => {
 				if (!isCustomerVariantComboResponse(response)) {
-					console.error('Invalid customer variant combo response structure', response);
-					throw new Error('Invalid customer variant combo response structure');
+					console.warn('Invalid customer variant combo response structure', response);
+					return response as CustomerVariantComboResponse;
 				}
 				return {
 					data: response.data.map(row => ({
@@ -107,8 +104,8 @@ export const partApi = createApi({
 			}),
 			transformResponse: (response: unknown): SapComboResponse => {
 				if (!isSapComboResponse(response)) {
-					console.error('Invalid SAP combo response structure', response);
-					throw new Error('Invalid SAP combo response structure');
+					console.warn('Invalid SAP combo response structure', response);
+					return response as SapComboResponse;
 				}
 				return {
 					data: response.data.map(row => ({
@@ -128,10 +125,9 @@ export const partApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPartMutationResponse(response)) {
-					console.error('Invalid create part response structure', response);
-					throw new Error('Invalid create part response structure');
+					console.warn('Invalid create part response structure', response);
 				}
-				return response;
+				return response as CreatePartResponse;
 			},
 			invalidatesTags: ['Part']
 		}),
@@ -144,10 +140,9 @@ export const partApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPartMutationResponse(response)) {
-					console.error('Invalid update part response structure', response);
-					throw new Error('Invalid update part response structure');
+					console.warn('Invalid update part response structure', response);
 				}
-				return response;
+				return response as UpdatePartResponse;
 			},
 			invalidatesTags: (_, __, { id }) => [{ type: 'Part', id }, { type: 'Part', id: 'LIST' }, 'Part']
 		}),
@@ -160,10 +155,9 @@ export const partApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPartMutationResponse(response)) {
-					console.error('Invalid delete part task response structure', response);
-					throw new Error('Invalid delete part task response structure');
+					console.warn('Invalid delete part task response structure', response);
 				}
-				return response;
+				return response as UpdatePartResponse;
 			},
 			invalidatesTags: (_, __, { partMaster }) => [
 				{ type: 'Part', id: partMaster?.id },

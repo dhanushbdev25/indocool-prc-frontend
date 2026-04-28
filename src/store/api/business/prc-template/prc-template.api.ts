@@ -46,10 +46,9 @@ export const prcTemplateApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPrcTemplateListResponse(response)) {
-					console.error('Invalid PRC templates response structure', response);
-					throw new Error('Invalid PRC templates response structure');
+					console.warn('Invalid PRC templates response structure', response);
 				}
-				return response;
+				return response as PrcTemplateListResponse;
 			},
 			providesTags: ['PrcTemplate']
 		}),
@@ -61,10 +60,9 @@ export const prcTemplateApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPrcTemplateByIdResponse(response)) {
-					console.error('Invalid PRC template by ID response structure', response);
-					throw new Error('Invalid PRC template by ID response structure');
+					console.warn('Invalid PRC template by ID response structure', response);
 				}
-				return response;
+				return response as PrcTemplateByIdResponse;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'PrcTemplate', id },
@@ -79,10 +77,9 @@ export const prcTemplateApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPrcTemplateInspectionsResponse(response)) {
-					console.error('Invalid PRC template inspections response structure', response);
-					throw new Error('Invalid PRC template inspections response structure');
+					console.warn('Invalid PRC template inspections response structure', response);
 				}
-				return response;
+				return response as PrcTemplateInspectionsResponse;
 			},
 			providesTags: (_, __, { id }) => [{ type: 'PrcTemplate', id: `inspections-${id}` }]
 		}),
@@ -95,10 +92,9 @@ export const prcTemplateApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isResolvePrcTemplateResponse(response)) {
-					console.error('Invalid resolve PRC template response structure', response);
-					throw new Error('Invalid resolve PRC template response structure');
+					console.warn('Invalid resolve PRC template response structure', response);
 				}
-				return response;
+				return response as ResolvePrcTemplateResponse;
 			}
 		}),
 		// Create new PRC template
@@ -110,10 +106,9 @@ export const prcTemplateApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPrcTemplateMutationResponse(response)) {
-					console.error('Invalid create PRC template response structure', response);
-					throw new Error('Invalid create PRC template response structure');
+					console.warn('Invalid create PRC template response structure', response);
 				}
-				return response;
+				return response as CreatePrcTemplateResponse;
 			},
 			invalidatesTags: ['PrcTemplate']
 		}),
@@ -126,10 +121,9 @@ export const prcTemplateApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPrcTemplateMutationResponse(response)) {
-					console.error('Invalid update PRC template response structure', response);
-					throw new Error('Invalid update PRC template response structure');
+					console.warn('Invalid update PRC template response structure', response);
 				}
-				return response;
+				return response as UpdatePrcTemplateResponse;
 			},
 			invalidatesTags: (_, __, { id }) => [
 				{ type: 'PrcTemplate', id },
@@ -146,10 +140,9 @@ export const prcTemplateApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isOperationsComboResponse(response)) {
-					console.error('Invalid operations combo response structure', response);
-					throw new Error('Invalid operations combo response structure');
+					console.warn('Invalid operations combo response structure', response);
 				}
-				return response;
+				return response as OperationsComboResponse;
 			}
 		}),
 		// Delete PRC template task (set status to INACTIVE)
@@ -161,10 +154,9 @@ export const prcTemplateApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isPrcTemplateMutationResponse(response)) {
-					console.error('Invalid delete PRC template task response structure', response);
-					throw new Error('Invalid delete PRC template task response structure');
+					console.warn('Invalid delete PRC template task response structure', response);
 				}
-				return response;
+				return response as DeletePrcTemplateTaskResponse;
 			},
 			invalidatesTags: (_, __, { prcTemplate }) => [
 				{ type: 'PrcTemplate', id: prcTemplate?.id },

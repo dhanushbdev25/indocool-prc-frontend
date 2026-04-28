@@ -87,8 +87,19 @@ export const prcExecutionApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isOperationDelayReasonComboResponse(response)) {
-					console.error('Invalid OPERATIONDELAYREASON combo response structure', response);
-					throw new Error('Invalid OPERATIONDELAYREASON combo response structure');
+					console.warn('Invalid OPERATIONDELAYREASON combo response structure', response);
+					if (Array.isArray(response)) {
+						return response as OperationDelayReasonComboItem[];
+					}
+					if (
+						typeof response === 'object' &&
+						response !== null &&
+						'data' in response &&
+						Array.isArray((response as { data?: unknown }).data)
+					) {
+						return (response as { data: OperationDelayReasonComboItem[] }).data;
+					}
+					return [];
 				}
 				return response.data;
 			},

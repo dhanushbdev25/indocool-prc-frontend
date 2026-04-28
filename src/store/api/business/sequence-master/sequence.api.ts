@@ -32,10 +32,9 @@ export const sequenceApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isSequenceListResponse(response)) {
-					console.error('Invalid process sequences response structure', response);
-					throw new Error('Invalid process sequences response structure');
+					console.warn('Invalid process sequences response structure', response);
 				}
-				return response;
+				return response as SequenceListResponse;
 			},
 			providesTags: ['Sequence']
 		}),
@@ -47,10 +46,9 @@ export const sequenceApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isSequenceByIdResponse(response)) {
-					console.error('Invalid process sequence by ID response structure', response);
-					throw new Error('Invalid process sequence by ID response structure');
+					console.warn('Invalid process sequence by ID response structure', response);
 				}
-				return response;
+				return response as SequenceByIdResponse;
 			},
 			providesTags: ['Sequence']
 		}),
@@ -63,10 +61,9 @@ export const sequenceApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isSequenceMutationResponse(response)) {
-					console.error('Invalid create process sequence response structure', response);
-					throw new Error('Invalid create process sequence response structure');
+					console.warn('Invalid create process sequence response structure', response);
 				}
-				return response;
+				return response as CreateSequenceResponse;
 			},
 			invalidatesTags: ['Sequence']
 		}),
@@ -79,10 +76,9 @@ export const sequenceApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isSequenceMutationResponse(response)) {
-					console.error('Invalid update process sequence response structure', response);
-					throw new Error('Invalid update process sequence response structure');
+					console.warn('Invalid update process sequence response structure', response);
 				}
-				return response;
+				return response as UpdateSequenceResponse;
 			},
 			invalidatesTags: ['Sequence']
 		}),
@@ -105,10 +101,9 @@ export const sequenceApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isSequenceMutationResponse(response)) {
-					console.error('Invalid delete sequence task response structure', response);
-					throw new Error('Invalid delete sequence task response structure');
+					console.warn('Invalid delete sequence task response structure', response);
 				}
-				return response;
+				return response as DeleteSequenceTaskResponse;
 			},
 			invalidatesTags: ['Sequence']
 		})

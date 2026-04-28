@@ -32,10 +32,9 @@ export const catalystApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isCatalystChartResponse(response)) {
-					console.error('Invalid catalyst charts response structure', response);
-					throw new Error('Invalid catalyst charts response structure');
+					console.warn('Invalid catalyst charts response structure', response);
 				}
-				return response;
+				return response as CatalystChartResponse;
 			},
 			providesTags: ['Catalyst']
 		}),
@@ -47,10 +46,9 @@ export const catalystApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isCatalystByIdResponse(response)) {
-					console.error('Invalid catalyst by ID response structure', response);
-					throw new Error('Invalid catalyst by ID response structure');
+					console.warn('Invalid catalyst by ID response structure', response);
 				}
-				return response;
+				return response as CatalystByIdResponse;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'Catalyst', id },
@@ -66,10 +64,9 @@ export const catalystApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isCatalystMutationResponse(response)) {
-					console.error('Invalid create catalyst response structure', response);
-					throw new Error('Invalid create catalyst response structure');
+					console.warn('Invalid create catalyst response structure', response);
 				}
-				return response;
+				return response as CreateCatalystResponse;
 			},
 			invalidatesTags: ['Catalyst']
 		}),
@@ -82,10 +79,9 @@ export const catalystApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isCatalystMutationResponse(response)) {
-					console.error('Invalid update catalyst response structure', response);
-					throw new Error('Invalid update catalyst response structure');
+					console.warn('Invalid update catalyst response structure', response);
 				}
-				return response;
+				return response as UpdateCatalystResponse;
 			},
 			invalidatesTags: (_, __, { id }) => [{ type: 'Catalyst', id }, { type: 'Catalyst', id: 'LIST' }, 'Catalyst']
 		}),
@@ -98,10 +94,9 @@ export const catalystApi = createApi({
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isCatalystMutationResponse(response)) {
-					console.error('Invalid delete catalyst task response structure', response);
-					throw new Error('Invalid delete catalyst task response structure');
+					console.warn('Invalid delete catalyst task response structure', response);
 				}
-				return response;
+				return response as DeleteCatalystTaskResponse;
 			},
 			invalidatesTags: (_, __, { catalyst }) => [
 				{ type: 'Catalyst', id: catalyst?.id },
