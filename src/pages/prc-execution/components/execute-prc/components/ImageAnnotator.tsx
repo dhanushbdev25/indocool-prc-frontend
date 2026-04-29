@@ -48,7 +48,8 @@ export interface ImageAnnotatorParameterContext {
 	parameterName: string;
 	specification?: string;
 	ctq?: boolean;
-	tolerance?: string;
+	minimumAcceptanceValue?: string | number;
+	maximumAcceptanceValue?: string | number;
 	parameterType?: string;
 	/** e.g. "Row 3" for fixed-table image mapping */
 	fixedTableRowLabel?: string;
@@ -714,12 +715,16 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 								<Typography variant="body2">{parameterContext.specification}</Typography>
 							</Grid>
 						) : null}
-						{parameterContext.tolerance ? (
+						{(parameterContext.minimumAcceptanceValue !== undefined ||
+							parameterContext.maximumAcceptanceValue !== undefined) ? (
 							<Grid size={{ xs: 12, sm: 6 }}>
 								<Typography variant="caption" color="text.secondary">
-									Tolerance
+									Range (Min-Max)
 								</Typography>
-								<Typography variant="body2">{parameterContext.tolerance}</Typography>
+								<Typography variant="body2">
+									{parameterContext.minimumAcceptanceValue ?? '-'} to{' '}
+									{parameterContext.maximumAcceptanceValue ?? '-'}
+								</Typography>
 							</Grid>
 						) : null}
 					</Grid>

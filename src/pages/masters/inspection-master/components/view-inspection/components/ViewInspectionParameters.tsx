@@ -26,6 +26,10 @@ interface ViewInspectionParametersProps {
 }
 
 const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps) => {
+	const formatRange = (min?: unknown, max?: unknown) => {
+		if (min === undefined && max === undefined) return 'Not specified';
+		return `${min ?? '-'} to ${max ?? '-'}`;
+	};
 	const getRoleLabel = (roleValue: string) => {
 		const role = roleOptions.find(r => r.value === roleValue);
 		return role ? role.label : roleValue;
@@ -49,6 +53,8 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 				return '#f44336';
 			case 'datetime':
 				return '#795548';
+			case 'shift':
+				return '#00897b';
 			default:
 				return '#666';
 		}
@@ -122,10 +128,10 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 										</Grid>
 										<Grid size={{ xs: 12, md: 6 }}>
 											<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-												Tolerance
+												Range (Min-Max)
 											</Typography>
 											<Typography variant="body1" sx={{ fontWeight: 500, mb: 2 }}>
-												{parameter.tolerance || 'Not specified'}
+												{formatRange(parameter.minimumAcceptanceValue, parameter.maximumAcceptanceValue)}
 											</Typography>
 										</Grid>
 										<Grid size={{ xs: 12, md: 6 }}>
@@ -196,30 +202,19 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 															<TableHead>
 																<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
 																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>Name</TableCell>
-																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>Type</TableCell>
-																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>Default Value</TableCell>
-																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>Tolerance</TableCell>
+																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>Range (Min-Max)</TableCell>
 																</TableRow>
 															</TableHead>
 															<TableBody>
 																{parameter.columns.map((column: Record<string, unknown>, colIndex: number) => (
 																	<TableRow key={colIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
 																		<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.name)}</TableCell>
-																		<TableCell>
-																			<Chip
-																				label={String(column.type)}
-																				size="small"
-																				sx={{
-																					backgroundColor: getTypeColor(String(column.type)),
-																					color: 'white',
-																					fontWeight: 500,
-																					fontSize: '0.7rem',
-																					height: 22
-																				}}
-																			/>
+																		<TableCell sx={{ fontSize: '0.8rem' }}>
+																			{formatRange(
+																				column.minimumAcceptanceValue,
+																				column.maximumAcceptanceValue
+																			)}
 																		</TableCell>
-																		<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.defaultValue || '-')}</TableCell>
-																		<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.tolerance || '-')}</TableCell>
 																	</TableRow>
 																))}
 															</TableBody>

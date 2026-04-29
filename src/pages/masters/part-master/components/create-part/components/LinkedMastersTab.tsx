@@ -49,6 +49,7 @@ import { useFetchCatalystChartsQuery } from '../../../../../../store/api/busines
 import { useFetchProcessSequencesQuery } from '../../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../../store/api/business/inspection-master/inspection.api';
 import { useFetchOperationsComboQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
+import { useFetchPrcTemplatesQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import LinkedMasterCard from './LinkedMasterCard';
 import DefaultStepItem from './DefaultStepItem';
 import OperationGroupComponent from './OperationGroup';
@@ -91,12 +92,14 @@ const LinkedMastersTab = ({
 		{ partId: operationsPartId! },
 		{ skip: !operationsPartId }
 	);
+	const { data: prcTemplatesData } = useFetchPrcTemplatesQuery();
 
 	const watchedPrcSteps = useWatch({ control, name: 'prcTemplateSteps' });
 	const watchedTemplateId = useWatch({ control, name: 'templateId' });
 	const watchedTemplateName = useWatch({ control, name: 'templateName' });
 	const watchedPartNumber = useWatch({ control, name: 'partNumber' });
 	const watchedDrawingNumber = useWatch({ control, name: 'drawingNumber' });
+	const selectedCatalyst = useWatch({ control, name: 'catalyst' });
 
 	const canPreviewPrcExecution =
 		Array.isArray(watchedPrcSteps) &&
@@ -151,7 +154,15 @@ const LinkedMastersTab = ({
 		}
 	}, [fields, operationGroups.length]);
 
-	const selectedCatalyst = control._formValues.catalyst;
+	const existingTemplateIds = useMemo(() => {
+		const items = Array.isArray(prcTemplatesData?.detail) ? prcTemplatesData.detail : [];
+		return new Set(
+			items
+				.map(item => item?.prcTemplate?.templateId)
+				.filter((id): id is string => typeof id === 'string' && id.trim().length > 0)
+				.map(id => id.trim().toLowerCase())
+		);
+	}, [prcTemplatesData]);
 
 	const catalystItems: SelectableCatalyst[] = (catalystData?.detail || []).map(catalyst => ({
 		id: catalyst.catalyst.id,
@@ -284,6 +295,24 @@ const LinkedMastersTab = ({
 	useEffect(() => {
 		setValue('operationGroupIdsForHeadcount', addedGroups, { shouldDirty: false });
 	}, [addedGroups, setValue]);
+
+	useEffect(() => {
+		const partNumber = (watchedPartNumber || '').trim();
+		if (!partNumber) return;
+
+		const currentTemplateId = (getValues('templateId') || '').trim();
+		const currentTemplateName = (getValues('templateName') || '').trim();
+		if (currentTemplateId || currentTemplateName) return;
+
+		let suffix = 1;
+		let candidate = `${partNumber}-prc-${suffix}`;
+		while (existingTemplateIds.has(candidate.toLowerCase())) {
+			suffix += 1;
+			candidate = `${partNumber}-prc-${suffix}`;
+		}
+		setValue('templateId', candidate, { shouldDirty: false });
+		setValue('templateName', candidate, { shouldDirty: false });
+	}, [watchedPartNumber, existingTemplateIds, getValues, setValue]);
 
 	const getStepsForGroup = (groupId: string) => {
 		return allStepFields.filter(step => step.group === groupId);
@@ -595,7 +624,7 @@ const LinkedMastersTab = ({
 				<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: '#333' }}>
 					Default Steps
 				</Typography>
-				<DefaultStepItem stepNumber={1} stepName="Raw Materials" stepDescription="Preparation and verification of raw materials" />
+				<DefaultStepItem stepNumber={1} stepName="Bill of Material" stepDescription="Preparation and verification of bill of material" />
 				<DefaultStepItem stepNumber={2} stepName="Catalyst Mixing" stepDescription="Mixing of catalyst components" />
 
 				<Divider sx={{ my: 3 }} />

@@ -21,7 +21,9 @@ import {
 	FormLabel,
 	RadioGroup,
 	FormControlLabel,
-	Radio
+	Radio,
+	MenuItem,
+	Checkbox
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
@@ -46,15 +48,32 @@ interface InspectionStepProps {
 	readOnlyOverride?: boolean;
 }
 
+const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
+
 const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride }: InspectionStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [annotations, setAnnotations] = useState<ImageAnnotation[]>([]);
 	const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 	const [expandedMultiColumnRows, setExpandedMultiColumnRows] = useState<Set<number>>(new Set());
+	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 	// Default all annotations to open (no need for expand/collapse state)
 
 	const getNotOkCommentKey = (key: string) => `${key}_notOkComment`;
 	const getFixedTableRowAnnotationsKey = (parameterId: number) => `${parameterId}_fixedTable_rowAnnotations`;
+	const getAckKey = (key: string) => `${key}_acknowledge`;
+	const getRangeStatus = (
+		value: number,
+		min?: string | number,
+		max?: string | number
+	): 'InRange' | 'Lesser' | 'Greater' | null => {
+		if (min === undefined || max === undefined || min === '' || max === '') return null;
+		const minNum = Number(min);
+		const maxNum = Number(max);
+		if (Number.isNaN(minNum) || Number.isNaN(maxNum)) return null;
+		if (value < minNum) return 'Lesser';
+		if (value > maxNum) return 'Greater';
+		return 'InRange';
+	};
 
 	const readApiCommentField = (obj: Record<string, unknown>): string => {
 		const c = obj.comments;
@@ -458,6 +477,13 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 			}));
 		}
 	};
+	const handleAcknowledgmentChange = (key: string, acknowledged: boolean) => {
+		setAcknowledgments(prev => ({ ...prev, [key]: acknowledged }));
+		const ackErrorKey = getAckKey(key);
+		if (errors[ackErrorKey]) {
+			setErrors(prev => ({ ...prev, [ackErrorKey]: '' }));
+		}
+	};
 
 	const handleAnnotationSave = (parameterId: number, newAnnotations: ImageAnnotation[]) => {
 		console.log('handleAnnotationSave called with:', { parameterId, newAnnotations });
@@ -740,6 +766,11 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} is required`;
 						} else if (col.type === 'number' && isNaN(parseFloat(val))) {
 							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a number`;
+						} else if (
+							col.type === 'shift' &&
+							!SHIFT_OPTIONS.includes(String(val) as (typeof SHIFT_OPTIONS)[number])
+						) {
+							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a valid shift`;
 						}
 					});
 				});
@@ -769,6 +800,20 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 							const numValue = parseFloat(String(value));
 							if (isNaN(numValue)) {
 								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be a valid number`;
+							} else {
+								const status = getRangeStatus(
+									numValue,
+									column.minimumAcceptanceValue,
+									column.maximumAcceptanceValue
+								);
+								if (
+									status &&
+									status !== 'InRange' &&
+									!acknowledgments[key]
+								) {
+									newErrors[getAckKey(key)] =
+										`Row ${rowIndex + 1}, ${column.name} out of range. Please acknowledge deviation.`;
+								}
 							}
 						} else if (column.type === 'ok/not ok') {
 							if (value !== 'ok' && value !== 'not ok') {
@@ -784,6 +829,10 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 							if (!value || !String(value).trim()) {
 								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} is required`;
 							}
+						} else if (column.type === 'shift') {
+							if (!SHIFT_OPTIONS.includes(String(value) as (typeof SHIFT_OPTIONS)[number])) {
+								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be a valid shift`;
+							}
 						}
 					});
 				}
@@ -798,6 +847,15 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 						const numValue = parseFloat(String(value));
 						if (isNaN(numValue)) {
 							newErrors[key] = `${column.name} must be a valid number`;
+						} else {
+							const status = getRangeStatus(
+								numValue,
+								column.minimumAcceptanceValue,
+								column.maximumAcceptanceValue
+							);
+							if (status && status !== 'InRange' && !acknowledgments[key]) {
+								newErrors[getAckKey(key)] = `${column.name} is out of range. Please acknowledge deviation.`;
+							}
 						}
 					} else if (column.type === 'ok/not ok') {
 						if (value !== 'ok' && value !== 'not ok') {
@@ -812,6 +870,10 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 					} else if (column.type === 'datetime') {
 						if (!value || !String(value).trim()) {
 							newErrors[key] = `${column.name} is required`;
+						}
+					} else if (column.type === 'shift') {
+						if (!SHIFT_OPTIONS.includes(String(value) as (typeof SHIFT_OPTIONS)[number])) {
+							newErrors[key] = `${column.name} must be a valid shift`;
 						}
 					}
 				});
@@ -835,6 +897,15 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 					const numValue = parseFloat(value);
 					if (isNaN(numValue)) {
 						newErrors[key] = 'Value must be a valid number';
+					} else {
+						const status = getRangeStatus(
+							numValue,
+							param.minimumAcceptanceValue,
+							param.maximumAcceptanceValue
+						);
+						if (status && status !== 'InRange' && !acknowledgments[key]) {
+							newErrors[getAckKey(key)] = 'Value is out of range. Please acknowledge deviation.';
+						}
 					}
 				} else if (param.type === 'ok/not ok') {
 					if (value !== 'ok' && value !== 'not ok') {
@@ -852,6 +923,10 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 				} else if (param.type === 'datetime') {
 					if (!value || !value.trim()) {
 						newErrors[key] = 'Value is required';
+					}
+				} else if (param.type === 'shift') {
+					if (!SHIFT_OPTIONS.includes(String(value) as (typeof SHIFT_OPTIONS)[number])) {
+						newErrors[key] = 'Value must be a valid shift';
 					}
 				}
 			}
@@ -905,6 +980,22 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 										comments: typeof commentValue === 'string' ? commentValue.trim() : ''
 									};
 								} else {
+									if (column.type === 'number') {
+										const parsed = Number(value);
+										const status = getRangeStatus(
+											parsed,
+											column.minimumAcceptanceValue,
+											column.maximumAcceptanceValue
+										);
+										if (status) {
+											rowObj[`${column.name}_validationStatus`] = status;
+											rowObj[`${column.name}_minimumAcceptanceValue`] =
+												column.minimumAcceptanceValue;
+											rowObj[`${column.name}_maximumAcceptanceValue`] =
+												column.maximumAcceptanceValue;
+											rowObj[`${column.name}_acknowledged`] = acknowledgments[key] || false;
+										}
+									}
 									rowObj[column.name] = value;
 								}
 							}
@@ -933,6 +1024,22 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 									comments: typeof commentValue === 'string' ? commentValue.trim() : ''
 								};
 							} else {
+								if (column.type === 'number') {
+									const parsed = Number(value);
+									const status = getRangeStatus(
+										parsed,
+										column.minimumAcceptanceValue,
+										column.maximumAcceptanceValue
+									);
+									if (status) {
+										valueObj[`${column.name}_validationStatus`] = status;
+										valueObj[`${column.name}_minimumAcceptanceValue`] =
+											column.minimumAcceptanceValue;
+										valueObj[`${column.name}_maximumAcceptanceValue`] =
+											column.maximumAcceptanceValue;
+										valueObj[`${column.name}_acknowledged`] = acknowledgments[key] || false;
+									}
+								}
 								valueObj[column.name] = value;
 							}
 						}
@@ -968,6 +1075,20 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 					} else {
 						// Direct value
 						paramData.value = formValue;
+						if (param.type === 'number') {
+							const parsed = Number(formValue);
+							const status = getRangeStatus(
+								parsed,
+								param.minimumAcceptanceValue,
+								param.maximumAcceptanceValue
+							);
+							if (status) {
+								paramData.validationStatus = status;
+								paramData.minimumAcceptanceValue = param.minimumAcceptanceValue;
+								paramData.maximumAcceptanceValue = param.maximumAcceptanceValue;
+								paramData.acknowledged = acknowledgments[key] || false;
+							}
+						}
 						if (param.type === 'ok/not ok' && formValue === 'not ok') {
 							const commentValue = formData[getNotOkCommentKey(key)];
 							paramData.comments = typeof commentValue === 'string' ? commentValue.trim() : '';
@@ -1272,30 +1393,91 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 															</LocalizationProvider>
 														);
 													}
+													if (param.type === 'shift') {
+														return (
+															<TextField
+																select
+																label="Value"
+																value={currentValue}
+																onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
+																error={!!errors[param.id.toString()]}
+																helperText={errors[param.id.toString()]}
+																size="small"
+																disabled={isReadOnly}
+																variant="outlined"
+																sx={{
+																	minWidth: 160,
+																	'& .MuiOutlinedInput-root': { height: '40px' }
+																}}
+															>
+																{SHIFT_OPTIONS.map(option => (
+																	<MenuItem key={option} value={option}>
+																		{option}
+																	</MenuItem>
+																))}
+															</TextField>
+														);
+													}
 
 													// Default text/number input
+													const numericStatus =
+														param.type === 'number' && currentValue !== ''
+															? getRangeStatus(
+																	Number(currentValue),
+																	param.minimumAcceptanceValue,
+																	param.maximumAcceptanceValue
+																)
+															: null;
 													return (
-														<TextField
-															label="Value"
-															type={param.type === 'number' ? 'number' : 'text'}
-															value={currentValue}
-															onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
-															error={!!errors[param.id.toString()]}
-															helperText={errors[param.id.toString()]}
-															size="small"
-															disabled={isReadOnly}
-															variant="outlined"
-															inputProps={{
-																min: 0,
-																step: param.type === 'number' ? 0.01 : undefined
-															}}
-															sx={{
-																minWidth: 120,
-																'& .MuiOutlinedInput-root': {
-																	height: '40px'
-																}
-															}}
-														/>
+														<Box>
+															<TextField
+																label="Value"
+																type={param.type === 'number' ? 'number' : 'text'}
+																value={currentValue}
+																onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
+																error={!!errors[param.id.toString()]}
+																helperText={errors[param.id.toString()]}
+																size="small"
+																disabled={isReadOnly}
+																variant="outlined"
+																inputProps={{
+																	min: 0,
+																	step: param.type === 'number' ? 0.01 : undefined
+																}}
+																sx={{
+																	minWidth: 120,
+																	'& .MuiOutlinedInput-root': {
+																		height: '40px'
+																	}
+																}}
+															/>
+															{param.type === 'number' && (
+																<Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
+																	Range: {param.minimumAcceptanceValue ?? '-'} to {param.maximumAcceptanceValue ?? '-'}
+																</Typography>
+															)}
+															{numericStatus && numericStatus !== 'InRange' && (
+																<FormControlLabel
+																	control={
+																		<Checkbox
+																			size="small"
+																			checked={acknowledgments[param.id.toString()] || false}
+																			onChange={e =>
+																				handleAcknowledgmentChange(param.id.toString(), e.target.checked)
+																			}
+																			disabled={isReadOnly}
+																		/>
+																	}
+																	label="Acknowledge deviation"
+																	sx={{ mt: 0.5 }}
+																/>
+															)}
+															{errors[getAckKey(param.id.toString())] && (
+																<Typography variant="caption" color="error">
+																	{errors[getAckKey(param.id.toString())]}
+																</Typography>
+															)}
+														</Box>
 													);
 												})()
 											)}
@@ -1445,6 +1627,31 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																						</TableCell>
 																					);
 																				}
+																				if (col.type === 'shift') {
+																					return (
+																						<TableCell key={col.name}>
+																							<TextField
+																								select
+																								value={cellValue}
+																								onChange={e =>
+																									handleFixedTableCellChange(param.id, rowIdx, col.name, e.target.value)
+																								}
+																								error={!!errors[errKey]}
+																								helperText={errors[errKey]}
+																								size="small"
+																								disabled={isReadOnly}
+																								variant="outlined"
+																								fullWidth
+																							>
+																								{SHIFT_OPTIONS.map(option => (
+																									<MenuItem key={option} value={option}>
+																										{option}
+																									</MenuItem>
+																								))}
+																							</TextField>
+																						</TableCell>
+																					);
+																				}
 
 																				return (
 																					<TableCell key={col.name}>
@@ -1505,7 +1712,8 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																									parameterName: param.parameterName,
 																									specification: param.specification,
 																									ctq: param.ctq,
-																									tolerance: param.tolerance,
+																									minimumAcceptanceValue: param.minimumAcceptanceValue,
+																									maximumAcceptanceValue: param.maximumAcceptanceValue,
 																									parameterType: param.type,
 																									fixedTableRowLabel: `Row ${rowIdx + 1}`
 																								}}
@@ -1575,11 +1783,6 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																					<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400 }}>
 																						{column.type}
 																					</Typography>
-																					{column.defaultValue ? (
-																						<Typography variant="caption" sx={{ display: 'block', color: '#888', fontWeight: 400, fontSize: '0.65rem' }}>
-																							Default: {String(column.defaultValue)}
-																						</Typography>
-																					) : null}
 																				</TableCell>
 																			))}
 																			{!isReadOnly && (
@@ -1693,6 +1896,32 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																									/>
 																								</LocalizationProvider>
 																							) : (
+																								column.type === 'shift' ? (
+																									<TextField
+																										select
+																										value={currentValue}
+																										onChange={e =>
+																											handleTableRowChange(
+																												param.id,
+																												rowIndex,
+																												column.name,
+																												e.target.value
+																											)
+																										}
+																										error={!!errors[key]}
+																										helperText={errors[key]}
+																										size="small"
+																										disabled={isReadOnly}
+																										variant="outlined"
+																										fullWidth
+																									>
+																										{SHIFT_OPTIONS.map(option => (
+																											<MenuItem key={option} value={option}>
+																												{option}
+																											</MenuItem>
+																										))}
+																									</TextField>
+																								) : (
 																								<TextField
 																									type={column.type === 'number' ? 'number' : 'text'}
 																									value={currentValue}
@@ -1715,6 +1944,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																										step: column.type === 'number' ? 0.01 : undefined
 																									}}
 																								/>
+																								)
 																							)}
 																						</TableCell>
 																					);
@@ -1851,6 +2081,25 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																				/>
 																			</LocalizationProvider>
 																		) : (
+																			column.type === 'shift' ? (
+																				<TextField
+																					select
+																					label={column.name}
+																					value={currentValue}
+																					onChange={e => handleParameterChange(param.id, column.name, e.target.value)}
+																					error={!!errors[key]}
+																					helperText={errors[key]}
+																					fullWidth
+																					disabled={isReadOnly}
+																					variant="outlined"
+																				>
+																					{SHIFT_OPTIONS.map(option => (
+																						<MenuItem key={option} value={option}>
+																							{option}
+																						</MenuItem>
+																					))}
+																				</TextField>
+																			) : (
 																			<TextField
 																				label={column.name}
 																				type={column.type === 'number' ? 'number' : 'text'}
@@ -1866,17 +2115,47 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																					step: column.type === 'number' ? 0.01 : undefined
 																				}}
 																			/>
+																			)
 																		)}
-																		{column.defaultValue && (
+																		{(column.minimumAcceptanceValue !== undefined ||
+																			column.maximumAcceptanceValue !== undefined) && (
 																			<Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
-																				Default: {column.defaultValue}
+																				Range: {column.minimumAcceptanceValue ?? '-'} to{' '}
+																				{column.maximumAcceptanceValue ?? '-'}
 																			</Typography>
 																		)}
-																		{column.tolerance && (
-																			<Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
-																				Tolerance: ±{column.tolerance}
-																			</Typography>
-																		)}
+																		{(() => {
+																			const status =
+																				column.type === 'number' && currentValue !== ''
+																					? getRangeStatus(
+																							Number(currentValue),
+																							column.minimumAcceptanceValue,
+																							column.maximumAcceptanceValue
+																						)
+																					: null;
+																			return status && status !== 'InRange' ? (
+																				<>
+																					<FormControlLabel
+																						control={
+																							<Checkbox
+																								size="small"
+																								checked={acknowledgments[key] || false}
+																								onChange={e =>
+																									handleAcknowledgmentChange(key, e.target.checked)
+																								}
+																								disabled={isReadOnly}
+																							/>
+																						}
+																						label="Acknowledge deviation"
+																					/>
+																					{errors[getAckKey(key)] && (
+																						<Typography variant="caption" color="error">
+																							{errors[getAckKey(key)]}
+																						</Typography>
+																					)}
+																				</>
+																			) : null;
+																		})()}
 																	</Grid>
 																);
 															})}
@@ -1952,7 +2231,8 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																parameterName: param.parameterName,
 																specification: param.specification,
 																ctq: param.ctq,
-																tolerance: param.tolerance,
+																minimumAcceptanceValue: param.minimumAcceptanceValue,
+																maximumAcceptanceValue: param.maximumAcceptanceValue,
 																parameterType: param.type
 															}}
 														/>

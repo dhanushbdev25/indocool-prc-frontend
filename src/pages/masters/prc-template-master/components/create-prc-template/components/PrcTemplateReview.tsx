@@ -123,10 +123,10 @@ const PrcTemplateReview = ({ control }: PrcTemplateReviewProps) => {
 									</Box>
 									<Box sx={{ flex: 1 }}>
 										<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
-											Raw Materials
+											Bill of Material
 										</Typography>
 										<Typography variant="body2" color="textSecondary">
-											Preparation and verification of raw materials
+											Preparation and verification of bill of material
 										</Typography>
 									</Box>
 									<Chip label="Default" size="small" color="default" />

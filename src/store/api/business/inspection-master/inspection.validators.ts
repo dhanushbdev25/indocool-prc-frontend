@@ -4,7 +4,8 @@ export interface Column {
 	name: string;
 	type: string;
 	defaultValue?: string | number;
-	tolerance?: string | number;
+	minimumAcceptanceValue?: string | number;
+	maximumAcceptanceValue?: string | number;
 	[key: string]: unknown;
 }
 
@@ -35,7 +36,8 @@ export interface InspectionParameter {
 	isLatest?: boolean;
 	parameterName: string;
 	specification?: string;
-	tolerance?: string | number;
+	minimumAcceptanceValue?: string | number;
+	maximumAcceptanceValue?: string | number;
 	type: string;
 	files?: Files;
 	rowAnnotations?: FixedTableRowAnnotation[];
@@ -93,14 +95,16 @@ export interface ColumnRequest {
 	name: string;
 	type: string;
 	defaultValue?: string | number;
-	tolerance?: string | number;
+	minimumAcceptanceValue?: string | number;
+	maximumAcceptanceValue?: string | number;
 }
 
 export interface InspectionParameterRequest {
 	order: number;
 	parameterName: string;
 	specification?: string;
-	tolerance?: string | number;
+	minimumAcceptanceValue?: string | number;
+	maximumAcceptanceValue?: string | number;
 	type: string;
 	files?: Files;
 	rowAnnotations?: FixedTableRowAnnotation[];

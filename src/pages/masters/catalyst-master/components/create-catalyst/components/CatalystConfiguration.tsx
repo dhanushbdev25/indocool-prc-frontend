@@ -173,7 +173,6 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											fullWidth
 											label="Min Temperature"
 											type="number"
-											required
 											placeholder="e.g., 20"
 											error={!!fieldErrors?.minTemperature}
 											helperText={(fieldErrors?.minTemperature as { message?: string })?.message}
@@ -192,7 +191,6 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											fullWidth
 											label="Max Temperature"
 											type="number"
-											required
 											placeholder="e.g., 35"
 											error={!!fieldErrors?.maxTemperature}
 											helperText={(fieldErrors?.maxTemperature as { message?: string })?.message}
@@ -216,9 +214,8 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 										<TextField
 											{...field}
 											fullWidth
-											label="Min Humidity"
+											label="Min Humidity (%)"
 											type="number"
-											required
 											placeholder="e.g., 40"
 											error={!!fieldErrors?.minHumidity}
 											helperText={(fieldErrors?.minHumidity as { message?: string })?.message}
@@ -235,9 +232,8 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 										<TextField
 											{...field}
 											fullWidth
-											label="Max Humidity"
+											label="Max Humidity (%)"
 											type="number"
-											required
 											placeholder="e.g., 65"
 											error={!!fieldErrors?.maxHumidity}
 											helperText={(fieldErrors?.maxHumidity as { message?: string })?.message}
@@ -261,9 +257,8 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 										<TextField
 											{...field}
 											fullWidth
-											label="Min Gelcoat"
+											label="Min Gelcoat (%)"
 											type="number"
-											required
 											placeholder="e.g., 1.5"
 											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.minGelcoat}
@@ -281,9 +276,8 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 										<TextField
 											{...field}
 											fullWidth
-											label="Max Gelcoat"
+											label="Max Gelcoat (%)"
 											type="number"
-											required
 											placeholder="e.g., 2.5"
 											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.maxGelcoat}
@@ -325,9 +319,8 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 										<TextField
 											{...field}
 											fullWidth
-											label="Min Resin Dosage"
+											label="Min Resin Dosage (%)"
 											type="number"
-											required
 											placeholder="e.g., 0.8"
 											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.minResinDosage}
@@ -345,9 +338,8 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 										<TextField
 											{...field}
 											fullWidth
-											label="Max Resin Dosage"
+											label="Max Resin Dosage (%)"
 											type="number"
-											required
 											placeholder="e.g., 1.2"
 											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.maxResinDosage}
@@ -389,9 +381,8 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 										<TextField
 											{...field}
 											fullWidth
-											label="Min Top Coat"
+											label="Min Top Coat (%)"
 											type="number"
-											required
 											placeholder="e.g., 0.5"
 											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.minTopCoat}
@@ -409,9 +400,8 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 										<TextField
 											{...field}
 											fullWidth
-											label="Max Top Coat"
+											label="Max Top Coat (%)"
 											type="number"
-											required
 											placeholder="e.g., 1.0"
 											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.maxTopCoat}

@@ -293,29 +293,54 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 								/>
 							</Grid>
 
-							{/* Tolerance - Only show for number type */}
+							{/* Numeric range - Only show for number type */}
 							{(() => {
 								const parameterType = memoizedParameterTypes?.[index]?.type || 'text';
 
 								if (parameterType !== 'number') return null;
 
 								return (
-									<Grid size={{ xs: 12, md: 6 }}>
+									<Grid size={{ xs: 12, md: 3 }}>
 										<Controller
-											name={`inspectionParameters.${index}.tolerance`}
+											name={`inspectionParameters.${index}.minimumAcceptanceValue`}
 											control={control as Control<InspectionFormData>}
 											render={({ field }) => (
 												<TextField
 													{...field}
-													label="Tolerance"
+													label="Min Value"
 													fullWidth
 													type="number"
-													error={!!fieldErrors?.tolerance}
+													error={!!fieldErrors?.minimumAcceptanceValue}
 													helperText={
-														(fieldErrors?.tolerance as { message?: string })?.message ||
-														'Acceptable deviation from specification (numeric value)'
+														(fieldErrors?.minimumAcceptanceValue as { message?: string })?.message ||
+														'Minimum acceptable value'
 													}
-													placeholder="0.2"
+													placeholder="0"
+													sx={{
+														'& .MuiOutlinedInput-root': {
+															borderRadius: '8px'
+														}
+													}}
+												/>
+											)}
+										/>
+									</Grid>
+									<Grid size={{ xs: 12, md: 3 }}>
+										<Controller
+											name={`inspectionParameters.${index}.maximumAcceptanceValue`}
+											control={control as Control<InspectionFormData>}
+											render={({ field }) => (
+												<TextField
+													{...field}
+													label="Max Value"
+													fullWidth
+													type="number"
+													error={!!fieldErrors?.maximumAcceptanceValue}
+													helperText={
+														(fieldErrors?.maximumAcceptanceValue as { message?: string })?.message ||
+														'Maximum acceptable value'
+													}
+													placeholder="100"
 													sx={{
 														'& .MuiOutlinedInput-root': {
 															borderRadius: '8px'
@@ -422,7 +447,7 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 							Parameter Configuration
 						</Typography>
 						<Typography variant="body2" sx={{ color: '#666' }}>
-							Define inspection parameters with specifications, tolerances, and responsible roles
+							Define inspection parameters with specifications, ranges, and responsible roles
 						</Typography>
 					</Box>
 					<Button
@@ -570,7 +595,8 @@ const FixedTableConfigEditor = ({
 		{ value: 'text', label: 'Text' },
 		{ value: 'number', label: 'Number' },
 		{ value: 'ok/not ok', label: 'OK/Not OK' },
-		{ value: 'datetime', label: 'Date & Time' }
+		{ value: 'datetime', label: 'Date & Time' },
+		{ value: 'shift', label: 'Shift' }
 	];
 
 	return (
@@ -1019,31 +1045,54 @@ const ParameterColumns = memo(
 									{(() => {
 										const columnType = memoizedColumnTypes?.[columnIndex]?.type || 'text';
 
-										// Only show tolerance for number type
+										// Only show range for number type
 										if (columnType !== 'number') return null;
 
 										return (
-											<Controller
-												name={`inspectionParameters.${parameterIndex}.columns.${columnIndex}.tolerance`}
-												control={control as Control<InspectionFormData>}
-												render={({ field }) => (
-													<TextField
-														{...field}
-														label="Tolerance"
-														fullWidth
-														size="small"
-														type="number"
-														placeholder="0.2"
-														helperText="Numeric tolerance value"
-														sx={{
-															'& .MuiOutlinedInput-root': {
-																borderRadius: '6px',
-																backgroundColor: 'white'
-															}
-														}}
-													/>
-												)}
-											/>
+											<Box sx={{ display: 'flex', gap: 1 }}>
+												<Controller
+													name={`inspectionParameters.${parameterIndex}.columns.${columnIndex}.minimumAcceptanceValue`}
+													control={control as Control<InspectionFormData>}
+													render={({ field }) => (
+														<TextField
+															{...field}
+															label="Min"
+															fullWidth
+															size="small"
+															type="number"
+															placeholder="0"
+															helperText="Min"
+															sx={{
+																'& .MuiOutlinedInput-root': {
+																	borderRadius: '6px',
+																	backgroundColor: 'white'
+																}
+															}}
+														/>
+													)}
+												/>
+												<Controller
+													name={`inspectionParameters.${parameterIndex}.columns.${columnIndex}.maximumAcceptanceValue`}
+													control={control as Control<InspectionFormData>}
+													render={({ field }) => (
+														<TextField
+															{...field}
+															label="Max"
+															fullWidth
+															size="small"
+															type="number"
+															placeholder="100"
+															helperText="Max"
+															sx={{
+																'& .MuiOutlinedInput-root': {
+																	borderRadius: '6px',
+																	backgroundColor: 'white'
+																}
+															}}
+														/>
+													)}
+												/>
+											</Box>
 										);
 									})()}
 								</Grid>

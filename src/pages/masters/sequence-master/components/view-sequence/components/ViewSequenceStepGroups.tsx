@@ -281,6 +281,19 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 											}}
 										/>
 									)}
+									{step.getInstrumentId && (
+										<Chip
+											icon={<AssessmentIcon sx={{ fontSize: '0.875rem' }} />}
+											label="Get Instrument id"
+											size="small"
+											sx={{
+												backgroundColor: '#7b1fa2',
+												color: 'white',
+												fontSize: '0.75rem',
+												height: '24px'
+											}}
+										/>
+									)}
 								</Box>
 							</Box>
 						</Grid>

@@ -122,23 +122,6 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView }: CatalystTab
 				)
 			},
 			{
-				accessorKey: 'mekpDensity',
-				header: 'MEKP Density',
-				size: 120,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem',
-							fontWeight: 500
-						}}
-					>
-						{row.original.mekpDensity} g/cm³
-					</Typography>
-				)
-			},
-			{
 				accessorKey: 'notes',
 				header: 'Notes',
 				size: 250,

@@ -16,10 +16,11 @@ import {
 	DialogContent,
 	DialogActions,
 	IconButton,
-	CircularProgress
+	CircularProgress,
 } from '@mui/material';
 import { Save, Cancel, Close as CloseIcon } from '@mui/icons-material';
 import Swal from 'sweetalert2';
+import PartFormStickySummary from './components/PartFormStickySummary';
 import GeneralInfo from './components/GeneralInfo';
 import RawMaterialsTab from './components/RawMaterialsTab';
 import TechnicalDataTab from './components/TechnicalDataTab';
@@ -29,10 +30,10 @@ import { partMasterFormSchema, defaultPartMasterFormData } from './schemas';
 import { PartMasterFormData } from './schemas';
 import {
 	useFetchPartByIdQuery,
+	useFetchCustomersQuery,
 	useCreatePartMutation,
 	useUpdatePartMutation
 } from '../../../../../store/api/business/part-master/part.api';
-import { useFetchCustomersQuery } from '../../../../../store/api/business/part-master/part.api';
 import {
 	useFetchPrcTemplateByIdQuery,
 	useFetchOperationsComboQuery,
@@ -638,6 +639,7 @@ const CreatePart = () => {
 					id: rm.id,
 					materialName: rm.materialName,
 					materialCode: rm.materialCode,
+					materialGroup: rm.materialGroup ?? '',
 					quantity: rm.quantity,
 					uom: rm.uom,
 					batching: rm.batching ?? false,
@@ -860,35 +862,87 @@ const CreatePart = () => {
 
 	if (isEditMode && isFetching) {
 		return (
-			<Box sx={{ minHeight: '100vh' }}>
-				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-						<Skeleton variant="rectangular" width={80} height={36} sx={{ mr: 2, borderRadius: 1 }} />
-						<Skeleton variant="text" width={300} height={40} />
-					</Box>
-					<Box sx={{ mb: 4 }}>
-						<Skeleton variant="rectangular" width="100%" height={60} sx={{ borderRadius: 1 }} />
-					</Box>
-					<Box sx={{ mb: 4 }}>
-						<Skeleton variant="rectangular" width="100%" height={400} sx={{ borderRadius: 1 }} />
-					</Box>
-					<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
-						<Skeleton variant="rectangular" width={80} height={36} sx={{ borderRadius: 1 }} />
+			<Box
+				sx={{
+					height: 'calc(100vh - 64px - 38px)',
+					display: 'flex',
+					flexDirection: 'column',
+					overflow: 'hidden',
+					m: -3,
+					p: 3,
+					boxSizing: 'border-box'
+				}}
+			>
+				<Box
+					sx={{
+						backgroundColor: 'background.paper',
+						borderBottom: 1,
+						borderColor: 'divider',
+						flexShrink: 0,
+						boxShadow: 'none'
+					}}
+				>
+					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+						<Skeleton variant="text" width={260} height={40} />
 						<Box sx={{ display: 'flex', gap: 2 }}>
 							<Skeleton variant="rectangular" width={100} height={36} sx={{ borderRadius: 1 }} />
 							<Skeleton variant="rectangular" width={120} height={36} sx={{ borderRadius: 1 }} />
 						</Box>
 					</Box>
-				</Paper>
+					<Skeleton variant="rectangular" width="100%" height={88} sx={{ borderRadius: 1, mb: 0 }} />
+					<Skeleton variant="rectangular" width="100%" height={48} sx={{ borderRadius: 0, mt: 1 }} />
+				</Box>
+				<Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+					<Paper
+						elevation={0}
+						sx={{
+							p: 4,
+							borderRadius: 2,
+							boxShadow: 'none',
+							border: 1,
+							borderColor: 'divider'
+						}}
+					>
+						<Box sx={{ mb: 4 }}>
+							<Skeleton variant="rectangular" width="100%" height={400} sx={{ borderRadius: 1 }} />
+						</Box>
+						<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
+							<Skeleton variant="rectangular" width={80} height={36} sx={{ borderRadius: 1 }} />
+							<Box sx={{ display: 'flex', gap: 2 }}>
+								<Skeleton variant="rectangular" width={100} height={36} sx={{ borderRadius: 1 }} />
+								<Skeleton variant="rectangular" width={120} height={36} sx={{ borderRadius: 1 }} />
+							</Box>
+						</Box>
+					</Paper>
+				</Box>
 			</Box>
 		);
 	}
 
 	return (
 		<FormProvider {...methods}>
-			<Box sx={{ minHeight: '100vh' }}>
-				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 4 }}>
+			{/* Match execute-prc: outer column fills viewport segment; header does not scroll; tab body scrolls */}
+			<Box
+				sx={{
+					height: 'calc(100vh - 64px - 38px)',
+					display: 'flex',
+					flexDirection: 'column',
+					overflow: 'hidden',
+					m: -3,
+					p: 3,
+					boxSizing: 'border-box'
+				}}
+			>
+				<Box
+					sx={{
+						backgroundColor: 'background.paper',
+						borderBottom: 1,
+						borderColor: 'divider',
+						flexShrink: 0,
+						boxShadow: 'none'
+					}}
+				>
+					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
 							{isEditMode ? 'Edit Part' : 'Create New Part'}
 						</Typography>
@@ -921,58 +975,97 @@ const CreatePart = () => {
 						</Box>
 					</Box>
 
-					{error && (
-						<Alert severity="error" sx={{ mb: 3 }}>
-							{error}
-						</Alert>
-					)}
+					<PartFormStickySummary />
 
-					<Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-						<Tabs value={activeTab} onChange={handleTabChange} aria-label="part tabs">
-							<Tab label="General Info" id="part-tab-0" aria-controls="part-tabpanel-0" />
-							<Tab label="Raw Materials" id="part-tab-1" aria-controls="part-tabpanel-1" disabled={!partMasterExists} />
-							<Tab label="Technical Data" id="part-tab-2" aria-controls="part-tabpanel-2" disabled={!partMasterExists} />
-							<Tab label="Linked Masters" id="part-tab-3" aria-controls="part-tabpanel-3" disabled={!partMasterExists} />
-							<Tab
-								label="Inspection Image Mapping"
-								id="part-tab-4"
-								aria-controls="part-tabpanel-4"
-								disabled={!isInspectionMappingEnabled}
+					<Tabs
+						value={activeTab}
+						onChange={handleTabChange}
+						aria-label="part tabs"
+						sx={{
+							mt: 0,
+							bgcolor: 'background.paper',
+							borderTop: 1,
+							borderBottom: 1,
+							borderColor: 'divider',
+							minHeight: 48,
+							px: 0,
+							'& .MuiTabs-flexContainer': {
+								alignItems: 'flex-end',
+								minHeight: 48
+							},
+							'& .MuiTabs-indicator': {
+								bottom: 0,
+								height: 2
+							},
+							'& .MuiTab-root': {
+								textTransform: 'none',
+								minHeight: 48,
+								py: 0
+							}
+						}}
+					>
+						<Tab label="General Info" id="part-tab-0" aria-controls="part-tabpanel-0" />
+						<Tab label="Bill of Material" id="part-tab-1" aria-controls="part-tabpanel-1" disabled={!partMasterExists} />
+						<Tab label="Technical Data" id="part-tab-2" aria-controls="part-tabpanel-2" disabled={!partMasterExists} />
+						<Tab label="Linked Masters" id="part-tab-3" aria-controls="part-tabpanel-3" disabled={!partMasterExists} />
+						<Tab
+							label="Inspection Image Mapping"
+							id="part-tab-4"
+							aria-controls="part-tabpanel-4"
+							disabled={!isInspectionMappingEnabled}
+						/>
+					</Tabs>
+				</Box>
+
+				<Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+					<Paper
+						elevation={0}
+						sx={{
+							p: 4,
+							borderRadius: 2,
+							boxShadow: 'none',
+							border: 1,
+							borderColor: 'divider'
+						}}
+					>
+						{error && (
+							<Alert severity="error" sx={{ mb: 3 }}>
+								{error}
+							</Alert>
+						)}
+
+						<TabPanel value={activeTab} index={0}>
+							<GeneralInfo
+								control={control}
+								errors={errors}
+								gallery={gallery}
+								onAddImage={handleAddImage}
+								onRemoveImage={handleRemoveImage}
 							/>
-						</Tabs>
-					</Box>
-
-					<TabPanel value={activeTab} index={0}>
-						<GeneralInfo
-							control={control}
-							errors={errors}
-							gallery={gallery}
-							onAddImage={handleAddImage}
-							onRemoveImage={handleRemoveImage}
-						/>
-					</TabPanel>
-					<TabPanel value={activeTab} index={1}>
-						<RawMaterialsTab control={control} errors={errors} />
-					</TabPanel>
-					<TabPanel value={activeTab} index={2}>
-						<TechnicalDataTab control={control} errors={errors} />
-					</TabPanel>
-					<TabPanel value={activeTab} index={3}>
-						<LinkedMastersTab
-							control={control}
-							errors={errors}
-							setValue={setValue}
-							operationsPartId={operationsQueryPartId}
-						/>
-					</TabPanel>
-					<TabPanel value={activeTab} index={4}>
-						<InspectionImageMappingTab
-							control={control}
-							setValue={setValue}
-							gallery={gallery}
-						/>
-					</TabPanel>
-				</Paper>
+						</TabPanel>
+						<TabPanel value={activeTab} index={1}>
+							<RawMaterialsTab control={control} errors={errors} />
+						</TabPanel>
+						<TabPanel value={activeTab} index={2}>
+							<TechnicalDataTab control={control} errors={errors} />
+						</TabPanel>
+						<TabPanel value={activeTab} index={3}>
+							<LinkedMastersTab
+								control={control}
+								errors={errors}
+								setValue={setValue}
+								operationsPartId={operationsQueryPartId}
+							/>
+						</TabPanel>
+						<TabPanel value={activeTab} index={4}>
+							<InspectionImageMappingTab
+								control={control}
+								setValue={setValue}
+								gallery={gallery}
+							/>
+						</TabPanel>
+					</Paper>
+				</Box>
 			</Box>
 
 			<Dialog open={showExitDialog} onClose={handleExitCancel} maxWidth="sm" fullWidth>

@@ -19,6 +19,7 @@ export interface ProcessStep {
 	ctq: boolean;
 	allowAttachments: boolean;
 	responsiblePerson?: boolean | null;
+	getInstrumentId?: boolean | null;
 	notes: string;
 	createdAt: string;
 	updatedAt: string;
@@ -87,6 +88,7 @@ export interface ProcessStepRequest {
 	ctq: boolean;
 	allowAttachments: boolean;
 	responsiblePerson?: boolean | null;
+	getInstrumentId?: boolean | null;
 	notes: string;
 }
 

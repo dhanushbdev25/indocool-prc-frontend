@@ -4,7 +4,6 @@ import { type MRT_ColumnDef } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	CheckCircle as CheckCircleIcon,
-	Assignment as AssignmentIcon,
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
@@ -127,24 +126,12 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 						>
 							{row.original.updatedAt ? `Updated: ${formatDate(row.original.updatedAt)}` : ''}
 						</Typography>
-						<Chip
-							label={row.original.type}
-							size="small"
-							icon={<AssignmentIcon sx={{ fontSize: '0.75rem' }} />}
-							sx={{
-								backgroundColor: '#e3f2fd',
-								color: '#1976d2',
-								fontSize: '0.625rem',
-								height: '20px',
-								mt: 0.5
-							}}
-						/>
 					</Box>
 				)
 			},
 			{
 				accessorKey: 'inspectionName',
-				header: 'Inspection Name',
+				header: 'Inspection Type',
 				size: 250,
 				Cell: ({ row }) => (
 					<Typography

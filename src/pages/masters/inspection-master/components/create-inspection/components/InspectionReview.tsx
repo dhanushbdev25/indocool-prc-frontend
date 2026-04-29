@@ -32,6 +32,10 @@ import { roleOptions } from '../schemas';
 
 const InspectionReview = ({ control }: InspectionReviewProps) => {
 	const watchedData = useWatch({ control });
+	const formatRange = (min?: unknown, max?: unknown) => {
+		if (min === undefined && max === undefined) return 'Not specified';
+		return `${min ?? '-'} to ${max ?? '-'}`;
+	};
 
 	const getRoleLabel = (roleValue: string) => {
 		const role = roleOptions.find(r => r.value === roleValue);
@@ -265,10 +269,13 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 										<Grid size={{ xs: 12, md: 6 }}>
 											<Box>
 												<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-													Tolerance
+													Range (Min-Max)
 												</Typography>
 												<Typography variant="body1" sx={{ fontWeight: 500 }}>
-													{String(parameter.tolerance || 'Not specified')}
+													{formatRange(
+														parameter.minimumAcceptanceValue,
+														parameter.maximumAcceptanceValue
+													)}
 												</Typography>
 											</Box>
 										</Grid>
@@ -291,9 +298,7 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 														<TableHead>
 															<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
 																<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>Name</TableCell>
-																<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>Type</TableCell>
-																<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>Default Value</TableCell>
-																<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>Tolerance</TableCell>
+																<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>Range (Min-Max)</TableCell>
 															</TableRow>
 														</TableHead>
 														<TableBody>
@@ -301,16 +306,12 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 																(column: Record<string, unknown>, colIndex: number) => (
 																	<TableRow key={colIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
 																		<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.name)}</TableCell>
-																		<TableCell>
-																			<Chip
-																				label={String(column.type)}
-																				size="small"
-																				variant="outlined"
-																				sx={{ fontSize: '0.7rem', height: 22 }}
-																			/>
+																		<TableCell sx={{ fontSize: '0.8rem' }}>
+																			{formatRange(
+																				column.minimumAcceptanceValue,
+																				column.maximumAcceptanceValue
+																			)}
 																		</TableCell>
-																		<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.defaultValue || '-')}</TableCell>
-																		<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.tolerance || '-')}</TableCell>
 																	</TableRow>
 																)
 															)}

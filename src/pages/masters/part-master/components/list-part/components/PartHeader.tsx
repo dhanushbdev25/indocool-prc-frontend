@@ -32,7 +32,7 @@ const PartHeader = () => {
 							fontWeight: 400
 						}}
 					>
-						Manage parts, raw materials, and technical specifications
+						Manage parts, bill of material, and technical specifications
 					</Typography>
 				</Box>
 				<Button

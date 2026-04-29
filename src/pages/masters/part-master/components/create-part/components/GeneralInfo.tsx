@@ -10,7 +10,6 @@ import {
 	MenuItem,
 	Grid,
 	Divider,
-	FormControlLabel,
 	Switch,
 	IconButton,
 	Button,
@@ -281,35 +280,15 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 						/>
 					</Grid>
 
-					{/* Active Status */}
-					<Grid size={{ xs: 12, md: 6 }}>
-						<Box
-							sx={{
-								display: 'flex',
-								alignItems: 'center',
-								height: '100%'
-							}}
+					<Grid size={{ xs: 12 }}>
+						<Divider sx={{ mb: 2 }} />
+						<Typography
+							variant="subtitle2"
+							color="text.secondary"
+							sx={{ fontWeight: 600, letterSpacing: '0.02em', mb: 2 }}
 						>
-							<Controller
-								name="isActive"
-								control={control}
-								render={({ field }) => (
-									<FormControlLabel
-										control={<Switch checked={field.value} onChange={field.onChange} color="primary" />}
-										label={
-											<Box>
-												<Typography variant="body1" sx={{ fontWeight: 500 }}>
-													Active Part
-												</Typography>
-												<Typography variant="caption" sx={{ color: '#666' }}>
-													Enable this part for use in production
-												</Typography>
-											</Box>
-										}
-									/>
-								)}
-							/>
-						</Box>
+							Customer & production
+						</Typography>
 					</Grid>
 
 					{/* Customer */}
@@ -410,6 +389,48 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 								</FormControl>
 							)}
 						/>
+					</Grid>
+
+					{/* Active status — settings-style row */}
+					<Grid size={{ xs: 12 }}>
+						<Box
+							sx={{
+								display: 'flex',
+								flexDirection: { xs: 'column', sm: 'row' },
+								alignItems: { xs: 'stretch', sm: 'center' },
+								justifyContent: 'space-between',
+								gap: 2,
+								px: 2.5,
+								py: 2,
+								borderRadius: 2,
+								border: theme => `1px solid ${theme.palette.divider}`,
+								bgcolor: theme =>
+									theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'grey.50'
+							}}
+						>
+							<Box sx={{ minWidth: 0, flex: '1 1 auto' }}>
+								<Typography variant="subtitle2" component="p" sx={{ fontWeight: 600, mb: 0.5 }}>
+									Active part
+								</Typography>
+								<Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+									When off, this part is hidden from production workflows.
+								</Typography>
+							</Box>
+							<Box sx={{ flexShrink: 0, alignSelf: { xs: 'flex-end', sm: 'center' } }}>
+								<Controller
+									name="isActive"
+									control={control}
+									render={({ field }) => (
+										<Switch
+											checked={field.value}
+											onChange={field.onChange}
+											color="primary"
+											inputProps={{ 'aria-label': 'Active part' }}
+										/>
+									)}
+								/>
+							</Box>
+						</Box>
 					</Grid>
 
 					{/* Description */}

@@ -78,6 +78,7 @@ export interface StepGroup {
 		updatedAt: string;
 		processStepGroupId: number;
 		responsiblePerson?: boolean;
+		getInstrumentId?: boolean;
 	}>;
 }
 
@@ -117,12 +118,14 @@ export interface StepPreviewData {
 			name: string;
 			type: string;
 			defaultValue?: string;
-			tolerance?: string;
+			minimumAcceptanceValue?: string;
+			maximumAcceptanceValue?: string;
 		}>;
 		tableConfig?: TableConfig | null;
 		specification: string;
 		order: number;
-		tolerance?: string;
+		minimumAcceptanceValue?: string;
+		maximumAcceptanceValue?: string;
 		files?: Array<{
 			fileName: string;
 			filePath: string;
@@ -216,6 +219,7 @@ export interface TimelineStep {
 		allowAttachments?: boolean;
 		stepNumber?: number;
 		responsiblePerson?: boolean;
+		getInstrumentId?: boolean;
 	};
 	// For inspection steps
 	inspectionParameters?: Array<{
@@ -228,12 +232,14 @@ export interface TimelineStep {
 			name: string;
 			type: string;
 			defaultValue?: string;
-			tolerance?: string;
+			minimumAcceptanceValue?: string;
+			maximumAcceptanceValue?: string;
 		}>;
 		tableConfig?: TableConfig | null;
 		specification: string;
 		order: number;
-		tolerance?: string;
+		minimumAcceptanceValue?: string;
+		maximumAcceptanceValue?: string;
 		files?: Array<{
 			fileName: string;
 			filePath: string;
@@ -306,6 +312,7 @@ export interface ExecutionData {
 	version: number;
 	productionSetId: string;
 	mouldId: string;
+	mouldCode?: string | null;
 	date: string;
 	shift: string;
 	inCharge: number;
@@ -458,6 +465,7 @@ export interface FormData {
 	annotations?: ImageAnnotation[];
 	// Support for fixed-table row level annotations
 	rowAnnotations?: FixedTableRowAnnotation[];
+	instrumentId?: string;
 	// Support for responsible person data - now supports both single object (backward compatibility) and array
 	responsiblePersonData?:
 		| {

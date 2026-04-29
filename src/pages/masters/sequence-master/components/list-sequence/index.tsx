@@ -128,6 +128,7 @@ const ListSequence = () => {
 								ctq: step.ctq,
 								allowAttachments: step.allowAttachments,
 								responsiblePerson: step.responsiblePerson || false,
+								getInstrumentId: step.getInstrumentId || false,
 								notes: step.notes
 							}))
 						}))

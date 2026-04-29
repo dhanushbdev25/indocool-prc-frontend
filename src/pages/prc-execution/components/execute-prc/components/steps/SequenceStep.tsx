@@ -132,7 +132,8 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 			return {
 				formData: {},
 				measurements: fixedMeasurementCount ? buildEmptyMeasurements(fixedMeasurementCount) : [{ id: '1', value: '' }],
-				responsiblePersonData: defaultResponsiblePersonData
+				responsiblePersonData: defaultResponsiblePersonData,
+				instrumentId: ''
 			};
 		if (executionData.prcAggregatedSteps) {
 			const existingData =
@@ -189,11 +190,24 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 					}
 				}
 
+				const extractedInstrumentId = (() => {
+					if (typeof existingData === 'object' && existingData !== null && 'instrumentId' in existingData) {
+						const value = (existingData as Record<string, unknown>).instrumentId;
+						if (typeof value === 'string') return value;
+					}
+					if (typeof actualData === 'object' && actualData !== null && 'instrumentId' in actualData) {
+						const value = (actualData as Record<string, unknown>).instrumentId;
+						if (typeof value === 'string') return value;
+					}
+					return '';
+				})();
+
 				if (stepData.targetValueType === 'table' && Array.isArray(actualData)) {
 					return {
 						formData: {},
 						measurements: [{ id: '1', value: '' }],
 						responsiblePersonData,
+						instrumentId: extractedInstrumentId,
 						tableData: actualData as Array<Record<string, string>>
 					};
 				}
@@ -217,13 +231,14 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 						fixedMeasurementCount && fixedMeasurementCount > 0
 							? normalizeMeasurementsToCount(loadedMeasurements, fixedMeasurementCount)
 							: loadedMeasurements;
-					return { formData: {}, measurements, responsiblePersonData };
+					return { formData: {}, measurements, responsiblePersonData, instrumentId: extractedInstrumentId };
 				} else if (typeof actualData === 'string' || typeof actualData === 'number') {
 					// Load single value directly
 					return {
 						formData: { value: actualData.toString() },
 						measurements: [{ id: '1', value: '' }],
-						responsiblePersonData
+						responsiblePersonData,
+						instrumentId: extractedInstrumentId
 					};
 				} else if (typeof actualData === 'object' && actualData !== null) {
 					// Handle object data (like { value: "ok" })
@@ -249,7 +264,8 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 								notOkComment: resolvedNotOkComment
 							},
 							measurements: [{ id: '1', value: '' }],
-							responsiblePersonData
+							responsiblePersonData,
+							instrumentId: extractedInstrumentId
 						};
 					}
 				}
@@ -262,6 +278,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 					? buildEmptyMeasurements(fixedMeasurementCount)
 					: [{ id: '1', value: '' }],
 			responsiblePersonData: defaultResponsiblePersonData,
+			instrumentId: '',
 			tableData: undefined as Array<Record<string, string>> | undefined
 		};
 	}, [executionData.prcAggregatedSteps, step]);
@@ -276,6 +293,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 			employeeCode: string;
 		}>
 	>(initialData.responsiblePersonData);
+	const [instrumentId, setInstrumentId] = useState<string>(initialData.instrumentId || '');
 
 	const initTableData = useMemo(() => {
 		if (initialData.tableData) return initialData.tableData;
@@ -298,6 +316,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 		setFormData(initialData.formData);
 		setMeasurements(initialData.measurements);
 		setResponsiblePersonData(initialData.responsiblePersonData);
+		setInstrumentId(initialData.instrumentId || '');
 		if (initialData.tableData) {
 			setTableData(initialData.tableData);
 		} else if (initTableData) {
@@ -446,6 +465,16 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 		}));
 	};
 
+	const handleInstrumentIdChange = (value: string) => {
+		setInstrumentId(value);
+		if (errors.instrumentId) {
+			setErrors(prev => ({
+				...prev,
+				instrumentId: ''
+			}));
+		}
+	};
+
 	const handleTableCellChange = (rowIndex: number, colName: string, value: string) => {
 		setTableData(prev => {
 			if (!prev) return prev;
@@ -547,6 +576,10 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 			});
 		}
 
+		if (stepData.getInstrumentId && instrumentId.trim() === '') {
+			newErrors.instrumentId = 'Instrument id is required';
+		}
+
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
@@ -626,6 +659,9 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 						employeeCode: p.employeeCode
 					}));
 				}
+				if (stepData.getInstrumentId) {
+					formDataToSubmit.instrumentId = instrumentId.trim();
+				}
 				onStepComplete(formDataToSubmit);
 				return;
 			}
@@ -663,6 +699,9 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 					employeeName: person.employeeName,
 					employeeCode: person.employeeCode
 				}));
+			}
+			if (stepData.getInstrumentId) {
+				formDataToSubmit.instrumentId = instrumentId.trim();
 			}
 
 			// Numeric range/exact steps: persist acceptance fields + validation status
@@ -1159,6 +1198,24 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 				</Typography>
 				{renderInput()}
 			</Box>
+
+			{/* Responsible Person Section */}
+			{stepData.getInstrumentId && (
+				<Box sx={{ mb: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+					<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', fontSize: '1rem', mb: 1.5 }}>
+						Instrument id
+					</Typography>
+					<TextField
+						fullWidth
+						label="Instrument id"
+						value={instrumentId}
+						onChange={e => handleInstrumentIdChange(e.target.value)}
+						error={!!errors.instrumentId}
+						helperText={errors.instrumentId}
+						disabled={isReadOnly}
+					/>
+				</Box>
+			)}
 
 			{/* Responsible Person Section */}
 			{stepData.responsiblePerson && (

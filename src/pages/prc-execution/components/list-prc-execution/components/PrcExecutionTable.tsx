@@ -74,77 +74,42 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				)
 			},
 			{
-				accessorKey: 'partNumber',
-				header: 'Part Number',
-				size: 200,
-				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								fontWeight: 500,
-								color: '#333',
-								fontSize: '0.875rem'
-							}}
-						>
-							{row.original.partNumber}
+				id: 'orderId',
+				header: 'Order ID',
+				size: 140,
+				Cell: ({ row }) => {
+					const orderId = (row.original as { orderId?: string | number | null }).orderId;
+					return (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{orderId != null && String(orderId).trim() ? String(orderId) : '—'}
 						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#999',
-								fontSize: '0.75rem',
-								display: 'block'
-							}}
-						>
-							{row.original.updatedAt ? `Updated: ${formatDate(row.original.updatedAt)}` : ''}
-						</Typography>
-						<Chip
-							label={`v${row.original.version}`}
-							size="small"
-							icon={<PlayArrowIcon sx={{ fontSize: '0.75rem' }} />}
-							sx={{
-								backgroundColor: '#e3f2fd',
-								color: '#1976d2',
-								fontSize: '0.625rem',
-								height: '20px',
-								mt: 0.5
-							}}
-						/>
-					</Box>
-				)
+					);
+				}
 			},
 			{
-				accessorKey: 'customer',
-				header: 'Customer',
-				size: 150,
+				id: 'partNumberDisplay',
+				header: 'Part Number',
+				size: 170,
 				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#666',
-							fontSize: '0.875rem'
-						}}
-					>
-						{row.original.customer}
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
+						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : row.original.partNumber}
 					</Typography>
 				)
 			},
 			{
-				accessorKey: 'sapSync',
-				header: 'SAP sync',
-				size: 110,
+				accessorKey: 'date',
+				header: 'Date',
+				size: 120,
 				Cell: ({ row }) => (
-					<Chip
-						label={row.original.sapSync ? 'Synced' : 'Not synced'}
-						size="small"
+					<Typography
+						variant="body2"
 						sx={{
-							backgroundColor: row.original.sapSync ? '#e8f5e9' : '#ffebee',
-							color: row.original.sapSync ? '#2e7d32' : '#c62828',
-							fontSize: '0.75rem',
-							height: '24px'
+							color: '#333',
+							fontSize: '0.875rem'
 						}}
-					/>
+					>
+						{formatDate(row.original.date)}
+					</Typography>
 				)
 			},
 			{
@@ -154,26 +119,6 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
 						{row.original.customerName?.trim() ? row.original.customerName : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'customerVariantName',
-				header: 'Customer variant',
-				size: 160,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-						{row.original.customerVariantName?.trim() ? row.original.customerVariantName : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'sapReferenceNumber',
-				header: 'SAP reference',
-				size: 140,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
 					</Typography>
 				)
 			},
@@ -239,24 +184,8 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				)
 			},
 			{
-				accessorKey: 'date',
-				header: 'Date',
-				size: 120,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem'
-						}}
-					>
-						{formatDate(row.original.date)}
-					</Typography>
-				)
-			},
-			{
 				id: 'execute',
-				header: 'Execute',
+				header: 'Actions',
 				size: 120,
 				enableSorting: false,
 				Cell: ({ row }) => (

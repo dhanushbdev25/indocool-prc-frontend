@@ -84,7 +84,6 @@ export interface CatalystRequest {
 	chartId: string;
 	chartSupplier: string;
 	notes?: string;
-	mekpDensity: number;
 	isActive: boolean;
 }
 
@@ -95,7 +94,6 @@ export interface CatalystRequestWithId {
 	chartId: string;
 	chartSupplier: string;
 	notes?: string;
-	mekpDensity: number;
 	isActive: boolean;
 }
 

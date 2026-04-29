@@ -63,32 +63,6 @@ const CatalystBasicInfo = ({ control, errors }: CatalystBasicInfoProps) => {
 						/>
 					</Grid>
 
-					{/* MEKP Density */}
-					<Grid size={{ xs: 12, md: 6 }}>
-						<Controller
-							name="mekpDensity"
-							control={control}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									fullWidth
-									label="MEKP Density"
-									required
-									type="number"
-									placeholder="e.g., 1.12"
-									helperText={errors.mekpDensity?.message || 'Methyl Ethyl Ketone Peroxide density (g/cm³)'}
-									error={!!errors.mekpDensity}
-									slotProps={{ htmlInput: { step: '0.01', min: '0' } }}
-									sx={{
-										'& .MuiOutlinedInput-root': {
-											borderRadius: '8px'
-										}
-									}}
-								/>
-							)}
-						/>
-					</Grid>
-
 					{/* Active Status */}
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Box

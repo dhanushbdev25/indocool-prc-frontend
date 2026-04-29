@@ -139,6 +139,7 @@ const ListPart = () => {
 					rawMaterials: fullPartDetail.rawMaterials.map(rm => ({
 						materialName: rm.materialName,
 						materialCode: rm.materialCode,
+						materialGroup: rm.materialGroup ?? '',
 						quantity: rm.quantity,
 						uom: rm.uom,
 						version: rm.version,

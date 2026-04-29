@@ -50,7 +50,7 @@ const StepList = ({ steps, currentStepIndex, onStepClick, previewMode = false }:
 			case 'setup':
 				return 'Setup';
 			case 'rawMaterials':
-				return 'Raw Materials';
+				return 'Bill of Material';
 			case 'bom':
 				return 'BOM';
 			case 'sequence':
@@ -189,6 +189,19 @@ const StepList = ({ steps, currentStepIndex, onStepClick, previewMode = false }:
 														color: '#2196f3',
 														fontSize: '0.625rem',
 														height: 20
+													}}
+												/>
+											)}
+											{step.partialCtqApprove && step.status !== 'completed' && (
+												<Chip
+													label="Partial CTQ"
+													size="small"
+													sx={{
+														backgroundColor: '#fff8e1',
+														color: '#f9a825',
+														fontSize: '0.625rem',
+														height: 20,
+														fontWeight: 600
 													}}
 												/>
 											)}

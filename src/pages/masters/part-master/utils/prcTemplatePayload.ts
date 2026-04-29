@@ -77,11 +77,11 @@ export const buildPrcTemplatePayload = (
 	const resolvedTemplateId =
 		typeof data.templateId === 'string' && data.templateId.trim().length > 0
 			? data.templateId.trim()
-			: (data.partNumber || data.drawingNumber || '').trim();
+			: `${(data.partNumber || data.drawingNumber || 'part').trim()}-prc-1`;
 	const resolvedTemplateName =
 		typeof data.templateName === 'string' && data.templateName.trim().length > 0
 			? data.templateName.trim()
-			: (data.partNumber || data.description || data.drawingNumber || '').trim();
+			: `${(data.partNumber || data.drawingNumber || 'part').trim()}-prc-1`;
 
 	const templateRequestData = {
 		status: data.isTemplateActive ? ('ACTIVE' as const) : ('INACTIVE' as const),

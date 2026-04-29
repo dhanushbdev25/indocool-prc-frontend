@@ -237,7 +237,8 @@ const StepDetailView = ({
 				evaluationMethod: currentSubStep.evaluationMethod,
 				allowAttachments: currentSubStep.allowAttachments,
 				stepNumber: currentSubStep.stepNumber,
-				responsiblePerson: currentSubStep.responsiblePerson
+				responsiblePerson: currentSubStep.responsiblePerson,
+				getInstrumentId: currentSubStep.getInstrumentId
 			}
 			};
 

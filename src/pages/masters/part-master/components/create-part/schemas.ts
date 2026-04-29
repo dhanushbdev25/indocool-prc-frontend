@@ -5,6 +5,7 @@ export const rawMaterialFormSchema = yup.object({
 	id: yup.mixed().optional(),
 	materialName: yup.string().required('Material name is required'),
 	materialCode: yup.string().required('Material code is required'),
+	materialGroup: yup.string().max(100).optional().default(''),
 	quantity: yup.string().required('Quantity is required'),
 	uom: yup.string().required('UOM is required'),
 	batching: yup.boolean().default(false),
@@ -214,6 +215,7 @@ export type PartMasterFormData = yup.InferType<typeof partMasterFormSchema>;
 export const defaultRawMaterial: RawMaterialFormData = {
 	materialName: '',
 	materialCode: '',
+	materialGroup: '',
 	quantity: '',
 	uom: '',
 	batching: false,

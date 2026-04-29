@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import PrcExecutionHeader from './components/PrcExecutionHeader';
-import SummaryCards from './components/SummaryCards';
 import PrcExecutionManagement from './components/PrcExecutionManagement';
 import PrcExecutionTable, { PrcExecutionData } from './components/PrcExecutionTable';
 import CatalystTableSkeleton from '../../../../components/common/skeleton/CatalystTableSkeleton';
@@ -11,7 +10,6 @@ import { useFetchPrcExecutionsQuery } from '../../../../store/api/business/prc-e
 const ListPrcExecution = () => {
 	const navigate = useNavigate();
 	const [searchTerm, setSearchTerm] = useState('');
-	const [activeFilter, setActiveFilter] = useState('All Executions');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [executionToDelete, setExecutionToDelete] = useState<PrcExecutionData | null>(null);
 	// Fetch all PRC executions using the API
@@ -31,53 +29,34 @@ const ListPrcExecution = () => {
 	const filteredData = useMemo(() => {
 		let filtered = allExecutionData;
 
-		// Apply status filter
-		if (activeFilter !== 'All Executions') {
-			if (activeFilter === 'Active') {
-				filtered = filtered.filter(execution => execution.status === 'ACTIVE');
-			} else if (activeFilter === 'In Progress') {
-				filtered = filtered.filter(execution => execution.status === 'IN_PROGRESS');
-			} else if (activeFilter === 'Completed') {
-				filtered = filtered.filter(execution => execution.status === 'COMPLETED');
-			} else if (activeFilter === 'Inactive') {
-				filtered = filtered.filter(execution => execution.status === 'INACTIVE');
-			}
-		}
-
 		// Apply search filter
 		if (searchTerm) {
 			const q = searchTerm.toLowerCase();
 			filtered = filtered.filter(execution => {
 				const idStr = String(execution.id ?? '').toLowerCase();
+				const orderId = String((execution as { orderId?: string | number | null }).orderId ?? '').toLowerCase();
 				const partNumber = (execution.partNumber ?? '').toLowerCase();
-				const customer = (execution.customer ?? '').toLowerCase();
 				const productionSetId = (execution.productionSetId ?? '').toLowerCase();
 				const mould = (execution.mouldId ?? '').toLowerCase();
 				const customerName = (execution.customerName ?? '').toLowerCase();
-				const variant = (execution.customerVariantName ?? '').toLowerCase();
 				const sapRef = (execution.sapReferenceNumber ?? '').toLowerCase();
 				return (
 					idStr.includes(q) ||
+					orderId.includes(q) ||
 					partNumber.includes(q) ||
-					customer.includes(q) ||
 					productionSetId.includes(q) ||
 					mould.includes(q) ||
 					customerName.includes(q) ||
-					variant.includes(q) ||
 					sapRef.includes(q)
 				);
 			});
 		}
 
 		return filtered;
-	}, [allExecutionData, activeFilter, searchTerm]);
+	}, [allExecutionData, searchTerm]);
 
 	const handleSearchChange = (searchValue: string) => {
 		setSearchTerm(searchValue);
-	};
-
-	const handleFilterChange = (filter: string) => {
-		setActiveFilter(filter);
 	};
 
 	const handleExecute = (executionId: number) => {
@@ -96,14 +75,6 @@ const ListPrcExecution = () => {
 		setExecutionToDelete(null);
 	};
 
-	// Mock header data for summary cards (replace with actual API data when available)
-	const mockHeaderData = {
-		ACTIVE: allExecutionData.filter(e => e.status === 'ACTIVE').length,
-		INACTIVE: allExecutionData.filter(e => e.status === 'INACTIVE').length,
-		IN_PROGRESS: allExecutionData.filter(e => e.status === 'IN_PROGRESS').length,
-		COMPLETED: allExecutionData.filter(e => e.status === 'COMPLETED').length
-	};
-
 	// Show loading state with skeleton
 	if (isPrcExecutionDataLoading || isPrcExecutionDataFetching) {
 		return (
@@ -117,8 +88,7 @@ const ListPrcExecution = () => {
 	return (
 		<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
 			<PrcExecutionHeader />
-			<SummaryCards headerData={mockHeaderData} />
-			<PrcExecutionManagement onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
+			<PrcExecutionManagement onSearchChange={handleSearchChange} />
 			<PrcExecutionTable data={filteredData} onExecute={handleExecute} />
 
 			{/* Delete Confirmation Dialog */}

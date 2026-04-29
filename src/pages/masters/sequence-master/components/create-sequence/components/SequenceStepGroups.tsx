@@ -73,6 +73,7 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 					ctq: false,
 					allowAttachments: false,
 					responsiblePerson: false,
+					getInstrumentId: false,
 					notes: ''
 				}
 			]
@@ -533,6 +534,7 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 			ctq: false,
 			allowAttachments: false,
 			responsiblePerson: false,
+			getInstrumentId: false,
 			notes: ''
 		});
 	};
@@ -1020,6 +1022,16 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 											<FormControlLabel
 												control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
 												label="Get Responsible Person"
+											/>
+										)}
+									/>
+									<Controller
+										name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.getInstrumentId`}
+										control={control}
+										render={({ field }) => (
+											<FormControlLabel
+												control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
+												label="Get Instrument id"
 											/>
 										)}
 									/>

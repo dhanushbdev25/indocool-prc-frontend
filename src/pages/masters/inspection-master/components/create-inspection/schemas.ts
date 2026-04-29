@@ -1,7 +1,8 @@
 import * as yup from 'yup';
 
 // Column validation schema
-export const columnSchema = yup.object({
+export const columnSchema = yup
+	.object({
 	name: yup
 		.string()
 		.required('Column name is required')
@@ -10,7 +11,7 @@ export const columnSchema = yup.object({
 	type: yup
 		.string()
 		.required('Column type is required')
-		.oneOf(['text', 'number', 'boolean', 'ok/not ok', 'datetime'], 'Invalid column type'),
+		.oneOf(['text', 'number', 'boolean', 'ok/not ok', 'datetime', 'shift'], 'Invalid column type'),
 	defaultValue: yup.mixed().when('type', {
 		is: (val: string) => val === 'number' || val === 'datetime',
 		then: (schema: yup.MixedSchema) => {
@@ -26,21 +27,32 @@ export const columnSchema = yup.object({
 		},
 		otherwise: () => yup.string().max(100, 'Default value must be less than 100 characters').optional()
 	}),
-	tolerance: yup.mixed().when('type', {
+	minimumAcceptanceValue: yup.mixed().when('type', {
 		is: 'number',
 		then: schema =>
-			schema
-				.transform(value => {
-					if (value === '' || value === null || value === undefined) return undefined;
-					const num = Number(value);
-					return isNaN(num) ? undefined : num;
-				})
-				.test('is-number', 'Tolerance must be a valid number', value => {
-					return value === undefined || typeof value === 'number';
-				}),
-		otherwise: () => yup.string().max(50, 'Tolerance must be less than 50 characters').optional()
+			schema.transform(value => {
+				if (value === '' || value === null || value === undefined) return undefined;
+				const num = Number(value);
+				return isNaN(num) ? undefined : num;
+			}),
+		otherwise: schema => schema.optional()
+	}),
+	maximumAcceptanceValue: yup.mixed().when('type', {
+		is: 'number',
+		then: schema =>
+			schema.transform(value => {
+				if (value === '' || value === null || value === undefined) return undefined;
+				const num = Number(value);
+				return isNaN(num) ? undefined : num;
+			}),
+		otherwise: schema => schema.optional()
 	})
-});
+	})
+	.test('column-min-max-range', 'Minimum value cannot be greater than maximum value', value => {
+		if (!value || value.type !== 'number') return true;
+		if (value.minimumAcceptanceValue === undefined || value.maximumAcceptanceValue === undefined) return true;
+		return Number(value.minimumAcceptanceValue) <= Number(value.maximumAcceptanceValue);
+	});
 
 // Part image validation schema
 export const partImageSchema = yup.object({
@@ -79,25 +91,31 @@ export const inspectionParameterSchema = yup.object({
 		.min(3, 'Parameter name must be at least 3 characters')
 		.max(1000, 'Parameter name must be less than 1000 characters'),
 	specification: yup.string().optional().max(500, 'Specification must be less than 500 characters'),
-	tolerance: yup.mixed().when('type', {
+	minimumAcceptanceValue: yup.mixed().when('type', {
 		is: 'number',
 		then: schema =>
-			schema
-				.transform(value => {
-					if (value === '' || value === null || value === undefined) return undefined;
-					const num = Number(value);
-					return isNaN(num) ? undefined : num;
-				})
-				.test('is-number', 'Tolerance must be a valid number', value => {
-					return value === undefined || typeof value === 'number';
-				}),
-		otherwise: () => yup.string().max(100, 'Tolerance must be less than 100 characters').optional()
+			schema.transform(value => {
+				if (value === '' || value === null || value === undefined) return undefined;
+				const num = Number(value);
+				return isNaN(num) ? undefined : num;
+			}),
+		otherwise: schema => schema.optional()
+	}),
+	maximumAcceptanceValue: yup.mixed().when('type', {
+		is: 'number',
+		then: schema =>
+			schema.transform(value => {
+				if (value === '' || value === null || value === undefined) return undefined;
+				const num = Number(value);
+				return isNaN(num) ? undefined : num;
+			}),
+		otherwise: schema => schema.optional()
 	}),
 	type: yup
 		.string()
 		.required('Parameter type is required')
 		.oneOf(
-			['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime', 'fixed-table'],
+			['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime', 'fixed-table', 'shift'],
 			'Invalid parameter type'
 		),
 	files: filesSchema.optional(),
@@ -111,7 +129,7 @@ export const inspectionParameterSchema = yup.object({
 						type: yup
 							.string()
 							.required('Column type is required')
-							.oneOf(['text', 'number', 'ok/not ok', 'datetime'])
+							.oneOf(['text', 'number', 'ok/not ok', 'datetime', 'shift'])
 					})
 				)
 				.min(1, 'At least one column is required'),
@@ -162,6 +180,10 @@ export const inspectionParameterSchema = yup.object({
 		.required('Role is required')
 		.oneOf(['QUALITY_ENGINEER', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'OPERATOR', 'MANAGER'], 'Invalid role'),
 	ctq: yup.boolean()
+}).test('min-max-range', 'Minimum value cannot be greater than maximum value', value => {
+	if (!value || value.type !== 'number') return true;
+	if (value.minimumAcceptanceValue === undefined || value.maximumAcceptanceValue === undefined) return true;
+	return Number(value.minimumAcceptanceValue) <= Number(value.maximumAcceptanceValue);
 });
 
 // Main form validation schema
@@ -216,7 +238,8 @@ export const defaultColumn: ColumnFormData = {
 	name: '',
 	type: 'text',
 	defaultValue: '',
-	tolerance: ''
+	minimumAcceptanceValue: '',
+	maximumAcceptanceValue: ''
 };
 
 export const defaultPartImage: PartImageFormData = {
@@ -228,7 +251,8 @@ export const defaultInspectionParameter: InspectionParameterFormData = {
 	order: 1,
 	parameterName: '',
 	specification: '',
-	tolerance: '',
+	minimumAcceptanceValue: '',
+	maximumAcceptanceValue: '',
 	type: 'text',
 	files: {},
 	columns: [],
@@ -301,11 +325,9 @@ export const parameterTypeOptions = [
 	{ value: 'text', label: 'Text' },
 	{ value: 'number', label: 'Number' },
 	{ value: 'boolean', label: 'Boolean' },
-	{ value: 'files', label: 'Files' },
-	{ value: 'table', label: 'Table' },
-	{ value: 'fixed-table', label: 'Fixed Table' },
 	{ value: 'ok/not ok', label: 'Ok/Not Ok' },
-	{ value: 'datetime', label: 'Date & Time' }
+	{ value: 'datetime', label: 'Date & Time' },
+	{ value: 'shift', label: 'Shift' }
 ];
 
 // Column type options
@@ -314,5 +336,13 @@ export const columnTypeOptions = [
 	{ value: 'number', label: 'Number' },
 	{ value: 'boolean', label: 'Boolean' },
 	{ value: 'ok/not ok', label: 'Ok/Not Ok' },
-	{ value: 'datetime', label: 'Date & Time' }
+	{ value: 'datetime', label: 'Date & Time' },
+	{ value: 'shift', label: 'Shift' }
+];
+
+export const shiftOptions = [
+	{ value: 'Shift A', label: 'Shift A' },
+	{ value: 'Shift B', label: 'Shift B' },
+	{ value: 'Shift C', label: 'Shift C' },
+	{ value: 'Shift G', label: 'Shift G' }
 ];

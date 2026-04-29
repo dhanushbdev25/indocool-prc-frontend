@@ -91,7 +91,6 @@ const ListCatalyst = () => {
 						chartId: fullCatalystDetail.catalyst.chartId,
 						chartSupplier: fullCatalystDetail.catalyst.chartSupplier,
 						notes: fullCatalystDetail.catalyst.notes,
-						mekpDensity: parseFloat(fullCatalystDetail.catalyst.mekpDensity),
 						isActive: fullCatalystDetail.catalyst.isActive
 					},
 					catalystConfiguration: fullCatalystDetail.catalystConfiguration.map(config => ({

@@ -8,6 +8,7 @@ export interface RawMaterial {
 	partId?: number;
 	materialName: string;
 	materialCode: string;
+	materialGroup?: string;
 	quantity: string;
 	uom: string;
 	version?: number;

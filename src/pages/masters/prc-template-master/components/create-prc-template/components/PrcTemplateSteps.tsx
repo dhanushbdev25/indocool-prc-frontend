@@ -242,8 +242,8 @@ const PrcTemplateSteps = ({ control, errors, setValue }: PrcTemplateStepsExtende
 					{/* Default Steps */}
 					<DefaultStepItem
 						stepNumber={1}
-						stepName="Raw Materials"
-						stepDescription="Preparation and verification of raw materials"
+						stepName="Bill of Material"
+						stepDescription="Preparation and verification of bill of material"
 					/>
 					<DefaultStepItem stepNumber={2} stepName="Catalyst Mixing" stepDescription="Mixing of catalyst components" />
 

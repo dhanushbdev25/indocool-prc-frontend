@@ -26,14 +26,14 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 		ctq: false
 	});
 
-	// Raw Materials
+	// Bill of Material
 	if (executionData.rawMaterials && executionData.rawMaterials.length > 0) {
 		const isCompleted = isRawMaterialsStepCompleteForNavigation(executionData);
 		steps.push({
 			stepNumber: stepNumber++,
 			type: 'rawMaterials',
-			title: 'Raw Materials Validation',
-			description: 'Validate raw materials quantities and batch tracking',
+			title: 'Bill of Material Validation',
+			description: 'Validate bill of material quantities and batch tracking',
 			status: isCompleted ? 'completed' : 'pending',
 			ctq: false,
 			items: executionData.rawMaterials.map(material => ({
@@ -104,6 +104,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						evaluationMethod: string;
 						allowAttachments: boolean;
 						responsiblePerson?: boolean;
+						getInstrumentId?: boolean;
 					}>;
 					processName: string;
 					processDescription: string;
@@ -129,6 +130,12 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							stepGroup.steps.some(step => step.ctq)
 						);
 
+						const seqStepAgg = executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()] as
+							| Record<string, unknown>
+							| undefined;
+						const seqGroupAgg = seqStepAgg?.[stepGroup.id.toString()] as Record<string, unknown> | undefined;
+						const partialCtqApproveSeq = seqGroupAgg?.partialCtqApprove === true;
+
 						steps.push({
 							stepNumber: stepNumber++,
 							type: 'sequence',
@@ -136,6 +143,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							description: stepGroup.processDescription,
 							status: isCompleted ? 'completed' : isReadyForCompletion ? 'in-progress' : 'pending',
 							ctq: stepGroup.steps.some(step => step.ctq),
+							partialCtqApprove: partialCtqApproveSeq,
 							prcTemplateStepId: prcTemplateStep.id,
 							stepGroup: {
 								id: stepGroup.id,
@@ -154,7 +162,8 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 									createdAt: new Date().toISOString(),
 									updatedAt: new Date().toISOString(),
 									processStepGroupId: stepGroup.id,
-									responsiblePerson: step.responsiblePerson || false // Use actual responsiblePerson value from API response
+									responsiblePerson: step.responsiblePerson || false, // Use actual responsiblePerson value from API response
+									getInstrumentId: step.getInstrumentId || false
 								}))
 							}
 						});
@@ -176,7 +185,8 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							name: string;
 							type: string;
 							defaultValue?: string;
-							tolerance?: string;
+							minimumAcceptanceValue?: string;
+							maximumAcceptanceValue?: string;
 						}>;
 						specification: string;
 						order: number;
@@ -208,6 +218,11 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 					inspectionData.inspectionParameters?.some(p => p.ctq) || false
 				);
 
+				const inspStepAgg = executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()] as
+					| Record<string, unknown>
+					| undefined;
+				const partialCtqApproveInsp = inspStepAgg?.partialCtqApprove === true;
+
 				steps.push({
 					stepNumber: stepNumber++,
 					type: 'inspection',
@@ -215,6 +230,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 					description: inspectionData.inspection?.inspectionName || 'Quality inspection parameters',
 					status: isCompleted ? 'completed' : isReadyForCompletion ? 'in-progress' : 'pending',
 					ctq: inspectionData.inspectionParameters?.some(p => p.ctq) || false,
+					partialCtqApprove: partialCtqApproveInsp,
 					stepData: {
 						prcTemplateStepId: prcTemplateStep.id,
 						stepGroupId: 0,
@@ -255,7 +271,9 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						specification: param.specification,
 						order: param.order ?? index + 1,
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						tolerance: (param as any).tolerance || '',
+						minimumAcceptanceValue: (param as any).minimumAcceptanceValue || '',
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						maximumAcceptanceValue: (param as any).maximumAcceptanceValue || '',
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
 						version: (param as any).version || 1,
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any

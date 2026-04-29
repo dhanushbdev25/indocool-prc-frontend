@@ -1,6 +1,7 @@
 /** List row for PRC execution table (GET /prcExecution list) */
 export interface PrcExecution {
 	id: number;
+	orderId?: string | number | null;
 	partNumber: string;
 	updatedAt?: string;
 	version: number;

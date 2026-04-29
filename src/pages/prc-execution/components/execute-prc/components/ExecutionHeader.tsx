@@ -4,14 +4,12 @@ import {
 	LinearProgress,
 	Chip,
 	Button,
-	Tooltip,
 	Divider,
 	Stack,
 	useTheme
 } from '@mui/material';
-import { ArrowBack, Pause, Escalator, Person } from '@mui/icons-material';
+import { ArrowBack, Pause } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { type ExecutionData } from '../../../types/execution.types';
 import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
 import { formatExecutionDuration } from '../../../utils/formatExecutionDuration';
@@ -101,7 +99,6 @@ const ExecutionHeader = ({
 }: ExecutionHeaderProps) => {
 	const theme = useTheme();
 	const navigate = useNavigate();
-	const { userInfo } = useCurrentRole();
 	const isPreview = executionData.status === 'PREVIEW';
 	const liveDurationMs = useLiveExecutionDurationMs(executionData);
 	const durationLabel = formatExecutionDuration(liveDurationMs);
@@ -209,15 +206,6 @@ const ExecutionHeader = ({
 						useFlexGap
 						sx={{ alignItems: 'center', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}
 					>
-						<Tooltip title={userInfo.email || ''}>
-							<Chip
-								icon={<Person sx={{ fontSize: '18px !important' }} />}
-								label={userInfo.name}
-								size="small"
-								variant="outlined"
-								sx={{ maxWidth: 200, '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' } }}
-							/>
-						</Tooltip>
 						<Chip
 							label={`CTQ ${executionData.completedCtq}/${executionData.totalCtq}`}
 							size="small"
@@ -238,9 +226,6 @@ const ExecutionHeader = ({
 						<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
 							<Button startIcon={<Pause />} variant="outlined" size="small" color="inherit">
 								Pause
-							</Button>
-							<Button startIcon={<Escalator />} variant="outlined" size="small" color="warning">
-								Escalate
 							</Button>
 						</Stack>
 					)}
@@ -272,7 +257,7 @@ const ExecutionHeader = ({
 					<MetaField label="Customer variant" value={customerVariant} />
 					<MetaField label="Reservation" value={reservation} monospace />
 					<MetaField label="Production set" value={executionData.productionSetId || '—'} />
-					<MetaField label="Mould" value={executionData.mouldId || '—'} />
+					<MetaField label="Mould" value={executionData.mouldCode || executionData.mouldId || '—'} />
 				</Stack>
 			</Box>
 		</Box>

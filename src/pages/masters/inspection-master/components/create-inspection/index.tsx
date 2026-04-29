@@ -92,14 +92,16 @@ const CreateInspection = () => {
 			order: param.order ?? index + 1,
 			parameterName: param.parameterName,
 			specification: param.specification,
-			tolerance: param.tolerance,
+			minimumAcceptanceValue: param.minimumAcceptanceValue,
+			maximumAcceptanceValue: param.maximumAcceptanceValue,
 			type: param.type,
 			files: param.files || {},
 			columns: param.columns.map(col => ({
 				name: col.name,
 				type: col.type,
 				defaultValue: col.defaultValue || '',
-				tolerance: col.tolerance || ''
+				minimumAcceptanceValue: col.minimumAcceptanceValue || '',
+				maximumAcceptanceValue: col.maximumAcceptanceValue || ''
 			})),
 			tableConfig: param.tableConfig || undefined,
 			role: param.role,
@@ -215,14 +217,28 @@ const CreateInspection = () => {
 			order: param.order,
 			parameterName: param.parameterName,
 			specification: param.specification,
-			tolerance: param.tolerance ? String(param.tolerance) : undefined,
+			minimumAcceptanceValue:
+				param.minimumAcceptanceValue !== undefined && param.minimumAcceptanceValue !== ''
+					? String(param.minimumAcceptanceValue)
+					: undefined,
+			maximumAcceptanceValue:
+				param.maximumAcceptanceValue !== undefined && param.maximumAcceptanceValue !== ''
+					? String(param.maximumAcceptanceValue)
+					: undefined,
 			type: param.type,
 			files: param.files || {},
 			columns: (param.columns || []).map(col => ({
 				name: col.name,
 				type: col.type,
 				defaultValue: col.defaultValue ? String(col.defaultValue) : undefined,
-				tolerance: col.tolerance ? String(col.tolerance) : undefined
+				minimumAcceptanceValue:
+					col.minimumAcceptanceValue !== undefined && col.minimumAcceptanceValue !== ''
+						? String(col.minimumAcceptanceValue)
+						: undefined,
+				maximumAcceptanceValue:
+					col.maximumAcceptanceValue !== undefined && col.maximumAcceptanceValue !== ''
+						? String(col.maximumAcceptanceValue)
+						: undefined
 			})),
 			tableConfig: param.tableConfig || undefined,
 			role: param.role,

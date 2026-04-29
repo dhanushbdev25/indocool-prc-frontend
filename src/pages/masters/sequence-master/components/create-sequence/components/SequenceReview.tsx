@@ -179,6 +179,7 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 													<TableCell>UOM</TableCell>
 													<TableCell>CTQ</TableCell>
 													<TableCell>Get Responsible Person</TableCell>
+													<TableCell>Get Instrument id</TableCell>
 												</TableRow>
 											</TableHead>
 											<TableBody>
@@ -262,10 +263,25 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 																}}
 															/>
 														</TableCell>
+														<TableCell>
+															<Chip
+																icon={step.getInstrumentId ? <CheckCircleIcon /> : <CancelIcon />}
+																label={step.getInstrumentId ? 'Yes' : 'No'}
+																size="small"
+																sx={{
+																	backgroundColor: step.getInstrumentId ? '#4caf50' : '#9e9e9e',
+																	color: 'white',
+																	fontSize: '0.75rem',
+																	'& .MuiChip-icon': {
+																		color: 'white'
+																	}
+																}}
+															/>
+														</TableCell>
 													</TableRow>
 													{isTable && (
 														<TableRow>
-															<TableCell colSpan={8} sx={{ py: 1.5, px: 2, backgroundColor: '#fafafa', borderBottom: '2px solid #e0e0e0' }}>
+															<TableCell colSpan={9} sx={{ py: 1.5, px: 2, backgroundColor: '#fafafa', borderBottom: '2px solid #e0e0e0' }}>
 																<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
 																	<Table size="small">
 																		<TableHead>

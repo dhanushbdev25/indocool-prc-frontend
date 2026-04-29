@@ -398,6 +398,7 @@ const ExecutePrc = () => {
 								notes: stepDefinition?.notes || '',
 								ctq: stepDefinition?.ctq || false,
 								stepNumber: stepDefinition?.stepNumber || 0,
+								instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
 								responsiblePersons: [] as Array<{ role: string; employeeName: string; employeeCode: string }>
 							};
 							const responsiblePersons = stepData.responsiblePersons || stepData.data?.responsiblePersons;
@@ -422,6 +423,7 @@ const ExecutePrc = () => {
 								notes: stepDefinition?.notes || '',
 								ctq: stepDefinition?.ctq || false,
 								stepNumber: stepDefinition?.stepNumber || 0,
+								instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
 								responsiblePersons: [] as Array<{
 									role: string;
 									employeeName: string;
@@ -497,6 +499,7 @@ const ExecutePrc = () => {
 							notes: stepDefinition?.notes || '',
 							ctq: stepDefinition?.ctq || false,
 							stepNumber: stepDefinition?.stepNumber || 0,
+							instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
 							minimumAcceptanceValue: extractedMinimumAcceptanceValue || stepDefinition?.minimumAcceptanceValue,
 							maximumAcceptanceValue: extractedMaximumAcceptanceValue || stepDefinition?.maximumAcceptanceValue,
 							validationStatus: extractedValidationStatus,
@@ -1356,6 +1359,7 @@ const ExecutePrc = () => {
 								notes: stepDefinition?.notes || '',
 								ctq: stepDefinition?.ctq || false,
 								stepNumber: stepDefinition?.stepNumber || 0,
+								instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
 								responsiblePersons: [] as Array<{ role: string; employeeName: string; employeeCode: string }>
 							};
 							const rp = stepData.responsiblePersons || stepData.data?.responsiblePersons;
@@ -1375,6 +1379,7 @@ const ExecutePrc = () => {
 							notes: stepDefinition?.notes || '',
 							ctq: stepDefinition?.ctq || false,
 							stepNumber: stepDefinition?.stepNumber || 0,
+							instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
 							responsiblePersons: [] as Array<{
 								role: string;
 								employeeName: string;

@@ -107,14 +107,16 @@ const ListInspection = () => {
 						order: param.order ?? index + 1,
 						parameterName: param.parameterName,
 						specification: param.specification,
-						tolerance: param.tolerance,
+						minimumAcceptanceValue: param.minimumAcceptanceValue,
+						maximumAcceptanceValue: param.maximumAcceptanceValue,
 						type: param.type,
 						files: param.files || {},
 						columns: param.columns.map(col => ({
 							name: col.name,
 							type: col.type,
 							defaultValue: col.defaultValue || '',
-							tolerance: col.tolerance || ''
+							minimumAcceptanceValue: col.minimumAcceptanceValue || '',
+							maximumAcceptanceValue: col.maximumAcceptanceValue || ''
 						})),
 						role: param.role,
 						ctq: param.ctq

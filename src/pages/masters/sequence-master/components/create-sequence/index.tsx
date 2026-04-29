@@ -173,6 +173,7 @@ const CreateSequence = () => {
 							ctq: step.ctq ?? false,
 							allowAttachments: step.allowAttachments ?? false,
 							responsiblePerson: step.responsiblePerson ?? false,
+							getInstrumentId: step.getInstrumentId ?? false,
 							notes: step.notes
 						};
 					})
@@ -298,6 +299,7 @@ const CreateSequence = () => {
 						ctq: step.ctq ?? false,
 						allowAttachments: step.allowAttachments ?? false,
 						responsiblePerson: step.responsiblePerson ?? false,
+						getInstrumentId: step.getInstrumentId ?? false,
 						notes: step.notes || ''
 					}))
 					}))

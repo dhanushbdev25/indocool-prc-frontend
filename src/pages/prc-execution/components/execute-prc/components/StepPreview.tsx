@@ -246,16 +246,6 @@ const StepPreview = ({
 		return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
 	};
 
-	// Debug logging
-	console.log('StepPreview Debug:', {
-		previewData,
-		productionApproved,
-		ctqApproved,
-		stepCompleted: previewData.stepCompleted,
-		ctq: previewData.ctq,
-		canProceed: productionApproved && (!previewData.ctq || ctqApproved) && !previewData.stepCompleted
-	});
-
 	const handleApproveProduction = () => {
 		setProductionApproved(true);
 		onApproveProduction();
@@ -332,12 +322,33 @@ const StepPreview = ({
 		operationDelayReasonOptions
 	]);
 
+	const remarksSatisfied =
+		timingExceededRemarks.trim().length > 0 || Boolean((previewData.timingExceededRemarks ?? '').trim().length > 0);
+	const persistedReasonOk = ((): boolean => {
+		const rc = previewData.timingExceededReasonCode;
+		if (rc === undefined || rc === null) return false;
+		if (typeof rc === 'number') return Number.isFinite(rc);
+		return String(rc).trim().length > 0;
+	})();
+	const reasonSatisfied = selectedDelayReason !== null || persistedReasonOk;
+	const delayDocumentationSatisfied =
+		!previewData.timingExceeded || previewData.stepCompleted || (remarksSatisfied && reasonSatisfied);
+
 	const canProceed =
 		productionApproved &&
 		(!previewData.ctq || ctqApproved || partialCtqApproved) &&
 		!previewData.stepCompleted &&
-		(!previewData.timingExceeded ||
-			(timingExceededRemarks.trim().length > 0 && selectedDelayReason !== null));
+		delayDocumentationSatisfied;
+
+	console.log('StepPreview Debug:', {
+		previewData,
+		productionApproved,
+		ctqApproved,
+		stepCompleted: previewData.stepCompleted,
+		ctq: previewData.ctq,
+		canProceed,
+		delayDocumentationSatisfied
+	});
 
 	const parseOkNotOkValue = (rawValue: unknown): { value: string; notOkComment: string } => {
 		if (typeof rawValue === 'string') {
@@ -785,6 +796,11 @@ const StepPreview = ({
 												if (!shouldShowComment) return null;
 												return <NotOkCommentPreview comment={parsedValue.notOkComment} />;
 											})()}
+											{typeof measurement.instrumentId === 'string' && measurement.instrumentId.trim() && (
+												<Typography variant="caption" sx={{ color: '#6a1b9a', display: 'block', mt: 0.5 }}>
+													Instrument id: {measurement.instrumentId}
+												</Typography>
+											)}
 										</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{measurement.stepType}</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
@@ -2066,7 +2082,9 @@ const StepPreview = ({
 						color={productionApproved ? 'success' : 'primary'}
 						onClick={handleApproveProduction}
 						disabled={
-							productionApproved || (!canApproveProduction && !(previewData.type === 'inspection' && canApproveCTQ))
+							!delayDocumentationSatisfied ||
+							productionApproved ||
+							(!canApproveProduction && !(previewData.type === 'inspection' && canApproveCTQ))
 						}
 						startIcon={<Check />}
 						size="small"
@@ -2085,7 +2103,12 @@ const StepPreview = ({
 								<Button
 									color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
 									onClick={handleApproveCTQ}
-									disabled={ctqApproved || partialCtqApproved || !canApproveCTQ}
+									disabled={
+										!delayDocumentationSatisfied ||
+										ctqApproved ||
+										partialCtqApproved ||
+										!canApproveCTQ
+									}
 									startIcon={<Check />}
 								>
 									{ctqApproved
@@ -2099,7 +2122,12 @@ const StepPreview = ({
 								<Button
 									color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
 									onClick={handleCtqMenuOpen}
-									disabled={ctqApproved || partialCtqApproved || !canApproveCTQ}
+									disabled={
+										!delayDocumentationSatisfied ||
+										ctqApproved ||
+										partialCtqApproved ||
+										!canApproveCTQ
+									}
 									sx={{ minWidth: 'auto', px: 1 }}
 								>
 									<ArrowDropDown />
@@ -2134,9 +2162,13 @@ const StepPreview = ({
 							onProceedToNext(
 								previewData.timingExceeded
 									? {
-											timingExceededRemarks: timingExceededRemarks.trim(),
-											timingExceededReasonCode: selectedDelayReason?.value,
-											timingExceededReasonLabel: selectedDelayReason?.label
+											timingExceededRemarks:
+												timingExceededRemarks.trim() ||
+												(previewData.timingExceededRemarks ?? '').trim(),
+											timingExceededReasonCode:
+												selectedDelayReason?.value ?? previewData.timingExceededReasonCode,
+											timingExceededReasonLabel:
+												selectedDelayReason?.label ?? previewData.timingExceededReasonLabel
 										}
 									: undefined
 							)

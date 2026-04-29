@@ -24,6 +24,7 @@ export interface MouldReconciliationRow {
 	mouldCode: string;
 	reconciliationCount: number;
 	currentCount: number;
+	totalCount: number;
 	lastReconciledAt?: string | null;
 	reconcileNowFlag: boolean;
 }
@@ -35,6 +36,7 @@ export const mapMouldApiItemToRow = (item: MouldApiItem): MouldReconciliationRow
 	mouldCode: item.mouldCode ?? item.mouldId ?? '',
 	reconciliationCount: item.reconciliationCount,
 	currentCount: item.currentCount ?? 0,
+	totalCount: item.totalCount ?? 0,
 	lastReconciledAt: item.lastReconciled ?? null,
 	reconcileNowFlag: item.reconcileNowFlag
 });
