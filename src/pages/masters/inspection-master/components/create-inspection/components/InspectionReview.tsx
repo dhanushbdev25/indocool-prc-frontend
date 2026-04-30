@@ -63,16 +63,6 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>
 							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-								Inspection Name
-							</Typography>
-							<Typography variant="body1" sx={{ fontWeight: 500 }}>
-								{watchedData.inspectionName || 'Not specified'}
-							</Typography>
-						</Box>
-					</Grid>
-					<Grid size={{ xs: 12, md: 6 }}>
-						<Box>
-							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
 								Inspection ID
 							</Typography>
 							<Typography variant="body1" sx={{ fontWeight: 500 }}>
@@ -83,10 +73,10 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>
 							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-								Type
+								Inspection Type
 							</Typography>
 							<Typography variant="body1" sx={{ fontWeight: 500 }}>
-								{watchedData.type || 'Not specified'}
+								{watchedData.inspectionName || 'Not specified'}
 							</Typography>
 						</Box>
 					</Grid>

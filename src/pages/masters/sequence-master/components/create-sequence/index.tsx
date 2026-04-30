@@ -161,7 +161,6 @@ const CreateSequence = () => {
 						return {
 							parameterDescription: step.parameterDescription,
 							stepNumber: step.stepNumber,
-							stepType: step.stepType,
 							evaluationMethod: step.evaluationMethod,
 							targetValueType: step.targetValueType,
 							minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
@@ -284,7 +283,6 @@ const CreateSequence = () => {
 					processSteps: (group.processSteps || []).map((step, stepIndex) => ({
 						parameterDescription: step.parameterDescription,
 						stepNumber: stepIndex + 1,
-						stepType: step.stepType,
 						evaluationMethod: step.evaluationMethod,
 						targetValueType: step.targetValueType,
 						minimumAcceptanceValue: step.minimumAcceptanceValue ?? null,

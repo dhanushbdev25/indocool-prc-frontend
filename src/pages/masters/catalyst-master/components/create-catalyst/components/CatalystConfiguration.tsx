@@ -287,23 +287,6 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 									)}
 								/>
 							</Grid>
-							<Grid size={{ xs: 12 }}>
-								<Controller
-									name={`catalystConfiguration.${index}.gelcoatLabel`}
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											fullWidth
-											label="Gelcoat Label"
-											placeholder="e.g., Standard Gelcoat Mix"
-											error={!!fieldErrors?.gelcoatLabel}
-											helperText={(fieldErrors?.gelcoatLabel as { message?: string })?.message}
-											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-										/>
-									)}
-								/>
-							</Grid>
 
 							{/* Resin Settings */}
 							<Grid size={{ xs: 12 }}>
@@ -349,23 +332,6 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 									)}
 								/>
 							</Grid>
-							<Grid size={{ xs: 12 }}>
-								<Controller
-									name={`catalystConfiguration.${index}.resinLabel`}
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											fullWidth
-											label="Resin Label"
-											placeholder="e.g., General Purpose Resin"
-											error={!!fieldErrors?.resinLabel}
-											helperText={(fieldErrors?.resinLabel as { message?: string })?.message}
-											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-										/>
-									)}
-								/>
-							</Grid>
 
 							{/* Top Coat Settings */}
 							<Grid size={{ xs: 12 }}>
@@ -406,23 +372,6 @@ const CatalystConfiguration = ({ control, errors }: CatalystConfigurationProps) 
 											slotProps={{ htmlInput: { step: '0.1' } }}
 											error={!!fieldErrors?.maxTopCoat}
 											helperText={(fieldErrors?.maxTopCoat as { message?: string })?.message}
-											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
-										/>
-									)}
-								/>
-							</Grid>
-							<Grid size={{ xs: 12 }}>
-								<Controller
-									name={`catalystConfiguration.${index}.topCoatLabel`}
-									control={control}
-									render={({ field }) => (
-										<TextField
-											{...field}
-											fullWidth
-											label="Top Coat Label"
-											placeholder="e.g., Premium Top Coat Finish"
-											error={!!fieldErrors?.topCoatLabel}
-											helperText={(fieldErrors?.topCoatLabel as { message?: string })?.message}
 											sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 										/>
 									)}

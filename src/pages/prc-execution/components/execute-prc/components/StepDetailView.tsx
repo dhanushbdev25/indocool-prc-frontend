@@ -222,7 +222,6 @@ const StepDetailView = ({
 				prcTemplateStepId: step.prcTemplateStepId!,
 				stepGroupId: step.stepGroup!.id,
 				stepId: currentSubStep.id,
-				stepType: currentSubStep.stepType,
 				targetValueType: currentSubStep.targetValueType,
 				uom: currentSubStep.uom,
 				minValue: currentSubStep.minValue,

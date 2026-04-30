@@ -293,7 +293,7 @@ const ExecutePrc = () => {
 			let stepTimingData = {};
 			const hasExisting = hasExistingTimingData(stepToProcess, stepFormData);
 			console.log('Timing data check:', {
-				stepType: stepToProcess.type,
+				stepCategory: stepToProcess.type,
 				hasExisting,
 				stepToProcess: stepToProcess.stepData ? stepToProcess.stepData : 'No stepData',
 				formData: {
@@ -390,7 +390,7 @@ const ExecutePrc = () => {
 								stepId: stepId,
 								value: tableValue,
 								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-								stepType: stepDefinition?.stepType || 'Unknown',
+								targetValueType: stepDefinition?.targetValueType || 'unknown',
 								targetValueType: 'table' as const,
 								tableConfig: stepDefinition?.tableConfig,
 								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
@@ -416,7 +416,7 @@ const ExecutePrc = () => {
 								stepId: stepId,
 								value: okNotOkValue,
 								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-								stepType: stepDefinition?.stepType || 'Unknown',
+								targetValueType: stepDefinition?.targetValueType || 'unknown',
 								targetValueType: 'ok/not ok' as const,
 								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
 								uom: stepDefinition?.uom || '',
@@ -492,7 +492,7 @@ const ExecutePrc = () => {
 							stepId: stepId,
 							value: value,
 							parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-							stepType: stepDefinition?.stepType || 'Unknown',
+							targetValueType: stepDefinition?.targetValueType || 'unknown',
 							targetValueType: stepDefinition?.targetValueType || 'range',
 							evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
 							uom: stepDefinition?.uom || '',
@@ -1351,7 +1351,7 @@ const ExecutePrc = () => {
 								stepId,
 								value: tableValue,
 								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-								stepType: stepDefinition?.stepType || 'Unknown',
+								targetValueType: stepDefinition?.targetValueType || 'unknown',
 								targetValueType: 'table' as const,
 								tableConfig: stepDefinition?.tableConfig,
 								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
@@ -1372,7 +1372,7 @@ const ExecutePrc = () => {
 							stepId: stepId,
 							value: stepData.value || stepData.data,
 							parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-							stepType: stepDefinition?.stepType || 'Unknown',
+							targetValueType: stepDefinition?.targetValueType || 'unknown',
 							targetValueType: stepDefinition?.targetValueType || 'range',
 							evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
 							uom: stepDefinition?.uom || '',

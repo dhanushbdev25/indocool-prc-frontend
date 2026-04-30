@@ -201,11 +201,7 @@ export const inspectionFormSchema = yup.object({
 		.min(3, 'Inspection ID must be at least 3 characters')
 		.max(50, 'Inspection ID must be less than 50 characters')
 		.matches(/^[A-Z0-9-]+$/, 'Inspection ID must contain only uppercase letters, numbers, and hyphens'),
-	type: yup
-		.string()
-		.required('Type is required')
-		.min(2, 'Type must be at least 2 characters')
-		.max(50, 'Type must be less than 50 characters'),
+	type: yup.string().optional(),
 	version: yup.number().optional(),
 	isLatest: yup.boolean().optional(),
 	showPartImages: yup.boolean(),
@@ -290,11 +286,6 @@ export const basicInfoSchema = yup.object({
 		.min(3, 'Inspection ID must be at least 3 characters')
 		.max(50, 'Inspection ID must be less than 50 characters')
 		.matches(/^[A-Z0-9-]+$/, 'Inspection ID must contain only uppercase letters, numbers, and hyphens'),
-	type: yup
-		.string()
-		.required('Type is required')
-		.min(2, 'Type must be at least 2 characters')
-		.max(50, 'Type must be less than 50 characters'),
 	showPartImages: yup.boolean(),
 	partImages: yup.array().when('showPartImages', {
 		is: true,

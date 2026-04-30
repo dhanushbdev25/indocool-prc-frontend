@@ -39,13 +39,13 @@ export const normalizePrcTemplateSteps = (
 
 		const stepNumber = index + 1;
 		const stepId = step.stepId;
-		const stepType = step.type;
+		const stepKind = step.type;
 		const group = step.group;
 
 		if (typeof stepId !== 'number' || Number.isNaN(stepId) || stepId <= 0) {
 			return { steps: [], error: `PRC step ${stepNumber} has an invalid Step ID.` };
 		}
-		if (stepType !== 'sequence' && stepType !== 'inspection') {
+		if (stepKind !== 'sequence' && stepKind !== 'inspection') {
 			return { steps: [], error: `PRC step ${stepNumber} has an invalid Step Type.` };
 		}
 		if (typeof group !== 'string' || group.trim().length === 0) {
@@ -59,7 +59,7 @@ export const normalizePrcTemplateSteps = (
 			isLatest: step.isLatest ?? true,
 			sequence: index + 3,
 			stepId,
-			type: stepType,
+			type: stepKind,
 			blockCatalystMixing: step.blockCatalystMixing ?? false,
 			requestSupervisorApproval: step.requestSupervisorApproval ?? false,
 			operationID: group,

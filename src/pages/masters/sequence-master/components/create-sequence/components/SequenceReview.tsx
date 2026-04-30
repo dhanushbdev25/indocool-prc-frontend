@@ -174,7 +174,6 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 												<TableRow>
 													<TableCell>Step #</TableCell>
 													<TableCell>Parameter</TableCell>
-													<TableCell>Type</TableCell>
 													<TableCell>Target Value</TableCell>
 													<TableCell>UOM</TableCell>
 													<TableCell>CTQ</TableCell>
@@ -203,17 +202,6 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 																	Method: {step.evaluationMethod}
 																</Typography>
 															)}
-														</TableCell>
-														<TableCell>
-															<Chip
-																label={step.stepType}
-																size="small"
-																sx={{
-																	backgroundColor: '#f5f5f5',
-																	color: '#333',
-																	fontSize: '0.75rem'
-																}}
-															/>
 														</TableCell>
 													<TableCell>
 														{step.targetValueType === 'ok/not ok' ? (
@@ -281,7 +269,7 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 													</TableRow>
 													{isTable && (
 														<TableRow>
-															<TableCell colSpan={9} sx={{ py: 1.5, px: 2, backgroundColor: '#fafafa', borderBottom: '2px solid #e0e0e0' }}>
+															<TableCell colSpan={8} sx={{ py: 1.5, px: 2, backgroundColor: '#fafafa', borderBottom: '2px solid #e0e0e0' }}>
 																<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
 																	<Table size="small">
 																		<TableHead>

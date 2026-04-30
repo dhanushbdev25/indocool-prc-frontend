@@ -7,7 +7,6 @@ export interface ProcessStep {
 	isLatest: boolean;
 	parameterDescription: string;
 	stepNumber: number;
-	stepType: string;
 	evaluationMethod: string;
 	targetValueType: string;
 	minimumAcceptanceValue: string | null;
@@ -76,7 +75,6 @@ export interface SequenceByIdResponse {
 export interface ProcessStepRequest {
 	parameterDescription: string;
 	stepNumber: number;
-	stepType: string;
 	evaluationMethod: string;
 	targetValueType: string;
 	minimumAcceptanceValue: number | null;

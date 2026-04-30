@@ -57,7 +57,6 @@ export interface StepGroup {
 	steps: Array<{
 		id: number;
 		ctq: boolean;
-		stepType: string;
 		targetValueType: string;
 		uom: string;
 		minValue?: string;
@@ -203,7 +202,6 @@ export interface TimelineStep {
 		prcTemplateStepId: number;
 		stepGroupId?: number;
 		stepId?: number;
-		stepType?: string;
 		targetValueType?: string;
 		uom?: string;
 		minValue?: string;

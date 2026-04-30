@@ -90,7 +90,6 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 					steps: Array<{
 						id: number;
 						ctq: boolean;
-						stepType: string;
 						targetValueType: string;
 						uom: string;
 						minValue?: string;
@@ -235,7 +234,6 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						prcTemplateStepId: prcTemplateStep.id,
 						stepGroupId: 0,
 						stepId: 0,
-						stepType: 'inspection',
 						targetValueType: 'text',
 						uom: '',
 						multipleMeasurements: false,

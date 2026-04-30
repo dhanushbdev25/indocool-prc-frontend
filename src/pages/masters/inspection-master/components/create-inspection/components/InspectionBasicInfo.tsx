@@ -16,30 +16,6 @@ const InspectionBasicInfo = ({ control, errors }: InspectionBasicInfoProps) => {
 
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
 				<Grid container spacing={3}>
-					{/* Inspection Name */}
-					<Grid size={{ xs: 12, md: 6 }}>
-						<Controller
-							name="inspectionName"
-							control={control}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									fullWidth
-									label="Inspection Name"
-									required
-									placeholder="Enter inspection name"
-									helperText={errors.inspectionName?.message || 'Name of the inspection procedure'}
-									error={!!errors.inspectionName}
-									sx={{
-										'& .MuiOutlinedInput-root': {
-											borderRadius: '8px'
-										}
-									}}
-								/>
-							)}
-						/>
-					</Grid>
-
 					{/* Inspection ID */}
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
@@ -65,19 +41,20 @@ const InspectionBasicInfo = ({ control, errors }: InspectionBasicInfoProps) => {
 						/>
 					</Grid>
 
-					{/* Type */}
+					{/* Inspection Type */}
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
-							name="type"
+							name="inspectionName"
 							control={control}
 							render={({ field }) => (
 								<TextField
 									{...field}
 									fullWidth
-									label="Type"
-									placeholder="e.g., RESIN, GELCOAT, LAMINATE"
-									helperText={errors.type?.message || 'Type of inspection procedure'}
-									error={!!errors.type}
+									label="Inspection Type"
+									required
+									placeholder="Enter inspection type"
+									helperText={errors.inspectionName?.message || 'Type of the inspection procedure'}
+									error={!!errors.inspectionName}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'

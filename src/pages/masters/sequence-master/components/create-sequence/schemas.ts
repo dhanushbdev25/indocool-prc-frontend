@@ -49,10 +49,6 @@ export const processStepSchema = yup
 			.required('Step number is required')
 			.min(1, 'Step number must be at least 1')
 			.integer('Step number must be a whole number'),
-		stepType: yup
-			.string()
-			.required('Step type is required')
-			.oneOf(['Measurement', 'Check', 'Inspection', 'Operation'], 'Invalid step type'),
 		evaluationMethod: yup
 			.string()
 			.required('Evaluation method is required')
@@ -205,7 +201,6 @@ export type SequenceFormData = yup.InferType<typeof sequenceFormSchema>;
 export const defaultProcessStep: ProcessStepFormData = {
 	parameterDescription: '',
 	stepNumber: 1,
-	stepType: 'Measurement',
 	evaluationMethod: '',
 	targetValueType: 'range',
 	minimumAcceptanceValue: null,

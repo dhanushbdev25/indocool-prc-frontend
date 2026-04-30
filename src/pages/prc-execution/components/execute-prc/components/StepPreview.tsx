@@ -664,7 +664,7 @@ const StepPreview = ({
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Step</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Parameter</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Value</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Type</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target Value Type</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Method</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Range</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
@@ -768,7 +768,7 @@ const StepPreview = ({
 														<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
 															{formatSequenceNumericValueForPreview(measurement.value, measurement.uom)}
 														</Typography>
-													) : measurement.stepType === 'Check' || measurement.stepType === 'Inspection' ? (
+													) : measurement.targetValueType === 'ok/not ok' ? (
 														<Chip
 															label={(() => {
 																const parsedValue = parseOkNotOkValue(measurement.value);
@@ -802,7 +802,7 @@ const StepPreview = ({
 												</Typography>
 											)}
 										</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{measurement.stepType}</TableCell>
+											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{measurement.targetValueType}</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
 												{measurement.evaluationMethod}
 											</TableCell>
@@ -830,7 +830,7 @@ const StepPreview = ({
 														const isOkNotOkRow =
 															measurement.targetValueType === 'ok/not ok' ||
 															(!isNumericTargetValueType(measurement.targetValueType) &&
-																(measurement.stepType === 'Check' || measurement.stepType === 'Inspection') &&
+																measurement.targetValueType === 'ok/not ok' &&
 																(parsed.value === 'ok' || parsed.value === 'not ok'));
 														if (isOkNotOkRow) {
 															return renderOkNotOkResultStatusIcon(parsed);

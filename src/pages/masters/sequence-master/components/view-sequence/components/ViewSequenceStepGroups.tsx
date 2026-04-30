@@ -42,21 +42,6 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 		setExpandedGroups(newExpanded);
 	};
 
-	const getStepTypeColor = (stepType: string) => {
-		switch (stepType) {
-			case 'Measurement':
-				return '#2196f3';
-			case 'Check':
-				return '#4caf50';
-			case 'Inspection':
-				return '#ff9800';
-			case 'Operation':
-				return '#9c27b0';
-			default:
-				return '#9e9e9e';
-		}
-	};
-
 	const getTargetValueTypeColor = (targetValueType: string) => {
 		switch (targetValueType) {
 			case 'range':
@@ -90,17 +75,6 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 							<Typography variant="h6" sx={{ fontWeight: 600 }}>
 								Step {step.stepNumber}
 							</Typography>
-							<Chip
-								label={step.stepType}
-								size="small"
-								sx={{
-									ml: 2,
-									backgroundColor: getStepTypeColor(step.stepType),
-									color: 'white',
-									fontSize: '0.75rem',
-									height: '24px'
-								}}
-							/>
 							{step.ctq && (
 								<Chip
 									label="CTQ"

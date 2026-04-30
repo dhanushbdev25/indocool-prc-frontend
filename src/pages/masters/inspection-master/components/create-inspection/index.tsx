@@ -147,7 +147,7 @@ const CreateInspection = () => {
 	const handleNext = async () => {
 		// Define fields to validate for each step
 		const stepFields = {
-			0: ['inspectionName', 'inspectionId', 'type', 'status', 'showPartImages', 'partImages'] as const, // Basic info step
+			0: ['inspectionName', 'inspectionId', 'status', 'showPartImages', 'partImages'] as const, // Basic info step
 			1: ['inspectionParameters'] as const // Parameters step
 		};
 
@@ -204,7 +204,7 @@ const CreateInspection = () => {
 				inspectionName: data.inspectionName,
 				status: data.status ? 'ACTIVE' : 'INACTIVE',
 				inspectionId: data.inspectionId,
-				type: data.type,
+				type: data.inspectionName,
 				version: data.version || 1,
 				isLatest: data.isLatest ?? true,
 				showPartImages: data.showPartImages ?? false,

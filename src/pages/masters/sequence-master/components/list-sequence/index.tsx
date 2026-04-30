@@ -117,7 +117,6 @@ const ListSequence = () => {
 							processSteps: stepGroup.steps.map(step => ({
 								parameterDescription: step.parameterDescription,
 								stepNumber: step.stepNumber,
-								stepType: step.stepType,
 								evaluationMethod: step.evaluationMethod,
 								targetValueType: step.targetValueType,
 								minimumAcceptanceValue: step.minimumAcceptanceValue ? parseFloat(step.minimumAcceptanceValue) : null,

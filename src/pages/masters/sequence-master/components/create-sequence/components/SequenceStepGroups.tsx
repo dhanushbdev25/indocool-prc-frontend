@@ -37,7 +37,7 @@ import {
 	LockOpen as LockOpenIcon
 } from '@mui/icons-material';
 import { Controller, useFieldArray, useWatch, Control, FieldErrors, useFormContext } from 'react-hook-form';
-import { SequenceStepGroupsProps, stepTypeOptions, targetValueTypeOptions, tableColumnTypeOptions, uomOptions } from '../types';
+import { SequenceStepGroupsProps, targetValueTypeOptions, tableColumnTypeOptions, uomOptions } from '../types';
 import { SequenceFormData } from '../schemas';
 
 const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
@@ -61,7 +61,6 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 				{
 					parameterDescription: '',
 					stepNumber: 1,
-					stepType: 'Measurement',
 					evaluationMethod: '',
 					targetValueType: 'range',
 					minimumAcceptanceValue: null,
@@ -522,7 +521,6 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 		appendStep({
 			parameterDescription: '',
 			stepNumber: stepFields.length + 1,
-			stepType: 'Measurement',
 			evaluationMethod: '',
 			targetValueType: 'range',
 			minimumAcceptanceValue: null,
@@ -746,29 +744,6 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 											backgroundColor: '#f5f5f5'
 										}
 									}}
-								/>
-							</Grid>
-
-							{/* Step Type */}
-							<Grid size={{ xs: 12, md: 4 }}>
-								<Controller
-									name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.stepType`}
-									control={control}
-									render={({ field }) => (
-										<FormControl
-											fullWidth
-											error={!!errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]?.stepType}
-										>
-											<InputLabel>Step Type</InputLabel>
-											<Select {...field} label="Step Type" sx={{ borderRadius: '8px' }}>
-												{stepTypeOptions.map(option => (
-													<MenuItem key={option.value} value={option.value}>
-														{option.label}
-													</MenuItem>
-												))}
-											</Select>
-										</FormControl>
-									)}
 								/>
 							</Grid>
 

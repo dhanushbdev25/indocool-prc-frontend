@@ -1146,10 +1146,10 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 				<Grid container spacing={1.5}>
 					<Grid size={{ xs: 6, sm: 3 }}>
 						<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
-							Step Type
+							Target Value Type
 						</Typography>
 						<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-							{stepData.stepType}
+							{stepData.targetValueType}
 						</Typography>
 					</Grid>
 					<Grid size={{ xs: 6, sm: 3 }}>
@@ -1170,10 +1170,10 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 					</Grid>
 					<Grid size={{ xs: 6, sm: 3 }}>
 						<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
-							Target Type
+							Step Number
 						</Typography>
 						<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-							{stepData.targetValueType}
+							{stepData.stepNumber ?? '-'}
 						</Typography>
 					</Grid>
 				</Grid>

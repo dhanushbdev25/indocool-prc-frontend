@@ -16,14 +16,6 @@ export interface SequenceReviewProps {
 	errors: FieldErrors<SequenceFormData>;
 }
 
-// Step type options
-export const stepTypeOptions = [
-	{ value: 'Measurement', label: 'Measurement' },
-	{ value: 'Check', label: 'Check' },
-	{ value: 'Inspection', label: 'Inspection' },
-	{ value: 'Operation', label: 'Operation' }
-];
-
 // Target value type options
 export const targetValueTypeOptions = [
 	{ value: 'range', label: 'Range' },
