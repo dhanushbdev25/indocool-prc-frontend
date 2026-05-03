@@ -36,6 +36,8 @@ import dayjs from 'dayjs';
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
+	KeyboardArrowUp as UpIcon,
+	KeyboardArrowDown as DownIcon,
 	Settings as SettingsIcon,
 	ExpandMore as ExpandMoreIcon,
 	ExpandLess as ExpandLessIcon,
@@ -46,6 +48,7 @@ import {
 import { Controller, useFieldArray, Control, useWatch, useFormContext } from 'react-hook-form';
 import { InspectionParametersProps } from '../types';
 import { InspectionFormData } from '../schemas';
+import { OK_NOT_OK_NEGATIVE_LABEL, OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../../utils/okNotOkLabels';
 import {
 	defaultInspectionParameter,
 	defaultColumn,
@@ -300,56 +303,58 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 								if (parameterType !== 'number') return null;
 
 								return (
-									<Grid size={{ xs: 12, md: 3 }}>
-										<Controller
-											name={`inspectionParameters.${index}.minimumAcceptanceValue`}
-											control={control as Control<InspectionFormData>}
-											render={({ field }) => (
-												<TextField
-													{...field}
-													label="Min Value"
-													fullWidth
-													type="number"
-													error={!!fieldErrors?.minimumAcceptanceValue}
-													helperText={
-														(fieldErrors?.minimumAcceptanceValue as { message?: string })?.message ||
-														'Minimum acceptable value'
-													}
-													placeholder="0"
-													sx={{
-														'& .MuiOutlinedInput-root': {
-															borderRadius: '8px'
+									<>
+										<Grid size={{ xs: 12, md: 3 }}>
+											<Controller
+												name={`inspectionParameters.${index}.minimumAcceptanceValue`}
+												control={control as Control<InspectionFormData>}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														label="Min Value"
+														fullWidth
+														type="number"
+														error={!!fieldErrors?.minimumAcceptanceValue}
+														helperText={
+															(fieldErrors?.minimumAcceptanceValue as { message?: string })?.message ||
+															'Minimum acceptable value'
 														}
-													}}
-												/>
-											)}
-										/>
-									</Grid>
-									<Grid size={{ xs: 12, md: 3 }}>
-										<Controller
-											name={`inspectionParameters.${index}.maximumAcceptanceValue`}
-											control={control as Control<InspectionFormData>}
-											render={({ field }) => (
-												<TextField
-													{...field}
-													label="Max Value"
-													fullWidth
-													type="number"
-													error={!!fieldErrors?.maximumAcceptanceValue}
-													helperText={
-														(fieldErrors?.maximumAcceptanceValue as { message?: string })?.message ||
-														'Maximum acceptable value'
-													}
-													placeholder="100"
-													sx={{
-														'& .MuiOutlinedInput-root': {
-															borderRadius: '8px'
+														placeholder="0"
+														sx={{
+															'& .MuiOutlinedInput-root': {
+																borderRadius: '8px'
+															}
+														}}
+													/>
+												)}
+											/>
+										</Grid>
+										<Grid size={{ xs: 12, md: 3 }}>
+											<Controller
+												name={`inspectionParameters.${index}.maximumAcceptanceValue`}
+												control={control as Control<InspectionFormData>}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														label="Max Value"
+														fullWidth
+														type="number"
+														error={!!fieldErrors?.maximumAcceptanceValue}
+														helperText={
+															(fieldErrors?.maximumAcceptanceValue as { message?: string })?.message ||
+															'Maximum acceptable value'
 														}
-													}}
-												/>
-											)}
-										/>
-									</Grid>
+														placeholder="100"
+														sx={{
+															'& .MuiOutlinedInput-root': {
+																borderRadius: '8px'
+															}
+														}}
+													/>
+												)}
+											/>
+										</Grid>
+									</>
 								);
 							})()}
 
@@ -549,6 +554,56 @@ const FixedTableConfigEditor = ({
 		setConfig(newColumns, newRows);
 	};
 
+	const getReadKeyForColumn = (
+		col: { name: string },
+		columnIndex: number,
+		cells: Record<string, { value: string; readOnly: boolean }>
+	): string => {
+		const named = col.name?.trim();
+		if (named && Object.prototype.hasOwnProperty.call(cells, named)) return named;
+		const ph = `col_${columnIndex}`;
+		if (Object.prototype.hasOwnProperty.call(cells, ph)) return ph;
+		const legacy = `col_${columnIndex + 1}`;
+		if (Object.prototype.hasOwnProperty.call(cells, legacy)) return legacy;
+		if (named) return named;
+		return ph;
+	};
+
+	const columnOrderAfterMove = (n: number, from: number, to: number): number[] => {
+		const order = Array.from({ length: n }, (_, i) => i);
+		const [removed] = order.splice(from, 1);
+		order.splice(to, 0, removed);
+		return order;
+	};
+
+	const moveColumn = (fromIndex: number, toIndex: number) => {
+		if (
+			fromIndex === toIndex ||
+			fromIndex < 0 ||
+			toIndex < 0 ||
+			fromIndex >= columns.length ||
+			toIndex >= columns.length
+		) {
+			return;
+		}
+		const order = columnOrderAfterMove(columns.length, fromIndex, toIndex);
+		const newColumns = order.map(i => columns[i]);
+		const newRows = rows.map(row => {
+			const byOldIndex = columns.map((col, i) => {
+				const k = getReadKeyForColumn(col, i, row.cells);
+				return row.cells[k] ?? { value: '', readOnly: false };
+			});
+			const newCells: Record<string, { value: string; readOnly: boolean }> = {};
+			order.forEach((oldIdx, newIdx) => {
+				const col = newColumns[newIdx];
+				const writeKey = col.name?.trim() || `col_${newIdx}`;
+				newCells[writeKey] = byOldIndex[oldIdx];
+			});
+			return { cells: newCells };
+		});
+		setConfig(newColumns, newRows);
+	};
+
 	const updateColumnName = (colIndex: number, oldName: string, newName: string) => {
 		const newColumns = columns.map((col, i) => (i === colIndex ? { ...col, name: newName } : col));
 		const newRows = rows.map(row => {
@@ -594,7 +649,7 @@ const FixedTableConfigEditor = ({
 	const fixedTableColumnTypeOptions = [
 		{ value: 'text', label: 'Text' },
 		{ value: 'number', label: 'Number' },
-		{ value: 'ok/not ok', label: 'OK/Not OK' },
+		{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
 		{ value: 'datetime', label: 'Date & Time' },
 		{ value: 'shift', label: 'Shift' }
 	];
@@ -646,6 +701,22 @@ const FixedTableConfigEditor = ({
 										<MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
 									))}
 								</Select>
+								<IconButton
+									size="small"
+									onClick={() => moveColumn(colIndex, colIndex - 1)}
+									disabled={colIndex === 0}
+									sx={{ color: colIndex === 0 ? '#ccc' : '#666' }}
+								>
+									<UpIcon sx={{ fontSize: 18 }} />
+								</IconButton>
+								<IconButton
+									size="small"
+									onClick={() => moveColumn(colIndex, colIndex + 1)}
+									disabled={colIndex >= columns.length - 1}
+									sx={{ color: colIndex >= columns.length - 1 ? '#ccc' : '#666' }}
+								>
+									<DownIcon sx={{ fontSize: 18 }} />
+								</IconButton>
 								<IconButton size="small" onClick={() => removeColumn(colIndex)} sx={{ color: '#bbb', '&:hover': { color: '#f44336' } }}>
 									<DeleteIcon sx={{ fontSize: 18 }} />
 								</IconButton>
@@ -794,7 +865,8 @@ const ParameterColumns = memo(
 		const {
 			fields: columnFields,
 			append: appendColumn,
-			remove: removeColumn
+			remove: removeColumn,
+			move: moveColumn
 		} = useFieldArray({
 			control: control as Control<InspectionFormData>,
 			name: `inspectionParameters.${parameterIndex}.columns`
@@ -818,6 +890,15 @@ const ParameterColumns = memo(
 				removeColumn(index);
 			},
 			[removeColumn]
+		);
+
+		const handleMoveColumn = useCallback(
+			(index: number, direction: 'up' | 'down') => {
+				const to = direction === 'up' ? index - 1 : index + 1;
+				if (to < 0 || to >= columnFields.length) return;
+				moveColumn(index, to);
+			},
+			[columnFields.length, moveColumn]
 		);
 
 		return (
@@ -988,12 +1069,12 @@ const ParameterColumns = memo(
 																/>
 																<FormControlLabel
 																	value="not ok"
-																	control={<Radio size="small" color="error" />}
-																	label="Not OK"
+																	control={<Radio size="small" color="warning" />}
+																	label={OK_NOT_OK_NEGATIVE_LABEL}
 																	sx={{
 																		'& .MuiFormControlLabel-label': {
 																			fontSize: '0.75rem',
-																			color: field.value === 'not ok' ? '#d32f2f' : '#666'
+																			color: field.value === 'not ok' ? '#ed6c02' : '#666'
 																		}
 																	}}
 																/>
@@ -1097,7 +1178,32 @@ const ParameterColumns = memo(
 									})()}
 								</Grid>
 								<Grid size={{ xs: 12, sm: 2 }}>
-									<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', pt: 1 }}>
+									<Box
+										sx={{
+											display: 'flex',
+											justifyContent: 'center',
+											alignItems: 'center',
+											height: '100%',
+											pt: 1,
+											gap: 0.5
+										}}
+									>
+										<IconButton
+											size="small"
+											onClick={() => handleMoveColumn(columnIndex, 'up')}
+											disabled={columnIndex === 0}
+											sx={{ color: columnIndex === 0 ? '#ccc' : '#666' }}
+										>
+											<UpIcon fontSize="small" />
+										</IconButton>
+										<IconButton
+											size="small"
+											onClick={() => handleMoveColumn(columnIndex, 'down')}
+											disabled={columnIndex >= columnFields.length - 1}
+											sx={{ color: columnIndex >= columnFields.length - 1 ? '#ccc' : '#666' }}
+										>
+											<DownIcon fontSize="small" />
+										</IconButton>
 										<IconButton
 											color="error"
 											onClick={() => handleRemoveColumn(columnIndex)}

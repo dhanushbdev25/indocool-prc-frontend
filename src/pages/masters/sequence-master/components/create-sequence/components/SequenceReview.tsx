@@ -23,6 +23,7 @@ import {
 	AccessTime as AccessTimeIcon,
 	Lock as LockIcon
 } from '@mui/icons-material';
+import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
 import React from 'react';
 import { useWatch } from 'react-hook-form';
 import { SequenceReviewProps } from '../types';
@@ -205,7 +206,7 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 														</TableCell>
 													<TableCell>
 														{step.targetValueType === 'ok/not ok' ? (
-															<Typography variant="body2">OK/Not OK</Typography>
+															<Typography variant="body2">{formatOkNotOkTypeForDisplay('ok/not ok')}</Typography>
 														) : isTable ? (
 															<Chip
 																label={`Table \u00b7 ${tc!.columns!.length} cols, ${tc!.rows?.length || 0} rows`}

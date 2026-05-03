@@ -40,12 +40,18 @@ import {
 	Error as ErrorIcon
 } from '@mui/icons-material';
 import { type StepPreviewData, type ProceedFromPreviewPayload } from '../../../types/execution.types';
+import { formatExecutionDuration } from '../../../utils/timelineCardTiming';
 import { useFetchOperationDelayReasonComboQuery } from '../../../../../store/api/business/prc-execution/prc-execution.api';
 import { type OperationDelayReasonComboOption } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 import ImageDisplay from './ImageDisplay';
 import { debugDataTransformation } from '../../../utils/dataTransformers';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { toFileRenderUrl } from '../../../../../utils/fileUrl';
+import {
+	formatOkNotOkTypeForDisplay,
+	formatOkNotOkValueForDisplay,
+	isNegativeOkNotOk
+} from '../../../../../utils/okNotOkLabels';
 
 const COMMENT_PREVIEW_MAX_CHARS = 50;
 
@@ -123,6 +129,17 @@ const isNumericTargetValueType = (t: string | undefined): boolean => {
 	return n === 'range' || n === 'exact value';
 };
 
+const isExactPreviewTarget = (t: string | undefined): boolean => normalizePreviewTargetType(t) === 'exact value';
+
+const formatSignedDeviationPreview = (measured: number, target: number): string => {
+	const delta = measured - target;
+	if (!Number.isFinite(delta)) return '';
+	if (delta === 0) return '0';
+	const abs = Math.abs(delta);
+	const dec = abs.toFixed(6).replace(/\.?0+$/, '');
+	return `${delta > 0 ? '+' : '-'}${dec}`;
+};
+
 const formatSequenceNumericValueForPreview = (value: unknown, uom: string | undefined): string => {
 	if (value === undefined || value === null) return '';
 	const suffix = uom && uom !== 'None' ? ` ${uom}` : '';
@@ -134,6 +151,16 @@ const formatSequenceNumericValueForPreview = (value: unknown, uom: string | unde
 			return String(v);
 		});
 		return `${parts.join(', ')}${suffix}`.trim();
+	}
+	if (typeof value === 'object') {
+		const valueObj = value as Record<string, unknown>;
+		if ('value' in valueObj) {
+			return formatSequenceNumericValueForPreview(valueObj.value, uom);
+		}
+		if ('data' in valueObj) {
+			return formatSequenceNumericValueForPreview(valueObj.data, uom);
+		}
+		return '';
 	}
 	return `${String(value)}${suffix}`.trim();
 };
@@ -219,14 +246,6 @@ const StepPreview = ({
 	const [ctqMenuAnchor, setCtqMenuAnchor] = useState<null | HTMLElement>(null);
 	const [ctqApprovalMode, setCtqApprovalMode] = useState<'full' | 'partial'>('full');
 
-	// Helper function to format seconds to HH:MM:SS
-	const formatSecondsToTime = (seconds: number): string => {
-		const hours = Math.floor(seconds / 3600);
-		const mins = Math.floor((seconds % 3600) / 60);
-		const secs = Math.round(seconds % 60);
-		return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-	};
-
 	// Helper functions for validation status display
 	const getValidationIcon = (status: 'Accepted' | 'Lesser' | 'Greater') => {
 		switch (status) {
@@ -239,10 +258,19 @@ const StepPreview = ({
 		}
 	};
 
-	const getValidationChip = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+	const getValidationChip = (
+		status: 'Accepted' | 'Lesser' | 'Greater',
+		ctx?: { isExact: boolean; measured: number; target: number }
+	) => {
 		const color = status === 'Accepted' ? 'success' : status === 'Lesser' ? 'warning' : 'error';
+		if (ctx?.isExact) {
+			const label =
+				status === 'Accepted'
+					? 'Matches target'
+					: `Deviation: ${formatSignedDeviationPreview(ctx.measured, ctx.target)}`;
+			return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
+		}
 		const label = `Range: ${status}`;
-
 		return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
 	};
 
@@ -369,9 +397,9 @@ const StepPreview = ({
 		return { value: '', notOkComment: '' };
 	};
 
-	/** Green check for OK, red error for Not OK, neutral circle when indeterminate (sequence / inspection status column). */
+	/** Green check for OK, warning for OK with deviation, neutral circle when indeterminate (sequence / inspection status column). */
 	const renderOkNotOkResultStatusIcon = (parsed: { value: string; notOkComment: string }) => {
-		if (parsed.value === 'not ok') {
+		if (isNegativeOkNotOk(parsed.value)) {
 			return (
 				<Box
 					sx={{
@@ -381,10 +409,10 @@ const StepPreview = ({
 						width: 24,
 						height: 24,
 						borderRadius: '50%',
-						backgroundColor: '#ffebee'
+						backgroundColor: '#fff4e5'
 					}}
 				>
-					<ErrorIcon sx={{ color: 'error.main', fontSize: 16 }} />
+					<Warning sx={{ color: 'warning.main', fontSize: 16 }} />
 				</Box>
 			);
 		}
@@ -582,8 +610,8 @@ const StepPreview = ({
 									/>
 								</Box>
 								<Typography variant="body2" sx={{ color: '#bf360c', fontSize: '0.875rem' }}>
-									<strong>{formatSecondsToTime(previewData.actualDuration || 0)}</strong> actual vs{' '}
-									<strong>{formatSecondsToTime(previewData.expectedDuration || 0)}</strong> expected
+									<strong>{formatExecutionDuration(previewData.actualDuration || 0)}</strong> actual vs{' '}
+									<strong>{formatExecutionDuration(previewData.expectedDuration || 0)}</strong> expected
 								</Typography>
 							</Alert>
 							<Autocomplete<OperationDelayReasonComboOption, false, false, false>
@@ -666,7 +694,7 @@ const StepPreview = ({
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Value</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target Value Type</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Method</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Range</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
 								</TableRow>
 							</TableHead>
@@ -772,7 +800,14 @@ const StepPreview = ({
 														<Chip
 															label={(() => {
 																const parsedValue = parseOkNotOkValue(measurement.value);
-																return parsedValue.value || String(measurement.value || '');
+																if (parsedValue.value === 'ok' || isNegativeOkNotOk(parsedValue.value)) {
+																	return formatOkNotOkValueForDisplay(parsedValue.value);
+																}
+																return (
+																	parsedValue.value ||
+																	formatSequenceNumericValueForPreview(measurement.value, measurement.uom) ||
+																	'-'
+																);
 															})()}
 															size="small"
 															sx={{
@@ -792,7 +827,7 @@ const StepPreview = ({
 											{(() => {
 												const parsedValue = parseOkNotOkValue(measurement.value);
 												const shouldShowComment =
-													parsedValue.value === 'not ok' && parsedValue.notOkComment.trim().length > 0;
+													isNegativeOkNotOk(parsedValue.value) && parsedValue.notOkComment.trim().length > 0;
 												if (!shouldShowComment) return null;
 												return <NotOkCommentPreview comment={parsedValue.notOkComment} />;
 											})()}
@@ -802,35 +837,68 @@ const StepPreview = ({
 												</Typography>
 											)}
 										</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{measurement.targetValueType}</TableCell>
+											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{formatOkNotOkTypeForDisplay(measurement.targetValueType)}</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
 												{measurement.evaluationMethod}
 											</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												{measurement.minimumAcceptanceValue && measurement.maximumAcceptanceValue ? (
-													<Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
-														{measurement.minimumAcceptanceValue} - {measurement.maximumAcceptanceValue}{' '}
-														{measurement.uom && measurement.uom !== 'None' ? measurement.uom : ''}
-													</Typography>
-												) : (
-													<Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
-														N/A
-													</Typography>
-												)}
+												{(() => {
+													const uom =
+														measurement.uom && measurement.uom !== 'None' ? ` ${measurement.uom}` : '';
+													const minV = measurement.minimumAcceptanceValue;
+													const maxV = measurement.maximumAcceptanceValue;
+													const isExact = isExactPreviewTarget(measurement.targetValueType);
+													if (
+														(minV === undefined || minV === null || minV === '') &&
+														(maxV === undefined || maxV === null || maxV === '')
+													) {
+														return (
+															<Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
+																N/A
+															</Typography>
+														);
+													}
+													if (isExact) {
+														const t = minV ?? maxV;
+														return (
+															<Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
+																{t}
+																{uom}
+															</Typography>
+														);
+													}
+													if (
+														maxV != null &&
+														minV != null &&
+														String(minV).length > 0 &&
+														String(maxV).length > 0
+													) {
+														return (
+															<Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
+																{minV} - {maxV}
+																{uom}
+															</Typography>
+														);
+													}
+													return (
+														<Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
+															N/A
+														</Typography>
+													);
+												})()}
 											</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												{measurement.validationStatus &&
-												measurement.minimumAcceptanceValue &&
-												measurement.maximumAcceptanceValue ? (
-													<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-														{getValidationChip(measurement.validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
-													</Box>
-												) : (() => {
+												{(() => {
+													const minV = measurement.minimumAcceptanceValue;
+													const maxV = measurement.maximumAcceptanceValue;
+													const hasTarget =
+														(minV !== undefined && minV !== null && minV !== '') ||
+														(maxV !== undefined && maxV !== null && maxV !== '');
+													if (!hasTarget || !measurement.validationStatus) {
 														const parsed = parseOkNotOkValue(measurement.value);
 														const isOkNotOkRow =
 															measurement.targetValueType === 'ok/not ok' ||
-															(!isNumericTargetValueType(measurement.targetValueType) &&
-																measurement.targetValueType === 'ok/not ok' &&
+															(measurement.targetValueType === 'ok/not ok' &&
 																(parsed.value === 'ok' || parsed.value === 'not ok'));
 														if (isOkNotOkRow) {
 															return renderOkNotOkResultStatusIcon(parsed);
@@ -850,7 +918,36 @@ const StepPreview = ({
 																<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
 															</Box>
 														);
-													})()}
+													}
+													const targetNum = parseFloat(
+														String(minV ?? maxV ?? '')
+													);
+													const measuredNum = parseFloat(
+														String(
+															typeof measurement.value === 'object' && measurement.value !== null
+																? (measurement.value as Record<string, unknown>).value ?? ''
+																: measurement.value ?? ''
+														)
+													);
+													const chipCtx =
+														isExactPreviewTarget(measurement.targetValueType) &&
+														!Number.isNaN(targetNum) &&
+														!Number.isNaN(measuredNum)
+															? {
+																	isExact: true as const,
+																	measured: measuredNum,
+																	target: targetNum
+																}
+															: undefined;
+													return (
+														<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+															{getValidationChip(
+																measurement.validationStatus as 'Accepted' | 'Lesser' | 'Greater',
+																chipCtx
+															)}
+														</Box>
+													);
+												})()}
 											</TableCell>
 										</TableRow>
 									))
@@ -1231,6 +1328,8 @@ const StepPreview = ({
 									let parameterType = paramMeta?.type || 'text';
 									let specification = paramMeta?.specification || 'N/A';
 									let notOkComment = '';
+									let okNotOkMultiColumnHasNegative = false;
+									let singleOkNotOkParsed: { value: string; notOkComment: string } | null = null;
 
 									if (parameterType === 'table' && paramMeta?.columns && paramMeta.columns.length > 0) {
 										isTableType = true;
@@ -1268,14 +1367,12 @@ const StepPreview = ({
 															// Format values based on parameter type
 															if (parameterType === 'ok/not ok') {
 																const parsedValue = parseOkNotOkValue(val);
-																const formatted =
-																	parsedValue.value === 'ok'
-																		? 'OK'
-																		: parsedValue.value === 'not ok'
-																			? 'Not OK'
-																			: parsedValue.value;
+																if (isNegativeOkNotOk(parsedValue.value)) {
+																	okNotOkMultiColumnHasNegative = true;
+																}
+																const formatted = formatOkNotOkValueForDisplay(parsedValue.value);
 																const commentSuffix =
-																	parsedValue.value === 'not ok' && parsedValue.notOkComment.trim()
+																	isNegativeOkNotOk(parsedValue.value) && parsedValue.notOkComment.trim()
 																		? ` (Comment: ${
 																				truncateCommentForPreview(parsedValue.notOkComment).display
 																		  })`
@@ -1296,7 +1393,8 @@ const StepPreview = ({
 															parsedValue.notOkComment ||
 															(typeof paramObj.comments === 'string' ? String(paramObj.comments) : '') ||
 															(typeof paramObj.notOkComment === 'string' ? String(paramObj.notOkComment) : '');
-														displayValue = value === 'ok' ? 'OK' : value === 'not ok' ? 'Not OK' : value;
+														singleOkNotOkParsed = { value, notOkComment };
+														displayValue = formatOkNotOkValueForDisplay(value);
 													} else {
 														const value = String(paramObj.value);
 														displayValue = value;
@@ -1307,7 +1405,10 @@ const StepPreview = ({
 											// Simple string/number value
 											const value = String(parameterData);
 											if (parameterType === 'ok/not ok') {
-												displayValue = value === 'ok' ? 'OK' : value === 'not ok' ? 'Not OK' : value;
+												const p = parseOkNotOkValue(parameterData);
+												singleOkNotOkParsed = p;
+												notOkComment = p.notOkComment;
+												displayValue = formatOkNotOkValueForDisplay(p.value);
 											} else {
 												displayValue = value;
 											}
@@ -1417,7 +1518,7 @@ const StepPreview = ({
 															)}
 														</Box>
 													</TableCell>
-													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{parameterType}</TableCell>
+													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{formatOkNotOkTypeForDisplay(parameterType)}</TableCell>
 												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 													{isFixedTableType ? (
 														<Typography variant="body2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
@@ -1441,7 +1542,10 @@ const StepPreview = ({
 																<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
 																	{displayValue}
 																</Typography>
-																{parameterType === 'ok/not ok' && displayValue === 'Not OK' && notOkComment.trim() && (
+																{parameterType === 'ok/not ok' &&
+																	singleOkNotOkParsed &&
+																	isNegativeOkNotOk(singleOkNotOkParsed.value) &&
+																	notOkComment.trim() && (
 																	<NotOkCommentPreview comment={notOkComment} />
 																)}
 															</>
@@ -1478,19 +1582,18 @@ const StepPreview = ({
 														{parameterType === 'ok/not ok' && !isTableType && !isFixedTableType ? (
 															(() => {
 																if (isMultiColumn) {
-																	const anyNotOk = displayValue.includes('Not OK');
 																	return renderOkNotOkResultStatusIcon({
-																		value: anyNotOk ? 'not ok' : 'ok',
+																		value: okNotOkMultiColumnHasNegative ? 'not ok' : 'ok',
 																		notOkComment: ''
 																	});
 																}
-																if (displayValue === 'Not OK') {
+																if (singleOkNotOkParsed && isNegativeOkNotOk(singleOkNotOkParsed.value)) {
 																	return renderOkNotOkResultStatusIcon({
 																		value: 'not ok',
 																		notOkComment: ''
 																	});
 																}
-																if (displayValue === 'OK') {
+																if (singleOkNotOkParsed?.value === 'ok') {
 																	return renderOkNotOkResultStatusIcon({
 																		value: 'ok',
 																		notOkComment: ''
@@ -1688,7 +1791,7 @@ const StepPreview = ({
 																							{column.name}
 																							{isTableType && (
 																								<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}>
-																									{column.type}
+																									{formatOkNotOkTypeForDisplay(column.type)}
 																								</Typography>
 																							)}
 																						</TableCell>
@@ -1714,11 +1817,7 @@ const StepPreview = ({
 																										: { value: String(value || ''), notOkComment: '' };
 																								const formattedValue =
 																									column.type === 'ok/not ok'
-																										? parsedValue.value === 'ok'
-																											? 'OK'
-																											: parsedValue.value === 'not ok'
-																												? 'Not OK'
-																												: String(parsedValue.value || '')
+																										? formatOkNotOkValueForDisplay(parsedValue.value)
 																										: String(value || '');
 
 																								return (
@@ -1744,7 +1843,7 @@ const StepPreview = ({
 																											{formattedValue}
 																										</Typography>
 																										{column.type === 'ok/not ok' &&
-																											parsedValue.value === 'not ok' &&
+																											isNegativeOkNotOk(parsedValue.value) &&
 																											parsedValue.notOkComment.trim() && (
 																												<NotOkCommentPreview comment={parsedValue.notOkComment} />
 																											)}
@@ -1769,11 +1868,7 @@ const StepPreview = ({
 																									: { value: String(value), notOkComment: '' };
 																							const formattedValue =
 																								column.type === 'ok/not ok'
-																									? parsedValue.value === 'ok'
-																										? 'OK'
-																										: parsedValue.value === 'not ok'
-																											? 'Not OK'
-																											: String(parsedValue.value)
+																									? formatOkNotOkValueForDisplay(parsedValue.value)
 																									: String(value);
 
 																							return (
@@ -1799,7 +1894,7 @@ const StepPreview = ({
 																										{formattedValue}
 																									</Typography>
 																									{column.type === 'ok/not ok' &&
-																										parsedValue.value === 'not ok' &&
+																										isNegativeOkNotOk(parsedValue.value) &&
 																										parsedValue.notOkComment.trim() && (
 																											<NotOkCommentPreview comment={parsedValue.notOkComment} />
 																										)}
@@ -2072,6 +2167,13 @@ const StepPreview = ({
 						<Typography variant="caption" sx={{ color: 'text.secondary' }}>
 							{previewData.title}
 						</Typography>
+						{previewData.type === 'sequence' &&
+							previewData.description &&
+							previewData.description !== previewData.title && (
+								<Typography variant="body2" sx={{ color: 'text.secondary', display: 'block', mt: 0.25, lineHeight: 1.35 }}>
+									{previewData.description}
+								</Typography>
+							)}
 					</Box>
 				</Box>
 

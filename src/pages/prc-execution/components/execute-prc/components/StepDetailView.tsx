@@ -324,6 +324,13 @@ const StepDetailView = ({
 						<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', lineHeight: 1.2 }}>
 							{step.title}
 						</Typography>
+						{step.type === 'sequence' &&
+							step.description &&
+							step.description !== step.title && (
+								<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', mt: 0.5, lineHeight: 1.4 }}>
+									{step.description}
+								</Typography>
+							)}
 					</Box>
 					<Box sx={{ display: 'flex', gap: 0.5 }}>
 						{step.ctq && (

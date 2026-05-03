@@ -21,6 +21,9 @@ import {
 } from '@mui/material';
 import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
+import {
+	OK_NOT_OK_NEGATIVE_LABEL
+} from '../../../../../../utils/okNotOkLabels';
 
 interface SequenceStepProps {
 	step: TimelineStep;
@@ -37,6 +40,16 @@ const validateMeasurementRange = (value: number, min: number, max: number): 'Acc
 	return 'Accepted';
 };
 
+/** Signed delta for exact-target deviation chip (compact, trim useless trailing zeros). */
+const formatSignedDeviation = (measured: number, target: number): string => {
+	const delta = measured - target;
+	if (!Number.isFinite(delta)) return '';
+	if (delta === 0) return '0';
+	const abs = Math.abs(delta);
+	const dec = abs.toFixed(6).replace(/\.?0+$/, '');
+	return `${delta > 0 ? '+' : '-'}${dec}`;
+};
+
 const parseOptionalNumber = (value: string | number | undefined | null): number | null => {
 	if (value === undefined || value === null || value === '') return null;
 	const n = typeof value === 'number' ? value : parseFloat(String(value).trim());
@@ -50,11 +63,15 @@ const isRangeOrExactTarget = (t: string | undefined): boolean => {
 	return n === 'range' || n === 'exact value';
 };
 
+const isExactTargetValueType = (t: string | undefined): boolean => normalizeTargetValueType(t) === 'exact value';
+
 /**
  * Numeric band for Measurement validation: prefer minValue/maxValue when both parse;
  * else minimumAcceptanceValue/maximumAcceptanceValue (sequence master often only persists acceptance).
+ * For exact value, a single bound (min or max) is enough — treated as target t..t.
  */
 const getNumericMeasurementBounds = (stepData: {
+	targetValueType?: string;
 	minValue?: string;
 	maxValue?: string;
 	minimumAcceptanceValue?: string;
@@ -67,6 +84,11 @@ const getNumericMeasurementBounds = (stepData: {
 	}
 	const accMin = parseOptionalNumber(stepData.minimumAcceptanceValue);
 	const accMax = parseOptionalNumber(stepData.maximumAcceptanceValue);
+	if (isExactTargetValueType(stepData.targetValueType)) {
+		const t = accMin ?? accMax;
+		if (t !== null) return { min: t, max: t };
+		return null;
+	}
 	if (accMin !== null && accMax !== null) {
 		return { min: accMin, max: accMax };
 	}
@@ -486,6 +508,9 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 
 	const validateForm = () => {
 		const newErrors: Record<string, string> = {};
+		const ackRequiredMsg = isExactTargetValueType(stepData.targetValueType)
+			? 'Please acknowledge the deviation from the exact target'
+			: 'Please acknowledge the out-of-range value';
 
 		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
 			stepData.tableConfig.columns.forEach(col => {
@@ -525,8 +550,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 					} else if (rangeStepWithBounds && numericBounds) {
 						const validationStatus = validateMeasurementRange(numValue, numericBounds.min, numericBounds.max);
 						if (validationStatus !== 'Accepted' && !acknowledgments[`measurement_${measurement.id}`]) {
-							newErrors[`measurement_${measurement.id}_acknowledge`] =
-								'Please acknowledge the out-of-range value';
+							newErrors[`measurement_${measurement.id}_acknowledge`] = ackRequiredMsg;
 						}
 					}
 				}
@@ -540,7 +564,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 				if (!selectedValue) {
 					newErrors.value = 'Please select an option';
 				} else if (selectedValue === 'not ok' && !notOkComment) {
-					newErrors.notOkComment = 'Comment is required when Not OK is selected';
+					newErrors.notOkComment = `Comment is required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`;
 				}
 			} else {
 				if (!formData.value || (typeof formData.value === 'string' && formData.value.trim() === '')) {
@@ -552,7 +576,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 					} else if (rangeStepWithBounds && numericBounds) {
 						const validationStatus = validateMeasurementRange(numValue, numericBounds.min, numericBounds.max);
 						if (validationStatus !== 'Accepted' && !acknowledgments.value) {
-							newErrors.value_acknowledge = 'Please acknowledge the out-of-range value';
+							newErrors.value_acknowledge = ackRequiredMsg;
 						}
 					}
 				}
@@ -607,10 +631,19 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 		}
 	};
 
-	const getValidationChip = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+	const getValidationChip = (
+		status: 'Accepted' | 'Lesser' | 'Greater',
+		ctx?: { isExact: boolean; measured: number; target: number }
+	) => {
 		const color = status === 'Accepted' ? 'success' : status === 'Lesser' ? 'warning' : 'error';
+		if (ctx?.isExact) {
+			const label =
+				status === 'Accepted'
+					? 'Matches target'
+					: `Deviation: ${formatSignedDeviation(ctx.measured, ctx.target)}`;
+			return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
+		}
 		const label = `Range: ${status}`;
-
 		return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
 	};
 
@@ -800,7 +833,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 														sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
 													>
 														<FormControlLabel value="ok" control={<Radio size="small" />} label="OK" />
-														<FormControlLabel value="not ok" control={<Radio size="small" />} label="Not OK" />
+														<FormControlLabel value="not ok" control={<Radio size="small" color="warning" />} label={OK_NOT_OK_NEGATIVE_LABEL} />
 													</RadioGroup>
 													{errors[`table_${rowIdx}_${col.name}`] && (
 														<Typography variant="caption" color="error">
@@ -860,12 +893,12 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 						/>
 						<FormControlLabel
 							value="not ok"
-							control={<Radio size="small" color="error" />}
-							label="Not OK"
+							control={<Radio size="small" color="warning" />}
+							label={OK_NOT_OK_NEGATIVE_LABEL}
 							sx={{
 								'& .MuiFormControlLabel-label': {
 									fontSize: '0.875rem',
-									color: selectedValue === 'not ok' ? '#d32f2f' : '#666'
+									color: selectedValue === 'not ok' ? '#ed6c02' : '#666'
 								}
 							}}
 						/>
@@ -876,11 +909,11 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 							multiline
 							rows={3}
 							label="Comments"
-							placeholder="Enter comments for Not OK selection"
+							placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
 							value={typeof formData.notOkComment === 'string' ? formData.notOkComment : ''}
 							onChange={e => handleNotOkCommentChange(e.target.value)}
 							error={!!errors.notOkComment}
-							helperText={errors.notOkComment || 'Required when Not OK is selected'}
+							helperText={errors.notOkComment || `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`}
 							sx={{ mt: 1.5 }}
 							disabled={isReadOnly}
 							required
@@ -898,16 +931,22 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 			const maxCount = fixedN ?? stepData.multipleMeasurementMaxCount ?? 10;
 			const showMeasurementBoundsUi = isNumericRangeStepWithBounds(stepData);
 			const resolvedBounds = getNumericMeasurementBounds(stepData);
+			const isExactStep = isExactTargetValueType(stepData.targetValueType);
 			const specMin = parseOptionalNumber(stepData.minValue);
 			const specMax = parseOptionalNumber(stepData.maxValue);
 			const numberInputProps =
 				showMeasurementBoundsUi && resolvedBounds
-					? { min: resolvedBounds.min, max: resolvedBounds.max, step: 0.01 }
+					? isExactStep
+						? { step: 0.01 }
+						: { min: resolvedBounds.min, max: resolvedBounds.max, step: 0.01 }
 					: {
 							min: specMin ?? 0,
 							...(specMax !== null ? { max: specMax } : {}),
 							step: 0.01
 						};
+			const ackLabelText = isExactStep
+				? 'I acknowledge the deviation from the exact target value'
+				: 'I acknowledge that the measurement value is outside the acceptable range';
 
 			return (
 				<Box>
@@ -932,6 +971,11 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 						const validationStatus =
 							showMeasurementBoundsUi && measurement.value ? getValidationStatus(measurement.value) : null;
 						const showAcknowledgment = validationStatus && validationStatus !== 'Accepted';
+						const measuredNum = measurement.value ? parseFloat(measurement.value) : NaN;
+						const validationChipCtx =
+							isExactStep && resolvedBounds && !Number.isNaN(measuredNum)
+								? { isExact: true as const, measured: measuredNum, target: resolvedBounds.min }
+								: undefined;
 
 						return (
 							<Box key={measurement.id} sx={{ mb: 2 }}>
@@ -983,16 +1027,18 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 												{getValidationIcon(validationStatus)}
 												<Box>
 													<Typography variant="body2" color="text.secondary">
-														Acceptance Range
+														{isExactStep ? 'Exact target' : 'Acceptance range'}
 													</Typography>
 													<Typography variant="h6" sx={{ fontWeight: 600 }}>
 														{resolvedBounds
-															? `${resolvedBounds.min} - ${resolvedBounds.max} ${stepData.uom || ''}`
+															? isExactStep
+																? `${resolvedBounds.min} ${stepData.uom || ''}`.trim()
+																: `${resolvedBounds.min} - ${resolvedBounds.max} ${stepData.uom || ''}`.trim()
 															: ''}
 													</Typography>
 												</Box>
 											</Box>
-											{getValidationChip(validationStatus)}
+											{getValidationChip(validationStatus, validationChipCtx)}
 										</Box>
 									</Paper>
 								)}
@@ -1010,7 +1056,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 											}
 											label={
 												<Typography variant="body2" color="text.secondary">
-													I acknowledge that the measurement value is outside the acceptable range
+													{ackLabelText}
 												</Typography>
 											}
 										/>
@@ -1031,11 +1077,14 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 		// Single value input
 		const showMeasurementBoundsUiSingle = isNumericRangeStepWithBounds(stepData);
 		const resolvedBoundsSingle = getNumericMeasurementBounds(stepData);
+		const isExactStepSingle = isExactTargetValueType(stepData.targetValueType);
 		const specMinSingle = parseOptionalNumber(stepData.minValue);
 		const specMaxSingle = parseOptionalNumber(stepData.maxValue);
 		const singleNumberInputProps =
 			showMeasurementBoundsUiSingle && resolvedBoundsSingle
-				? { min: resolvedBoundsSingle.min, max: resolvedBoundsSingle.max, step: 0.01 }
+				? isExactStepSingle
+					? { step: 0.01 }
+					: { min: resolvedBoundsSingle.min, max: resolvedBoundsSingle.max, step: 0.01 }
 				: {
 						min: specMinSingle ?? 0,
 						...(specMaxSingle !== null ? { max: specMaxSingle } : {}),
@@ -1048,6 +1097,17 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 				? getValidationStatus(formData.value)
 				: null;
 		const showAcknowledgment = validationStatus && validationStatus !== 'Accepted';
+		const measuredNumSingle =
+			formData.value === '' || formData.value === undefined || formData.value === null
+				? NaN
+				: parseFloat(String(formData.value));
+		const validationChipCtxSingle =
+			isExactStepSingle && resolvedBoundsSingle && !Number.isNaN(measuredNumSingle)
+				? { isExact: true as const, measured: measuredNumSingle, target: resolvedBoundsSingle.min }
+				: undefined;
+		const singleAckLabelText = isExactStepSingle
+			? 'I acknowledge the deviation from the exact target value'
+			: 'I acknowledge that the measurement value is outside the acceptable range';
 
 		return (
 			<Box>
@@ -1085,16 +1145,18 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 								{getValidationIcon(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
 								<Box>
 									<Typography variant="body2" color="text.secondary">
-										Acceptance Range
+										{isExactStepSingle ? 'Exact target' : 'Acceptance range'}
 									</Typography>
 									<Typography variant="h6" sx={{ fontWeight: 600 }}>
 										{resolvedBoundsSingle
-											? `${resolvedBoundsSingle.min} - ${resolvedBoundsSingle.max} ${stepData.uom || ''}`
+											? isExactStepSingle
+												? `${resolvedBoundsSingle.min} ${stepData.uom || ''}`.trim()
+												: `${resolvedBoundsSingle.min} - ${resolvedBoundsSingle.max} ${stepData.uom || ''}`.trim()
 											: ''}
 									</Typography>
 								</Box>
 							</Box>
-							{getValidationChip(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
+							{getValidationChip(validationStatus as 'Accepted' | 'Lesser' | 'Greater', validationChipCtxSingle)}
 						</Box>
 					</Paper>
 				) : null}
@@ -1112,7 +1174,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 							}
 							label={
 								<Typography variant="body2" color="text.secondary">
-									I acknowledge that the measurement value is outside the acceptable range
+									{singleAckLabelText}
 								</Typography>
 							}
 						/>
@@ -1308,15 +1370,16 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 			{/* CTQ Warning */}
 			{step.ctq && getNumericMeasurementBounds(stepData) !== null && (
 				<Alert severity="warning" sx={{ mb: 2, py: 1 }}>
-					This is a Critical to Quality (CTQ) parameter. Values outside the acceptable range may require supervisor
-					approval.
+					{isExactTargetValueType(stepData.targetValueType)
+						? 'This is a Critical to Quality (CTQ) parameter. Deviations from the exact target may require supervisor approval.'
+						: 'This is a Critical to Quality (CTQ) parameter. Values outside the acceptable range may require supervisor approval.'}
 				</Alert>
 			)}
 
 			{/* Validation Alert */}
 			{Object.keys(errors).length > 0 && (
 				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} icon={<ErrorIcon />}>
-					Please fill in all required fields with valid values and acknowledge any out-of-range values.
+					Please fill in all required fields with valid values and acknowledge any deviations or out-of-range values.
 				</Alert>
 			)}
 

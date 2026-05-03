@@ -6,6 +6,7 @@ import {
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
+import { sumSequenceSubStepIntervalsSeconds } from '../../utils/timelineCardTiming';
 import { buildTimelineSteps } from '../../utils/buildTimelineSteps';
 import {
 	buildAggregatedData,
@@ -583,6 +584,7 @@ const ExecutePrc = () => {
 					const newPreviewData: StepPreviewData = {
 						stepNumber: currentStep.stepNumber,
 						title: currentStep.title,
+						description: currentStep.description,
 						type: currentStep.type,
 						ctq: currentStep.ctq,
 						data: detailedMeasurements,
@@ -764,30 +766,10 @@ const ExecutePrc = () => {
 			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
 		}
 
-		// Calculate total active work time by summing individual step durations
-		let totalActiveDuration = 0;
-		let stepsWithTiming = 0;
-
-		step.stepGroup.steps.forEach(subStep => {
-			const stepTiming = groupTimingData[subStep.id.toString()] as { startTime: string; endTime: string } | undefined;
-			if (stepTiming) {
-				const startTime = new Date(stepTiming.startTime);
-				const endTime = new Date(stepTiming.endTime);
-
-				// Calculate individual step duration in seconds
-				const stepDurationMs = endTime.getTime() - startTime.getTime();
-				const stepDuration = Math.round((stepDurationMs / 1000) * 10) / 10; // Round to 1 decimal place
-
-				totalActiveDuration += stepDuration;
-				stepsWithTiming++;
-
-				console.log(`🕐 Step ${subStep.id} timing:`, {
-					startTime: startTime.toISOString(),
-					endTime: endTime.toISOString(),
-					duration: stepDuration
-				});
-			}
-		});
+		const { totalSeconds: totalActiveDuration, intervalsCount: stepsWithTiming } = sumSequenceSubStepIntervalsSeconds(
+			groupTimingData,
+			step.stepGroup.steps
+		);
 
 		if (stepsWithTiming === 0) {
 			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
@@ -1453,6 +1435,7 @@ const ExecutePrc = () => {
 				const newPreviewData: StepPreviewData = {
 					stepNumber: targetStep.stepNumber,
 					title: targetStep.title,
+					description: targetStep.description,
 					type: targetStep.type,
 					ctq: targetStep.ctq,
 					data: detailedMeasurements,
@@ -1685,6 +1668,7 @@ const ExecutePrc = () => {
 									steps={timelineSteps}
 									currentStepIndex={currentStepIndex}
 									onStepClick={handleStepNavigation}
+									stepStartEndTime={actualExecutionData.stepStartEndTime ?? {}}
 								/>
 							</Box>
 							{/* Quick Stats */}

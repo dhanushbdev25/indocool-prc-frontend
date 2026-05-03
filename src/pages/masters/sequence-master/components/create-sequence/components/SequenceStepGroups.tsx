@@ -30,6 +30,8 @@ import {
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
+	KeyboardArrowUp as UpIcon,
+	KeyboardArrowDown as DownIcon,
 	ExpandMore as ExpandMoreIcon,
 	PlaylistAdd as StepIcon,
 	Group as GroupIcon,
@@ -44,13 +46,18 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 	const {
 		fields: stepGroupFields,
 		append: appendStepGroup,
-		remove: removeStepGroup
+		remove: removeStepGroup,
+		move: moveStepGroup
 	} = useFieldArray({
 		control,
 		name: 'processStepGroups'
 	});
 
 	const [expandedGroups, setExpandedGroups] = useState<number[]>(() => stepGroupFields.map((_, index) => index));
+
+	const normalizeExpandedGroups = (groupCount: number) => {
+		setExpandedGroups(Array.from({ length: groupCount }, (_, i) => i));
+	};
 
 	const addStepGroup = () => {
 		appendStepGroup({
@@ -263,6 +270,56 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 		setConfig(newColumns, newRows);
 	};
 
+	const getReadKeyForColumn = (
+		col: { name: string },
+		columnIndex: number,
+		cells: Record<string, { value: string; readOnly: boolean }>
+	): string => {
+		const named = col.name?.trim();
+		if (named && Object.prototype.hasOwnProperty.call(cells, named)) return named;
+		const ph = `col_${columnIndex}`;
+		if (Object.prototype.hasOwnProperty.call(cells, ph)) return ph;
+		const legacy = `col_${columnIndex + 1}`;
+		if (Object.prototype.hasOwnProperty.call(cells, legacy)) return legacy;
+		if (named) return named;
+		return ph;
+	};
+
+	const columnOrderAfterMove = (n: number, from: number, to: number): number[] => {
+		const order = Array.from({ length: n }, (_, i) => i);
+		const [removed] = order.splice(from, 1);
+		order.splice(to, 0, removed);
+		return order;
+	};
+
+	const moveColumn = (fromIndex: number, toIndex: number) => {
+		if (
+			fromIndex === toIndex ||
+			fromIndex < 0 ||
+			toIndex < 0 ||
+			fromIndex >= columns.length ||
+			toIndex >= columns.length
+		) {
+			return;
+		}
+		const order = columnOrderAfterMove(columns.length, fromIndex, toIndex);
+		const newColumns = order.map(i => columns[i]);
+		const newRows = rows.map(row => {
+			const byOldIndex = columns.map((col, i) => {
+				const k = getReadKeyForColumn(col, i, row.cells);
+				return row.cells[k] ?? { value: '', readOnly: false };
+			});
+			const newCells: Record<string, { value: string; readOnly: boolean }> = {};
+			order.forEach((oldIdx, newIdx) => {
+				const col = newColumns[newIdx];
+				const writeKey = col.name?.trim() || `col_${newIdx}`;
+				newCells[writeKey] = byOldIndex[oldIdx];
+			});
+			return { cells: newCells };
+		});
+		setConfig(newColumns, newRows);
+	};
+
 	const updateColumnName = (colIndex: number, oldName: string, newName: string) => {
 		const newColumns = columns.map((col, i) => (i === colIndex ? { ...col, name: newName } : col));
 		const placeholder = `col_${colIndex}`;
@@ -359,6 +416,22 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 										<MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
 									))}
 								</Select>
+								<IconButton
+									size="small"
+									onClick={() => moveColumn(colIndex, colIndex - 1)}
+									disabled={colIndex === 0}
+									sx={{ color: colIndex === 0 ? '#ccc' : '#666' }}
+								>
+									<UpIcon sx={{ fontSize: 18 }} />
+								</IconButton>
+								<IconButton
+									size="small"
+									onClick={() => moveColumn(colIndex, colIndex + 1)}
+									disabled={colIndex >= columns.length - 1}
+									sx={{ color: colIndex >= columns.length - 1 ? '#ccc' : '#666' }}
+								>
+									<DownIcon sx={{ fontSize: 18 }} />
+								</IconButton>
 								<IconButton size="small" onClick={() => removeColumn(colIndex)} sx={{ color: '#bbb', '&:hover': { color: '#f44336' } }}>
 									<DeleteIcon sx={{ fontSize: 18 }} />
 								</IconButton>
@@ -500,10 +573,12 @@ interface StepGroupFormProps {
 }
 
 const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
+	const { setValue, getValues } = useFormContext<SequenceFormData>();
 	const {
 		fields: stepFields,
 		append: appendStep,
-		remove: removeStep
+		remove: removeStep,
+		move: moveStep
 	} = useFieldArray({
 		control,
 		name: `processStepGroups.${groupIndex}.processSteps`
@@ -691,16 +766,40 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 									Step {stepIndex + 1}
 								</Typography>
 							</Box>
-							<IconButton
-								size="small"
-								onClick={() => removeStep(stepIndex)}
-								sx={{
-									color: 'error.main',
-									'&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
-								}}
-							>
-								<DeleteIcon />
-							</IconButton>
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+								<IconButton
+									size="small"
+									onClick={() => {
+										if (stepIndex <= 0) return;
+										moveStep(stepIndex, stepIndex - 1);
+									}}
+									disabled={stepIndex <= 0}
+									sx={{ color: stepIndex <= 0 ? 'action.disabled' : '#666' }}
+								>
+									<UpIcon fontSize="small" />
+								</IconButton>
+								<IconButton
+									size="small"
+									onClick={() => {
+										if (stepIndex >= stepFields.length - 1) return;
+										moveStep(stepIndex, stepIndex + 1);
+									}}
+									disabled={stepIndex >= stepFields.length - 1}
+									sx={{ color: stepIndex >= stepFields.length - 1 ? 'action.disabled' : '#666' }}
+								>
+									<DownIcon fontSize="small" />
+								</IconButton>
+								<IconButton
+									size="small"
+									onClick={() => removeStep(stepIndex)}
+									sx={{
+										color: 'error.main',
+										'&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+									}}
+								>
+									<DeleteIcon />
+								</IconButton>
+							</Box>
 						</Box>
 
 						<Grid container spacing={2}>
@@ -784,7 +883,25 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 											error={!!errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]?.targetValueType}
 										>
 											<InputLabel>Target Value Type</InputLabel>
-											<Select {...field} label="Target Value Type" sx={{ borderRadius: '8px' }}>
+											<Select
+												{...field}
+												label="Target Value Type"
+												sx={{ borderRadius: '8px' }}
+												onChange={e => {
+													const v = e.target.value as string;
+													field.onChange(v);
+													const basePath = `processStepGroups.${groupIndex}.processSteps.${stepIndex}` as const;
+													if (v === 'exact value') {
+														const minVal = getValues(`${basePath}.minimumAcceptanceValue`);
+														if (minVal != null && typeof minVal === 'number' && !Number.isNaN(minVal)) {
+															setValue(`${basePath}.maximumAcceptanceValue`, minVal, {
+																shouldDirty: true,
+																shouldValidate: true
+															});
+														}
+													}
+												}}
+											>
 												{targetValueTypeOptions.map(option => (
 													<MenuItem key={option.value} value={option.value}>
 														{option.label}
@@ -796,12 +913,65 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 								/>
 							</Grid>
 
-						{/* Min/Max Values - Conditional based on targetValueType */}
+						{/* Min/Max or exact target — conditional on targetValueType */}
 						<Controller
 							name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.targetValueType`}
 							control={control}
 							render={({ field: { value: targetValueType } }) => {
 								if (targetValueType === 'ok/not ok' || targetValueType === 'table') return <></>;
+
+								const basePath = `processStepGroups.${groupIndex}.processSteps.${stepIndex}` as const;
+
+								if (targetValueType === 'exact value') {
+									return (
+										<Grid size={{ xs: 12, md: 6 }}>
+											<Controller
+												name={`${basePath}.minimumAcceptanceValue`}
+												control={control}
+												render={({ field }) => (
+													<TextField
+														{...field}
+														value={field.value ?? ''}
+														onChange={e => {
+															const raw = e.target.value;
+															const next = raw === '' ? null : parseFloat(raw);
+															field.onChange(next);
+															if (next != null && typeof next === 'number' && !Number.isNaN(next)) {
+																setValue(`${basePath}.maximumAcceptanceValue`, next, {
+																	shouldDirty: true,
+																	shouldValidate: true
+																});
+															} else {
+																setValue(`${basePath}.maximumAcceptanceValue`, null, {
+																	shouldDirty: true,
+																	shouldValidate: true
+																});
+															}
+														}}
+														fullWidth
+														label="Exact target value"
+														required
+														type="number"
+														placeholder="e.g., 2.0"
+														helperText={
+															errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
+																?.minimumAcceptanceValue?.message
+														}
+														error={
+															!!errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]
+																?.minimumAcceptanceValue
+														}
+														sx={{
+															'& .MuiOutlinedInput-root': {
+																borderRadius: '8px'
+															}
+														}}
+													/>
+												)}
+											/>
+										</Grid>
+									);
+								}
 
 								return (
 									<>

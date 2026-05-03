@@ -1,4 +1,5 @@
 import * as yup from 'yup';
+import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/okNotOkLabels';
 
 // Column validation schema
 export const columnSchema = yup
@@ -316,7 +317,7 @@ export const parameterTypeOptions = [
 	{ value: 'text', label: 'Text' },
 	{ value: 'number', label: 'Number' },
 	{ value: 'boolean', label: 'Boolean' },
-	{ value: 'ok/not ok', label: 'Ok/Not Ok' },
+	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
 	{ value: 'datetime', label: 'Date & Time' },
 	{ value: 'shift', label: 'Shift' }
 ];
@@ -326,7 +327,7 @@ export const columnTypeOptions = [
 	{ value: 'text', label: 'Text' },
 	{ value: 'number', label: 'Number' },
 	{ value: 'boolean', label: 'Boolean' },
-	{ value: 'ok/not ok', label: 'Ok/Not Ok' },
+	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
 	{ value: 'datetime', label: 'Date & Time' },
 	{ value: 'shift', label: 'Shift' }
 ];

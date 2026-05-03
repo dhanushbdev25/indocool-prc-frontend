@@ -24,6 +24,7 @@ import {
 	type ProcessStepGroup,
 	type ProcessStep
 } from '../../../../../../store/api/business/sequence-master/sequence.validators';
+import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
 
 interface ViewSequenceStepGroupsProps {
 	stepGroups: ProcessStepGroup[];
@@ -127,7 +128,7 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									Target Value Type
 								</Typography>
 								<Chip
-									label={step.targetValueType}
+									label={formatOkNotOkTypeForDisplay(step.targetValueType)}
 									size="small"
 									sx={{
 										backgroundColor: getTargetValueTypeColor(step.targetValueType),
@@ -161,8 +162,18 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 							<Grid size={{ xs: 12 }}>
 								<Box>
 									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
-										Acceptance Values
+										{step.targetValueType === 'exact value' ? 'Target value' : 'Acceptance values'}
 									</Typography>
+									{step.targetValueType === 'exact value' ? (
+										<Paper sx={{ p: 2, backgroundColor: '#e8f5e9', border: '1px solid #4caf50' }}>
+											<Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 600 }}>
+												EXACT TARGET
+											</Typography>
+											<Typography variant="h6" sx={{ color: '#2e7d32', fontWeight: 600 }}>
+												{step.minimumAcceptanceValue ?? step.maximumAcceptanceValue ?? '—'}
+											</Typography>
+										</Paper>
+									) : (
 									<Grid container spacing={2}>
 										<Grid size={{ xs: 6 }}>
 											<Paper sx={{ p: 2, backgroundColor: '#e3f2fd', border: '1px solid #2196f3' }}>
@@ -185,6 +196,7 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 											</Paper>
 										</Grid>
 									</Grid>
+									)}
 								</Box>
 							</Grid>
 						)}

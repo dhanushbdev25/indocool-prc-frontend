@@ -91,6 +91,8 @@ export interface ProceedFromPreviewPayload {
 export interface StepPreviewData {
 	stepNumber: number;
 	title: string;
+	/** Process description for sequence step groups (`processDescription` from template). */
+	description?: string;
 	type: 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
 	ctq: boolean;
 	data: Record<string, unknown> | unknown[];

@@ -20,6 +20,7 @@ import Grid from '@mui/material/Grid';
 import { ExpandMore, Warning, Link, Lock as LockIcon } from '@mui/icons-material';
 import { InspectionParameter } from '../../../../../../store/api/business/inspection-master/inspection.validators';
 import { roleOptions } from '../../create-inspection/schemas';
+import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
 
 interface ViewInspectionParametersProps {
 	parameters: InspectionParameter[];
@@ -50,7 +51,7 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 			case 'fixed-table':
 				return '#7b1fa2';
 			case 'ok/not ok':
-				return '#f44336';
+				return '#ff9800';
 			case 'datetime':
 				return '#795548';
 			case 'shift':
@@ -94,7 +95,7 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 											{parameter.parameterName}
 										</Typography>
 										<Chip
-											label={parameter.type}
+											label={formatOkNotOkTypeForDisplay(parameter.type)}
 											size="small"
 											sx={{
 												backgroundColor: getTypeColor(parameter.type),
@@ -248,7 +249,7 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 																		<TableCell key={col.name} sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>
 																			{col.name}
 																			<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}>
-																				{col.type}
+																				{formatOkNotOkTypeForDisplay(col.type)}
 																			</Typography>
 																		</TableCell>
 																	))}

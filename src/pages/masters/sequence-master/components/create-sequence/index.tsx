@@ -158,13 +158,23 @@ const CreateSequence = () => {
 						const tableConfig =
 							step.targetValueType === 'table' ? normalizeTableConfig(rawTable ?? null) : null;
 
+						const minNum = step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null;
+						const maxNum = step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null;
+						let minimumAcceptanceValue = minNum;
+						let maximumAcceptanceValue = maxNum;
+						if (step.targetValueType === 'exact value') {
+							const target = minNum ?? maxNum;
+							minimumAcceptanceValue = target;
+							maximumAcceptanceValue = target;
+						}
+
 						return {
 							parameterDescription: step.parameterDescription,
 							stepNumber: step.stepNumber,
 							evaluationMethod: step.evaluationMethod,
 							targetValueType: step.targetValueType,
-							minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
-							maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
+							minimumAcceptanceValue,
+							maximumAcceptanceValue,
 							multipleMeasurements: step.multipleMeasurements ?? false,
 							multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
 							tableConfig,
@@ -280,13 +290,18 @@ const CreateSequence = () => {
 						processName: group.processName,
 						processDescription: group.processDescription,
 						sequenceTiming: convertTimeToSeconds(group.sequenceTiming),
-					processSteps: (group.processSteps || []).map((step, stepIndex) => ({
+					processSteps: (group.processSteps || []).map((step, stepIndex) => {
+						const isExact = step.targetValueType === 'exact value';
+						const minVal = step.minimumAcceptanceValue ?? null;
+						const maxVal = isExact ? minVal : step.maximumAcceptanceValue ?? null;
+
+						return {
 						parameterDescription: step.parameterDescription,
 						stepNumber: stepIndex + 1,
 						evaluationMethod: step.evaluationMethod,
 						targetValueType: step.targetValueType,
-						minimumAcceptanceValue: step.minimumAcceptanceValue ?? null,
-						maximumAcceptanceValue: step.maximumAcceptanceValue ?? null,
+						minimumAcceptanceValue: minVal,
+						maximumAcceptanceValue: maxVal,
 						multipleMeasurements: step.multipleMeasurements ?? false,
 						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
 						tableConfig:
@@ -299,7 +314,8 @@ const CreateSequence = () => {
 						responsiblePerson: step.responsiblePerson ?? false,
 						getInstrumentId: step.getInstrumentId ?? false,
 						notes: step.notes || ''
-					}))
+					};
+					})
 					}))
 				}
 			};

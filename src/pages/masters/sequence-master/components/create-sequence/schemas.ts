@@ -70,8 +70,8 @@ export const processStepSchema = yup
 			.number()
 			.nullable()
 			.when('targetValueType', {
-				is: (val: string) => val === 'range' || val === 'exact value',
-				then: schema => schema.required('Maximum acceptance value is required for this target value type'),
+				is: 'range',
+				then: schema => schema.required('Maximum acceptance value is required for range target value type'),
 				otherwise: schema => schema.nullable()
 			}),
 		multipleMeasurements: yup.boolean(),
@@ -110,20 +110,11 @@ export const processStepSchema = yup
 	.test('min-max-validation', 'Minimum value must be less than or equal to maximum value', function (value) {
 		const { minimumAcceptanceValue, maximumAcceptanceValue, targetValueType } = value;
 
-		if (targetValueType === 'range' && minimumAcceptanceValue && maximumAcceptanceValue) {
+		if (targetValueType === 'range' && minimumAcceptanceValue != null && maximumAcceptanceValue != null) {
 			if (minimumAcceptanceValue > maximumAcceptanceValue) {
 				return this.createError({
 					path: 'minimumAcceptanceValue',
 					message: 'Minimum value must be less than or equal to maximum value'
-				});
-			}
-		}
-
-		if (targetValueType === 'exact value' && minimumAcceptanceValue && maximumAcceptanceValue) {
-			if (minimumAcceptanceValue !== maximumAcceptanceValue) {
-				return this.createError({
-					path: 'minimumAcceptanceValue',
-					message: 'Minimum and maximum values must be equal for exact value type'
 				});
 			}
 		}

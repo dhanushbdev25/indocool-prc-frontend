@@ -1,5 +1,6 @@
 import { Control, FieldErrors } from 'react-hook-form';
 import { SequenceFormData } from './schemas';
+import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/okNotOkLabels';
 
 export interface SequenceBasicInfoProps {
 	control: Control<SequenceFormData>;
@@ -20,7 +21,7 @@ export interface SequenceReviewProps {
 export const targetValueTypeOptions = [
 	{ value: 'range', label: 'Range' },
 	{ value: 'exact value', label: 'Exact Value' },
-	{ value: 'ok/not ok', label: 'OK/Not OK' },
+	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
 	{ value: 'table', label: 'Table' }
 ];
 
@@ -28,7 +29,7 @@ export const targetValueTypeOptions = [
 export const tableColumnTypeOptions = [
 	{ value: 'text', label: 'Text' },
 	{ value: 'number', label: 'Number' },
-	{ value: 'ok/not ok', label: 'OK/Not OK' },
+	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
 	{ value: 'datetime', label: 'Date & Time' }
 ];
 

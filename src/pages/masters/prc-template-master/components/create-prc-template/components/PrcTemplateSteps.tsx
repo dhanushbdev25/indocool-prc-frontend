@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
 	Box,
 	Typography,
@@ -12,9 +12,11 @@ import {
 	DialogTitle,
 	DialogContent,
 	DialogActions,
-	IconButton
+	IconButton,
+	TextField,
+	InputAdornment
 } from '@mui/material';
-import { Add as AddIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Add as AddIcon, Close as CloseIcon, Search as SearchIcon } from '@mui/icons-material';
 import { useFieldArray, Control, FieldErrors, UseFormSetValue } from 'react-hook-form';
 import { useFetchProcessSequencesQuery } from '../../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../../store/api/business/inspection-master/inspection.api';
@@ -34,6 +36,7 @@ const PrcTemplateSteps = ({ control, errors, setValue }: PrcTemplateStepsExtende
 	const [modalOpen, setModalOpen] = useState(false);
 	const [modalType, setModalType] = useState<'sequence' | 'inspection'>('sequence');
 	const [activeTab, setActiveTab] = useState(0);
+	const [stepPickerSearch, setStepPickerSearch] = useState('');
 
 	// Fetch sequences and inspections
 	const { data: sequencesData, isLoading: isSequencesLoading } = useFetchProcessSequencesQuery();
@@ -46,36 +49,40 @@ const PrcTemplateSteps = ({ control, errors, setValue }: PrcTemplateStepsExtende
 	});
 
 	// Get all selectable items
-	const allItems: SelectableItem[] = [
-		...(sequencesData?.detail || []).map(seq => ({
-			id: seq.id,
-			sequenceId: seq.sequenceId,
-			sequenceName: seq.sequenceName,
-			status: seq.status,
-			category: seq.category,
-			type: seq.type,
-			version: seq.version,
-			isLatest: seq.isLatest
-		})),
-		...(inspectionsData?.detail || [])
-			.filter(ins => ins.inspection.id !== undefined)
-			.map(ins => ({
-				id: ins.inspection.id!,
-				inspectionId: ins.inspection.inspectionId,
-				inspectionName: ins.inspection.inspectionName,
-				status: ins.inspection.status,
-				type: ins.inspection.type,
-				version: ins.inspection.version,
-				isLatest: ins.inspection.isLatest
-			}))
-	];
+	const allItems: SelectableItem[] = useMemo(
+		() => [
+			...(sequencesData?.detail || []).map(seq => ({
+				id: seq.id,
+				sequenceId: seq.sequenceId,
+				sequenceName: seq.sequenceName,
+				status: seq.status,
+				category: seq.category,
+				type: seq.type,
+				version: seq.version,
+				isLatest: seq.isLatest
+			})),
+			...(inspectionsData?.detail || [])
+				.filter(ins => ins.inspection.id !== undefined)
+				.map(ins => ({
+					id: ins.inspection.id!,
+					inspectionId: ins.inspection.inspectionId,
+					inspectionName: ins.inspection.inspectionName,
+					status: ins.inspection.status,
+					type: ins.inspection.type,
+					version: ins.inspection.version,
+					isLatest: ins.inspection.isLatest
+				}))
+		],
+		[sequencesData, inspectionsData]
+	);
 
 	// Filter items by type
-	const sequenceItems = allItems.filter(isSequenceItem);
-	const inspectionItems = allItems.filter(isInspectionItem);
+	const sequenceItems = useMemo(() => allItems.filter(isSequenceItem), [allItems]);
+	const inspectionItems = useMemo(() => allItems.filter(isInspectionItem), [allItems]);
 
 	// Handle opening modal
 	const handleOpenModal = (type: 'sequence' | 'inspection') => {
+		setStepPickerSearch('');
 		setModalType(type);
 		setActiveTab(type === 'sequence' ? 0 : 1);
 		setModalOpen(true);
@@ -83,6 +90,7 @@ const PrcTemplateSteps = ({ control, errors, setValue }: PrcTemplateStepsExtende
 
 	// Handle closing modal
 	const handleCloseModal = () => {
+		setStepPickerSearch('');
 		setModalOpen(false);
 	};
 
@@ -183,6 +191,26 @@ const PrcTemplateSteps = ({ control, errors, setValue }: PrcTemplateStepsExtende
 	};
 
 	const currentTabItems = getCurrentTabItems();
+
+	const filteredItems = useMemo(() => {
+		const needle = stepPickerSearch.trim().toLowerCase();
+		const items = activeTab === 0 ? sequenceItems : inspectionItems;
+		if (!needle) return items;
+		return items.filter(item => {
+			if (isSequenceItem(item)) {
+				return (
+					item.sequenceName.toLowerCase().includes(needle) ||
+					item.sequenceId.toLowerCase().includes(needle) ||
+					String(item.id).toLowerCase().includes(needle)
+				);
+			}
+			return (
+				item.inspectionName.toLowerCase().includes(needle) ||
+				item.inspectionId.toLowerCase().includes(needle) ||
+				String(item.id).toLowerCase().includes(needle)
+			);
+		});
+	}, [activeTab, sequenceItems, inspectionItems, stepPickerSearch]);
 
 	return (
 		<Box>
@@ -313,9 +341,28 @@ const PrcTemplateSteps = ({ control, errors, setValue }: PrcTemplateStepsExtende
 
 				<DialogContent sx={{ p: 0 }}>
 					<Box sx={{ p: 2 }}>
+						<TextField
+							fullWidth
+							size="small"
+							placeholder="Search by name or ID"
+							variant="outlined"
+							value={stepPickerSearch}
+							onChange={e => setStepPickerSearch(e.target.value)}
+							InputProps={{
+								startAdornment: (
+									<InputAdornment position="start">
+										<SearchIcon sx={{ color: '#999' }} />
+									</InputAdornment>
+								)
+							}}
+							sx={{ mb: 2 }}
+						/>
 						<Tabs
 							value={activeTab}
-							onChange={(_, newValue) => setActiveTab(newValue)}
+							onChange={(_, newValue) => {
+								setStepPickerSearch('');
+								setActiveTab(newValue);
+							}}
 							sx={{ mb: 2, borderBottom: '1px solid #e0e0e0' }}
 						>
 							<Tab label={`Sequences (${sequenceItems.length})`} sx={{ textTransform: 'none', fontWeight: 500 }} />
@@ -332,9 +379,13 @@ const PrcTemplateSteps = ({ control, errors, setValue }: PrcTemplateStepsExtende
 									No {activeTab === 0 ? 'sequences' : 'inspections'} available
 								</Typography>
 							</Box>
+						) : filteredItems.length === 0 ? (
+							<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+								<Typography color="textSecondary">No matches for your search</Typography>
+							</Box>
 						) : (
 							<Grid container spacing={2} sx={{ maxHeight: 400, overflow: 'auto' }}>
-								{currentTabItems.map(item => (
+								{filteredItems.map(item => (
 									<Grid size={{ xs: 12, sm: 6 }} key={item.id}>
 										<StepSelectionCard item={item} onClick={handleItemClick} isSelected={isItemSelected(item)} />
 									</Grid>
