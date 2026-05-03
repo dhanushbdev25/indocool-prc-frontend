@@ -13,14 +13,10 @@
     "lint-fix": "eslint --fix src/**/*.{ts,tsx}",
     "pretty": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md,html}\"",
     "pretty:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,md,html}\"",
-    "prepare": "husky",
-    "pre-commit": "lint-staged",
     "pre-push": "npx tsc --noEmit && npm run lint && npm run pretty:check && npm run build",
     "check-deps": "npm outdated",
     "check-security": "npm audit --audit-level=moderate",
     "check-all": "npm run lint && npm run pretty:check && npx tsc --noEmit && npm run build && npm run check-deps && npm run check-security",
-    "setup-hooks": "node scripts/setup-hooks.js",
-    "test-hooks": "npm run setup-hooks",
     "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
@@ -65,25 +61,11 @@
     "gh-pages": "^6.3.0",
     "globals": "^16.4.0",
     "happy-dom": "^20.0.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.3",
     "prettier": "^3.6.2",
     "rollup-plugin-visualizer": "^6.0.4",
     "terser": "^5.44.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.9"
-  },
-  "lint-staged": {
-    "src/**/*.{ts,tsx}": [
-      "eslint --fix --max-warnings 0",
-      "prettier --write"
-    ],
-    "src/**/*.{js,jsx}": [
-      "prettier --write"
-    ],
-    "src/**/*.{css,scss}": [
-      "prettier --write"
-    ]
   },
   "overrides": {
     "happy-dom": "^20.0.0",
