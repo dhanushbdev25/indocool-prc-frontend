@@ -20,6 +20,7 @@ import {
 	MenuItem,
 	FormControlLabel,
 	Switch,
+	InputAdornment,
 	Table,
 	TableBody,
 	TableCell,
@@ -32,7 +33,8 @@ import {
 	Close as CloseIcon,
 	Science as CatalystIcon,
 	Assignment as TemplateIcon,
-	Visibility as VisibilityIcon
+	Visibility as VisibilityIcon,
+	Search as SearchIcon
 } from '@mui/icons-material';
 import {
 	Controller,
@@ -80,6 +82,7 @@ const LinkedMastersTab = ({
 }: LinkedMastersTabProps) => {
 	const { getValues } = useFormContext<PartMasterFormData>();
 	const [catalystModalOpen, setCatalystModalOpen] = useState(false);
+	const [catalystPickerSearch, setCatalystPickerSearch] = useState('');
 	const [previewSnapshot, setPreviewSnapshot] = useState<PartMasterFormData | null>(null);
 	const [addedGroups, setAddedGroups] = useState<string[]>([]);
 	const [selectedGroupToAdd, setSelectedGroupToAdd] = useState('');
@@ -164,37 +167,71 @@ const LinkedMastersTab = ({
 		);
 	}, [prcTemplatesData]);
 
-	const catalystItems: SelectableCatalyst[] = (catalystData?.detail || []).map(catalyst => ({
-		id: catalyst.catalyst.id,
-		chartId: catalyst.catalyst.chartId,
-		chartSupplier: catalyst.catalyst.chartSupplier,
-		status: catalyst.catalyst.status,
-		version: catalyst.catalyst.version,
-		isLatest: catalyst.catalyst.isLatest
-	}));
+	const catalystItems: SelectableCatalyst[] = useMemo(
+		() =>
+			(catalystData?.detail || []).map(catalyst => ({
+				id: catalyst.catalyst.id,
+				chartId: catalyst.catalyst.chartId,
+				chartSupplier: catalyst.catalyst.chartSupplier,
+				status: catalyst.catalyst.status,
+				version: catalyst.catalyst.version,
+				isLatest: catalyst.catalyst.isLatest
+			})),
+		[catalystData]
+	);
 
-	const sequenceItems: SequenceItem[] = (sequencesData?.detail || []).map(seq => ({
-		id: seq.id,
-		sequenceId: seq.sequenceId,
-		sequenceName: seq.sequenceName,
-		status: seq.status,
-		category: seq.category,
-		type: seq.type,
-		version: seq.version,
-		isLatest: seq.isLatest
-	}));
+	const filteredCatalystItems = useMemo(() => {
+		const needle = catalystPickerSearch.trim().toLowerCase();
+		if (!needle) return catalystItems;
+		return catalystItems.filter(
+			item =>
+				item.chartId.toLowerCase().includes(needle) ||
+				item.chartSupplier.toLowerCase().includes(needle) ||
+				`${item.chartId} - ${item.chartSupplier}`.toLowerCase().includes(needle) ||
+				String(item.id).toLowerCase().includes(needle)
+		);
+	}, [catalystItems, catalystPickerSearch]);
 
-	const inspectionItems: InspectionItem[] = (inspectionsData?.detail || [])
-		.filter(ins => ins.inspection.id !== undefined)
-		.map(ins => ({
-			id: ins.inspection.id!,
-			inspectionId: ins.inspection.inspectionId,
-			inspectionName: ins.inspection.inspectionName,
-			status: ins.inspection.status,
-			type: ins.inspection.type,
-			version: ins.inspection.version,
-			isLatest: ins.inspection.isLatest
-		}));
+	const sequenceItems: SequenceItem[] = useMemo(
+		() =>
+			(sequencesData?.detail || []).map(seq => ({
+				id: seq.id,
+				sequenceId: seq.sequenceId,
+				sequenceName: seq.sequenceName,
+				status: seq.status,
+				category: seq.category,
+				type: seq.type,
+				version: seq.version,
+				isLatest: seq.isLatest
+			})),
+		[sequencesData]
+	);
+
+	const inspectionItems: InspectionItem[] = useMemo(
+		() =>
+			(inspectionsData?.detail || [])
+				.filter(ins => ins.inspection.id !== undefined)
+				.map(ins => ({
+					id: ins.inspection.id!,
+					inspectionId: ins.inspection.inspectionId,
+					inspectionName: ins.inspection.inspectionName,
+					status: ins.inspection.status,
+					type: ins.inspection.type,
+					version: ins.inspection.version,
+					isLatest: ins.inspection.isLatest
+				})),
+		[inspectionsData]
+	);
+
+	const openCatalystModal = () => {
+		setCatalystPickerSearch('');
+		setCatalystModalOpen(true);
+	};
+
+	const closeCatalystModal = () => {
+		setCatalystPickerSearch('');
+		setCatalystModalOpen(false);
+	};
 
 	const selectedCatalystItem = catalystItems.find(item => item.id === selectedCatalyst);
 
@@ -204,7 +241,7 @@ const LinkedMastersTab = ({
 
 	const handleCatalystSelect = (item: SelectableCatalyst) => {
 		setValue('catalyst', item.id);
-		setCatalystModalOpen(false);
+		closeCatalystModal();
 	};
 
 	const handleRemoveCatalyst = () => {
@@ -421,7 +458,7 @@ const LinkedMastersTab = ({
 						<Button
 							variant="outlined"
 							startIcon={<AddIcon />}
-							onClick={() => setCatalystModalOpen(true)}
+							onClick={openCatalystModal}
 							sx={{
 								textTransform: 'none',
 								borderColor: '#1976d2',
@@ -437,7 +474,7 @@ const LinkedMastersTab = ({
 				{selectedCatalystItem ? (
 					<LinkedMasterCard
 						item={selectedCatalystItem}
-						onClick={() => setCatalystModalOpen(true)}
+						onClick={openCatalystModal}
 						isSelected={true}
 						onRemove={handleRemoveCatalyst}
 					/>
@@ -456,7 +493,7 @@ const LinkedMastersTab = ({
 						<Typography color="textSecondary" textAlign="center">
 							No catalyst chart selected
 							<br />
-							<Button size="small" onClick={() => setCatalystModalOpen(true)} sx={{ textTransform: 'none', mt: 1 }}>
+							<Button size="small" onClick={openCatalystModal} sx={{ textTransform: 'none', mt: 1 }}>
 								Select Catalyst
 							</Button>
 						</Typography>
@@ -467,7 +504,7 @@ const LinkedMastersTab = ({
 			{/* Catalyst Selection Modal */}
 			<Dialog
 				open={catalystModalOpen}
-				onClose={() => setCatalystModalOpen(false)}
+				onClose={closeCatalystModal}
 				maxWidth="md"
 				fullWidth
 				PaperProps={{ sx: { borderRadius: 2 } }}
@@ -476,11 +513,27 @@ const LinkedMastersTab = ({
 					<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
 						Select Catalyst Chart
 					</Typography>
-					<IconButton onClick={() => setCatalystModalOpen(false)} size="small">
+					<IconButton onClick={closeCatalystModal} size="small">
 						<CloseIcon />
 					</IconButton>
 				</DialogTitle>
 				<DialogContent>
+					<TextField
+						fullWidth
+						size="small"
+						placeholder="Search by name or ID"
+						variant="outlined"
+						value={catalystPickerSearch}
+						onChange={e => setCatalystPickerSearch(e.target.value)}
+						InputProps={{
+							startAdornment: (
+								<InputAdornment position="start">
+									<SearchIcon sx={{ color: '#999' }} />
+								</InputAdornment>
+							)
+						}}
+						sx={{ mb: 2 }}
+					/>
 					{isCatalystLoading ? (
 						<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
 							<Typography color="textSecondary">Loading catalysts...</Typography>
@@ -489,9 +542,13 @@ const LinkedMastersTab = ({
 						<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
 							<Typography color="textSecondary">No catalyst charts available</Typography>
 						</Box>
+					) : filteredCatalystItems.length === 0 ? (
+						<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+							<Typography color="textSecondary">No matches for your search</Typography>
+						</Box>
 					) : (
 						<Grid container spacing={2} sx={{ maxHeight: 400, overflow: 'auto' }}>
-							{catalystItems.map(item => (
+							{filteredCatalystItems.map(item => (
 								<Grid size={{ xs: 12, sm: 6 }} key={item.id}>
 									<LinkedMasterCard
 										item={item}
@@ -504,7 +561,7 @@ const LinkedMastersTab = ({
 					)}
 				</DialogContent>
 				<DialogActions sx={{ p: 2, pt: 1 }}>
-					<Button onClick={() => setCatalystModalOpen(false)} variant="outlined">
+					<Button onClick={closeCatalystModal} variant="outlined">
 						Done
 					</Button>
 				</DialogActions>

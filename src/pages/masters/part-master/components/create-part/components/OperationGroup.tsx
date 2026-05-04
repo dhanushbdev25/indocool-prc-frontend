@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
 	Box,
 	Typography,
@@ -14,13 +14,16 @@ import {
 	IconButton,
 	Grid,
 	Tabs,
-	Tab
+	Tab,
+	TextField,
+	InputAdornment
 } from '@mui/material';
 import {
 	ExpandMore as ExpandMoreIcon,
 	Add as AddIcon,
 	Close as CloseIcon,
-	Delete as DeleteIcon
+	Delete as DeleteIcon,
+	Search as SearchIcon
 } from '@mui/icons-material';
 import { Control } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
@@ -64,10 +67,17 @@ const OperationGroupComponent = ({
 }: OperationGroupProps) => {
 	const [modalOpen, setModalOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState(0);
+	const [stepPickerSearch, setStepPickerSearch] = useState('');
 
 	const handleOpenModal = (type: 'sequence' | 'inspection') => {
+		setStepPickerSearch('');
 		setActiveTab(type === 'sequence' ? 0 : 1);
 		setModalOpen(true);
+	};
+
+	const closeStepModal = () => {
+		setStepPickerSearch('');
+		setModalOpen(false);
 	};
 
 	const isItemSelected = (item: StepSelectableItem) => {
@@ -107,6 +117,26 @@ const OperationGroupComponent = ({
 	};
 
 	const currentTabItems: StepSelectableItem[] = activeTab === 0 ? sequenceItems : inspectionItems;
+
+	const filteredItems = useMemo(() => {
+		const needle = stepPickerSearch.trim().toLowerCase();
+		const items = activeTab === 0 ? sequenceItems : inspectionItems;
+		if (!needle) return items;
+		return items.filter(item => {
+			if (isSequenceItem(item)) {
+				return (
+					item.sequenceName.toLowerCase().includes(needle) ||
+					item.sequenceId.toLowerCase().includes(needle) ||
+					String(item.id).toLowerCase().includes(needle)
+				);
+			}
+			return (
+				item.inspectionName.toLowerCase().includes(needle) ||
+				item.inspectionId.toLowerCase().includes(needle) ||
+				String(item.id).toLowerCase().includes(needle)
+			);
+		});
+	}, [activeTab, sequenceItems, inspectionItems, stepPickerSearch]);
 
 	return (
 		<Accordion defaultExpanded sx={{ border: '1px solid #e0e0e0', borderRadius: '8px !important', mb: 2, '&:before': { display: 'none' } }}>
@@ -195,21 +225,40 @@ const OperationGroupComponent = ({
 				)}
 			</AccordionDetails>
 
-			<Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+			<Dialog open={modalOpen} onClose={closeStepModal} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
 				<DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
 					<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
 						Add Steps to {group.label}
 					</Typography>
-					<IconButton onClick={() => setModalOpen(false)} size="small">
+					<IconButton onClick={closeStepModal} size="small">
 						<CloseIcon />
 					</IconButton>
 				</DialogTitle>
 
 				<DialogContent sx={{ p: 0 }}>
 					<Box sx={{ p: 2 }}>
+						<TextField
+							fullWidth
+							size="small"
+							placeholder="Search by name or ID"
+							variant="outlined"
+							value={stepPickerSearch}
+							onChange={e => setStepPickerSearch(e.target.value)}
+							InputProps={{
+								startAdornment: (
+									<InputAdornment position="start">
+										<SearchIcon sx={{ color: '#999' }} />
+									</InputAdornment>
+								)
+							}}
+							sx={{ mb: 2 }}
+						/>
 						<Tabs
 							value={activeTab}
-							onChange={(_, newValue) => setActiveTab(newValue)}
+							onChange={(_, newValue) => {
+								setStepPickerSearch('');
+								setActiveTab(newValue);
+							}}
 							sx={{ mb: 2, borderBottom: '1px solid #e0e0e0' }}
 						>
 							<Tab label={`Sequences (${sequenceItems.length})`} sx={{ textTransform: 'none', fontWeight: 500 }} />
@@ -226,9 +275,13 @@ const OperationGroupComponent = ({
 									No {activeTab === 0 ? 'sequences' : 'inspections'} available
 								</Typography>
 							</Box>
+						) : filteredItems.length === 0 ? (
+							<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+								<Typography color="textSecondary">No matches for your search</Typography>
+							</Box>
 						) : (
 							<Grid container spacing={2} sx={{ maxHeight: 400, overflow: 'auto' }}>
-								{currentTabItems.map(item => (
+								{filteredItems.map(item => (
 									<Grid size={{ xs: 12, sm: 6 }} key={item.id}>
 										<StepSelectionCard item={item} onClick={handleItemClick} isSelected={isItemSelected(item)} />
 									</Grid>
@@ -239,7 +292,7 @@ const OperationGroupComponent = ({
 				</DialogContent>
 
 				<DialogActions sx={{ p: 2, pt: 1 }}>
-					<Button onClick={() => setModalOpen(false)} variant="outlined">
+					<Button onClick={closeStepModal} variant="outlined">
 						Done
 					</Button>
 				</DialogActions>

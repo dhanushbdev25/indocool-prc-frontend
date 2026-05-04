@@ -38,9 +38,134 @@ import {
 	Lock as LockIcon,
 	LockOpen as LockOpenIcon
 } from '@mui/icons-material';
-import { Controller, useFieldArray, useWatch, Control, FieldErrors, useFormContext } from 'react-hook-form';
+import {
+	Controller,
+	useFieldArray,
+	useWatch,
+	Control,
+	FieldErrors,
+	useFormContext
+} from 'react-hook-form';
 import { SequenceStepGroupsProps, targetValueTypeOptions, tableColumnTypeOptions, uomOptions } from '../types';
 import { SequenceFormData } from '../schemas';
+
+interface StepGroupAccordionBlockProps {
+	groupIndex: number;
+	control: Control<SequenceFormData>;
+	errors: FieldErrors<SequenceFormData>;
+	isExpanded: boolean;
+	onToggle: () => void;
+	onRemove: () => void;
+}
+
+const StepGroupAccordionBlock = ({
+	groupIndex,
+	control,
+	errors,
+	isExpanded,
+	onToggle,
+	onRemove
+}: StepGroupAccordionBlockProps) => {
+	const processDescription =
+		useWatch({
+			control,
+			name: `processStepGroups.${groupIndex}.processDescription`
+		}) ?? '';
+	const trimmed = typeof processDescription === 'string' ? processDescription.trim() : '';
+
+	return (
+		<Box sx={{ mb: 3 }}>
+			<Accordion
+				expanded={isExpanded}
+				onChange={onToggle}
+				sx={{
+					borderRadius: '12px',
+					boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+					'&:before': { display: 'none' },
+					'&.Mui-expanded': { margin: 0 }
+				}}
+			>
+				<AccordionSummary
+					component="div"
+					expandIcon={<ExpandMoreIcon />}
+					sx={{
+						backgroundColor: '#f8f9fa',
+						borderRadius: '12px 12px 0 0',
+						'&.Mui-expanded': { borderRadius: '12px 12px 0 0' },
+						cursor: 'pointer',
+						alignItems: 'flex-start',
+						minHeight: 'unset',
+						py: 1.5,
+						px: 1,
+						'& .MuiAccordionSummary-content': {
+							alignItems: 'flex-start',
+							margin: '0 !important',
+							flexWrap: 'nowrap',
+							flex: 1,
+							minWidth: 0
+						},
+						'& .MuiAccordionSummary-expandIconWrapper': {
+							display: 'flex',
+							alignItems: 'center',
+							justifyContent: 'center',
+							width: 40,
+							height: 40,
+							flexShrink: 0,
+							padding: 0,
+							margin: 0
+						}
+					}}
+				>
+					<Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, pr: 0.5 }}>
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%', minHeight: 40 }}>
+							<StepIcon sx={{ color: '#1976d2', flexShrink: 0, fontSize: '1.5rem' }} />
+							<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', flex: 1, minWidth: 0 }}>
+								Step Group {groupIndex + 1}
+							</Typography>
+							<IconButton
+								size="small"
+								data-delete-button
+								onClick={e => {
+									e.stopPropagation();
+									onRemove();
+								}}
+								sx={{
+									color: 'error.main',
+									flexShrink: 0,
+									mt: 0,
+									alignSelf: 'center',
+									'&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
+								}}
+							>
+								<DeleteIcon />
+							</IconButton>
+						</Box>
+						<Box sx={{ pl: 4, mt: 0.75 }}>
+							<Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary', display: 'block' }}>
+								Process description
+							</Typography>
+							<Typography
+								variant="body2"
+								sx={{
+									mt: 0.25,
+									color: trimmed ? 'text.secondary' : 'text.disabled',
+									fontStyle: trimmed ? 'normal' : 'italic',
+									whiteSpace: 'pre-wrap',
+									wordBreak: 'break-word'
+								}}
+							>
+								{trimmed || 'Not set — expand to add in the form below.'}
+							</Typography>
+						</Box>
+					</Box>
+				</AccordionSummary>
+				<AccordionDetails sx={{ p: 3 }}>
+					<StepGroupForm control={control} errors={errors} groupIndex={groupIndex} />
+				</AccordionDetails>
+			</Accordion>
+		</Box>
+	);
+};
 
 const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 	const {
@@ -119,57 +244,15 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 			</Box>
 
 			{stepGroupFields.map((stepGroup, groupIndex) => (
-				<Accordion
+				<StepGroupAccordionBlock
 					key={stepGroup.id}
-					expanded={expandedGroups.includes(groupIndex)}
-					onChange={() => handleAccordionToggle(groupIndex)}
-					sx={{
-						mb: 3,
-						borderRadius: '12px',
-						boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-						'&:before': { display: 'none' },
-						'&.Mui-expanded': { margin: '0 0 24px 0' }
-					}}
-				>
-					<AccordionSummary
-						component="div"
-						expandIcon={<ExpandMoreIcon />}
-						sx={{
-							backgroundColor: '#f8f9fa',
-							borderRadius: '12px 12px 0 0',
-							'&.Mui-expanded': { borderRadius: '12px 12px 0 0' },
-							cursor: 'pointer'
-						}}
-					>
-						<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-							<Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-								<StepIcon sx={{ mr: 1, color: '#1976d2' }} />
-								<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
-									Step Group {groupIndex + 1}
-								</Typography>
-							</Box>
-							<Box sx={{ ml: 'auto', mr: 2 }}>
-								<IconButton
-									size="small"
-									data-delete-button
-									onClick={e => {
-										e.stopPropagation();
-										removeStepGroup(groupIndex);
-									}}
-									sx={{
-										color: 'error.main',
-										'&:hover': { backgroundColor: 'rgba(244, 67, 54, 0.1)' }
-									}}
-								>
-									<DeleteIcon />
-								</IconButton>
-							</Box>
-						</Box>
-					</AccordionSummary>
-					<AccordionDetails sx={{ p: 3 }}>
-						<StepGroupForm control={control} errors={errors} groupIndex={groupIndex} />
-					</AccordionDetails>
-				</Accordion>
+					groupIndex={groupIndex}
+					control={control}
+					errors={errors}
+					isExpanded={expandedGroups.includes(groupIndex)}
+					onToggle={() => handleAccordionToggle(groupIndex)}
+					onRemove={() => removeStepGroup(groupIndex)}
+				/>
 			))}
 
 			{stepGroupFields.length === 0 && (
