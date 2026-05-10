@@ -8,13 +8,52 @@ import {
 	List,
 	ListItem,
 	ListItemText,
-	CircularProgress
+	CircularProgress,
+	Stack
 } from '@mui/material';
 import { CheckCircle, CloudSync, Schedule, TrendingUp } from '@mui/icons-material';
 import { type ExecutionData, type TimelineStep } from '../../../types/execution.types';
 import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
 import { formatExecutionDuration } from '../../../utils/formatExecutionDuration';
 import { useFetchSapConfirmationLogsQuery } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.api';
+import { type SapConfirmationLogItem } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
+
+function SapConfirmationLogCompact({ log }: { log: SapConfirmationLogItem }) {
+	return (
+		<Box
+			sx={{
+				py: 1.25,
+				borderBottom: '1px solid',
+				borderColor: 'divider',
+				'&:last-of-type': { borderBottom: 'none', pb: 0 }
+			}}
+		>
+			<Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1} sx={{ mb: 0.75 }}>
+				<Box sx={{ minWidth: 0, flex: 1 }}>
+					<Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>
+						ID
+					</Typography>
+					<Typography variant="body2" sx={{ fontFamily: 'ui-monospace, monospace' }} noWrap title={log.operationId}>
+						{log.operationId}
+					</Typography>
+				</Box>
+				<Chip
+					size="small"
+					label={log.success ? 'Success' : 'Failed'}
+					color={log.success ? 'success' : 'error'}
+					variant={log.success ? 'filled' : 'outlined'}
+					sx={{ flexShrink: 0 }}
+				/>
+			</Stack>
+			<Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>
+				Operation
+			</Typography>
+			<Typography variant="body2" sx={{ wordBreak: 'break-word' }} title={log.operationText}>
+				{log.operationText}
+			</Typography>
+		</Box>
+	);
+}
 
 interface ExecutionQuickStatsProps {
 	executionData: ExecutionData;
@@ -39,28 +78,17 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 	const sapAgg = executionData.prcAggregatedSteps?.sapConfirmations as Record<string, unknown> | undefined;
 	const sapStepCompleted = sapAgg?.stepCompleted === true;
 
-	const getSapPushSummary = (): { label: string; chipColor: 'success' | 'error' | 'default' } => {
-		if (skipSapLogs) {
-			return { label: 'Not available in preview', chipColor: 'default' };
-		}
-		if (sapLogsLoading) {
-			return { label: 'Loading…', chipColor: 'default' };
-		}
-		if (sapLogsError) {
-			return { label: 'Failed to load', chipColor: 'error' };
-		}
-		if (sapLogs.length === 0) {
-			return { label: 'Pending — no confirmations yet', chipColor: 'default' };
-		}
-		const failed = sapLogs.filter(l => !l.success).length;
-		if (failed > 0) {
-			const suffix = failed === sapLogs.length ? '' : ` (${failed} failed)`;
-			return { label: `Failed${suffix}`, chipColor: 'error' };
-		}
-		return { label: 'Posted — all succeeded', chipColor: 'success' };
-	};
-
-	const sapPushSummary = getSapPushSummary();
+	const sapFailedCount = sapLogs.filter(l => !l.success).length;
+	const sapOverallLabel =
+		skipSapLogs || sapLogsLoading
+			? null
+			: sapLogsError
+				? 'Failed to load logs'
+				: sapLogs.length === 0
+					? 'No confirmations yet'
+					: sapFailedCount > 0
+						? `${sapFailedCount} of ${sapLogs.length} failed`
+						: `All ${sapLogs.length} succeeded`;
 
 	const getProgressColor = (completed: number, total: number) => {
 		const percentage = (completed / total) * 100;
@@ -74,51 +102,6 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 			<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', mb: 3 }}>
 				Quick Stats
 			</Typography>
-			{/* SAP push status */}
-			<Card sx={{ mb: 2 }}>
-				<CardContent sx={{ p: 2 }}>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-						<CloudSync sx={{ color: '#666' }} />
-						<Typography variant="body2" sx={{ fontWeight: 500 }}>
-							SAP push
-						</Typography>
-					</Box>
-					{!skipSapLogs && sapLogsLoading ? (
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
-							<CircularProgress size={22} />
-							<Typography variant="caption" sx={{ color: '#666' }}>
-								Loading confirmation logs…
-							</Typography>
-						</Box>
-					) : (
-						<>
-							<Chip
-								size="small"
-								label={sapPushSummary.label}
-								color={sapPushSummary.chipColor === 'default' ? undefined : sapPushSummary.chipColor}
-								variant={sapPushSummary.chipColor === 'success' ? 'filled' : 'outlined'}
-								sx={
-									sapPushSummary.chipColor === 'default'
-										? { bgcolor: '#f5f5f5', color: '#666', borderColor: 'divider' }
-										: undefined
-								}
-							/>
-							{!skipSapLogs && !sapLogsLoading && sapLogsError && (
-								<Typography variant="caption" color="error" sx={{ display: 'block', mt: 1 }}>
-									{sapLogsErr && typeof sapLogsErr === 'object' && 'data' in sapLogsErr
-										? String((sapLogsErr as { data?: unknown }).data)
-										: 'Could not load SAP confirmation logs.'}
-								</Typography>
-							)}
-							{sapStepCompleted && (
-								<Typography variant="caption" sx={{ color: '#666', display: 'block', mt: 1 }}>
-									SAP step marked complete in this execution
-								</Typography>
-							)}
-						</>
-					)}
-				</CardContent>
-			</Card>
 			{/* Steps Completed */}
 			<Card sx={{ mb: 2 }}>
 				<CardContent sx={{ p: 2 }}>
@@ -160,6 +143,71 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 					<Typography variant="caption" sx={{ color: '#666' }}>
 						of {executionData.totalCtq} total CTQs
 					</Typography>
+				</CardContent>
+			</Card>
+			{/* SAP push — operation summary */}
+			<Card sx={{ mb: 2 }}>
+				<CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+						<CloudSync sx={{ color: '#666' }} />
+						<Typography variant="body2" sx={{ fontWeight: 500 }}>
+							SAP push
+						</Typography>
+						{sapOverallLabel && !skipSapLogs && !sapLogsLoading && (
+							<Chip
+								size="small"
+								label={sapOverallLabel}
+								color={
+									sapLogsError
+										? 'error'
+										: sapLogs.length === 0
+											? 'default'
+											: sapFailedCount > 0
+												? 'error'
+												: 'success'
+								}
+								variant={sapLogs.length > 0 && !sapLogsError && sapFailedCount === 0 ? 'filled' : 'outlined'}
+								sx={
+									sapLogs.length === 0 && !sapLogsError
+										? { bgcolor: '#f5f5f5', color: '#666', borderColor: 'divider' }
+										: undefined
+								}
+							/>
+						)}
+					</Box>
+					{skipSapLogs ? (
+						<Typography variant="caption" sx={{ color: '#666' }}>
+							Not available in preview.
+						</Typography>
+					) : sapLogsLoading ? (
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
+							<CircularProgress size={22} />
+							<Typography variant="caption" sx={{ color: '#666' }}>
+								Loading confirmation logs…
+							</Typography>
+						</Box>
+					) : sapLogsError ? (
+						<Typography variant="caption" color="error" sx={{ display: 'block' }}>
+							{sapLogsErr && typeof sapLogsErr === 'object' && 'data' in sapLogsErr
+								? String((sapLogsErr as { data?: unknown }).data)
+								: 'Could not load SAP confirmation logs.'}
+						</Typography>
+					) : sapLogs.length === 0 ? (
+						<Typography variant="caption" sx={{ color: '#666' }}>
+							No confirmation log entries yet. They will appear after SAP posting runs for this execution.
+						</Typography>
+					) : (
+						<>
+							{sapLogs.map(log => (
+								<SapConfirmationLogCompact key={log.id} log={log} />
+							))}
+						</>
+					)}
+					{sapStepCompleted && (
+						<Typography variant="caption" sx={{ color: '#666', display: 'block', mt: 1.5 }}>
+							SAP step marked complete in this execution.
+						</Typography>
+					)}
 				</CardContent>
 			</Card>
 			{/* Current Step */}
