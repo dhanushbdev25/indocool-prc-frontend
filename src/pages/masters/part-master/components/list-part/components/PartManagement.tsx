@@ -1,135 +1,140 @@
-import { useState } from 'react';
-import { Box, Typography, TextField, InputAdornment, Button, Stack } from '@mui/material';
-import { Search as SearchIcon, Build as PartIcon } from '@mui/icons-material';
+import { useState, useMemo, useCallback } from 'react';
+import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { MasterListToolbar } from '../../../../../../components/masters';
+
+export const PART_ALL_CUSTOMERS = 'All customers';
 
 interface PartManagementProps {
 	onSearchChange?: (searchTerm: string) => void;
 	onFilterChange?: (filter: string) => void;
+	onLayupFilterChange?: (value: string) => void;
+	onModelFilterChange?: (value: string) => void;
+	onCustomerFilterChange?: (value: string) => void;
+	appliedSearchTerm?: string;
+	layupOptions?: string[];
+	modelOptions?: string[];
+	customerOptions?: string[];
+	listSummary?: string | null;
+	searchAriaLabel?: string;
 }
 
-const PartManagement = ({ onSearchChange, onFilterChange }: PartManagementProps) => {
+const PartManagement = ({
+	onSearchChange,
+	onFilterChange,
+	onLayupFilterChange,
+	onModelFilterChange,
+	onCustomerFilterChange,
+	appliedSearchTerm = '',
+	layupOptions = [],
+	modelOptions = [],
+	customerOptions = [],
+	listSummary,
+	searchAriaLabel
+}: PartManagementProps) => {
 	const [activeFilter, setActiveFilter] = useState('All Parts');
-	const [searchTerm, setSearchTerm] = useState('');
+	const [layup, setLayup] = useState('All layup types');
+	const [model, setModel] = useState('All models');
+	const [customer, setCustomer] = useState(PART_ALL_CUSTOMERS);
 
-	const filterButtons = ['All Parts', 'ACTIVE', 'NEW', 'INACTIVE'];
+	const statusOptions = ['All Parts', 'ACTIVE', 'INACTIVE'];
+	const layupChoices = ['All layup types', ...layupOptions];
+	const modelChoices = ['All models', ...modelOptions];
+	const customerChoices = [PART_ALL_CUSTOMERS, ...customerOptions];
 
-	const handleFilterClick = (filter: string) => {
+	const handleStatusChange = (filter: string) => {
 		setActiveFilter(filter);
 		onFilterChange?.(filter);
 	};
 
-	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const value = event.target.value;
-		setSearchTerm(value);
-		onSearchChange?.(value);
+	const handleLayupChange = (value: string) => {
+		setLayup(value);
+		onLayupFilterChange?.(value);
 	};
 
+	const handleModelChange = (value: string) => {
+		setModel(value);
+		onModelFilterChange?.(value);
+	};
+
+	const handleCustomerChange = (value: string) => {
+		setCustomer(value);
+		onCustomerFilterChange?.(value);
+	};
+
+	const handleReset = useCallback(() => {
+		setActiveFilter('All Parts');
+		setLayup('All layup types');
+		setModel('All models');
+		setCustomer(PART_ALL_CUSTOMERS);
+		onFilterChange?.('All Parts');
+		onLayupFilterChange?.('All layup types');
+		onModelFilterChange?.('All models');
+		onCustomerFilterChange?.(PART_ALL_CUSTOMERS);
+	}, [onCustomerFilterChange, onFilterChange, onLayupFilterChange, onModelFilterChange]);
+
+	const filterDirty = useMemo(
+		() =>
+			Boolean(appliedSearchTerm.trim()) ||
+			activeFilter !== 'All Parts' ||
+			layup !== 'All layup types' ||
+			model !== 'All models' ||
+			customer !== PART_ALL_CUSTOMERS,
+		[appliedSearchTerm, activeFilter, customer, layup, model]
+	);
+
+	const selectSx = { minWidth: 160, borderRadius: 1 };
+
 	return (
-		<Box sx={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', mb: 3 }}>
-			{/* Section Header */}
-			<Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
-				<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-					<PartIcon sx={{ color: '#666', mr: 1, fontSize: '1.25rem' }} />
-					<Typography
-						variant="h5"
-						sx={{
-							fontWeight: 600,
-							color: '#333',
-							fontSize: '1.25rem'
-						}}
-					>
-						Part Management
-					</Typography>
-				</Box>
-				<Typography
-					variant="body2"
-					sx={{
-						color: '#666',
-						fontSize: '0.875rem'
-					}}
-				>
-					Search and filter parts by status, part number, drawing number, or customer
-				</Typography>
-			</Box>
-
-			{/* Search and Filter Section */}
-			<Box sx={{ p: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-				<TextField
-					placeholder="Search by Part Number, Drawing Number, Description, or Customer"
-					variant="outlined"
-					size="small"
-					value={searchTerm}
-					onChange={handleSearchChange}
-					InputProps={{
-						startAdornment: (
-							<InputAdornment position="start">
-								<SearchIcon sx={{ color: '#999' }} />
-							</InputAdornment>
-						)
-					}}
-					sx={{
-						flex: 1,
-						'& .MuiOutlinedInput-root': {
-							borderRadius: '8px',
-							backgroundColor: '#fafafa',
-							'& fieldset': {
-								borderColor: '#e0e0e0'
-							},
-							'&:hover fieldset': {
-								borderColor: '#ccc'
-							},
-							'&.Mui-focused fieldset': {
-								borderColor: '#1976d2'
-							}
-						},
-						'& .MuiInputBase-input': {
-							fontSize: '0.875rem',
-							color: '#666',
-							'&::placeholder': {
-								color: '#999',
-								opacity: 1
-							}
-						}
-					}}
-				/>
-
-				<Stack direction="row" spacing={1}>
-					{filterButtons.map(filter => (
-						<Button
-							key={filter}
-							variant={activeFilter === filter ? 'contained' : 'outlined'}
-							onClick={() => handleFilterClick(filter)}
-							sx={{
-								borderRadius: '8px',
-								textTransform: 'none',
-								fontSize: '0.875rem',
-								fontWeight: 500,
-								px: 2,
-								py: 1,
-								minWidth: 'auto',
-								...(activeFilter === filter
-									? {
-											backgroundColor: '#1976d2',
-											color: 'white',
-											'&:hover': {
-												backgroundColor: '#1565c0'
-											}
-										}
-									: {
-											color: '#666',
-											borderColor: '#e0e0e0',
-											'&:hover': {
-												borderColor: '#ccc',
-												backgroundColor: '#f5f5f5'
-											}
-										})
-							}}
-						>
-							{filter}
-						</Button>
-					))}
-				</Stack>
-			</Box>
+		<Box>
+			<MasterListToolbar
+				searchPlaceholder="Part number, drawing, description, customer, SAP, layup, model"
+				searchAriaLabel={searchAriaLabel}
+				listSummary={listSummary}
+				onSearchChange={onSearchChange}
+				filterDirty={filterDirty}
+				onReset={handleReset}
+			>
+				<FormControl size="small" sx={selectSx}>
+					<InputLabel shrink>Status</InputLabel>
+					<Select value={activeFilter} label="Status" onChange={e => handleStatusChange(e.target.value)}>
+						{statusOptions.map(opt => (
+							<MenuItem key={opt} value={opt}>
+								{opt}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+				<FormControl size="small" sx={selectSx}>
+					<InputLabel shrink>Layup type</InputLabel>
+					<Select value={layup} label="Layup type" onChange={e => handleLayupChange(e.target.value as string)}>
+						{layupChoices.map(o => (
+							<MenuItem key={o} value={o}>
+								{o}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+				<FormControl size="small" sx={selectSx}>
+					<InputLabel shrink>Model</InputLabel>
+					<Select value={model} label="Model" onChange={e => handleModelChange(e.target.value as string)}>
+						{modelChoices.map(o => (
+							<MenuItem key={o} value={o}>
+								{o}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+				<FormControl size="small" sx={{ ...selectSx, minWidth: 200 }}>
+					<InputLabel shrink>Customer</InputLabel>
+					<Select value={customer} label="Customer" onChange={e => handleCustomerChange(e.target.value as string)}>
+						{customerChoices.map(o => (
+							<MenuItem key={o} value={o}>
+								{o}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+			</MasterListToolbar>
 		</Box>
 	);
 };

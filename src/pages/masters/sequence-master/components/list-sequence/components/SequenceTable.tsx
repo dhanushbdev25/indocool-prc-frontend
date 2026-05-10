@@ -4,7 +4,6 @@ import { type MRT_ColumnDef } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	CheckCircle as CheckCircleIcon,
-	Category as CategoryIcon,
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
@@ -91,7 +90,7 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: Se
 			{
 				accessorKey: 'sequenceId',
 				header: 'Sequence ID',
-				size: 200,
+				size: 180,
 				Cell: ({ row }) => (
 					<Box>
 						<Typography
@@ -114,53 +113,63 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: Se
 						>
 							Updated: {formatDate(row.original.updatedAt)}
 						</Typography>
-						<Chip
-							label={row.original.category}
-							size="small"
-							icon={<CategoryIcon sx={{ fontSize: '0.75rem' }} />}
-							sx={{
-								backgroundColor: '#e3f2fd',
-								color: '#1976d2',
-								fontSize: '0.625rem',
-								height: '20px',
-								mt: 0.5
-							}}
-						/>
 					</Box>
 				)
 			},
 			{
 				accessorKey: 'sequenceName',
 				header: 'Sequence Name',
-				size: 250,
+				size: 220,
 				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								fontWeight: 500,
-								color: '#333',
-								fontSize: '0.875rem'
-							}}
-						>
-							{row.original.sequenceName}
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#666',
-								fontSize: '0.75rem'
-							}}
-						>
-							Type: {row.original.type}
-						</Typography>
-					</Box>
+					<Typography
+						variant="body2"
+						sx={{
+							fontWeight: 500,
+							color: '#333',
+							fontSize: '0.875rem'
+						}}
+					>
+						{row.original.sequenceName}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'category',
+				header: 'Category',
+				size: 140,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.category}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'item',
+				header: 'Item',
+				size: 160,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+						{row.original.item?.trim() ? row.original.item : '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'type',
+				header: 'Type',
+				size: 120,
+				filterVariant: 'select',
+				filterSelectOptions: ['Layout', 'ISP'],
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.type}
+					</Typography>
 				)
 			},
 			{
 				accessorKey: 'totalSteps',
 				header: 'Steps',
 				size: 120,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Box>
 						<Typography
@@ -189,7 +198,7 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: Se
 			{
 				accessorKey: 'notes',
 				header: 'Notes',
-				size: 250,
+				size: 220,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -203,7 +212,7 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: Se
 							WebkitBoxOrient: 'vertical'
 						}}
 					>
-						{row.original.notes}
+						{row.original.notes || '—'}
 					</Typography>
 				)
 			},
@@ -211,6 +220,7 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: Se
 				accessorKey: 'createdAt',
 				header: 'Created',
 				size: 120,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -227,6 +237,8 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: Se
 				accessorKey: 'status',
 				header: 'Status',
 				size: 120,
+				filterVariant: 'select',
+				filterSelectOptions: ['ACTIVE', 'INACTIVE'],
 				Cell: ({ row }) => (
 					<Chip
 						icon={<CheckCircleIcon sx={{ fontSize: '0.875rem' }} />}
@@ -249,6 +261,7 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: Se
 				header: 'Actions',
 				size: 80,
 				enableSorting: false,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<IconButton size="small" onClick={e => handleMenuClick(e, row.original)}>
 						<MoreVertIcon sx={{ color: '#666' }} />
@@ -260,7 +273,7 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone }: Se
 	);
 
 	return (
-		<Box sx={{ mt: 2 }}>
+		<Box sx={{ mt: 0 }}>
 			<TableComponent data={data} tableColumns={columns} />
 
 			{/* Action Menu */}

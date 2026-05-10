@@ -20,6 +20,8 @@ export interface PartData {
 	customerName: string;
 	description: string;
 	sapReferenceNumber?: string;
+	layupType?: string | null;
+	model?: string | null;
 	version: number;
 	totalRawMaterials: number;
 	totalDrilling: number;
@@ -38,7 +40,6 @@ interface PartTableProps {
 }
 
 const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps) => {
-	// Safety check for data
 	const safeData = data || [];
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<PartData | null>(null);
@@ -159,10 +160,12 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 				accessorKey: 'status',
 				header: 'Status',
 				size: 120,
+				filterVariant: 'select',
+				filterSelectOptions: ['ACTIVE', 'INACTIVE'],
 				Cell: ({ row }) => (
 					<Chip
 						label={row.original.status}
-						icon={<CheckCircleIcon sx={{ fontSize: '0.75rem' }} />}
+						icon={<CheckCircleIcon sx={{ fontSize: '0.875rem' }} />}
 						sx={{
 							backgroundColor: getStatusColor(row.original.status),
 							color: 'white',
@@ -176,7 +179,8 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 				)
 			},
 			{
-				accessorKey: 'customerName',
+				id: 'customerDisplay',
+				accessorFn: row => row.customerName || row.customer,
 				header: 'Customer',
 				size: 200,
 				Cell: ({ row }) => (
@@ -192,9 +196,39 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 				)
 			},
 			{
+				accessorKey: 'sapReferenceNumber',
+				header: 'SAP reference',
+				size: 150,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'layupType',
+				header: 'Layup type',
+				size: 130,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+						{row.original.layupType?.trim() ? row.original.layupType : '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'model',
+				header: 'Model',
+				size: 130,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+						{row.original.model?.trim() ? row.original.model : '—'}
+					</Typography>
+				)
+			},
+			{
 				accessorKey: 'description',
 				header: 'Description',
-				size: 250,
+				size: 220,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -211,9 +245,12 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 				)
 			},
 			{
-				accessorKey: 'components',
+				id: 'componentsSummary',
+				accessorFn: row =>
+					`RM ${row.totalRawMaterials} Drill ${row.totalDrilling} Cut ${row.totalCutting}`,
 				header: 'Components',
-				size: 150,
+				size: 180,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
 						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
@@ -226,9 +263,11 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 				)
 			},
 			{
-				accessorKey: 'moulds',
+				id: 'mouldsSummary',
+				accessorFn: row => `Total ${row.totalMoulds ?? 0} Due ${row.dueMoulds ?? 0}`,
 				header: 'Moulds',
 				size: 140,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
 						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
@@ -241,9 +280,11 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 				)
 			},
 			{
-				accessorKey: 'actions',
+				id: 'actions',
 				header: 'Actions',
 				size: 80,
+				enableSorting: false,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<IconButton size="small" onClick={e => handleMenuClick(e, row.original)} sx={{ color: '#666' }}>
 						<MoreVertIcon fontSize="small" />
@@ -272,7 +313,6 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 		<>
 			<TableComponent tableColumns={columns} data={safeData} />
 
-			{/* Action Menu */}
 			<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
 				<MenuItem onClick={handleView}>
 					<ListItemIcon>

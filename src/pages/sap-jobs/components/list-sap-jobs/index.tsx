@@ -5,24 +5,49 @@ import CatalystTableSkeleton from '../../../../components/common/skeleton/Cataly
 import { useFetchSapJobConfigsQuery } from '../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import type { SapJobConfigItem } from '../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
 import SapJobsHeader from './components/SapJobsHeader';
-import SapJobsManagement from './components/SapJobsManagement';
+import SapJobsManagement, {
+	SAP_JOBS_ALL_ENABLED,
+	SAP_JOBS_ALL_KEYS
+} from './components/SapJobsManagement';
 import SapJobConfigsTable from './components/SapJobConfigsTable';
 
 const ListSapJobs = () => {
 	const navigate = useNavigate();
 	const [searchTerm, setSearchTerm] = useState('');
+	const [jobKeyFilter, setJobKeyFilter] = useState(SAP_JOBS_ALL_KEYS);
+	const [enabledFilter, setEnabledFilter] = useState(SAP_JOBS_ALL_ENABLED);
 
 	const { data: configs = [], isLoading, isFetching, isError, error, refetch } = useFetchSapJobConfigsQuery();
 
+	const jobKeyOptions = useMemo(() => {
+		const s = new Set<string>();
+		for (const c of configs) {
+			if (c.jobKey?.trim()) s.add(c.jobKey);
+		}
+		return [...s].sort((a, b) => a.localeCompare(b));
+	}, [configs]);
+
 	const filteredData = useMemo(() => {
-		if (!searchTerm.trim()) return configs;
+		let list = configs;
+
+		if (jobKeyFilter !== SAP_JOBS_ALL_KEYS) {
+			list = list.filter(row => row.jobKey === jobKeyFilter);
+		}
+
+		if (enabledFilter === 'Enabled only') {
+			list = list.filter(row => row.enabled);
+		} else if (enabledFilter === 'Disabled only') {
+			list = list.filter(row => !row.enabled);
+		}
+
+		if (!searchTerm.trim()) return list;
 		const needle = searchTerm.trim().toLowerCase();
-		return configs.filter(row => {
+		return list.filter(row => {
 			const idMatch = String(row.id).includes(needle);
 			const cron = row.cronExpression.toLowerCase();
 			return idMatch || row.jobKey.toLowerCase().includes(needle) || cron.includes(needle);
 		});
-	}, [configs, searchTerm]);
+	}, [configs, searchTerm, jobKeyFilter, enabledFilter]);
 
 	const handleViewHistory = useCallback(
 		(row: SapJobConfigItem) => {
@@ -51,7 +76,15 @@ const ListSapJobs = () => {
 		<Box sx={{ p: 3, minHeight: '100vh' }}>
 			<SapJobsHeader onRefresh={() => void refetch()} isRefreshing={isFetching && !isLoading} />
 
-			<SapJobsManagement searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+			<SapJobsManagement
+				searchTerm={searchTerm}
+				onSearchChange={setSearchTerm}
+				jobKeyFilter={jobKeyFilter}
+				onJobKeyFilterChange={setJobKeyFilter}
+				enabledFilter={enabledFilter}
+				onEnabledFilterChange={setEnabledFilter}
+				jobKeyOptions={jobKeyOptions}
+			/>
 
 			{listErrorMessage && (
 				<Alert severity="error" sx={{ mb: 2 }}>

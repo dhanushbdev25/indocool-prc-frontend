@@ -3,6 +3,8 @@ export interface MouldApiItem {
 	id: number;
 	partId: number;
 	partCode: string;
+	/** Backend may send SAP reference on the mould row */
+	sapReferenceNumber?: string | null;
 	/** Backend may send mouldCode and/or mouldId */
 	mouldCode?: string;
 	mouldId?: string;
@@ -21,6 +23,7 @@ export interface MouldReconciliationRow {
 	id: number;
 	partId: number;
 	partNumber: string;
+	sapReferenceNumber?: string;
 	mouldCode: string;
 	reconciliationCount: number;
 	currentCount: number;
@@ -33,6 +36,10 @@ export const mapMouldApiItemToRow = (item: MouldApiItem): MouldReconciliationRow
 	id: item.id,
 	partId: item.partId,
 	partNumber: item.partCode,
+	sapReferenceNumber:
+		item.sapReferenceNumber === null || item.sapReferenceNumber === undefined
+			? ''
+			: String(item.sapReferenceNumber),
 	mouldCode: item.mouldCode ?? item.mouldId ?? '',
 	reconciliationCount: item.reconciliationCount,
 	currentCount: item.currentCount ?? 0,
@@ -63,6 +70,10 @@ export function coerceMouldApiItem(raw: unknown, fallbackIndex: number): MouldAp
 	const partCode = typeof o.partCode === 'string' ? o.partCode : '';
 	const mouldCode = typeof o.mouldCode === 'string' ? o.mouldCode : undefined;
 	const mouldId = typeof o.mouldId === 'string' ? o.mouldId : undefined;
+	const sapReferenceNumber =
+		o.sapReferenceNumber === null || typeof o.sapReferenceNumber === 'string'
+			? (o.sapReferenceNumber as string | null)
+			: undefined;
 	const reconciliationCount = typeof o.reconciliationCount === 'number' ? o.reconciliationCount : 0;
 	const currentCount =
 		o.currentCount === null || typeof o.currentCount === 'number' ? (o.currentCount as number | null) : null;
@@ -77,6 +88,7 @@ export function coerceMouldApiItem(raw: unknown, fallbackIndex: number): MouldAp
 		id,
 		partId,
 		partCode,
+		sapReferenceNumber,
 		mouldCode,
 		mouldId,
 		reconciliationCount,

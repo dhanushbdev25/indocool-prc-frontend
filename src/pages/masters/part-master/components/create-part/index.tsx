@@ -23,7 +23,6 @@ import Swal from 'sweetalert2';
 import PartFormStickySummary from './components/PartFormStickySummary';
 import GeneralInfo from './components/GeneralInfo';
 import RawMaterialsTab from './components/RawMaterialsTab';
-import TechnicalDataTab from './components/TechnicalDataTab';
 import LinkedMastersTab from './components/LinkedMastersTab';
 import InspectionImageMappingTab from './components/InspectionImageMappingTab';
 import { partMasterFormSchema, defaultPartMasterFormData } from './schemas';
@@ -521,7 +520,7 @@ const CreatePart = () => {
 		{ skip: !operationsQueryPartId }
 	);
 
-	// API-driven tab enablement: tabs 1-4 disabled until PartMaster exists on the backend
+	// API-driven tab enablement: tabs 1-3 disabled until PartMaster exists on the backend
 	const partMasterExists = isEditMode
 		? isFetchSuccess && !!partData?.detail?.partMaster?.id
 		: !!formPartId;
@@ -1006,12 +1005,11 @@ const CreatePart = () => {
 					>
 						<Tab label="General Info" id="part-tab-0" aria-controls="part-tabpanel-0" />
 						<Tab label="Bill of Material" id="part-tab-1" aria-controls="part-tabpanel-1" disabled={!partMasterExists} />
-						<Tab label="Technical Data" id="part-tab-2" aria-controls="part-tabpanel-2" disabled={!partMasterExists} />
-						<Tab label="Linked Masters" id="part-tab-3" aria-controls="part-tabpanel-3" disabled={!partMasterExists} />
+						<Tab label="Linked Masters" id="part-tab-2" aria-controls="part-tabpanel-2" disabled={!partMasterExists} />
 						<Tab
 							label="Inspection Image Mapping"
-							id="part-tab-4"
-							aria-controls="part-tabpanel-4"
+							id="part-tab-3"
+							aria-controls="part-tabpanel-3"
 							disabled={!isInspectionMappingEnabled}
 						/>
 					</Tabs>
@@ -1047,9 +1045,6 @@ const CreatePart = () => {
 							<RawMaterialsTab control={control} errors={errors} />
 						</TabPanel>
 						<TabPanel value={activeTab} index={2}>
-							<TechnicalDataTab control={control} errors={errors} />
-						</TabPanel>
-						<TabPanel value={activeTab} index={3}>
 							<LinkedMastersTab
 								control={control}
 								errors={errors}
@@ -1057,7 +1052,7 @@ const CreatePart = () => {
 								operationsPartId={operationsQueryPartId}
 							/>
 						</TabPanel>
-						<TabPanel value={activeTab} index={4}>
+						<TabPanel value={activeTab} index={3}>
 							<InspectionImageMappingTab
 								control={control}
 								setValue={setValue}

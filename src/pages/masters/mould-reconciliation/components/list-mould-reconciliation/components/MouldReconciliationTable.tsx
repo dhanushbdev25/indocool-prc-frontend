@@ -25,6 +25,16 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile }: Mo
 				size: 180
 			},
 			{
+				accessorKey: 'sapReferenceNumber',
+				header: 'SAP reference',
+				size: 160,
+				Cell: ({ row }) => (
+					<Typography variant="body2">
+						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
+					</Typography>
+				)
+			},
+			{
 				accessorKey: 'mouldCode',
 				header: 'Mould ID',
 				size: 160
@@ -53,8 +63,11 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile }: Mo
 			},
 			{
 				id: 'due',
+				accessorFn: row => (isMouldDueForReconciliation(row) ? 'Yes' : 'No'),
 				header: 'Due',
 				size: 100,
+				filterVariant: 'select',
+				filterSelectOptions: ['Yes', 'No'],
 				Cell: ({ row }) => {
 					const due = isMouldDueForReconciliation(row.original);
 					return (
@@ -71,6 +84,7 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile }: Mo
 				accessorKey: 'lastReconciledAt',
 				header: 'Last reconciled',
 				size: 180,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography variant="body2">
 						{row.original.lastReconciledAt ? new Date(row.original.lastReconciledAt).toLocaleString() : '—'}
@@ -82,6 +96,7 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile }: Mo
 				header: 'Actions',
 				size: 140,
 				enableSorting: false,
+				enableColumnFilter: false,
 				Cell: ({ row }) => {
 					const rowKey = getRowKey(row.original);
 					const isLoading = reconcilingKey === rowKey;

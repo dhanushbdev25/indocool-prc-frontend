@@ -1,135 +1,90 @@
-import { useState } from 'react';
-import { Box, Typography, TextField, InputAdornment, Button, Stack } from '@mui/material';
-import { Search as SearchIcon, Science as BeakerIcon } from '@mui/icons-material';
+import { useState, useMemo, useCallback } from 'react';
+import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { MasterListToolbar } from '../../../../../../components/masters';
+
+export const CHART_ALL_SUPPLIERS = 'All suppliers';
 
 interface ChartManagementProps {
 	onSearchChange?: (searchTerm: string) => void;
 	onFilterChange?: (filter: string) => void;
+	onSupplierFilterChange?: (supplier: string) => void;
+	appliedSearchTerm?: string;
+	supplierOptions?: string[];
+	listSummary?: string | null;
+	searchAriaLabel?: string;
 }
 
-const ChartManagement = ({ onSearchChange, onFilterChange }: ChartManagementProps) => {
+const ChartManagement = ({
+	onSearchChange,
+	onFilterChange,
+	onSupplierFilterChange,
+	appliedSearchTerm = '',
+	supplierOptions = [],
+	listSummary,
+	searchAriaLabel
+}: ChartManagementProps) => {
 	const [activeFilter, setActiveFilter] = useState('All Charts');
-	const [searchTerm, setSearchTerm] = useState('');
+	const [activeSupplier, setActiveSupplier] = useState(CHART_ALL_SUPPLIERS);
 
-	const filterButtons = ['All Charts', 'ACTIVE', 'INACTIVE'];
+	const statusOptions = ['All Charts', 'ACTIVE', 'INACTIVE'];
+	const supplierChoices = [CHART_ALL_SUPPLIERS, ...supplierOptions];
 
-	const handleFilterClick = (filter: string) => {
+	const handleStatusChange = (filter: string) => {
 		setActiveFilter(filter);
 		onFilterChange?.(filter);
 	};
 
-	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const value = event.target.value;
-		setSearchTerm(value);
-		onSearchChange?.(value);
+	const handleSupplierChange = (value: string) => {
+		setActiveSupplier(value);
+		onSupplierFilterChange?.(value);
 	};
 
+	const handleReset = useCallback(() => {
+		setActiveFilter('All Charts');
+		setActiveSupplier(CHART_ALL_SUPPLIERS);
+		onFilterChange?.('All Charts');
+		onSupplierFilterChange?.(CHART_ALL_SUPPLIERS);
+	}, [onFilterChange, onSupplierFilterChange]);
+
+	const filterDirty = useMemo(
+		() =>
+			Boolean(appliedSearchTerm.trim()) || activeFilter !== 'All Charts' || activeSupplier !== CHART_ALL_SUPPLIERS,
+		[activeFilter, activeSupplier, appliedSearchTerm]
+	);
+
+	const selectSx = { minWidth: 180, borderRadius: 1 };
+
 	return (
-		<Box sx={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-			{/* Section Header */}
-			<Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
-				<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-					<BeakerIcon sx={{ color: '#666', mr: 1, fontSize: '1.25rem' }} />
-					<Typography
-						variant="h5"
-						sx={{
-							fontWeight: 600,
-							color: '#333',
-							fontSize: '1.25rem'
-						}}
-					>
-						Chart Management
-					</Typography>
-				</Box>
-				<Typography
-					variant="body2"
-					sx={{
-						color: '#666',
-						fontSize: '0.875rem'
-					}}
-				>
-					Manage temperature-based catalyst dosage charts and formulations
-				</Typography>
-			</Box>
-
-			{/* Search and Filter Section */}
-			<Box sx={{ p: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-				<TextField
-					placeholder="Search by Chart ID or notes"
-					variant="outlined"
-					size="small"
-					value={searchTerm}
-					onChange={handleSearchChange}
-					InputProps={{
-						startAdornment: (
-							<InputAdornment position="start">
-								<SearchIcon sx={{ color: '#999' }} />
-							</InputAdornment>
-						)
-					}}
-					sx={{
-						flex: 1,
-						'& .MuiOutlinedInput-root': {
-							borderRadius: '8px',
-							backgroundColor: '#fafafa',
-							'& fieldset': {
-								borderColor: '#e0e0e0'
-							},
-							'&:hover fieldset': {
-								borderColor: '#ccc'
-							},
-							'&.Mui-focused fieldset': {
-								borderColor: '#1976d2'
-							}
-						},
-						'& .MuiInputBase-input': {
-							fontSize: '0.875rem',
-							color: '#666',
-							'&::placeholder': {
-								color: '#999',
-								opacity: 1
-							}
-						}
-					}}
-				/>
-
-				<Stack direction="row" spacing={1}>
-					{filterButtons.map(filter => (
-						<Button
-							key={filter}
-							variant={activeFilter === filter ? 'contained' : 'outlined'}
-							onClick={() => handleFilterClick(filter)}
-							sx={{
-								borderRadius: '8px',
-								textTransform: 'none',
-								fontSize: '0.875rem',
-								fontWeight: 500,
-								px: 2,
-								py: 1,
-								minWidth: 'auto',
-								...(activeFilter === filter
-									? {
-											backgroundColor: '#1976d2',
-											color: 'white',
-											'&:hover': {
-												backgroundColor: '#1565c0'
-											}
-										}
-									: {
-											color: '#666',
-											borderColor: '#e0e0e0',
-											'&:hover': {
-												borderColor: '#ccc',
-												backgroundColor: '#f5f5f5'
-											}
-										})
-							}}
-						>
-							{filter}
-						</Button>
-					))}
-				</Stack>
-			</Box>
+		<Box>
+			<MasterListToolbar
+				searchPlaceholder="Search by Chart ID or notes"
+				searchAriaLabel={searchAriaLabel}
+				listSummary={listSummary}
+				onSearchChange={onSearchChange}
+				filterDirty={filterDirty}
+				onReset={handleReset}
+			>
+				<FormControl size="small" sx={selectSx}>
+					<InputLabel shrink>Status</InputLabel>
+					<Select value={activeFilter} label="Status" onChange={e => handleStatusChange(e.target.value)}>
+						{statusOptions.map(opt => (
+							<MenuItem key={opt} value={opt}>
+								{opt}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+				<FormControl size="small" sx={{ ...selectSx, minWidth: 200 }}>
+					<InputLabel shrink>Chart supplier</InputLabel>
+					<Select value={activeSupplier} label="Chart supplier" onChange={e => handleSupplierChange(e.target.value)}>
+						{supplierChoices.map(opt => (
+							<MenuItem key={opt} value={opt}>
+								{opt}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+			</MasterListToolbar>
 		</Box>
 	);
 };

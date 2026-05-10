@@ -41,6 +41,7 @@ const SapJobRunsTable = memo(({ data }: SapJobRunsTableProps) => {
 				header: 'Run start',
 				size: 168,
 				accessorFn: row => formatDt(row.runStart),
+				enableColumnFilter: false,
 				sortingFn: (rowA, rowB) =>
 					new Date(rowA.original.runStart).getTime() - new Date(rowB.original.runStart).getTime()
 			},
@@ -49,6 +50,7 @@ const SapJobRunsTable = memo(({ data }: SapJobRunsTableProps) => {
 				header: 'Run end',
 				size: 168,
 				accessorFn: row => formatDt(row.runEnd),
+				enableColumnFilter: false,
 				sortingFn: (rowA, rowB) => {
 					const tA = rowA.original.runEnd ? new Date(rowA.original.runEnd).getTime() : 0;
 					const tB = rowB.original.runEnd ? new Date(rowB.original.runEnd).getTime() : 0;

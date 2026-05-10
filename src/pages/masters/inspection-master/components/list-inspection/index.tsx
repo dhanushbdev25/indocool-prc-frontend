@@ -1,9 +1,13 @@
 import { useState, useMemo } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
 import InspectionHeader from './components/InspectionHeader';
 import SummaryCards from './components/SummaryCards';
-import InspectionManagement from './components/InspectionManagement';
+import InspectionManagement, {
+	INSPECTION_ALL_APPROVE,
+	INSPECTION_ALL_TYPES
+} from './components/InspectionManagement';
 import InspectionTable, { InspectionData } from './components/InspectionTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import {
@@ -16,6 +20,8 @@ const ListInspection = () => {
 	const navigate = useNavigate();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [activeFilter, setActiveFilter] = useState('All Inspections');
+	const [activeTypeFilter, setActiveTypeFilter] = useState(INSPECTION_ALL_TYPES);
+	const [activeApproveByProductionFilter, setActiveApproveByProductionFilter] = useState(INSPECTION_ALL_APPROVE);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [inspectionToDelete, setInspectionToDelete] = useState<InspectionData | null>(null);
 
@@ -32,14 +38,26 @@ const ListInspection = () => {
 	// Extract inspection data for table
 	const allInspectionData: InspectionData[] = useMemo(() => {
 		if (!inspectionData) return [];
-		return inspectionData.detail.map((item: Record<string, unknown>) => ({
-			...(item.inspection as InspectionData),
-			ctqParameters: (item.inspectionParameters as Record<string, unknown>[]).filter(
-				(param: Record<string, unknown>) => param.ctq
-			).length,
-			totalParameters: (item.inspectionParameters as Record<string, unknown>[]).length
-		}));
+		return inspectionData.detail.map((item: Record<string, unknown>) => {
+			const inspection = item.inspection as InspectionData;
+			return {
+				...inspection,
+				ctqParameters: (item.inspectionParameters as Record<string, unknown>[]).filter(
+					(param: Record<string, unknown>) => param.ctq
+				).length,
+				totalParameters: (item.inspectionParameters as Record<string, unknown>[]).length
+			};
+		});
 	}, [inspectionData]);
+
+	const typeOptions = useMemo(() => {
+		const s = new Set<string>();
+		for (const i of allInspectionData) {
+			const t = (i.type ?? '').trim();
+			if (t) s.add(t);
+		}
+		return [...s].sort((a, b) => a.localeCompare(b));
+	}, [allInspectionData]);
 
 	// Filter and search logic
 	const filteredData = useMemo(() => {
@@ -48,6 +66,16 @@ const ListInspection = () => {
 		// Apply status filter
 		if (activeFilter !== 'All Inspections') {
 			filtered = filtered.filter(inspection => inspection.status === activeFilter);
+		}
+
+		if (activeTypeFilter !== INSPECTION_ALL_TYPES) {
+			filtered = filtered.filter(inspection => (inspection.type ?? '').trim() === activeTypeFilter);
+		}
+
+		if (activeApproveByProductionFilter === 'Yes') {
+			filtered = filtered.filter(inspection => inspection.approveByProduction === true);
+		} else if (activeApproveByProductionFilter === 'No') {
+			filtered = filtered.filter(inspection => inspection.approveByProduction !== true);
 		}
 
 		// Apply search filter
@@ -61,7 +89,12 @@ const ListInspection = () => {
 		}
 
 		return filtered;
-	}, [allInspectionData, activeFilter, searchTerm]);
+	}, [allInspectionData, activeFilter, activeTypeFilter, activeApproveByProductionFilter, searchTerm]);
+
+	const listSummary = useMemo(
+		() => formatFilteredListSummary(filteredData.length, allInspectionData.length, 'inspections'),
+		[filteredData.length, allInspectionData.length]
+	);
 
 	const handleSearchChange = (searchValue: string) => {
 		setSearchTerm(searchValue);
@@ -69,6 +102,14 @@ const ListInspection = () => {
 
 	const handleFilterChange = (filter: string) => {
 		setActiveFilter(filter);
+	};
+
+	const handleTypeFilterChange = (typeFilter: string) => {
+		setActiveTypeFilter(typeFilter);
+	};
+
+	const handleApproveByProductionFilterChange = (value: string) => {
+		setActiveApproveByProductionFilter(value);
 	};
 
 	const handleActionClick = (inspectionId: string, action: string) => {
@@ -156,7 +197,7 @@ const ListInspection = () => {
 	// Show loading state with skeleton
 	if (isInspectionDataLoading) {
 		return (
-			<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+			<Box sx={{ minWidth: 0 }}>
 				<InspectionHeader />
 				<CatalystTableSkeleton />
 			</Box>
@@ -164,19 +205,35 @@ const ListInspection = () => {
 	}
 
 	return (
-		<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-			<InspectionHeader />
-			{inspectionData && <SummaryCards headerData={inspectionData.header} />}
-			<InspectionManagement onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
-			<InspectionTable
-				data={filteredData}
-				onActionClick={handleActionClick}
-				onEdit={handleEdit}
-				onView={handleView}
-				onClone={handleClone}
+		<>
+			<MasterListLandingPage
+				header={<InspectionHeader />}
+				metrics={inspectionData ? <SummaryCards headerData={inspectionData.header} /> : null}
+				toolbar={
+					<InspectionManagement
+						appliedSearchTerm={searchTerm}
+						searchAriaLabel="Search inspections"
+						listSummary={listSummary}
+						onSearchChange={handleSearchChange}
+						onFilterChange={handleFilterChange}
+						onTypeFilterChange={handleTypeFilterChange}
+						onApproveByProductionFilterChange={handleApproveByProductionFilterChange}
+						typeOptions={typeOptions}
+					/>
+				}
+				table={
+					<Box sx={masterListTableFrame}>
+						<InspectionTable
+							data={filteredData}
+							onActionClick={handleActionClick}
+							onEdit={handleEdit}
+							onView={handleView}
+							onClone={handleClone}
+						/>
+					</Box>
+				}
 			/>
 
-			{/* Delete Confirmation Dialog */}
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
 				<DialogTitle>Delete Inspection Task</DialogTitle>
 				<DialogContent>
@@ -194,7 +251,7 @@ const ListInspection = () => {
 					</Button>
 				</DialogActions>
 			</Dialog>
-		</Box>
+		</>
 	);
 };
 

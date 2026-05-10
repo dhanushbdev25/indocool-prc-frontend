@@ -48,6 +48,8 @@ export interface ProcessSequence {
 	isLatest: boolean;
 	category: string;
 	type: string;
+	/** Set when API returns an item label for the sequence */
+	item?: string | null;
 	notes: string | null;
 	totalSteps: number;
 	ctqSteps: number;

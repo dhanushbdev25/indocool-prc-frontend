@@ -40,13 +40,16 @@ const SapJobConfigsTable = memo(({ data, onViewHistory }: SapJobConfigsTableProp
 				id: 'enabled',
 				header: 'Enabled',
 				size: 96,
-				accessorFn: row => (row.enabled ? 'Yes' : 'No')
+				accessorFn: row => (row.enabled ? 'Yes' : 'No'),
+				filterVariant: 'select',
+				filterSelectOptions: ['Yes', 'No'],
 			},
 			{
 				id: 'updatedAt',
 				header: 'Last updated',
 				size: 180,
 				accessorFn: row => formatDt(row.updatedAt),
+				enableColumnFilter: false,
 				sortingFn: (rowA, rowB) =>
 					new Date(rowA.original.updatedAt).getTime() - new Date(rowB.original.updatedAt).getTime()
 			},
@@ -55,6 +58,7 @@ const SapJobConfigsTable = memo(({ data, onViewHistory }: SapJobConfigsTableProp
 				header: 'Actions',
 				size: 160,
 				enableSorting: false,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Button variant="contained" size="small" onClick={() => onViewHistory(row.original)}>
 						View run history

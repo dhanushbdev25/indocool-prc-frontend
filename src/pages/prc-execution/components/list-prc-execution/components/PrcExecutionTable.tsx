@@ -1,5 +1,5 @@
 import { useMemo, memo } from 'react';
-import { Box, Chip, Button, Typography, LinearProgress } from '@mui/material';
+import { Box, Chip, Button, Typography, LinearProgress, Tooltip, Stack } from '@mui/material';
 import { type MRT_ColumnDef } from 'material-react-table';
 import { PlayArrow as PlayArrowIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import TableComponent from '../../../../../components/table/TableComponent';
@@ -54,6 +54,12 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 		return Math.min(100, Math.max(0, progressValue));
 	};
 
+	const opChipColors = (prcStatus: boolean, sapStatus: boolean) => {
+		if (prcStatus && sapStatus) return '#2e7d32';
+		if (!prcStatus && !sapStatus) return '#9e9e9e';
+		return '#ed6c02';
+	};
+
 	const columns = useMemo<MRT_ColumnDef<PrcExecutionData>[]>(
 		() => [
 			{
@@ -77,6 +83,10 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				id: 'orderId',
 				header: 'Order ID',
 				size: 140,
+				accessorFn: row => {
+					const v = (row as { orderId?: string | number | null }).orderId;
+					return v != null && String(v).trim() ? String(v) : '';
+				},
 				Cell: ({ row }) => {
 					const orderId = (row.original as { orderId?: string | number | null }).orderId;
 					return (
@@ -90,6 +100,8 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				id: 'partNumberDisplay',
 				header: 'Part Number',
 				size: 170,
+				accessorFn: row =>
+					row.sapReferenceNumber?.trim() ? row.sapReferenceNumber : row.partNumber,
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
 						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : row.original.partNumber}
@@ -100,6 +112,7 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				accessorKey: 'date',
 				header: 'Date',
 				size: 120,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -123,9 +136,55 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				)
 			},
 			{
+				id: 'operationStatus',
+				header: 'Operation status',
+				size: 300,
+				enableColumnFilter: false,
+				accessorFn: row =>
+					(row.operationStatus ?? []).map(op => (op.operationText ?? '').trim()).filter(Boolean).join(' | ') || '',
+				Cell: ({ row }) => {
+					const ops = row.original.operationStatus ?? [];
+					if (ops.length === 0) {
+						return (
+							<Typography variant="body2" sx={{ color: '#999', fontSize: '0.875rem' }}>
+								—
+							</Typography>
+						);
+					}
+					return (
+						<Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5} sx={{ gap: 0.5 }}>
+							{ops.map(op => {
+								const label = (op.operationText ?? '').trim() || op.operationId || `Op ${op.id}`;
+								const tip = `Op ${op.operationId} · PRC: ${op.prcStatus ? 'complete' : 'pending'} · SAP: ${op.sapStatus ? 'complete' : 'pending'}`;
+								const bg = opChipColors(op.prcStatus, op.sapStatus);
+								return (
+									<Tooltip key={op.id} title={tip}>
+										<Chip
+											label={label}
+											size="small"
+											variant="outlined"
+											sx={{
+												borderColor: bg,
+												color: bg,
+												backgroundColor: `${bg}12`,
+												fontSize: '0.7rem',
+												height: 22,
+												maxWidth: 200,
+												'& .MuiChip-label': { px: 0.75 }
+											}}
+										/>
+									</Tooltip>
+								);
+							})}
+						</Stack>
+					);
+				}
+			},
+			{
 				accessorKey: 'progress',
 				header: 'Progress',
 				size: 150,
+				enableColumnFilter: false,
 				Cell: ({ row }) => {
 					const progressValue = calculateProgress(row.original);
 					return (
@@ -165,8 +224,10 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 			},
 			{
 				accessorKey: 'status',
-				header: 'Status',
-				size: 120,
+				header: 'Execution status',
+				size: 140,
+				filterVariant: 'select',
+				filterSelectOptions: ['ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'INACTIVE'],
 				Cell: ({ row }) => (
 					<Chip
 						label={row.original.status}
@@ -188,6 +249,7 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 				header: 'Actions',
 				size: 120,
 				enableSorting: false,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Button
 						variant="contained"

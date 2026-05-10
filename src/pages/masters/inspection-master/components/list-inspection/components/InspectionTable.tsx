@@ -23,9 +23,12 @@ export interface InspectionData {
 	version: number;
 	ctqParameters: number;
 	totalParameters: number;
+	approveByProduction?: boolean;
 	createdAt?: string;
 	updatedAt?: string;
 }
+
+const approveLabel = (v: boolean | undefined) => (v === true ? 'Yes' : 'No');
 
 interface InspectionTableProps {
 	data: InspectionData[];
@@ -131,8 +134,8 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 			},
 			{
 				accessorKey: 'inspectionName',
-				header: 'Inspection Type',
-				size: 250,
+				header: 'Inspection name',
+				size: 220,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -149,6 +152,27 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 					>
 						{row.original.inspectionName}
 					</Typography>
+				)
+			},
+			{
+				accessorKey: 'type',
+				header: 'Type',
+				size: 140
+			},
+			{
+				id: 'approveByProduction',
+				accessorFn: row => approveLabel(row.approveByProduction),
+				header: 'Approve by production',
+				size: 170,
+				filterVariant: 'select',
+				filterSelectOptions: ['Yes', 'No'],
+				Cell: ({ row }) => (
+					<Chip
+						label={approveLabel(row.original.approveByProduction)}
+						size="small"
+						color={row.original.approveByProduction === true ? 'success' : 'default'}
+						variant={row.original.approveByProduction === true ? 'filled' : 'outlined'}
+					/>
 				)
 			},
 			{
@@ -172,6 +196,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 				accessorKey: 'ctqParameters',
 				header: 'CTQ Parameters',
 				size: 120,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Box sx={{ display: 'flex', alignItems: 'center' }}>
 						<Chip
@@ -195,6 +220,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 				accessorKey: 'totalParameters',
 				header: 'Total Parameters',
 				size: 120,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -212,6 +238,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 				accessorKey: 'createdAt',
 				header: 'Created',
 				size: 120,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -228,6 +255,8 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 				accessorKey: 'status',
 				header: 'Status',
 				size: 120,
+				filterVariant: 'select',
+				filterSelectOptions: ['ACTIVE', 'INACTIVE'],
 				Cell: ({ row }) => (
 					<Chip
 						icon={<CheckCircleIcon sx={{ fontSize: '0.875rem' }} />}
@@ -250,6 +279,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 				header: 'Actions',
 				size: 80,
 				enableSorting: false,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<IconButton size="small" onClick={e => handleMenuClick(e, row.original)}>
 						<MoreVertIcon sx={{ color: '#666' }} />
@@ -261,7 +291,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 	);
 
 	return (
-		<Box sx={{ mt: 2 }}>
+		<Box sx={{ mt: 0 }}>
 			<TableComponent data={data} tableColumns={columns} />
 
 			{/* Action Menu */}

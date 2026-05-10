@@ -1,3 +1,70 @@
+/** Per-operation row nested on list GET `/prcExecution` (camelCase); backend may alias as `operation_status`. */
+export interface PrcExecutionOperationStatusRow {
+	id: number;
+	prcExecutionId?: number;
+	operationId: string;
+	operationText: string;
+	prcStatus: boolean;
+	sapStatus: boolean;
+	metadata?: unknown | null;
+	createdAt?: string;
+	updatedAt?: string;
+}
+
+/** Normalize list/detail `operationStatus` arrays from the API into typed rows (ignores invalid entries). */
+export function parsePrcExecutionOperationStatusList(value: unknown): PrcExecutionOperationStatusRow[] {
+	if (!Array.isArray(value)) return [];
+	const out: PrcExecutionOperationStatusRow[] = [];
+	for (const item of value) {
+		if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+		const o = item as Record<string, unknown>;
+		const id = typeof o.id === 'number' ? o.id : Number(o.id);
+		if (!Number.isFinite(id)) continue;
+		const prcExeIdRaw = o.prcExecutionId;
+		const prcExecutionId =
+			typeof prcExeIdRaw === 'number'
+				? prcExeIdRaw
+				: prcExeIdRaw != null && String(prcExeIdRaw).trim() !== ''
+					? Number(prcExeIdRaw)
+					: undefined;
+
+		out.push({
+			id,
+			prcExecutionId:
+				prcExecutionId !== undefined && Number.isFinite(prcExecutionId) ? prcExecutionId : undefined,
+			operationId: o.operationId != null ? String(o.operationId) : '',
+			operationText:
+				typeof o.operationText === 'string'
+					? o.operationText
+					: o.operationText != null
+						? String(o.operationText)
+						: '',
+			prcStatus: Boolean(o.prcStatus),
+			sapStatus: Boolean(o.sapStatus),
+			metadata: o.metadata ?? null,
+			createdAt: typeof o.createdAt === 'string' ? o.createdAt : undefined,
+			updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : undefined
+		});
+	}
+	return out;
+}
+
+/** At least one operation and every row has both PRC and SAP complete. */
+export function executionOperationsAllComplete(
+	ops: PrcExecutionOperationStatusRow[] | undefined
+): boolean {
+	const list = ops ?? [];
+	return list.length > 0 && list.every(op => op.prcStatus && op.sapStatus);
+}
+
+/** At least one operation exists and at least one row is missing PRC or SAP completion. */
+export function executionOperationsHasIncomplete(
+	ops: PrcExecutionOperationStatusRow[] | undefined
+): boolean {
+	const list = ops ?? [];
+	return list.length > 0 && list.some(op => !op.prcStatus || !op.sapStatus);
+}
+
 /** List row for PRC execution table (GET /prcExecution list) */
 export interface PrcExecution {
 	id: number;
@@ -17,6 +84,8 @@ export interface PrcExecution {
 	stepsCompleted?: number;
 	totalSteps?: number;
 	status: string;
+	/** Per-operation PRC/SAP completion flags when the API returns nested rows. */
+	operationStatus?: PrcExecutionOperationStatusRow[];
 	date: string;
 }
 

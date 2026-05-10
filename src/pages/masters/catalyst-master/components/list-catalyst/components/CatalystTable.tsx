@@ -146,6 +146,7 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView }: CatalystTab
 				accessorKey: 'createdAt',
 				header: 'Created',
 				size: 120,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -162,6 +163,8 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView }: CatalystTab
 				accessorKey: 'status',
 				header: 'Status',
 				size: 120,
+				filterVariant: 'select',
+				filterSelectOptions: ['ACTIVE', 'NEW', 'INACTIVE'],
 				Cell: ({ row }) => (
 					<Chip
 						icon={<CheckCircleIcon sx={{ fontSize: '0.875rem' }} />}
@@ -184,6 +187,7 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView }: CatalystTab
 				header: 'Actions',
 				size: 80,
 				enableSorting: false,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<IconButton size="small" onClick={e => handleMenuClick(e, row.original)}>
 						<MoreVertIcon sx={{ color: '#666' }} />
@@ -195,7 +199,7 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView }: CatalystTab
 	);
 
 	return (
-		<Box sx={{ mt: 2 }}>
+		<Box sx={{ mt: 0 }}>
 			<TableComponent data={data} tableColumns={columns} />
 
 			{/* Action Menu */}

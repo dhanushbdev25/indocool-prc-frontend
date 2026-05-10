@@ -319,7 +319,9 @@ export const parameterTypeOptions = [
 	{ value: 'boolean', label: 'Boolean' },
 	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
 	{ value: 'datetime', label: 'Date & Time' },
-	{ value: 'shift', label: 'Shift' }
+	{ value: 'shift', label: 'Shift' },
+	{ value: 'table', label: 'Table (dynamic rows at execution)' },
+	{ value: 'fixed-table', label: 'Fixed table' }
 ];
 
 // Column type options

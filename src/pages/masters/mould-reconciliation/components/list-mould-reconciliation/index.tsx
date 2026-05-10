@@ -18,9 +18,10 @@ import {
 	isMouldDueForReconciliation
 } from '../../../../../store/api/business/mould/mould.validators';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
+import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
 import MouldHeader from './components/MouldHeader';
 import MouldSummaryCards from './components/MouldSummaryCards';
-import MouldManagement from './components/MouldManagement';
+import MouldManagement, { MOULD_ALL_PART_NUMBERS } from './components/MouldManagement';
 import MouldReconciliationTable from './components/MouldReconciliationTable';
 
 const getRowKey = (row: MouldReconciliationRow) => String(row.id);
@@ -31,6 +32,7 @@ const ListMouldReconciliation = () => {
 
 	const [searchTerm, setSearchTerm] = useState('');
 	const [activeFilter, setActiveFilter] = useState('All Moulds');
+	const [activePartFilter, setActivePartFilter] = useState(MOULD_ALL_PART_NUMBERS);
 	const [reconcilingKey, setReconcilingKey] = useState<string | null>(null);
 	const [selectedRow, setSelectedRow] = useState<MouldReconciliationRow | null>(null);
 	const [confirmOpen, setConfirmOpen] = useState(false);
@@ -45,13 +47,29 @@ const ListMouldReconciliation = () => {
 		};
 	}, [rows]);
 
+	const partNumberOptions = useMemo(() => {
+		const s = new Set<string>();
+		for (const r of rows) {
+			const p = (r.partNumber ?? '').trim();
+			if (p) s.add(p);
+		}
+		return [...s].sort((a, b) => a.localeCompare(b));
+	}, [rows]);
+
 	const filteredData = useMemo(() => {
 		let list = rows;
+
+		if (activePartFilter !== MOULD_ALL_PART_NUMBERS) {
+			list = list.filter(item => item.partNumber === activePartFilter);
+		}
 
 		if (searchTerm.trim()) {
 			const needle = searchTerm.trim().toLowerCase();
 			list = list.filter(
-				item => item.partNumber.toLowerCase().includes(needle) || item.mouldCode.toLowerCase().includes(needle)
+				item =>
+					item.partNumber.toLowerCase().includes(needle) ||
+					item.mouldCode.toLowerCase().includes(needle) ||
+					(item.sapReferenceNumber ?? '').toLowerCase().includes(needle)
 			);
 		}
 
@@ -62,7 +80,12 @@ const ListMouldReconciliation = () => {
 		}
 
 		return list;
-	}, [rows, searchTerm, activeFilter]);
+	}, [rows, searchTerm, activeFilter, activePartFilter]);
+
+	const listSummary = useMemo(
+		() => formatFilteredListSummary(filteredData.length, rows.length, 'moulds'),
+		[filteredData.length, rows.length]
+	);
 
 	const handleRequestReconcile = (row: MouldReconciliationRow) => {
 		setSelectedRow(row);
@@ -99,7 +122,7 @@ const ListMouldReconciliation = () => {
 
 	if (isLoading) {
 		return (
-			<Box sx={{ p: 3, minHeight: '100vh' }}>
+			<Box sx={{ minWidth: 0 }}>
 				<MouldHeader />
 				<CatalystTableSkeleton />
 			</Box>
@@ -107,41 +130,42 @@ const ListMouldReconciliation = () => {
 	}
 
 	return (
-		<Box sx={{ p: 3, minHeight: '100vh' }}>
-			<MouldHeader onRefresh={() => refetch()} isRefreshing={isFetching && !isLoading} />
-			<MouldSummaryCards
-				totalMoulds={summary.totalMoulds}
-				dueCount={summary.dueCount}
-				notDueCount={summary.notDueCount}
+		<>
+			<MasterListLandingPage
+				header={<MouldHeader onRefresh={() => refetch()} isRefreshing={isFetching && !isLoading} />}
+				metrics={
+					<MouldSummaryCards totalMoulds={summary.totalMoulds} dueCount={summary.dueCount} notDueCount={summary.notDueCount} />
+				}
+				toolbar={
+					<MouldManagement
+						appliedSearchTerm={searchTerm}
+						searchAriaLabel="Search moulds"
+						listSummary={listSummary}
+						activeFilter={activeFilter}
+						partNumberFilter={activePartFilter}
+						partNumberOptions={partNumberOptions}
+						onSearchChange={setSearchTerm}
+						onFilterChange={setActiveFilter}
+						onPartNumberFilterChange={setActivePartFilter}
+					/>
+				}
+				alerts={
+					listErrorMessage ? (
+						<Alert severity="error" sx={{ width: '100%' }}>
+							{listErrorMessage}
+						</Alert>
+					) : null
+				}
+				table={
+					<Box sx={masterListTableFrame}>
+						<MouldReconciliationTable
+							data={filteredData}
+							reconcilingKey={reconcilingKey}
+							onReconcile={handleRequestReconcile}
+						/>
+					</Box>
+				}
 			/>
-
-			<MouldManagement
-				searchTerm={searchTerm}
-				activeFilter={activeFilter}
-				onSearchChange={setSearchTerm}
-				onFilterChange={setActiveFilter}
-			/>
-
-			{listErrorMessage && (
-				<Alert severity="error" sx={{ mb: 2 }}>
-					{listErrorMessage}
-				</Alert>
-			)}
-
-			<Box
-				sx={{
-					backgroundColor: 'white',
-					borderRadius: '12px',
-					boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-					overflow: 'hidden'
-				}}
-			>
-				<MouldReconciliationTable
-					data={filteredData}
-					reconcilingKey={reconcilingKey}
-					onReconcile={handleRequestReconcile}
-				/>
-			</Box>
 
 			<Dialog open={confirmOpen} onClose={handleConfirmClose} maxWidth="xs" fullWidth>
 				<DialogTitle>Confirm reconciliation</DialogTitle>
@@ -171,7 +195,7 @@ const ListMouldReconciliation = () => {
 					</Button>
 				</DialogActions>
 			</Dialog>
-		</Box>
+		</>
 	);
 };
 

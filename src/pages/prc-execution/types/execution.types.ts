@@ -337,6 +337,10 @@ export interface ExecutionData {
 	customerVariantId?: number | null;
 	customerVariantName?: string | null;
 	reservation?: string | null;
+	/** SAP material / production reference (same field as PRC execution list when API returns it) */
+	sapReferenceNumber?: string | null;
+	/** Present on list rows when API returns it; optional on execution detail */
+	sapSync?: boolean;
 	/** From GET root; merged with prcAggregatedSteps.operationWiseData for setup step */
 	operationWiseData?: OperationWiseExecutionRow[];
 	mouldingInspectionParentId: number;

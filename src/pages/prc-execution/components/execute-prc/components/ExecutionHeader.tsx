@@ -111,6 +111,10 @@ const ExecutionHeader = ({
 
 	const progressPercentage = calculateProgress(executionData);
 	const { customer: customerLabel, customerVariant, reservation } = formatCustomerContext(executionData);
+	const sapRef =
+		typeof executionData.sapReferenceNumber === 'string' && executionData.sapReferenceNumber.trim()
+			? executionData.sapReferenceNumber.trim()
+			: '—';
 
 	const getProgressColor = (progress: number) => {
 		if (progress >= 100) return theme.palette.success.main;
@@ -162,6 +166,15 @@ const ExecutionHeader = ({
 						</Typography>
 						<Typography variant="body2" color="text.secondary" noWrap title={executionData.partNumber}>
 							{executionData.partNumber}
+						</Typography>
+						<Typography
+							variant="caption"
+							color="text.secondary"
+							noWrap
+							title={sapRef === '—' ? undefined : sapRef}
+							sx={{ display: 'block', mt: 0.25, fontFamily: 'ui-monospace, monospace' }}
+						>
+							SAP reference: {sapRef}
 						</Typography>
 					</Box>
 				</Stack>

@@ -37,11 +37,15 @@ import {
 	mergeOperationWiseForRead
 } from '../../../../utils/operationWiseMerge';
 
-const shiftOptions = [
-	{ value: 'Morning', label: 'Morning' },
-	{ value: 'Afternoon', label: 'Afternoon' },
-	{ value: 'Night', label: 'Night' }
-];
+/** Matches inspection execution shift parameter options and inspection-master schemas. */
+const SETUP_SHIFT_VALUES = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
+
+const shiftOptions = SETUP_SHIFT_VALUES.map(value => ({ value, label: value }));
+
+const DEFAULT_SETUP_SHIFT = SETUP_SHIFT_VALUES[0];
+
+const coerceSetupShift = (raw: string | undefined): string =>
+	raw && (SETUP_SHIFT_VALUES as readonly string[]).includes(raw) ? raw : DEFAULT_SETUP_SHIFT;
 
 const getMouldCode = (item: MouldComboItem | null): string => {
 	if (!item) return '';
@@ -79,7 +83,7 @@ const ExecutionSetupStep = ({
 	const [productionSetId, setProductionSetId] = useState('');
 	const [selectedMould, setSelectedMould] = useState<MouldComboItem | null>(null);
 	const [fallbackMouldId, setFallbackMouldId] = useState('');
-	const [shift, setShift] = useState('Morning');
+	const [shift, setShift] = useState(DEFAULT_SETUP_SHIFT);
 	const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -112,7 +116,7 @@ const ExecutionSetupStep = ({
 		if (hasSaved) {
 			setTimeout(() => {
 				if (typeof saved.productionSetId === 'string') setProductionSetId(saved.productionSetId);
-				if (typeof saved.shift === 'string') setShift(saved.shift);
+				if (typeof saved.shift === 'string') setShift(coerceSetupShift(saved.shift));
 				if (typeof saved.date === 'string' && saved.date) {
 					setSelectedDate(dayjs(saved.date));
 				}
@@ -121,7 +125,7 @@ const ExecutionSetupStep = ({
 		} else {
 			setTimeout(() => {
 				setProductionSetId(executionData.productionSetId || '');
-				setShift(executionData.shift || 'Morning');
+				setShift(coerceSetupShift(executionData.shift));
 				if (executionData.date) {
 					setSelectedDate(dayjs(executionData.date));
 				}

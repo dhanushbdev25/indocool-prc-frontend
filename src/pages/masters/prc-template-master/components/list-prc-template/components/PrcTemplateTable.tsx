@@ -22,6 +22,8 @@ export interface PrcTemplateData {
 	notes?: string;
 	createdAt: string;
 	updatedAt: string;
+	/** Mirrors API `prcTemplate.isActive` (in customer catalogue). */
+	isActive: boolean;
 }
 
 interface PrcTemplateTableProps {
@@ -194,6 +196,8 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView }: PrcTempl
 				accessorKey: 'status',
 				header: 'Status',
 				size: 120,
+				filterVariant: 'select',
+				filterSelectOptions: ['ACTIVE', 'NEW', 'INACTIVE'],
 				Cell: ({ row }) => (
 					<Chip
 						label={row.original.status}
@@ -214,6 +218,7 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView }: PrcTempl
 				accessorKey: 'createdAt',
 				header: 'Created',
 				size: 150,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
@@ -230,6 +235,8 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView }: PrcTempl
 				id: 'actions',
 				header: 'Actions',
 				size: 80,
+				enableSorting: false,
+				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Box>
 						<IconButton size="small" onClick={e => handleMenuClick(e, row.original)} sx={{ color: '#666' }}>

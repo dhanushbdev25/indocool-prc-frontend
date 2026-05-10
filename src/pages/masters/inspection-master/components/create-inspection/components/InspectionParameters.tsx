@@ -79,41 +79,46 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 	// Memoize parameter types for better performance
 	const memoizedParameterTypes = useMemo(() => parameterTypes, [parameterTypes]);
 
-	// Auto-expand cards with validation errors and ensure first card is expanded
+	// Auto-expand cards with validation errors and ensure first card is expanded.
+	// Functional updates avoid racing with addParameter (and stale setTimeout snapshots).
 	useEffect(() => {
-		const newExpanded = new Set(expandedCards);
-		let hasChanges = false;
+		setExpandedCards(prev => {
+			const next = new Set(prev);
+			let hasChanges = false;
 
-		// Always ensure first parameter is expanded unless manually collapsed
-		if (parameterFields.length > 0 && !manuallyCollapsed.has(0) && !newExpanded.has(0)) {
-			newExpanded.add(0);
-			hasChanges = true;
-		}
+			if (parameterFields.length > 0 && !manuallyCollapsed.has(0) && !next.has(0)) {
+				next.add(0);
+				hasChanges = true;
+			}
 
-		// Auto-expand cards with validation errors
-		if (errors.inspectionParameters && Array.isArray(errors.inspectionParameters)) {
-			(errors.inspectionParameters as Record<string, unknown>[]).forEach(
-				(fieldErrors: Record<string, unknown>, index: number) => {
-					if (fieldErrors && Object.keys(fieldErrors).length > 0 && !manuallyCollapsed.has(index)) {
-						if (!newExpanded.has(index)) {
-							newExpanded.add(index);
-							hasChanges = true;
+			if (errors.inspectionParameters && Array.isArray(errors.inspectionParameters)) {
+				(errors.inspectionParameters as Record<string, unknown>[]).forEach(
+					(fieldErrors: Record<string, unknown>, index: number) => {
+						if (fieldErrors && Object.keys(fieldErrors).length > 0 && !manuallyCollapsed.has(index)) {
+							if (!next.has(index)) {
+								next.add(index);
+								hasChanges = true;
+							}
 						}
 					}
-				}
-			);
-		}
+				);
+			}
 
-		if (hasChanges) {
-			// Use setTimeout to avoid synchronous setState in effect
-			setTimeout(() => setExpandedCards(newExpanded), 0);
-		}
-	}, [errors.inspectionParameters, expandedCards, manuallyCollapsed, parameterFields.length]);
+			return hasChanges ? next : prev;
+		});
+	}, [errors.inspectionParameters, manuallyCollapsed, parameterFields.length]);
 
 	const addParameter = useCallback(() => {
+		const newIndex = parameterFields.length;
 		appendParameter({
 			...defaultInspectionParameter,
-			order: parameterFields.length + 1
+			order: newIndex + 1
+		});
+		setExpandedCards(prev => new Set(prev).add(newIndex));
+		setManuallyCollapsed(prev => {
+			const next = new Set(prev);
+			next.delete(newIndex);
+			return next;
 		});
 	}, [appendParameter, parameterFields.length]);
 
