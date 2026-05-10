@@ -1,7 +1,11 @@
 import { useMemo, memo } from 'react';
-import { Box, Chip, Button, Typography, LinearProgress, Tooltip, Stack } from '@mui/material';
+import { Box, Chip, Button, Typography, LinearProgress, Tooltip, Stack, IconButton } from '@mui/material';
 import { type MRT_ColumnDef } from 'material-react-table';
-import { PlayArrow as PlayArrowIcon, CheckCircle as CheckCircleIcon } from '@mui/icons-material';
+import {
+	PlayArrow as PlayArrowIcon,
+	CheckCircle as CheckCircleIcon,
+	PictureAsPdf as PictureAsPdfIcon
+} from '@mui/icons-material';
 import TableComponent from '../../../../../components/table/TableComponent';
 import { type PrcExecution } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 
@@ -10,9 +14,11 @@ export type PrcExecutionData = PrcExecution;
 interface PrcExecutionTableProps {
 	data: PrcExecutionData[];
 	onExecute: (id: number) => void;
+	/** Opens consolidated report for print / Save as PDF */
+	onOpenReport: (id: number) => void;
 }
 
-const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => {
+const PrcExecutionTable = memo(({ data, onExecute, onOpenReport }: PrcExecutionTableProps) => {
 	// Safety check for data
 	const safeData = data || [];
 
@@ -247,28 +253,42 @@ const PrcExecutionTable = memo(({ data, onExecute }: PrcExecutionTableProps) => 
 			{
 				id: 'execute',
 				header: 'Actions',
-				size: 120,
+				size: 168,
 				enableSorting: false,
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
-					<Button
-						variant="contained"
-						startIcon={<PlayArrowIcon />}
-						onClick={() => onExecute(row.original.id)}
-						size="small"
-						sx={{
-							backgroundColor: '#1976d2',
-							'&:hover': {
-								backgroundColor: '#1565c0'
-							}
-						}}
-					>
-						Execute
-					</Button>
+					<Stack direction="row" spacing={0.5} alignItems="center" flexWrap="nowrap">
+						<Button
+							variant="contained"
+							startIcon={<PlayArrowIcon />}
+							onClick={() => onExecute(row.original.id)}
+							size="small"
+							sx={{
+								backgroundColor: '#1976d2',
+								minWidth: 0,
+								px: 1,
+								'&:hover': {
+									backgroundColor: '#1565c0'
+								}
+							}}
+						>
+							Execute
+						</Button>
+						<Tooltip title="Consolidated report — print or save as PDF">
+							<IconButton
+								size="small"
+								color="primary"
+								onClick={() => onOpenReport(row.original.id)}
+								aria-label={`PDF report for PRC ${row.original.id}`}
+							>
+								<PictureAsPdfIcon fontSize="small" />
+							</IconButton>
+						</Tooltip>
+					</Stack>
 				)
 			}
 		],
-		[onExecute]
+		[onExecute, onOpenReport]
 	);
 
 	if (safeData.length === 0) {

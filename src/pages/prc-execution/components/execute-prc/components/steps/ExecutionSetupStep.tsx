@@ -63,6 +63,8 @@ interface ExecutionSetupStepProps {
 	aggregatedStepsSnapshot?: Record<string, unknown>;
 	onStepComplete: (formData: FormData) => void;
 	readOnlyOverride?: boolean;
+	/** With `readOnlyOverride`, use normal-looking fields (read-only, not MUI disabled grey) — e.g. consolidated report. */
+	plainReadOnlyFields?: boolean;
 }
 
 const ExecutionSetupStep = ({
@@ -70,7 +72,8 @@ const ExecutionSetupStep = ({
 	executionData,
 	aggregatedStepsSnapshot,
 	onStepComplete,
-	readOnlyOverride
+	readOnlyOverride,
+	plainReadOnlyFields
 }: ExecutionSetupStepProps) => {
 	const { userInfo } = useCurrentRole();
 	const partId = executionData.partId;
@@ -88,6 +91,8 @@ const ExecutionSetupStep = ({
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
+	const plainLocked = Boolean(readOnlyOverride && plainReadOnlyFields);
+	const greyDisabledReadOnly = isReadOnly && !plainLocked;
 	const mouldComboBusy = isMouldComboLoading || isMouldComboFetching;
 
 	const mergedOperationWise = useMemo(() => {
@@ -215,8 +220,9 @@ const ExecutionSetupStep = ({
 									onChange={e => setProductionSetId(e.target.value)}
 									error={!!errors.productionSetId}
 									helperText={errors.productionSetId}
-									disabled={isReadOnly}
+									disabled={greyDisabledReadOnly}
 									required
+									InputProps={plainLocked ? { readOnly: true } : undefined}
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
 								/>
 							</Grid>
@@ -230,9 +236,21 @@ const ExecutionSetupStep = ({
 										fullWidth
 										label="Mould ID"
 										value={fallbackMouldId}
-										disabled
+										disabled={greyDisabledReadOnly}
+										InputProps={plainLocked ? { readOnly: true } : undefined}
 										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
 										helperText="Saved mould is not in the current list for this part"
+									/>
+								) : plainLocked ? (
+									<TextField
+										fullWidth
+										label="Mould"
+										value={selectedMould?.label?.trim() || fallbackMouldId || '—'}
+										InputProps={{ readOnly: true }}
+										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+										helperText={
+											mouldComboBusy ? 'Loading mould list…' : 'Mould recorded for this execution'
+										}
 									/>
 								) : (
 									<Autocomplete<MouldComboItem, false, false, false>
@@ -246,7 +264,7 @@ const ExecutionSetupStep = ({
 										}}
 										getOptionLabel={option => option.label}
 										isOptionEqualToValue={(a, b) => a.value === b.value}
-										disabled={isReadOnly}
+										disabled={greyDisabledReadOnly}
 										renderInput={params => (
 											<TextField
 												{...params}
@@ -298,8 +316,10 @@ const ExecutionSetupStep = ({
 								<DatePicker
 									label="Date"
 									value={selectedDate}
-									onChange={v => setSelectedDate(v || dayjs())}
-									disabled={isReadOnly}
+									onChange={plainLocked ? () => {} : v => setSelectedDate(v || dayjs())}
+									readOnly={plainLocked}
+									disabled={greyDisabledReadOnly}
+									disableOpenPicker={plainLocked}
 									slotProps={{
 										textField: {
 											fullWidth: true,
@@ -309,27 +329,37 @@ const ExecutionSetupStep = ({
 								/>
 							</Grid>
 							<Grid size={{ xs: 12, md: 6 }}>
-								<FormControl fullWidth error={!!errors.shift}>
-									<InputLabel>Shift</InputLabel>
-									<Select
-										value={shift}
+								{plainLocked ? (
+									<TextField
+										fullWidth
 										label="Shift"
-										onChange={e => setShift(e.target.value)}
-										disabled={isReadOnly}
-										sx={{ borderRadius: 2 }}
-									>
-										{shiftOptions.map(opt => (
-											<MenuItem key={opt.value} value={opt.value}>
-												{opt.label}
-											</MenuItem>
-										))}
-									</Select>
-									{errors.shift && (
-										<Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-											{errors.shift}
-										</Typography>
-									)}
-								</FormControl>
+										value={shift}
+										InputProps={{ readOnly: true }}
+										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+									/>
+								) : (
+									<FormControl fullWidth error={!!errors.shift}>
+										<InputLabel>Shift</InputLabel>
+										<Select
+											value={shift}
+											label="Shift"
+											onChange={e => setShift(e.target.value)}
+											disabled={greyDisabledReadOnly}
+											sx={{ borderRadius: 2 }}
+										>
+											{shiftOptions.map(opt => (
+												<MenuItem key={opt.value} value={opt.value}>
+													{opt.label}
+												</MenuItem>
+											))}
+										</Select>
+										{errors.shift && (
+											<Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+												{errors.shift}
+											</Typography>
+										)}
+									</FormControl>
+								)}
 							</Grid>
 						</Grid>
 					</CardContent>

@@ -55,7 +55,7 @@ function hasStartEndIntervalsShape(obj: Record<string, unknown>): boolean {
 
 /**
  * Sum active seconds for sequence measurements that have `startTime`/`endTime` per known step ids.
- * Matches `calculateStepGroupTiming` in execute-prc (per-step rounding, then summed).
+ * Matches historical `calculateStepGroupTiming` in execute-prc (per-step rounding, then summed).
  */
 export function sumSequenceSubStepIntervalsSeconds(
 	groupTimingData: Record<string, unknown>,
@@ -75,6 +75,43 @@ export function sumSequenceSubStepIntervalsSeconds(
 		}
 	}
 	return { totalSeconds: totalActiveDuration, intervalsCount };
+}
+
+/** Sequence step-group timing vs planned sequence duration (preview + report). */
+export function calculateSequenceStepGroupTiming(
+	step: TimelineStep,
+	stepStartEndTime: Record<string, unknown>
+): { timingExceeded: boolean; actualDuration: number; expectedDuration: number } {
+	if (!step.stepGroup || !step.prcTemplateStepId || !step.stepGroup.sequenceTiming) {
+		return { timingExceeded: false, actualDuration: 0, expectedDuration: 0 };
+	}
+
+	const prcTemplateStepId = step.prcTemplateStepId.toString();
+	const stepGroupId = step.stepGroup.id.toString();
+
+	const templateTimingData = stepStartEndTime[prcTemplateStepId] as Record<string, unknown> | undefined;
+	if (!templateTimingData) {
+		return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
+	}
+
+	const groupTimingData = templateTimingData[stepGroupId] as Record<string, unknown> | undefined;
+	if (!groupTimingData) {
+		return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
+	}
+
+	const { totalSeconds: totalActiveDuration, intervalsCount: stepsWithTiming } = sumSequenceSubStepIntervalsSeconds(
+		groupTimingData,
+		step.stepGroup.steps
+	);
+
+	if (stepsWithTiming === 0) {
+		return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
+	}
+
+	const expectedDuration = step.stepGroup.sequenceTiming;
+	const timingExceeded = totalActiveDuration > expectedDuration;
+
+	return { timingExceeded, actualDuration: totalActiveDuration, expectedDuration };
 }
 
 /**

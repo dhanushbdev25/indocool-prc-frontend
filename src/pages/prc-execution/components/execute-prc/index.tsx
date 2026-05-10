@@ -6,8 +6,9 @@ import {
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
-import { sumSequenceSubStepIntervalsSeconds } from '../../utils/timelineCardTiming';
+import { calculateSequenceStepGroupTiming } from '../../utils/timelineCardTiming';
 import { buildTimelineSteps } from '../../utils/buildTimelineSteps';
+import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
 	buildAggregatedData,
 	buildTimingData,
@@ -18,20 +19,6 @@ import {
 	mergeUserApprovalData
 } from '../../utils/dataBuilders';
 
-// Utility function to filter out metadata fields from step data
-const filterMeasurementSteps = (groupData: Record<string, unknown>): Array<[string, unknown]> => {
-	const metadataFields = [
-		'stepCompleted',
-		'productionApproved',
-		'ctqApproved',
-		'partialCtqApprove',
-		'timingExceeded',
-		'timingExceededRemarks',
-		'timingExceededReasonCode',
-		'timingExceededReasonLabel'
-	];
-	return Object.entries(groupData).filter(([stepId]) => !metadataFields.includes(stepId));
-};
 import {
 	type TimelineStep,
 	type ExecutionData,
@@ -198,7 +185,7 @@ const ExecutePrc = () => {
 			currentStep?.stepGroup
 		) {
 			const actualData = (executionData as { data: ExecutionData }).data;
-			const timingResult = calculateStepGroupTiming(
+			const timingResult = calculateSequenceStepGroupTiming(
 				currentStep,
 				actualData.stepStartEndTime as Record<string, unknown>
 			);
@@ -360,178 +347,16 @@ const ExecutePrc = () => {
 				});
 
 				if (allStepsFilled) {
-					// All steps completed, show preview screen for sequence steps
-					// Extract actual measurement data from the group with context
 					const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId?.toString() || ''] as Record<
 						string,
 						unknown
 					>;
 					const groupData = stepGroupData?.[currentStep.stepGroup?.id.toString() || ''] as Record<string, unknown>;
 
-					// Create detailed measurement data with context
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const detailedMeasurements: any[] = [];
-					if (groupData) {
-						const filteredSteps = filterMeasurementSteps(groupData);
-						console.log('🔍 FilterMeasurementSteps result:', filteredSteps);
-						console.log('🔍 Full groupData for debugging:', groupData);
-
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						filteredSteps.forEach(([stepId, stepData]: [string, any]) => {
-							console.log(`🔍 Step ${stepId} data:`, stepData);
-							console.log(`🔍 Step ${stepId} has responsiblePersons:`, !!stepData.responsiblePersons);
-
-						// Find the step definition to get context
-						const stepDefinition = currentStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
-
-						// For table type, pass through the data array as-is
-						if (stepDefinition?.targetValueType === 'table') {
-							const tableValue = stepData.data || stepData.value;
-							const measurementData = {
-								stepId: stepId,
-								value: tableValue,
-								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-								targetValueType: stepDefinition?.targetValueType || 'unknown',
-								targetValueType: 'table' as const,
-								tableConfig: stepDefinition?.tableConfig,
-								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-								uom: stepDefinition?.uom || '',
-								notes: stepDefinition?.notes || '',
-								ctq: stepDefinition?.ctq || false,
-								stepNumber: stepDefinition?.stepNumber || 0,
-								instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
-								responsiblePersons: [] as Array<{ role: string; employeeName: string; employeeCode: string }>
-							};
-							const responsiblePersons = stepData.responsiblePersons || stepData.data?.responsiblePersons;
-							if (responsiblePersons && Array.isArray(responsiblePersons)) {
-								measurementData.responsiblePersons = responsiblePersons;
-							}
-							detailedMeasurements.push(measurementData);
-							return;
-						}
-
-						// ok/not ok: keep { value, comments } so StepPreview parseOkNotOkValue shows comments (do not unwrap)
-						if (stepDefinition?.targetValueType === 'ok/not ok') {
-							const okNotOkValue = stepData.value || stepData.data;
-							const measurementData = {
-								stepId: stepId,
-								value: okNotOkValue,
-								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-								targetValueType: stepDefinition?.targetValueType || 'unknown',
-								targetValueType: 'ok/not ok' as const,
-								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-								uom: stepDefinition?.uom || '',
-								notes: stepDefinition?.notes || '',
-								ctq: stepDefinition?.ctq || false,
-								stepNumber: stepDefinition?.stepNumber || 0,
-								instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
-								responsiblePersons: [] as Array<{
-									role: string;
-									employeeName: string;
-									employeeCode: string;
-								}>
-							};
-
-							let responsiblePersons = null;
-							if (stepData.responsiblePersons && Array.isArray(stepData.responsiblePersons)) {
-								responsiblePersons = stepData.responsiblePersons;
-							} else if (
-								stepData.data &&
-								typeof stepData.data === 'object' &&
-								'responsiblePersons' in stepData.data &&
-								Array.isArray((stepData.data as Record<string, unknown>).responsiblePersons)
-							) {
-								responsiblePersons = (stepData.data as Record<string, unknown>).responsiblePersons as Array<{
-									role: string;
-									employeeName: string;
-									employeeCode: string;
-								}>;
-							}
-							if (responsiblePersons && Array.isArray(responsiblePersons)) {
-								measurementData.responsiblePersons = responsiblePersons;
-							}
-
-							detailedMeasurements.push(measurementData);
-							return;
-						}
-
-						// Extract value from stepData (handle both direct value and nested data)
-						let value = stepData.value || stepData.data;
-						let extractedMinimumAcceptanceValue = stepData.minimumAcceptanceValue;
-						let extractedMaximumAcceptanceValue = stepData.maximumAcceptanceValue;
-						let extractedValidationStatus = stepData.validationStatus;
-
-						// Handle array data (multiple measurements) where each item might have validation info
-						if (
-							Array.isArray(value) &&
-							value.length > 0 &&
-							typeof value[0] === 'object' &&
-							value[0] !== null &&
-							'value' in value[0]
-						) {
-							// Extract values from array of objects
-							const firstItem = value[0] as Record<string, unknown>;
-							value = (value as Array<Record<string, unknown>>).map(item => item.value);
-							// For multiple measurements, use validation status from first item if available
-							if (firstItem.validationStatus) {
-								extractedValidationStatus = firstItem.validationStatus;
-								extractedMinimumAcceptanceValue = firstItem.minimumAcceptanceValue as string | undefined;
-								extractedMaximumAcceptanceValue = firstItem.maximumAcceptanceValue as string | undefined;
-							}
-						} else if (typeof value === 'object' && value !== null && 'value' in value) {
-							// Handle nested structure like { value: "10", minimumAcceptanceValue: "1", ... }
-							const valueObj = value as Record<string, unknown>;
-							value = valueObj.value;
-							extractedMinimumAcceptanceValue =
-								(valueObj.minimumAcceptanceValue as string) || extractedMinimumAcceptanceValue;
-							extractedMaximumAcceptanceValue =
-								(valueObj.maximumAcceptanceValue as string) || extractedMaximumAcceptanceValue;
-							extractedValidationStatus = (valueObj.validationStatus as string) || extractedValidationStatus;
-						}
-
-						const measurementData = {
-							stepId: stepId,
-							value: value,
-							parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-							targetValueType: stepDefinition?.targetValueType || 'unknown',
-							targetValueType: stepDefinition?.targetValueType || 'range',
-							evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-							uom: stepDefinition?.uom || '',
-							notes: stepDefinition?.notes || '',
-							ctq: stepDefinition?.ctq || false,
-							stepNumber: stepDefinition?.stepNumber || 0,
-							instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
-							minimumAcceptanceValue: extractedMinimumAcceptanceValue || stepDefinition?.minimumAcceptanceValue,
-							maximumAcceptanceValue: extractedMaximumAcceptanceValue || stepDefinition?.maximumAcceptanceValue,
-							validationStatus: extractedValidationStatus,
-							responsiblePersons: [] as Array<{
-								role: string;
-								employeeName: string;
-								employeeCode: string;
-							}>
-						};
-
-							// Include responsible persons if they exist for this step
-							// Check both direct responsiblePersons and nested structure
-							let responsiblePersons = null;
-							if (stepData.responsiblePersons && Array.isArray(stepData.responsiblePersons)) {
-								responsiblePersons = stepData.responsiblePersons;
-								console.log(`✅ Found direct responsiblePersons for step ${stepId}:`, responsiblePersons);
-							} else if (stepData.data && typeof stepData.data === 'object' && stepData.data.responsiblePersons) {
-								responsiblePersons = stepData.data.responsiblePersons;
-								console.log(`✅ Found nested responsiblePersons for step ${stepId}:`, responsiblePersons);
-							} else {
-								console.log(`❌ No responsiblePersons found for step ${stepId}`);
-								console.log(`🔍 Step data structure:`, JSON.stringify(stepData, null, 2));
-							}
-
-							if (responsiblePersons && Array.isArray(responsiblePersons)) {
-								measurementData.responsiblePersons = responsiblePersons;
-							}
-
-							detailedMeasurements.push(measurementData);
-						});
-					}
+					const detailedMeasurements =
+						groupData && currentStep.stepGroup
+							? buildSequenceDetailedMeasurements(groupData, currentStep.stepGroup.steps)
+							: [];
 
 					// Load approval state from backend (look inside step group)
 					let productionApproved = false;
@@ -553,7 +378,7 @@ const ExecutePrc = () => {
 
 					// Calculate timing for this step group
 					const actualData = (executionData as { data: ExecutionData }).data;
-					const timingResult = calculateStepGroupTiming(
+					const timingResult = calculateSequenceStepGroupTiming(
 						currentStep,
 						actualData.stepStartEndTime as Record<string, unknown>
 					);
@@ -734,62 +559,6 @@ const ExecutePrc = () => {
 		});
 
 		return allStepsFilled;
-	};
-
-	// Helper function to calculate step group timing
-	const calculateStepGroupTiming = (
-		step: TimelineStep,
-		stepStartEndTime: Record<string, unknown>
-	): { timingExceeded: boolean; actualDuration: number; expectedDuration: number } => {
-		if (!step.stepGroup || !step.prcTemplateStepId || !step.stepGroup.sequenceTiming) {
-			return { timingExceeded: false, actualDuration: 0, expectedDuration: 0 };
-		}
-
-		const prcTemplateStepId = step.prcTemplateStepId.toString();
-		const stepGroupId = step.stepGroup.id.toString();
-
-		console.log('🕐 Calculating timing for step group:', {
-			prcTemplateStepId,
-			stepGroupId,
-			expectedDuration: step.stepGroup.sequenceTiming,
-			stepStartEndTime
-		});
-
-		// Get timing data for this step group
-		const templateTimingData = stepStartEndTime[prcTemplateStepId] as Record<string, unknown>;
-		if (!templateTimingData) {
-			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-		}
-
-		const groupTimingData = templateTimingData[stepGroupId] as Record<string, unknown>;
-		if (!groupTimingData) {
-			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-		}
-
-		const { totalSeconds: totalActiveDuration, intervalsCount: stepsWithTiming } = sumSequenceSubStepIntervalsSeconds(
-			groupTimingData,
-			step.stepGroup.steps
-		);
-
-		if (stepsWithTiming === 0) {
-			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-		}
-
-		// Keep expected duration in seconds
-		const expectedDuration = step.stepGroup.sequenceTiming;
-		const timingExceeded = totalActiveDuration > expectedDuration;
-
-		console.log('🕐 Optimized timing calculation result:', {
-			prcTemplateStepId,
-			stepGroupId,
-			totalActiveDuration,
-			expectedDuration,
-			timingExceeded,
-			stepsWithTiming,
-			calculationMethod: 'sum_of_individual_step_durations'
-		});
-
-		return { timingExceeded, actualDuration: totalActiveDuration, expectedDuration };
 	};
 
 	// Handle approval actions
@@ -1319,70 +1088,10 @@ const ExecutePrc = () => {
 				>;
 				const groupData = stepGroupData?.[targetStep.stepGroup?.id.toString() || ''] as Record<string, unknown>;
 
-				// Create detailed measurement data with context
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const detailedMeasurements: any[] = [];
-				if (groupData) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					filterMeasurementSteps(groupData).forEach(([stepId, stepData]: [string, any]) => {
-						const stepDefinition = targetStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
-
-						if (stepDefinition?.targetValueType === 'table') {
-							const tableValue = stepData.data || stepData.value;
-							const measurementData = {
-								stepId,
-								value: tableValue,
-								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-								targetValueType: stepDefinition?.targetValueType || 'unknown',
-								targetValueType: 'table' as const,
-								tableConfig: stepDefinition?.tableConfig,
-								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-								uom: stepDefinition?.uom || '',
-								notes: stepDefinition?.notes || '',
-								ctq: stepDefinition?.ctq || false,
-								stepNumber: stepDefinition?.stepNumber || 0,
-								instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
-								responsiblePersons: [] as Array<{ role: string; employeeName: string; employeeCode: string }>
-							};
-							const rp = stepData.responsiblePersons || stepData.data?.responsiblePersons;
-							if (rp && Array.isArray(rp)) measurementData.responsiblePersons = rp;
-							detailedMeasurements.push(measurementData);
-							return;
-						}
-
-						const measurementData = {
-							stepId: stepId,
-							value: stepData.value || stepData.data,
-							parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-							targetValueType: stepDefinition?.targetValueType || 'unknown',
-							targetValueType: stepDefinition?.targetValueType || 'range',
-							evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-							uom: stepDefinition?.uom || '',
-							notes: stepDefinition?.notes || '',
-							ctq: stepDefinition?.ctq || false,
-							stepNumber: stepDefinition?.stepNumber || 0,
-							instrumentId: (stepData.instrumentId || stepData.data?.instrumentId || '') as string,
-							responsiblePersons: [] as Array<{
-								role: string;
-								employeeName: string;
-								employeeCode: string;
-							}>
-						};
-
-						let responsiblePersons = null;
-						if (stepData.responsiblePersons && Array.isArray(stepData.responsiblePersons)) {
-							responsiblePersons = stepData.responsiblePersons;
-						} else if (stepData.data && typeof stepData.data === 'object' && stepData.data.responsiblePersons) {
-							responsiblePersons = stepData.data.responsiblePersons;
-						}
-
-						if (responsiblePersons && Array.isArray(responsiblePersons)) {
-							measurementData.responsiblePersons = responsiblePersons;
-						}
-
-						detailedMeasurements.push(measurementData);
-					});
-				}
+				const detailedMeasurements =
+					groupData && targetStep.stepGroup
+						? buildSequenceDetailedMeasurements(groupData, targetStep.stepGroup.steps)
+						: [];
 
 				// Load approval state from backend (look inside step group)
 				let productionApproved = false;
@@ -1404,7 +1113,7 @@ const ExecutePrc = () => {
 
 				// Calculate timing for the step group
 				const actualData = (executionData as { data: ExecutionData }).data;
-				const timingResult = calculateStepGroupTiming(
+				const timingResult = calculateSequenceStepGroupTiming(
 					targetStep,
 					actualData.stepStartEndTime as Record<string, unknown>
 				);

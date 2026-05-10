@@ -1169,15 +1169,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 			{step.inspectionMetadata && (
 				<Box sx={{ mb: 2, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
 					<Grid container spacing={1.5}>
-						<Grid size={{ xs: 6, sm: 3 }}>
-							<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
-								Inspection ID
-							</Typography>
-							<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-								{step.inspectionMetadata.inspectionId}
-							</Typography>
-						</Grid>
-						<Grid size={{ xs: 6, sm: 3 }}>
+						<Grid size={{ xs: 6, sm: 4 }}>
 							<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
 								Inspection Type
 							</Typography>
@@ -1185,7 +1177,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 								{step.inspectionMetadata.type}
 							</Typography>
 						</Grid>
-						<Grid size={{ xs: 6, sm: 3 }}>
+						<Grid size={{ xs: 6, sm: 4 }}>
 							<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
 								Status
 							</Typography>
@@ -1193,7 +1185,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 								{step.inspectionMetadata.status}
 							</Typography>
 						</Grid>
-						<Grid size={{ xs: 6, sm: 3 }}>
+						<Grid size={{ xs: 6, sm: 4 }}>
 							<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
 								Version
 							</Typography>

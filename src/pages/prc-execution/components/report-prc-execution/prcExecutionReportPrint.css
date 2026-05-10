@@ -1,0 +1,223 @@
+/* Print / Save-as-PDF for consolidated PRC execution report.
+   Dense layout aligned with batch / electronic production record habits:
+   tight margins, smaller type, tables over prose, collapsible regions expanded. */
+
+.prc-execution-report-root {
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+
+@page {
+	size: A4 portrait;
+	margin: 8mm;
+}
+
+@media print {
+	body * {
+		visibility: hidden;
+	}
+
+	body .prc-execution-report-root,
+	body .prc-execution-report-root * {
+		visibility: visible;
+	}
+
+	body .prc-execution-report-root {
+		position: absolute;
+		left: 0;
+		top: 0;
+		width: 100%;
+		padding: 0 !important;
+		margin: 0 !important;
+		max-width: none !important;
+		background: #fff !important;
+		box-shadow: none !important;
+		font-size: 9pt !important;
+		line-height: 1.22 !important;
+		color: #111 !important;
+	}
+
+	.prc-report-no-print {
+		display: none !important;
+	}
+
+	/* Allow long sections to flow across pages (avoids huge blank gaps from avoid-all). */
+	.prc-report-section {
+		page-break-inside: auto !important;
+		break-inside: auto !important;
+		margin-bottom: 6px !important;
+		border-left-width: 2px !important;
+	}
+
+	.prc-report-hero-paper {
+		background: #fff !important;
+		background-image: none !important;
+		padding: 8px 10px !important;
+		margin-bottom: 8px !important;
+		border-radius: 0 !important;
+	}
+
+	.prc-report-step-header {
+		padding: 6px 10px !important;
+		min-height: 0 !important;
+	}
+
+	.prc-report-step-header .MuiTypography-h6 {
+		font-size: 11pt !important;
+		line-height: 1.2 !important;
+		margin: 0 !important;
+	}
+
+	.prc-report-step-header .MuiTypography-overline {
+		font-size: 7pt !important;
+		line-height: 1.1 !important;
+	}
+
+	.prc-report-hero-paper .MuiTypography-h5 {
+		font-size: 13pt !important;
+		line-height: 1.2 !important;
+		margin-bottom: 4px !important;
+	}
+
+	.prc-report-hero-paper .MuiTypography-body2 {
+		font-size: 8.5pt !important;
+		line-height: 1.25 !important;
+	}
+
+	.prc-report-bom-root {
+		padding: 6px 8px !important;
+		background: #fff !important;
+	}
+
+	/* Summary grid: one extra column vs screen for audit-style density */
+	.prc-report-header-summary-grid {
+		display: grid !important;
+		grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+		gap: 4px 10px !important;
+		margin-top: 6px !important;
+	}
+
+	.prc-report-header-summary-grid .MuiTypography-caption {
+		font-size: 7pt !important;
+		line-height: 1.1 !important;
+		margin-bottom: 0 !important;
+	}
+
+	.prc-report-header-summary-grid .MuiTypography-body2 {
+		font-size: 8.5pt !important;
+		line-height: 1.25 !important;
+		font-weight: 600 !important;
+	}
+
+	/* MUI Collapse: always render expanded height in PDF (pairs with unmountOnExit=false / expanded rows). */
+	.prc-execution-report-root .MuiCollapse-root {
+		height: auto !important;
+		visibility: visible !important;
+		opacity: 1 !important;
+		overflow: visible !important;
+	}
+
+	.prc-execution-report-root .MuiCollapse-wrapper,
+	.prc-execution-report-root .MuiCollapse-wrapperInner {
+		height: auto !important;
+		transform: none !important;
+		display: block !important;
+	}
+
+	/* Accordions (catalyst mixing): flat, full-width bodies */
+	.prc-execution-report-root .MuiAccordion-root {
+		box-shadow: none !important;
+		border: 1px solid #bbb !important;
+		border-radius: 2px !important;
+		margin-bottom: 4px !important;
+		background: #fff !important;
+	}
+
+	.prc-execution-report-root .MuiAccordion-root::before {
+		display: none !important;
+	}
+
+	.prc-execution-report-root .MuiAccordionSummary-root {
+		min-height: 32px !important;
+		padding: 4px 8px !important;
+	}
+
+	.prc-execution-report-root .MuiAccordionSummary-content {
+		margin: 4px 0 !important;
+	}
+
+	.prc-execution-report-root .MuiAccordionDetails-root {
+		padding: 4px 6px !important;
+		border-top: 1px solid #ddd !important;
+	}
+
+	.prc-report-bom-root .MuiAccordionSummary-expandIconWrapper {
+		display: none !important;
+	}
+
+	/* Tables */
+	.prc-execution-report-root .MuiTable-root {
+		font-size: 8.5pt !important;
+	}
+
+	.prc-execution-report-root .MuiTableCell-root {
+		padding: 2px 5px !important;
+		font-size: inherit !important;
+		line-height: 1.2 !important;
+	}
+
+	.prc-execution-report-root .MuiTableHead-root .MuiTableCell-root {
+		padding: 3px 5px !important;
+		font-weight: 700 !important;
+		background-color: #f0f0f0 !important;
+	}
+
+	/* Alerts / chips */
+	.prc-execution-report-root .MuiAlert-root {
+		padding: 4px 8px !important;
+		margin-bottom: 6px !important;
+		font-size: 8.5pt !important;
+		min-height: 0 !important;
+	}
+
+	.prc-execution-report-root .MuiChip-root {
+		height: 18px !important;
+		font-size: 7pt !important;
+	}
+
+	.prc-execution-report-root .MuiChip-label {
+		padding-left: 6px !important;
+		padding-right: 6px !important;
+	}
+
+	/* Cards inside steps */
+	.prc-execution-report-root .MuiCard-root {
+		box-shadow: none !important;
+		border: 1px solid #ddd !important;
+		margin-bottom: 6px !important;
+	}
+
+	.prc-execution-report-root .MuiCardContent-root {
+		padding: 6px 8px !important;
+	}
+
+	.prc-execution-report-root .MuiPaper-root {
+		box-shadow: none !important;
+	}
+
+	/* Serialized JSON / pre blocks */
+	.prc-execution-report-root pre {
+		max-height: none !important;
+		font-size: 7.5pt !important;
+		line-height: 1.25 !important;
+		padding: 6px !important;
+		margin: 4px 0 0 !important;
+		white-space: pre-wrap !important;
+		word-break: break-word !important;
+	}
+
+	.prc-report-page-break-before {
+		page-break-before: always;
+		break-before: page;
+	}
+}

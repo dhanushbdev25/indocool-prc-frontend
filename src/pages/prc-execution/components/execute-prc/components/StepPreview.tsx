@@ -53,6 +53,13 @@ import {
 	isNegativeOkNotOk
 } from '../../../../../utils/okNotOkLabels';
 
+import {
+	findMatchingPreviewFile,
+	buildPreviewImageUrl,
+	type PreviewAnnotation
+} from '../../../utils/inspectionPreviewImageHelpers';
+import { normalizeInspectionStepAggregatedData } from '../../../utils/inspectionAggregatedNormalization';
+
 const COMMENT_PREVIEW_MAX_CHARS = 50;
 
 const truncateCommentForPreview = (text: string, maxChars = COMMENT_PREVIEW_MAX_CHARS) => {
@@ -63,61 +70,9 @@ const truncateCommentForPreview = (text: string, maxChars = COMMENT_PREVIEW_MAX_
 	return { display: `${t.slice(0, maxChars)}…`, full: t, isTruncated: true };
 };
 
-const extractBaseName = (value: string): string => {
-	const normalized = value.replace(/\\/g, '/').trim();
-	const parts = normalized.split('/');
-	return (parts[parts.length - 1] || '').trim();
-};
-
-const normalizeImageToken = (value: unknown): string => {
-	if (typeof value !== 'string') return '';
-	return extractBaseName(value).toLowerCase();
-};
-
-const collectImageTokens = (values: unknown[]): string[] => {
-	const unique = new Set<string>();
-	values.forEach(value => {
-		const token = normalizeImageToken(value);
-		if (token) unique.add(token);
-	});
-	return Array.from(unique);
-};
-
-type PreviewImageFile = {
-	fileName?: string;
-	filePath?: string;
-	originalFileName?: string;
-};
-
-type PreviewAnnotation = {
-	imageFileName?: string;
-	imageUrl?: string;
-	regions?: unknown[];
-};
-
 type PreviewRowAnnotationEntry = {
 	rowIndex?: number;
 	annotations?: PreviewAnnotation[];
-};
-
-const buildFileTokens = (file?: PreviewImageFile): string[] =>
-	collectImageTokens([file?.fileName, file?.originalFileName, file?.filePath]);
-
-const buildAnnotationTokens = (annotation?: PreviewAnnotation): string[] =>
-	collectImageTokens([annotation?.imageFileName, annotation?.imageUrl]);
-
-const findMatchingPreviewFile = (
-	files: PreviewImageFile[],
-	annotation?: PreviewAnnotation
-): PreviewImageFile | undefined => {
-	const annotationTokens = new Set(buildAnnotationTokens(annotation));
-	if (annotationTokens.size === 0) return undefined;
-	return files.find(file => buildFileTokens(file).some(token => annotationTokens.has(token)));
-};
-
-const buildPreviewImageUrl = (annotation?: PreviewAnnotation, matchedFile?: PreviewImageFile): string => {
-	const rawUrl = annotation?.imageUrl || matchedFile?.filePath || '';
-	return toFileRenderUrl(rawUrl).replace(/\\/g, '/');
 };
 
 const normalizePreviewTargetType = (t: string | undefined): string =>
@@ -198,6 +153,8 @@ interface StepPreviewProps {
 	onPartialApproveCTQ: () => void;
 	onProceedToNext: (payload?: ProceedFromPreviewPayload) => void;
 	onBackToStepGroup?: () => void;
+	/** Read-only embed (e.g. consolidated PDF/report): no approvals, no delay inputs, full-height tables. */
+	embeddedReportMode?: boolean;
 }
 
 const StepPreview = ({
@@ -207,7 +164,8 @@ const StepPreview = ({
 	onApproveCTQ,
 	onPartialApproveCTQ,
 	onProceedToNext,
-	onBackToStepGroup
+	onBackToStepGroup,
+	embeddedReportMode = false
 }: StepPreviewProps) => {
 	const { currentRole } = useCurrentRole();
 	// Dynamic role checks for inspection steps based on approveByProduction and approveByQuality
@@ -312,14 +270,18 @@ const StepPreview = ({
 		isLoading: isDelayReasonLoading,
 		isFetching: isDelayReasonFetching
 	} = useFetchOperationDelayReasonComboQuery(undefined, {
-		skip: previewData.type !== 'sequence' || !previewData.timingExceeded
+		skip: embeddedReportMode || previewData.type !== 'sequence' || !previewData.timingExceeded
 	});
 
 	const delayReasonComboBusy = isDelayReasonLoading || isDelayReasonFetching;
 
 	// Hydrate delay reason from saved execution data only. Do not clear when code is missing — the
 	// combo list loading would otherwise wipe the user's selection before submit.
+	/* eslint-disable react-hooks/set-state-in-effect -- sync selected combo row when options load / step changes */
 	useEffect(() => {
+		if (embeddedReportMode) {
+			return;
+		}
 		if (previewData.type !== 'sequence' || !previewData.timingExceeded) {
 			setSelectedDelayReason(null);
 			return;
@@ -342,6 +304,7 @@ const StepPreview = ({
 			setSelectedDelayReason({ label: String(code), value: String(code) });
 		}
 	}, [
+		embeddedReportMode,
 		previewData.type,
 		previewData.timingExceeded,
 		previewData.timingExceededReasonCode,
@@ -349,6 +312,7 @@ const StepPreview = ({
 		previewData.stepNumber,
 		operationDelayReasonOptions
 	]);
+	/* eslint-enable react-hooks/set-state-in-effect */
 
 	const remarksSatisfied =
 		timingExceededRemarks.trim().length > 0 || Boolean((previewData.timingExceededRemarks ?? '').trim().length > 0);
@@ -360,7 +324,10 @@ const StepPreview = ({
 	})();
 	const reasonSatisfied = selectedDelayReason !== null || persistedReasonOk;
 	const delayDocumentationSatisfied =
-		!previewData.timingExceeded || previewData.stepCompleted || (remarksSatisfied && reasonSatisfied);
+		embeddedReportMode ||
+		!previewData.timingExceeded ||
+		previewData.stepCompleted ||
+		(remarksSatisfied && reasonSatisfied);
 
 	const canProceed =
 		productionApproved &&
@@ -453,125 +420,14 @@ const StepPreview = ({
 	const renderDataSummary = () => {
 		let { data } = previewData;
 
-		// Transform data if it's in the new nested format
+		// Normalize object-shaped annotations to arrays (shared with consolidated report)
 		if (previewData.type === 'inspection' && typeof data === 'object' && data !== null) {
-			console.log('🔍 StepPreview: Processing inspection data...', data);
-
-			// Check if data has the nested structure (prcAggregatedSteps format)
-			const dataKeys = Object.keys(data);
-			console.log('🔍 StepPreview: Data keys:', dataKeys);
-
-			// Check if any parameter has annotations in object format instead of array format
-			const needsTransformation = dataKeys.some(key => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const value = (data as any)[key];
-				if (typeof value === 'object' && value !== null && 'annotations' in value) {
-					const annotations = value.annotations;
-					// Check if annotations is an object instead of an array
-					return typeof annotations === 'object' && annotations !== null && !Array.isArray(annotations);
-				}
-				return false;
-			});
-
-			if (needsTransformation) {
-				console.log('🔄 StepPreview: Detected object-based annotations, transforming...', data);
-
-				// Transform the data to convert object-based annotations to arrays
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const transformedData: Record<string, any> = {};
-
-				Object.entries(data).forEach(([key, value]) => {
-					// Skip system parameters
-					if (['stepCompleted', 'productionApproved', 'ctqApproved', 'partialCtqApprove'].includes(key)) {
-						return;
-					}
-
-					if (typeof value === 'object' && value !== null) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						const transformedParam: any = {};
-
-						// Copy value if it exists
-						if ('value' in value) {
-							transformedParam.value = value.value;
-						}
-
-						// Transform annotations from object to array
-						if ('annotations' in value && value.annotations) {
-							const annotations = value.annotations;
-							if (typeof annotations === 'object' && !Array.isArray(annotations)) {
-								// Convert object to array and transform regions within each annotation
-								transformedParam.annotations = Object.keys(annotations)
-									.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-									.map(key => {
-										// eslint-disable-next-line @typescript-eslint/no-explicit-any
-										const annotation = (annotations as any)[key];
-										if (typeof annotation === 'object' && annotation !== null) {
-											const transformedAnnotation = { ...annotation };
-
-											// Transform regions from object to array
-											if ('regions' in annotation && annotation.regions) {
-												const regions = annotation.regions;
-												if (typeof regions === 'object' && !Array.isArray(regions)) {
-													// Convert regions object to array
-													transformedAnnotation.regions = Object.keys(regions)
-														.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-														.map(regionKey => {
-															// eslint-disable-next-line @typescript-eslint/no-explicit-any
-															const region = (regions as any)[regionKey];
-															if (typeof region === 'object' && region !== null) {
-																const transformedRegion = { ...region };
-
-																// Transform points from object to array
-																if ('points' in region && region.points) {
-																	const points = region.points;
-																	if (typeof points === 'object' && !Array.isArray(points)) {
-																		// Convert points object to array
-																		transformedRegion.points = Object.keys(points)
-																			.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-																			.map(pointKey => {
-																				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-																				const point = (points as any)[pointKey];
-																				if (
-																					typeof point === 'object' &&
-																					point !== null &&
-																					'0' in point &&
-																					'1' in point
-																				) {
-																					return [point['0'], point['1']];
-																				}
-																				return [0, 0];
-																			});
-																	}
-																}
-
-																return transformedRegion;
-															}
-															return region;
-														});
-												}
-											}
-
-											return transformedAnnotation;
-										}
-										return annotation;
-									});
-							} else {
-								transformedParam.annotations = annotations;
-							}
-						}
-
-						// Only add if there's actual data
-						if (Object.keys(transformedParam).length > 0) {
-							transformedData[key] = transformedParam;
-						}
-					}
-				});
-
-				data = transformedData;
-				debugDataTransformation(previewData.data, data, 'StepPreview');
-			} else {
-				console.log('StepPreview: Data appears to be in expected format already');
+			const raw = data as Record<string, unknown>;
+			const normalized = normalizeInspectionStepAggregatedData(raw);
+			if (normalized !== raw) {
+				debugDataTransformation(raw, normalized, 'StepPreview');
 			}
+			data = normalized;
 		}
 
 		if (previewData.type === 'sequence') {
@@ -614,79 +470,110 @@ const StepPreview = ({
 									<strong>{formatExecutionDuration(previewData.expectedDuration || 0)}</strong> expected
 								</Typography>
 							</Alert>
-							<Autocomplete<OperationDelayReasonComboOption, false, false, false>
-								fullWidth
-								sx={{ mt: 2 }}
-								options={operationDelayReasonOptions}
-								loading={delayReasonComboBusy}
-								value={selectedDelayReason}
-								onChange={(_, v) => setSelectedDelayReason(v)}
-								getOptionLabel={o => o.label}
-								isOptionEqualToValue={(a, b) => a.value === b.value}
-								disabled={previewData.stepCompleted}
-								renderInput={params => (
-									<TextField
-										{...params}
-										label="Operation delay reason"
-										placeholder="Select a reason code"
-										required={!previewData.stepCompleted}
-										error={!previewData.stepCompleted && !selectedDelayReason}
-										helperText={
-											!previewData.stepCompleted && !selectedDelayReason
-												? 'Required to proceed'
-												: undefined
-										}
-										InputProps={{
-											...params.InputProps,
-											endAdornment: (
-												<>
-													{delayReasonComboBusy ? (
-														<CircularProgress color="inherit" size={20} />
-													) : null}
-													{params.InputProps.endAdornment}
-												</>
-											)
-										}}
+							{embeddedReportMode ? (
+								<Box sx={{ mt: 2, pl: 0.5 }}>
+									{(previewData.timingExceededReasonLabel != null ||
+										previewData.timingExceededReasonCode !== undefined) && (
+										<Typography variant="body2" sx={{ color: 'text.primary' }}>
+											<strong>Delay reason:</strong>{' '}
+											{previewData.timingExceededReasonLabel ??
+												(previewData.timingExceededReasonCode !== undefined
+													? String(previewData.timingExceededReasonCode)
+													: '—')}
+										</Typography>
+									)}
+									<Typography variant="body2" sx={{ mt: 0.75, color: 'text.secondary' }}>
+										<strong>Remarks:</strong>{' '}
+										{(previewData.timingExceededRemarks ?? '').trim() || '—'}
+									</Typography>
+								</Box>
+							) : (
+								<>
+									<Autocomplete<OperationDelayReasonComboOption, false, false, false>
+										fullWidth
+										sx={{ mt: 2 }}
+										options={operationDelayReasonOptions}
+										loading={delayReasonComboBusy}
+										value={selectedDelayReason}
+										onChange={(_, v) => setSelectedDelayReason(v)}
+										getOptionLabel={o => o.label}
+										isOptionEqualToValue={(a, b) => a.value === b.value}
+										disabled={previewData.stepCompleted}
+										renderInput={params => (
+											<TextField
+												{...params}
+												label="Operation delay reason"
+												placeholder="Select a reason code"
+												required={!previewData.stepCompleted}
+												error={!previewData.stepCompleted && !selectedDelayReason}
+												helperText={
+													!previewData.stepCompleted && !selectedDelayReason
+														? 'Required to proceed'
+														: undefined
+												}
+												InputProps={{
+													...params.InputProps,
+													endAdornment: (
+														<>
+															{delayReasonComboBusy ? (
+																<CircularProgress color="inherit" size={20} />
+															) : null}
+															{params.InputProps.endAdornment}
+														</>
+													)
+												}}
+											/>
+										)}
 									/>
-								)}
-							/>
-							<TextField
-								fullWidth
-								multiline
-								rows={2}
-								label="Reason for delay"
-								placeholder="Brief explanation for the timing delay"
-								value={
-									previewData.stepCompleted
-										? previewData.timingExceededRemarks || 'No reason provided'
-										: timingExceededRemarks
-								}
-								onChange={e => setTimingExceededRemarks(e.target.value)}
-								required={!previewData.stepCompleted}
-								disabled={previewData.stepCompleted}
-								sx={{
-									mt: 2,
-									'& .MuiOutlinedInput-root': {
-										borderColor: !previewData.stepCompleted && !timingExceededRemarks.trim() ? '#f44336' : '#e0e0e0',
-										'&:hover .MuiOutlinedInput-notchedOutline': {
-											borderColor: !previewData.stepCompleted && !timingExceededRemarks.trim() ? '#f44336' : '#1976d2'
-										},
-										'&.Mui-disabled': {
-											backgroundColor: '#f5f5f5',
-											color: '#666'
+									<TextField
+										fullWidth
+										multiline
+										rows={2}
+										label="Reason for delay"
+										placeholder="Brief explanation for the timing delay"
+										value={
+											previewData.stepCompleted
+												? previewData.timingExceededRemarks || 'No reason provided'
+												: timingExceededRemarks
 										}
-									}
-								}}
-								error={!previewData.stepCompleted && !timingExceededRemarks.trim()}
-								helperText={'Required to proceed'}
-							/>
+										onChange={e => setTimingExceededRemarks(e.target.value)}
+										required={!previewData.stepCompleted}
+										disabled={previewData.stepCompleted}
+										sx={{
+											mt: 2,
+											'& .MuiOutlinedInput-root': {
+												borderColor:
+													!previewData.stepCompleted && !timingExceededRemarks.trim()
+														? '#f44336'
+														: '#e0e0e0',
+												'&:hover .MuiOutlinedInput-notchedOutline': {
+													borderColor:
+														!previewData.stepCompleted && !timingExceededRemarks.trim()
+															? '#f44336'
+															: '#1976d2'
+												},
+												'&.Mui-disabled': {
+													backgroundColor: '#f5f5f5',
+													color: '#666'
+												}
+											}
+										}}
+										error={!previewData.stepCompleted && !timingExceededRemarks.trim()}
+										helperText={'Required to proceed'}
+									/>
+								</>
+							)}
 						</Box>
 					)}
 					<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 						Measurement Report ({Array.isArray(data) ? data.length : 0} measurements)
 					</Typography>
-					<TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
-						<Table size="small" stickyHeader>
+					<TableContainer
+						component={Paper}
+						variant="outlined"
+						sx={embeddedReportMode ? undefined : { maxHeight: 400 }}
+					>
+						<Table size="small" stickyHeader={!embeddedReportMode}>
 							<TableHead>
 								<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Step</TableCell>
@@ -1069,7 +956,7 @@ const StepPreview = ({
 													}}
 												>
 													<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', fontSize: '0.9rem' }}>
-														Step {stepGroup.stepId}: {stepGroup.parameterDescription}
+														{stepGroup.parameterDescription}
 													</Typography>
 												</Box>
 
@@ -1186,9 +1073,6 @@ const StepPreview = ({
 											height: 16
 										}}
 									/>
-									<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
-											ID: {String(regionObj.id || '')}
-									</Typography>
 								</Box>
 									{regionObj.comment && (
 									<Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#333', fontStyle: 'italic' }}>
@@ -1237,15 +1121,7 @@ const StepPreview = ({
 					{inspectionMeta && (
 						<Box sx={{ mb: 2, p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}>
 							<Grid container spacing={1.5}>
-								<Grid size={{ xs: 6, sm: 3 }}>
-									<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
-										Inspection ID
-									</Typography>
-									<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#1565c0' }}>
-										{inspectionMeta.inspectionId}
-									</Typography>
-								</Grid>
-								<Grid size={{ xs: 6, sm: 3 }}>
+								<Grid size={{ xs: 6, sm: 4 }}>
 									<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
 										Type
 									</Typography>
@@ -1253,7 +1129,7 @@ const StepPreview = ({
 										{inspectionMeta.type}
 									</Typography>
 								</Grid>
-								<Grid size={{ xs: 6, sm: 3 }}>
+								<Grid size={{ xs: 6, sm: 4 }}>
 									<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
 										Status
 									</Typography>
@@ -1261,7 +1137,7 @@ const StepPreview = ({
 										{inspectionMeta.status}
 									</Typography>
 								</Grid>
-								<Grid size={{ xs: 6, sm: 3 }}>
+								<Grid size={{ xs: 6, sm: 4 }}>
 									<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
 										Version
 									</Typography>
@@ -1288,8 +1164,12 @@ const StepPreview = ({
 						}{' '}
 						parameters)
 					</Typography>
-					<TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
-						<Table size="small" stickyHeader>
+					<TableContainer
+						component={Paper}
+						variant="outlined"
+						sx={embeddedReportMode ? undefined : { maxHeight: 400 }}
+					>
+						<Table size="small" stickyHeader={!embeddedReportMode}>
 							<TableHead>
 								<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>#</TableCell>
@@ -1421,13 +1301,21 @@ const StepPreview = ({
 												sx={{
 													'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
 													'&:hover': { backgroundColor: '#f0f0f0' },
-													cursor: isMultiColumn || isTableType || isFixedTableType ? 'pointer' : 'default'
+													cursor:
+														embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType)
+															? 'default'
+															: 'pointer'
 												}}
-												onClick={isMultiColumn || isTableType || isFixedTableType ? () => toggleMultiValueParam(parameterId) : undefined}
+												onClick={
+													embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType)
+														? undefined
+														: () => toggleMultiValueParam(parameterId)
+												}
 											>
 												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-														{(isMultiColumn || isTableType || isFixedTableType) && (
+														{!embeddedReportMode &&
+															(isMultiColumn || isTableType || isFixedTableType) && (
 																<IconButton size="small" sx={{ p: 0.25 }}>
 																	{expandedMultiValueParams.has(parameterId) ? <ExpandLess /> : <ExpandMore />}
 																</IconButton>
@@ -1637,7 +1525,11 @@ const StepPreview = ({
 											{isFixedTableType && (
 												<TableRow>
 													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
-														<Collapse in={expandedMultiValueParams.has(parameterId)} timeout="auto" unmountOnExit>
+														<Collapse
+															in={embeddedReportMode || expandedMultiValueParams.has(parameterId)}
+															timeout="auto"
+															unmountOnExit={!embeddedReportMode}
+														>
 															<Box sx={{ p: 2, backgroundColor: '#f0f4ff', borderRadius: '8px', m: 1 }}>
 																<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a237e' }}>
 																	{parameterName} - Fixed Table Data
@@ -1760,7 +1652,11 @@ const StepPreview = ({
 											{isMultiColumn && (
 													<TableRow>
 														<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
-															<Collapse in={expandedMultiValueParams.has(parameterId)} timeout="auto" unmountOnExit>
+															<Collapse
+															in={embeddedReportMode || expandedMultiValueParams.has(parameterId)}
+															timeout="auto"
+															unmountOnExit={!embeddedReportMode}
+														>
 																<Box
 																	sx={{
 																		p: 2,
@@ -2147,6 +2043,16 @@ const StepPreview = ({
 			</Box>
 		);
 	};
+
+	if (embeddedReportMode) {
+		return (
+			<Box sx={{ py: 0 }}>
+				<Card variant="outlined" sx={{ border: 'none', boxShadow: 'none', bgcolor: 'transparent' }}>
+					<CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>{renderDataSummary()}</CardContent>
+				</Card>
+			</Box>
+		);
+	}
 
 	return (
 		<Box sx={{ p: 2 }}>

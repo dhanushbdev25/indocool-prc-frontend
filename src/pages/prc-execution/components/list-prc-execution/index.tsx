@@ -146,6 +146,10 @@ const ListPrcExecution = () => {
 		navigate(`/prc-execution/execute/${executionId}`);
 	};
 
+	const handleOpenReport = (executionId: number) => {
+		navigate(`/prc-execution/report/${executionId}`);
+	};
+
 	const handleDeleteConfirm = async () => {
 		// TODO: Implement delete functionality when API is available
 		// For now, just close the dialog
@@ -183,7 +187,7 @@ const ListPrcExecution = () => {
 				operationCompletion={operationCompletion}
 				onOperationCompletionChange={setOperationCompletion}
 			/>
-			<PrcExecutionTable data={filteredData} onExecute={handleExecute} />
+			<PrcExecutionTable data={filteredData} onExecute={handleExecute} onOpenReport={handleOpenReport} />
 
 			{/* Delete Confirmation Dialog */}
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>

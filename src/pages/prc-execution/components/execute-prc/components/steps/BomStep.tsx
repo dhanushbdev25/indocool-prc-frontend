@@ -41,6 +41,8 @@ interface BomStepProps {
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => void;
 	readOnlyOverride?: boolean;
+	/** Consolidated PDF/report: every material group expanded; no interaction needed. */
+	expandAccordionsForPdf?: boolean;
 }
 
 // Helper function to find matching catalyst configuration
@@ -155,7 +157,7 @@ const groupAndSortBOMItems = (
 	return grouped;
 };
 
-const BomStep = ({ step, executionData, onStepComplete, readOnlyOverride }: BomStepProps) => {
+const BomStep = ({ step, executionData, onStepComplete, readOnlyOverride, expandAccordionsForPdf }: BomStepProps) => {
 	const [formData, setFormData] = useState<CatalystMixingFormData>({
 		entries: []
 	});
@@ -499,17 +501,32 @@ const BomStep = ({ step, executionData, onStepComplete, readOnlyOverride }: BomS
 	}, [formData.entries]);
 
 	return (
-		<Box sx={{ p: 3, backgroundColor: '#fafafa' }}>
+		<Box
+			className={expandAccordionsForPdf ? 'prc-report-bom-root' : undefined}
+			sx={{ p: 3, backgroundColor: '#fafafa' }}
+		>
 			{/* Material Groups */}
 			{Object.entries(groupedEntries).map(([materialCode, entries], groupIndex) => (
 				<Accordion
 					key={materialCode}
-					defaultExpanded={groupIndex === 0}
+					{...(expandAccordionsForPdf
+						? {
+								expanded: true,
+								onChange: () => {}
+							}
+						: {
+								defaultExpanded: groupIndex === 0
+							})}
 					sx={{
 						mb: 2,
 						borderRadius: 2,
 						'&:before': { display: 'none' },
-						boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+						boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+						...(expandAccordionsForPdf
+							? {
+									'& .MuiAccordionSummary-expandIconWrapper': { display: 'none' }
+								}
+							: {})
 					}}
 				>
 					<AccordionSummary

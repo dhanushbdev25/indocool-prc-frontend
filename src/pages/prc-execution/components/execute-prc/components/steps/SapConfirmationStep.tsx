@@ -31,7 +31,8 @@ interface SapConfirmationStepProps {
 function LogRow({
 	log,
 	expanded,
-	onToggle
+	onToggle,
+	archivePresentation
 }: {
 	log: {
 		id: number;
@@ -46,7 +47,65 @@ function LogRow({
 	};
 	expanded: boolean;
 	onToggle: () => void;
+	/** Report / browse-only: compact table — operation name, operation ID, status only. */
+	archivePresentation?: boolean;
 }) {
+	const displayOperation = archivePresentation
+		? log.operationText?.trim() || '—'
+		: `${log.operationId} — ${log.operationText}`;
+	const payloadForDisplay = log.requestBody;
+
+	const payloadSection = (
+		<Box sx={{ py: 2, px: 1 }}>
+			<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+				Request URL
+			</Typography>
+			<Typography variant="body2" sx={{ mb: 2, wordBreak: 'break-all' }}>
+				{log.requestUrl}
+			</Typography>
+			<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+				Request body
+			</Typography>
+			<Box
+				component="pre"
+				sx={{
+					m: 0,
+					p: 1.5,
+					bgcolor: theme => (theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100'),
+					borderRadius: 1,
+					fontSize: 12,
+					overflow: 'auto',
+					maxHeight: 240
+				}}
+			>
+				{JSON.stringify(payloadForDisplay, null, 2)}
+			</Box>
+		</Box>
+	);
+
+	if (archivePresentation) {
+		return (
+			<TableRow>
+				<TableCell>
+					<Typography variant="body2">{displayOperation}</Typography>
+				</TableCell>
+				<TableCell>
+					<Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+						{log.operationId || '—'}
+					</Typography>
+				</TableCell>
+				<TableCell>
+					<Chip
+						size="small"
+						label={log.success ? 'Success' : 'Failed'}
+						color={log.success ? 'success' : 'error'}
+						variant={log.success ? 'filled' : 'outlined'}
+					/>
+				</TableCell>
+			</TableRow>
+		);
+	}
+
 	return (
 		<>
 			<TableRow sx={{ '& > td': { borderBottom: expanded ? 0 : undefined } }}>
@@ -56,9 +115,7 @@ function LogRow({
 					</IconButton>
 				</TableCell>
 				<TableCell>
-					<Typography variant="body2">
-						{log.operationId} — {log.operationText}
-					</Typography>
+					<Typography variant="body2">{displayOperation}</Typography>
 				</TableCell>
 				<TableCell>{log.httpStatus}</TableCell>
 				<TableCell>
@@ -83,31 +140,7 @@ function LogRow({
 			<TableRow>
 				<TableCell colSpan={6} sx={{ py: 0, borderBottom: '1px solid', borderColor: 'divider' }}>
 					<Collapse in={expanded} timeout="auto" unmountOnExit>
-						<Box sx={{ py: 2, px: 1 }}>
-							<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-								Request URL
-							</Typography>
-							<Typography variant="body2" sx={{ mb: 2, wordBreak: 'break-all' }}>
-								{log.requestUrl}
-							</Typography>
-							<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-								Request body
-							</Typography>
-							<Box
-								component="pre"
-								sx={{
-									m: 0,
-									p: 1.5,
-									bgcolor: 'grey.100',
-									borderRadius: 1,
-									fontSize: 12,
-									overflow: 'auto',
-									maxHeight: 240
-								}}
-							>
-								{JSON.stringify(log.requestBody, null, 2)}
-							</Box>
-						</Box>
+						{payloadSection}
 					</Collapse>
 				</TableCell>
 			</TableRow>
@@ -122,7 +155,7 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 
 	const { data: logs = [], isLoading, isError, error, refetch } = useFetchSapConfirmationLogsQuery(
 		{ prcExecutionId },
-		{ skip: !prcExecutionId || Boolean(readOnlyOverride) }
+		{ skip: !prcExecutionId }
 	);
 
 	const [retrigger, { isLoading: isRetriggering }] = useRetriggerSapConfirmationsMutation();
@@ -145,23 +178,7 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 		}
 	};
 
-	if (readOnlyOverride) {
-		return (
-			<Box sx={{ p: 2, maxWidth: 1200, mx: 'auto' }}>
-				<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-					SAP confirmation API calls
-				</Typography>
-				<Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-					Review each call to SAP production order confirmation. Retry failed posts, then complete this execution only
-					when every row shows success.
-				</Typography>
-				<Alert severity="info">
-					Confirmation logs are available during live PRC execution after SAP posting runs. This preview only shows the
-					step layout.
-				</Alert>
-			</Box>
-		);
-	}
+	const archivePresentation = Boolean(readOnlyOverride);
 
 	return (
 		<Box sx={{ p: 2, maxWidth: 1200, mx: 'auto' }}>
@@ -169,31 +186,34 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 				SAP confirmation API calls
 			</Typography>
 			<Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-				Review each call to SAP production order confirmation. Retry failed posts, then complete this execution only
-				when every row shows success.
+				{archivePresentation
+					? 'SAP confirmations posted for this execution (operation name, ID, and status).'
+					: 'Review each call to SAP production order confirmation. Retry failed posts, then complete this execution only when every row shows success.'}
 			</Typography>
 
-			<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2, alignItems: 'center' }}>
-				<Button
-					variant="outlined"
-					color="primary"
-					startIcon={isRetriggering ? <CircularProgress size={18} /> : <Refresh />}
-					disabled={!prcExecutionId || isRetriggering}
-					onClick={() => void handleRetrigger()}
-				>
-					Retry failed confirmations
-				</Button>
-				<Button
-					variant="contained"
-					color="primary"
-					disabled={!canComplete || completeLoading}
-					onClick={() => void handleComplete()}
-				>
-					{completeLoading ? <CircularProgress size={22} color="inherit" /> : 'Complete PRC'}
-				</Button>
-			</Box>
+			{!archivePresentation && (
+				<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2, alignItems: 'center' }}>
+					<Button
+						variant="outlined"
+						color="primary"
+						startIcon={isRetriggering ? <CircularProgress size={18} /> : <Refresh />}
+						disabled={!prcExecutionId || isRetriggering}
+						onClick={() => void handleRetrigger()}
+					>
+						Retry failed confirmations
+					</Button>
+					<Button
+						variant="contained"
+						color="primary"
+						disabled={!canComplete || completeLoading}
+						onClick={() => void handleComplete()}
+					>
+						{completeLoading ? <CircularProgress size={22} color="inherit" /> : 'Complete PRC'}
+					</Button>
+				</Box>
+			)}
 
-			{!canComplete && logs.length > 0 && (
+			{!archivePresentation && !canComplete && logs.length > 0 && (
 				<Alert severity="warning" sx={{ mb: 2 }}>
 					All SAP confirmations must succeed before you can complete this execution. Use retry for failed rows, then
 					refresh if needed.
@@ -222,14 +242,22 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 				<TableContainer>
 					<Table size="small">
 						<TableHead>
-							<TableRow>
-								<TableCell />
-								<TableCell>Operation</TableCell>
-								<TableCell>HTTP</TableCell>
-								<TableCell>Status</TableCell>
-								<TableCell>Error</TableCell>
-								<TableCell>Triggered</TableCell>
-							</TableRow>
+							{archivePresentation ? (
+								<TableRow>
+									<TableCell>Operation name</TableCell>
+									<TableCell>Operation ID</TableCell>
+									<TableCell>Status</TableCell>
+								</TableRow>
+							) : (
+								<TableRow>
+									<TableCell />
+									<TableCell>Operation</TableCell>
+									<TableCell>HTTP</TableCell>
+									<TableCell>Status</TableCell>
+									<TableCell>Error</TableCell>
+									<TableCell>Triggered</TableCell>
+								</TableRow>
+							)}
 						</TableHead>
 						<TableBody>
 							{logs.map(log => (
@@ -238,6 +266,7 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 									log={log}
 									expanded={expandedId === log.id}
 									onToggle={() => setExpandedId(expandedId === log.id ? null : log.id)}
+									archivePresentation={archivePresentation}
 								/>
 							))}
 						</TableBody>

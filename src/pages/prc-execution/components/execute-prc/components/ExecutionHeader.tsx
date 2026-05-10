@@ -8,7 +8,7 @@ import {
 	Stack,
 	useTheme
 } from '@mui/material';
-import { ArrowBack, Pause } from '@mui/icons-material';
+import { ArrowBack, Pause, PictureAsPdf } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { type ExecutionData } from '../../../types/execution.types';
 import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
@@ -158,6 +158,17 @@ const ExecutionHeader = ({
 						}}
 					>
 						Back
+					</Button>
+					<Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
+					<Button
+						startIcon={<PictureAsPdf />}
+						onClick={() => navigate(`/prc-execution/report/${executionData.id}`)}
+						color="inherit"
+						size="small"
+						variant="outlined"
+						sx={{ flexShrink: 0 }}
+					>
+						Report
 					</Button>
 					<Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
 					<Box sx={{ minWidth: 0 }}>

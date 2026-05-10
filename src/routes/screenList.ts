@@ -40,7 +40,8 @@ export const imports = {
 	sapJobRunHistory: Loadable(lazy(() => import('../pages/sap-jobs/components/view-sap-job-history'))),
 	prcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/list-prc-execution'))),
 	viewPrcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/view-prc-execution'))),
-	executePrc: Loadable(lazy(() => import('../pages/prc-execution/components/execute-prc')))
+	executePrc: Loadable(lazy(() => import('../pages/prc-execution/components/execute-prc'))),
+	prcExecutionReport: Loadable(lazy(() => import('../pages/prc-execution/components/report-prc-execution')))
 };
 
 // Screen configuration interface
@@ -273,6 +274,13 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'View PRC Execution',
 				path: 'prc-execution/view/:id',
 				element: imports.viewPrcExecution,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'Consolidated report',
+				path: 'prc-execution/report/:id',
+				element: imports.prcExecutionReport,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			},
