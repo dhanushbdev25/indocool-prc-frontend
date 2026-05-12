@@ -6,7 +6,9 @@ import {
 	Button,
 	Divider,
 	Stack,
-	useTheme
+	useTheme,
+	IconButton,
+	Tooltip
 } from '@mui/material';
 import { ArrowBack, Pause, PictureAsPdf } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -160,17 +162,6 @@ const ExecutionHeader = ({
 						Back
 					</Button>
 					<Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
-					<Button
-						startIcon={<PictureAsPdf />}
-						onClick={() => navigate(`/prc-execution/report/${executionData.id}`)}
-						color="inherit"
-						size="small"
-						variant="outlined"
-						sx={{ flexShrink: 0 }}
-					>
-						Report
-					</Button>
-					<Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
 					<Box sx={{ minWidth: 0 }}>
 						<Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', lineHeight: 1.25 }}>
 							{isPreview ? 'PRC preview' : `PRC #${executionData.id}`}
@@ -193,8 +184,8 @@ const ExecutionHeader = ({
 				<Stack
 					direction={{ xs: 'column', sm: 'row' }}
 					spacing={2}
-					alignItems={{ xs: 'stretch', sm: 'center' }}
-					sx={{ flexShrink: 0 }}
+					alignItems={{ xs: 'flex-end', sm: 'center' }}
+					sx={{ flexShrink: 0, ml: { lg: 'auto' }, width: { xs: '100%', sm: 'auto' } }}
 				>
 					<Box sx={{ width: { xs: '100%', sm: 200 }, minWidth: { sm: 200 } }}>
 						<Stack direction="row" alignItems="center" spacing={1.5}>
@@ -253,6 +244,26 @@ const ExecutionHeader = ({
 							</Button>
 						</Stack>
 					)}
+
+					<Tooltip title="Consolidated report — print or save as PDF">
+						<IconButton
+							size="small"
+							edge="end"
+							onClick={() => navigate(`/prc-execution/report/${executionData.id}`)}
+							aria-label="Open consolidated report"
+							sx={{
+								flexShrink: 0,
+								border: '1px solid',
+								borderColor: 'divider',
+								borderRadius: 1,
+								p: 0.5,
+								color: 'text.secondary',
+								'&:hover': { bgcolor: 'action.hover', borderColor: 'text.secondary' }
+							}}
+						>
+							<PictureAsPdf sx={{ fontSize: 18 }} />
+						</IconButton>
+					</Tooltip>
 				</Stack>
 			</Stack>
 

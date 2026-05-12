@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
 	Box,
 	Button,
@@ -327,6 +327,7 @@ function ReportTimelineSection({
 const PrcExecutionReport = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
 	const executionId = id ? parseInt(id, 10) : 0;
 
 	const { data: executionData, isLoading, error } = useFetchPrcExecutionDetailsQuery(executionId);
@@ -340,6 +341,18 @@ const PrcExecutionReport = () => {
 		if (!execution) return [];
 		return buildTimelineSteps(execution);
 	}, [execution]);
+
+	const stepReportMode = useMemo(() => {
+		const raw = searchParams.get('step');
+		if (raw === null || raw.trim() === '') {
+			return { kind: 'full' as const };
+		}
+		const idx = parseInt(raw, 10);
+		if (Number.isNaN(idx) || idx < 0 || idx >= timelineSteps.length) {
+			return { kind: 'invalid' as const };
+		}
+		return { kind: 'single' as const, index: idx };
+	}, [searchParams, timelineSteps.length]);
 
 	const agg = useMemo(() => {
 		if (!execution?.prcAggregatedSteps || typeof execution.prcAggregatedSteps !== 'object') return {};
@@ -382,6 +395,28 @@ const PrcExecutionReport = () => {
 		);
 	}
 
+	const isSingleStepReport = stepReportMode.kind === 'single';
+	const singleTimelineStep =
+		stepReportMode.kind === 'single' ? timelineSteps[stepReportMode.index] : null;
+
+	if (stepReportMode.kind === 'invalid') {
+		return (
+			<Box sx={{ p: { xs: 1.5, md: 3 }, maxWidth: 1100, mx: 'auto' }}>
+				<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 3 }}>
+					<Button startIcon={<ArrowBack />} onClick={() => navigate(`/prc-execution/execute/${execution.id}`)}>
+						Back to execution
+					</Button>
+					<Button variant="outlined" onClick={() => navigate(`/prc-execution/report/${execution.id}`)}>
+						Open full consolidated report
+					</Button>
+				</Stack>
+				<Alert severity="error">
+					This step index is not valid for this execution (check the URL or open the full report).
+				</Alert>
+			</Box>
+		);
+	}
+
 	return (
 		<Box className="prc-execution-report-root" sx={{ p: { xs: 1.5, md: 3 }, maxWidth: 1100, mx: 'auto', pb: 6 }}>
 			<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} className="prc-report-no-print" sx={{ mb: 3 }}>
@@ -409,11 +444,16 @@ const PrcExecutionReport = () => {
 				className="prc-report-section prc-report-hero-paper"
 			>
 				<Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-					PRC consolidated report
+					{isSingleStepReport ? 'PRC step report' : 'PRC consolidated report'}
 				</Typography>
 				<Typography variant="body2" color="text.secondary">
 					Execution #{execution.id} · {execution.partNumber} · {execution.customer || '—'}
 				</Typography>
+				{isSingleStepReport && singleTimelineStep && (
+					<Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 600 }}>
+						Step {singleTimelineStep.stepNumber}: {singleTimelineStep.title}
+					</Typography>
+				)}
 				<Typography variant="body2" color="text.secondary">
 					Date {execution.date ?? '—'} · Shift {execution.shift ?? '—'} · Production set {execution.productionSetId ?? '—'}
 				</Typography>
@@ -427,16 +467,27 @@ const PrcExecutionReport = () => {
 			</Paper>
 
 			<Stack spacing={3}>
-				{timelineSteps.map((step, i) => (
+				{isSingleStepReport && singleTimelineStep ? (
 					<ReportTimelineSection
-						key={`${step.type}-${step.stepNumber}-${i}`}
-						step={step}
+						key={`single-${singleTimelineStep.type}-${singleTimelineStep.stepNumber}-${stepReportMode.kind === 'single' ? stepReportMode.index : 0}`}
+						step={singleTimelineStep}
 						execution={execution}
 						agg={agg}
 						stepTimingRoot={stepTimingRoot}
 						className="prc-report-section"
 					/>
-				))}
+				) : (
+					timelineSteps.map((step, i) => (
+						<ReportTimelineSection
+							key={`${step.type}-${step.stepNumber}-${i}`}
+							step={step}
+							execution={execution}
+							agg={agg}
+							stepTimingRoot={stepTimingRoot}
+							className="prc-report-section"
+						/>
+					))
+				)}
 			</Stack>
 		</Box>
 	);

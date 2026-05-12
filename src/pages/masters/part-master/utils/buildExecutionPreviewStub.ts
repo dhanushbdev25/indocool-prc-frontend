@@ -45,14 +45,11 @@ function mapOperationWiseToExecution(
 		const l3 = Number(row.l3Count) || 0;
 		const l4 = Number(row.l4Count) || 0;
 		const sumSkills = l1 + l2 + l3 + l4;
-		const fallback = Number(row.responsiblePersonCount);
-		const count =
-			sumSkills >= 1 ? sumSkills : Number.isFinite(fallback) && fallback >= 1 ? Math.floor(fallback) : 1;
 		return {
 			id: row.id,
 			operationID: row.operationID,
 			operationName: row.operationName,
-			responsiblePersonCount: count
+			responsiblePersonCount: sumSkills
 		};
 	});
 }

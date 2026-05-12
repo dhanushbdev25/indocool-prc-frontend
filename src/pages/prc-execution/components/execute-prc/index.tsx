@@ -1378,6 +1378,7 @@ const ExecutePrc = () => {
 									currentStepIndex={currentStepIndex}
 									onStepClick={handleStepNavigation}
 									stepStartEndTime={actualExecutionData.stepStartEndTime ?? {}}
+									executionId={actualExecutionData.id}
 								/>
 							</Box>
 							{/* Quick Stats */}

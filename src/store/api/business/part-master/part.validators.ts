@@ -129,10 +129,10 @@ export interface OperationWisePartRow {
 	operationName: string;
 	/** Sum of l1–l4 when set; optional until user enters skill counts */
 	responsiblePersonCount?: number;
-	l1Count?: number;
-	l2Count?: number;
-	l3Count?: number;
-	l4Count?: number;
+	l1Count: number;
+	l2Count: number;
+	l3Count: number;
+	l4Count: number;
 }
 
 export interface CustomerCombo {

@@ -39,7 +39,6 @@ import {
 import {
 	Controller,
 	Control,
-	FieldErrors,
 	UseFormSetValue,
 	useFieldArray,
 	useFormContext,
@@ -68,18 +67,12 @@ import {
 
 interface LinkedMastersTabProps {
 	control: Control<PartMasterFormData>;
-	errors: FieldErrors<PartMasterFormData>;
 	setValue: UseFormSetValue<PartMasterFormData>;
 	/** Same part id used for operations combo as CreatePart submit (`formPartId ?? route id`). */
 	operationsPartId?: number;
 }
 
-const LinkedMastersTab = ({
-	control,
-	errors,
-	setValue,
-	operationsPartId
-}: LinkedMastersTabProps) => {
+const LinkedMastersTab = ({ control, setValue, operationsPartId }: LinkedMastersTabProps) => {
 	const { getValues } = useFormContext<PartMasterFormData>();
 	const [catalystModalOpen, setCatalystModalOpen] = useState(false);
 	const [catalystPickerSearch, setCatalystPickerSearch] = useState('');
@@ -372,36 +365,36 @@ const LinkedMastersTab = ({
 		const next: OperationWisePartRow[] = headcountOperationRows.map(g => {
 			const opNum = Number(g.id);
 			const existing = cur.find(r => String(r.operationID) === String(g.id));
-			let l1: number | undefined;
-			let l2: number | undefined;
-			let l3: number | undefined;
-			let l4: number | undefined;
+			let l1 = 0;
+			let l2 = 0;
+			let l3 = 0;
+			let l4 = 0;
 
-			if (
-				existing &&
-				(existing.l1Count != null ||
+			if (existing) {
+				if (
+					existing.l1Count != null ||
 					existing.l2Count != null ||
 					existing.l3Count != null ||
-					existing.l4Count != null)
-			) {
-				l1 =
-					existing.l1Count != null ? Math.max(0, Math.floor(Number(existing.l1Count))) : undefined;
-				l2 =
-					existing.l2Count != null ? Math.max(0, Math.floor(Number(existing.l2Count))) : undefined;
-				l3 =
-					existing.l3Count != null ? Math.max(0, Math.floor(Number(existing.l3Count))) : undefined;
-				l4 =
-					existing.l4Count != null ? Math.max(0, Math.floor(Number(existing.l4Count))) : undefined;
-			} else if (
-				existing != null &&
-				existing.responsiblePersonCount != null &&
-				Number.isFinite(Number(existing.responsiblePersonCount)) &&
-				Number(existing.responsiblePersonCount) >= 1
-			) {
-				l1 = Math.floor(Number(existing.responsiblePersonCount));
+					existing.l4Count != null
+				) {
+					l1 =
+						existing.l1Count != null ? Math.max(0, Math.floor(Number(existing.l1Count))) : 0;
+					l2 =
+						existing.l2Count != null ? Math.max(0, Math.floor(Number(existing.l2Count))) : 0;
+					l3 =
+						existing.l3Count != null ? Math.max(0, Math.floor(Number(existing.l3Count))) : 0;
+					l4 =
+						existing.l4Count != null ? Math.max(0, Math.floor(Number(existing.l4Count))) : 0;
+				} else if (
+					existing.responsiblePersonCount != null &&
+					Number.isFinite(Number(existing.responsiblePersonCount)) &&
+					Number(existing.responsiblePersonCount) >= 0
+				) {
+					l1 = Math.max(0, Math.floor(Number(existing.responsiblePersonCount)));
+				}
 			}
 
-			const sum = (l1 ?? 0) + (l2 ?? 0) + (l3 ?? 0) + (l4 ?? 0);
+			const sum = l1 + l2 + l3 + l4;
 			return {
 				id: existing?.id ?? `op-${g.id}`,
 				operationID: Number.isFinite(opNum) ? opNum : 0,
@@ -410,7 +403,7 @@ const LinkedMastersTab = ({
 				l2Count: l2,
 				l3Count: l3,
 				l4Count: l4,
-				responsiblePersonCount: sum >= 1 ? sum : undefined
+				responsiblePersonCount: sum
 			};
 		});
 		if (JSON.stringify(cur) !== JSON.stringify(next)) {
@@ -436,11 +429,6 @@ const LinkedMastersTab = ({
 
 			{/* Section 1: Catalyst Chart */}
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0', mb: 3 }}>
-				{errors.catalyst && (
-					<Alert severity="error" sx={{ mb: 2 }}>
-						{errors.catalyst.message}
-					</Alert>
-				)}
 
 				<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -609,8 +597,7 @@ const LinkedMastersTab = ({
 									fullWidth
 									label="Template ID"
 									placeholder="e.g., PRC-TMPL-001"
-									helperText={errors.templateId?.message || 'Unique identifier for the PRC template'}
-									error={!!errors.templateId}
+									helperText="Unique identifier for the PRC template"
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 								/>
 							)}
@@ -626,8 +613,7 @@ const LinkedMastersTab = ({
 									fullWidth
 									label="Template Name"
 									placeholder="e.g., Standard Moulding Process"
-									helperText={errors.templateName?.message || 'Descriptive name for the template'}
-									error={!!errors.templateName}
+									helperText="Descriptive name for the template"
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 								/>
 							)}
@@ -666,8 +652,7 @@ const LinkedMastersTab = ({
 									multiline
 									rows={3}
 									placeholder="Additional notes about this PRC template"
-									helperText={errors.templateNotes?.message || 'Optional notes about usage or special conditions'}
-									error={!!errors.templateNotes}
+									helperText="Optional notes about usage or special conditions"
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px' } }}
 								/>
 							)}
@@ -744,19 +729,15 @@ const LinkedMastersTab = ({
 																			name={field.name}
 																			inputRef={field.ref}
 																			onBlur={field.onBlur}
-																			value={
-																				field.value === undefined || field.value === null
-																					? ''
-																					: field.value
-																			}
+																			value={field.value ?? 0}
 																			onChange={e => {
 																				const raw = e.target.value;
 																				if (raw === '') {
-																					field.onChange(undefined);
+																					field.onChange(0);
 																					return;
 																				}
 																				const num = parseInt(raw, 10);
-																				field.onChange(Number.isNaN(num) ? undefined : num);
+																				field.onChange(Number.isNaN(num) ? 0 : Math.max(0, num));
 																			}}
 																			sx={{
 																				width: 88,

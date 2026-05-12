@@ -2,7 +2,18 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
+import {
+	Box,
+	Paper,
+	Typography,
+	Button,
+	Stepper,
+	Step,
+	StepLabel,
+	Alert,
+	Skeleton,
+	CircularProgress
+} from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
 import InspectionBasicInfo from './components/InspectionBasicInfo';
@@ -403,7 +414,13 @@ const CreateInspection = () => {
 							{activeStep === steps.length - 1 ? (
 								<Button
 									variant="contained"
-									startIcon={<Save />}
+									startIcon={
+										isCreating || isUpdating ? (
+											<CircularProgress size={20} color="inherit" />
+										) : (
+											<Save />
+										)
+									}
 									// eslint-disable-next-line @typescript-eslint/no-explicit-any
 									onClick={handleSubmit(onSubmit as any)}
 									disabled={isCreating || isUpdating}
@@ -413,7 +430,7 @@ const CreateInspection = () => {
 										'&:hover': { backgroundColor: '#1565c0' }
 									}}
 								>
-									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Inspection' : 'Create Inspection'}
+									{isEditMode ? 'Update Inspection' : 'Create Inspection'}
 								</Button>
 							) : (
 								<Button

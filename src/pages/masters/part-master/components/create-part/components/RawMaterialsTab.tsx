@@ -16,7 +16,6 @@ import {
 	DialogContent,
 	DialogActions,
 	Collapse,
-	Alert,
 	Switch,
 	TextField
 } from '@mui/material';
@@ -29,13 +28,12 @@ import {
 	Add as AddIcon,
 	Delete as BinIcon
 } from '@mui/icons-material';
-import { useFieldArray, Control, FieldErrors } from 'react-hook-form';
+import { useFieldArray, Control } from 'react-hook-form';
 import { PartMasterFormData, defaultRawMaterial, RawMaterialFormData } from '../schemas';
 import { uomOptions } from '../../../../sequence-master/components/create-sequence/types';
 
 interface RawMaterialsTabProps {
 	control: Control<PartMasterFormData>;
-	errors: FieldErrors<PartMasterFormData>;
 }
 
 const ReadOnlyField = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -49,7 +47,7 @@ const ReadOnlyField = ({ label, children }: { label: string; children: React.Rea
 	</Box>
 );
 
-const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
+const RawMaterialsTab = ({ control }: RawMaterialsTabProps) => {
 	const [dialogOpen, setDialogOpen] = useState(false);
 	const [editingIndex, setEditingIndex] = useState<number | null>(null);
 	const [formData, setFormData] = useState<RawMaterialFormData>(defaultRawMaterial);
@@ -148,11 +146,6 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 			</Box>
 
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-				{errors.rawMaterials && (
-					<Alert severity="error" sx={{ mb: 3 }}>
-						{errors.rawMaterials.message}
-					</Alert>
-				)}
 
 				{fields.length === 0 ? (
 					<Box
@@ -330,11 +323,6 @@ const RawMaterialsTab = ({ control, errors }: RawMaterialsTabProps) => {
 									>
 										Add split
 									</Button>
-									{formData.splitting && !validateSplitQuantities() && (
-										<Alert severity="error" sx={{ mt: 1.5 }}>
-											Sum of split quantities must equal total quantity
-										</Alert>
-									)}
 								</Box>
 							</Grid>
 						)}

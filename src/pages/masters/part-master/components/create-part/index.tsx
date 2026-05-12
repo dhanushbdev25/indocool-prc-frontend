@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useForm, FormProvider, useWatch } from 'react-hook-form';
+import { useForm, FormProvider, useWatch, type FieldErrors } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
 	Box,
@@ -46,6 +46,7 @@ import { useImageGallery } from '../../../../../hooks/useImageGallery';
 import { toFileRenderUrl, toFileStoragePath } from '../../../../../utils/fileUrl';
 import type { PartMaster, OperationWisePartRow } from '../../../../../store/api/business/part-master/part.validators';
 import { normalizePrcTemplateSteps, buildPrcTemplatePayload } from '../../utils/prcTemplatePayload';
+import { flattenRhfFieldErrorsToHtml } from '../../../../../utils/flattenRhfFieldErrors';
 
 function mapMouldDetailsToFormMoulds(partMaster: PartMaster): PartMasterFormData['moulds'] {
 	return (partMaster.mouldDetails ?? []).map(item => ({
@@ -62,7 +63,7 @@ function parseOptionalNonNegInt(n: unknown): number | undefined {
 	return Math.floor(x);
 }
 
-/** Parse L1–L4 from API row; legacy total-only rows map into L1 only. Omit defaults (no 0/1 fill). */
+/** Parse L1–L4 from API row; legacy total-only rows map into L1 only; missing values → 0 for form display. */
 function skillLevelsFromApiRecord(r: Record<string, unknown>): Pick<
 	OperationWisePartRow,
 	'l1Count' | 'l2Count' | 'l3Count' | 'l4Count'
@@ -73,26 +74,26 @@ function skillLevelsFromApiRecord(r: Record<string, unknown>): Pick<
 	);
 	if (hasSkillFields) {
 		return {
-			l1Count: parseOptionalNonNegInt(r.l1Count),
-			l2Count: parseOptionalNonNegInt(r.l2Count),
-			l3Count: parseOptionalNonNegInt(r.l3Count),
-			l4Count: parseOptionalNonNegInt(r.l4Count)
+			l1Count: parseOptionalNonNegInt(r.l1Count) ?? 0,
+			l2Count: parseOptionalNonNegInt(r.l2Count) ?? 0,
+			l3Count: parseOptionalNonNegInt(r.l3Count) ?? 0,
+			l4Count: parseOptionalNonNegInt(r.l4Count) ?? 0
 		};
 	}
 	const rc = Number(r.responsiblePersonCount);
-	if (Number.isFinite(rc) && rc >= 1) {
+	if (Number.isFinite(rc) && rc >= 0) {
 		return {
-			l1Count: Math.floor(rc),
-			l2Count: undefined,
-			l3Count: undefined,
-			l4Count: undefined
+			l1Count: Math.max(0, Math.floor(rc)),
+			l2Count: 0,
+			l3Count: 0,
+			l4Count: 0
 		};
 	}
 	return {
-		l1Count: undefined,
-		l2Count: undefined,
-		l3Count: undefined,
-		l4Count: undefined
+		l1Count: 0,
+		l2Count: 0,
+		l3Count: 0,
+		l4Count: 0
 	};
 }
 
@@ -121,7 +122,7 @@ function mapOperationWiseDataFromApi(partMaster: PartMaster): OperationWisePartR
 				l2Count,
 				l3Count,
 				l4Count,
-				responsiblePersonCount: sum >= 1 ? sum : undefined
+				responsiblePersonCount: sum
 			});
 		}
 		return out;
@@ -153,7 +154,7 @@ function mapOperationWiseDataFromApi(partMaster: PartMaster): OperationWisePartR
 				l2Count,
 				l3Count,
 				l4Count,
-				responsiblePersonCount: sum >= 1 ? sum : undefined
+				responsiblePersonCount: sum
 			});
 		}
 		return out;
@@ -194,7 +195,6 @@ function cleanOperationWiseDataForApi(
 		const l3 = parseOptionalNonNegInt(row.l3Count) ?? 0;
 		const l4 = parseOptionalNonNegInt(row.l4Count) ?? 0;
 		const sum = l1 + l2 + l3 + l4;
-		if (sum < 1) continue;
 		out.push({
 			id: row.id,
 			operationID: row.operationID,
@@ -218,7 +218,6 @@ const handleImageUploadAndUpdateForm = async (
 	setGallery: ReturnType<typeof useImageGallery>['setGallery'],
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	setValue: any,
-	setError: (error: string | null) => void,
 	setIsUploadingImages: (loading: boolean) => void
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[] | null> => {
@@ -253,8 +252,12 @@ const handleImageUploadAndUpdateForm = async (
 		const { uploads, errors: uploadErrors } = await uploadPartDrawings(newFiles);
 
 		if (uploadErrors.length > 0) {
-			const errorMessage = uploadErrors.map(err => `${err.fileName}: ${err.error}`).join('\n');
-			setError(`Some images failed to upload:\n${errorMessage}`);
+			const html = uploadErrors.map(err => `${err.fileName}: ${err.error}`).join('<br/>');
+			void Swal.fire({
+				icon: 'error',
+				title: 'Some images failed to upload',
+				html: `<div style="text-align:left">${html}</div>`
+			});
 			return null;
 		}
 
@@ -263,7 +266,11 @@ const handleImageUploadAndUpdateForm = async (
 
 		return [...existingFiles, ...uploads];
 	} catch {
-		setError('Failed to upload images. Please try again.');
+		void Swal.fire({
+			icon: 'error',
+			title: 'Upload failed',
+			text: 'Failed to upload images. Please try again.'
+		});
 		return null;
 	} finally {
 		setIsUploadingImages(false);
@@ -497,7 +504,8 @@ const CreatePart = () => {
 		resolver: yupResolver(partMasterFormSchema) as any,
 		defaultValues: defaultPartMasterFormData,
 		mode: 'onChange',
-		reValidateMode: 'onChange'
+		reValidateMode: 'onChange',
+		shouldFocusError: false
 	});
 
 	const {
@@ -505,7 +513,6 @@ const CreatePart = () => {
 		handleSubmit,
 		formState: { errors },
 		reset,
-		trigger,
 		setValue,
 		getValues
 	} = methods;
@@ -726,17 +733,20 @@ const CreatePart = () => {
 		setActiveTab(newValue);
 	};
 
+	const onInvalid = (errs: FieldErrors<PartMasterFormData>) => {
+		void Swal.fire({
+			icon: 'error',
+			title: 'Cannot save',
+			html: flattenRhfFieldErrorsToHtml(errs),
+			confirmButtonText: 'OK',
+			width: 560
+		});
+	};
+
 	const onSubmit = async (data: PartMasterFormData) => {
 		setError(null);
 
 		try {
-			const isValid = await trigger();
-			if (!isValid) {
-				console.log('Form validation failed on submit:', errors);
-				setError('Please fix all validation errors before submitting');
-				return;
-			}
-
 			// Step 1: Upsert PRC Template if template data exists
 			let finalPrcTemplateId: number | undefined = data.prcTemplate;
 			const hasTemplateBasics = Boolean(
@@ -751,7 +761,11 @@ const CreatePart = () => {
 			if (shouldUpsertTemplate) {
 				const { steps: normalizedPrcSteps, error: prcValidationError } = normalizePrcTemplateSteps(data, operationsData);
 				if (prcValidationError) {
-					setError(prcValidationError);
+					void Swal.fire({
+						icon: 'error',
+						title: 'PRC template',
+						text: prcValidationError
+					});
 					return;
 				}
 				const prcPayload = buildPrcTemplatePayload(data, normalizedPrcSteps);
@@ -772,18 +786,24 @@ const CreatePart = () => {
 							finalPrcTemplateId = resultData.id;
 						}
 						if (!finalPrcTemplateId) {
-							setError('PRC template was created but ID was not returned.');
+							void Swal.fire({
+								icon: 'error',
+								title: 'Error',
+								text: 'PRC template was created but ID was not returned.'
+							});
 							return;
 						}
 						setValue('prcTemplate', finalPrcTemplateId);
 					}
 				} catch (templateErr) {
 					console.error('PRC Template upsert failed:', templateErr);
-					setError(
-						finalPrcTemplateId
-							? 'Failed to update linked PRC template. Part update was not saved.'
-							: 'Failed to create PRC template. Part update was not saved.'
-					);
+					void Swal.fire({
+						icon: 'error',
+						title: 'PRC template',
+						text: finalPrcTemplateId
+							? 'Failed to update linked PRC template. Part was not saved.'
+							: 'Failed to create PRC template. Part was not saved.'
+					});
 					return;
 				}
 			}
@@ -794,7 +814,6 @@ const CreatePart = () => {
 				gallery,
 				setGallery,
 				setValue,
-				setError,
 				setIsUploadingImages
 			);
 			if (!currentUploadedDrawings) return;
@@ -951,9 +970,15 @@ const CreatePart = () => {
 							</Button>
 							<Button
 								variant="contained"
-								startIcon={isUploadingImages ? <CircularProgress size={20} color="inherit" /> : <Save />}
+								startIcon={
+									isUploadingImages || isCreating || isUpdating ? (
+										<CircularProgress size={20} color="inherit" />
+									) : (
+										<Save />
+									)
+								}
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								onClick={handleSubmit(onSubmit as any)}
+								onClick={handleSubmit(onSubmit as any, onInvalid)}
 								disabled={isCreating || isUpdating || isUploadingImages}
 								sx={{
 									textTransform: 'none',
@@ -962,14 +987,10 @@ const CreatePart = () => {
 								}}
 							>
 								{isUploadingImages
-									? 'Uploading Images...'
-									: isCreating || isUpdating
-										? isEditMode
-											? 'Updating...'
-											: 'Creating...'
-										: isEditMode
-											? 'Update Part'
-											: 'Create Part'}
+									? 'Uploading images'
+									: isEditMode
+										? 'Update Part'
+										: 'Create Part'}
 							</Button>
 						</Box>
 					</Box>
@@ -1035,22 +1056,16 @@ const CreatePart = () => {
 						<TabPanel value={activeTab} index={0}>
 							<GeneralInfo
 								control={control}
-								errors={errors}
 								gallery={gallery}
 								onAddImage={handleAddImage}
 								onRemoveImage={handleRemoveImage}
 							/>
 						</TabPanel>
 						<TabPanel value={activeTab} index={1}>
-							<RawMaterialsTab control={control} errors={errors} />
+							<RawMaterialsTab control={control} />
 						</TabPanel>
 						<TabPanel value={activeTab} index={2}>
-							<LinkedMastersTab
-								control={control}
-								errors={errors}
-								setValue={setValue}
-								operationsPartId={operationsQueryPartId}
-							/>
+							<LinkedMastersTab control={control} setValue={setValue} operationsPartId={operationsQueryPartId} />
 						</TabPanel>
 						<TabPanel value={activeTab} index={3}>
 							<InspectionImageMappingTab

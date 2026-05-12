@@ -18,7 +18,7 @@ import {
 	CircularProgress
 } from '@mui/material';
 import { Info as InfoIcon, Image as ImageIcon, Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
-import { Controller, Control, FieldErrors, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
+import { Controller, Control, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import {
 	useFetchCustomersQuery,
@@ -31,13 +31,12 @@ import { ImageItem } from '../../../../../../hooks/useImageGallery';
 
 interface GeneralInfoProps {
 	control: Control<PartMasterFormData>;
-	errors: FieldErrors<PartMasterFormData>;
 	gallery: ImageItem[];
 	onAddImage: (file: File) => void;
 	onRemoveImage: (id: number | string) => void;
 }
 
-const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: GeneralInfoProps) => {
+const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInfoProps) => {
 	const { setValue } = useFormContext<PartMasterFormData>();
 	const customerCode = useWatch({ control, name: 'customer' });
 	const prevCustomerRef = useRef<string | undefined>(undefined);
@@ -134,11 +133,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 												onBlur={field.onBlur}
 												label="SAP Reference Number"
 												placeholder="Search or select SAP reference"
-												error={!!errors.sapReferenceNumber}
-												helperText={
-													errors.sapReferenceNumber?.message ??
-													(comboBusy ? 'Loading SAP references…' : undefined)
-												}
+												helperText={comboBusy ? 'Loading SAP references…' : undefined}
 												sx={{
 													'& .MuiOutlinedInput-root': {
 														borderRadius: '8px'
@@ -175,11 +170,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Part Number"
 									required
 									placeholder="e.g., PN-10045"
-									helperText={
-										errors.partNumber?.message ||
-										'Set from SAP reference selection'
-									}
-									error={!!errors.partNumber}
+									helperText="Set from SAP reference selection"
 									slotProps={{
 										htmlInput: {
 											readOnly: true
@@ -208,8 +199,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Drawing Number"
 									required
 									placeholder="e.g., DR-4521"
-									helperText={errors.drawingNumber?.message || 'Drawing reference number'}
-									error={!!errors.drawingNumber}
+									helperText="Drawing reference number"
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'
@@ -233,7 +223,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									type="number"
 									placeholder="e.g., 2"
 									helperText="Drawing revision number "
-									error={!!errors.drawingRevision}
 									slotProps={{
 										htmlInput: {
 											readOnly: true
@@ -263,7 +252,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									type="number"
 									placeholder="e.g., 3"
 									helperText="Part revision number "
-									error={!!errors.partRevision}
 									slotProps={{
 										htmlInput: {
 											readOnly: true
@@ -297,7 +285,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 							name="customer"
 							control={control}
 							render={({ field }) => (
-								<FormControl fullWidth error={!!errors.customer}>
+								<FormControl fullWidth>
 									<InputLabel>Customer</InputLabel>
 									<Select
 										{...field}
@@ -313,11 +301,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 											</MenuItem>
 										))}
 									</Select>
-									{errors.customer && (
-										<Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-											{errors.customer.message}
-										</Typography>
-									)}
 								</FormControl>
 							)}
 						/>
@@ -331,7 +314,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 							render={({ field }) => (
 								<FormControl
 									fullWidth
-									error={!!errors.customerVariantId}
 									disabled={
 										!customerCode || isVariantComboLoading || isVariantComboFetching
 									}
@@ -373,16 +355,10 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 											</MenuItem>
 										))}
 									</Select>
-									{errors.customerVariantId && (
-										<Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-											{errors.customerVariantId.message}
-										</Typography>
-									)}
-									{!errors.customerVariantId && !customerCode && (
+									{!customerCode && (
 										<FormHelperText>Select a customer to load variants</FormHelperText>
 									)}
-									{!errors.customerVariantId &&
-										customerCode &&
+									{customerCode &&
 										(isVariantComboLoading || isVariantComboFetching) && (
 											<FormHelperText>Loading variants…</FormHelperText>
 										)}
@@ -445,11 +421,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Description"
 									required
 									placeholder="e.g., Aluminium Bracket Assembly for Cooling System"
-									helperText={
-										errors.description?.message ||
-										'Set from SAP reference selection'
-									}
-									error={!!errors.description}
+									helperText="Set from SAP reference selection"
 									slotProps={{
 										htmlInput: {
 											readOnly: true
@@ -478,7 +450,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Layup Type"
 									placeholder="e.g., PPCORE CSM"
 									helperText="Material layup type "
-									error={!!errors.layupType}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'
@@ -501,7 +472,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									label="Model"
 									placeholder="e.g., RHD (Exterior)"
 									helperText="Part model or variant "
-									error={!!errors.model}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'
@@ -526,11 +496,7 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 									multiline
 									rows={4}
 									placeholder="Additional notes about this part"
-									helperText={
-										errors.notes?.message ||
-										'Optional notes about usage, special conditions, or other relevant information'
-									}
-									error={!!errors.notes}
+									helperText="Optional notes about usage, special conditions, or other relevant information"
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px'
@@ -575,8 +541,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 												fullWidth
 												label="Mould code"
 												placeholder="e.g., MLD-001"
-												error={!!errors.moulds?.[index]?.mouldCode}
-												helperText={errors.moulds?.[index]?.mouldCode?.message}
 											/>
 										)}
 									/>
@@ -592,8 +556,6 @@ const GeneralInfo = ({ control, errors, gallery, onAddImage, onRemoveImage }: Ge
 												type="number"
 												label="Reconciliation Count"
 												inputProps={{ min: 1 }}
-												error={!!errors.moulds?.[index]?.reconciliationCount}
-												helperText={errors.moulds?.[index]?.reconciliationCount?.message}
 											/>
 										)}
 									/>

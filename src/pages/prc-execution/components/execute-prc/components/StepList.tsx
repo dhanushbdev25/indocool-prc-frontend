@@ -1,6 +1,24 @@
-import { Box, Typography, Chip, Card, CardContent, Avatar, IconButton, useTheme, Stack } from '@mui/material';
+import {
+	Box,
+	Typography,
+	Chip,
+	Card,
+	CardContent,
+	Avatar,
+	IconButton,
+	useTheme,
+	Stack,
+	Tooltip
+} from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { CheckCircle, RadioButtonUnchecked, PlayArrow, ArrowForward, WarningAmberRounded } from '@mui/icons-material';
+import {
+	CheckCircle,
+	RadioButtonUnchecked,
+	PlayArrow,
+	ArrowForward,
+	WarningAmberRounded,
+	PictureAsPdf
+} from '@mui/icons-material';
 import { useEffect, useRef } from 'react';
 import { type TimelineStep } from '../../../types/execution.types';
 import { formatExecutionDuration, getTimelineStepPlannedVsActual } from '../../../utils/timelineCardTiming';
@@ -13,9 +31,18 @@ interface StepListProps {
 	previewMode?: boolean;
 	/** From GET /prcExecution/:id — keyed timing snapshot for planned vs actual on cards. */
 	stepStartEndTime?: Record<string, unknown>;
+	/** When set (live execution only), completed steps show a PDF affordance scoped to this execution. */
+	executionId?: number;
 }
 
-const StepList = ({ steps, currentStepIndex, onStepClick, previewMode = false, stepStartEndTime }: StepListProps) => {
+const StepList = ({
+	steps,
+	currentStepIndex,
+	onStepClick,
+	previewMode = false,
+	stepStartEndTime,
+	executionId
+}: StepListProps) => {
 	const theme = useTheme();
 	const currentStepRef = useRef<HTMLDivElement>(null);
 
@@ -242,23 +269,48 @@ const StepList = ({ steps, currentStepIndex, onStepClick, previewMode = false, s
 											</Box>
 										</Box>
 
-										{isStepClickable(step, index) && (
-											<IconButton
-												size="small"
-												aria-label="Open step"
-												sx={{
-													flexShrink: 0,
-													mt: -0.5,
-													color: 'text.secondary',
-													'&:hover': {
-														color: 'primary.main',
-														backgroundColor: alpha(theme.palette.primary.main, 0.06)
-													}
-												}}
-											>
-												<ArrowForward fontSize="small" />
-											</IconButton>
-										)}
+										<Stack direction="row" spacing={0.25} alignItems="flex-start" sx={{ flexShrink: 0, mt: -0.5 }}>
+											{executionId != null && !previewMode && step.status === 'completed' && (
+												<Tooltip title="Step report — print or save as PDF">
+													<IconButton
+														size="small"
+														aria-label={`Step report PDF for step ${step.stepNumber}`}
+														onClick={e => {
+															e.stopPropagation();
+															window.open(
+																`/prc-execution/report/${executionId}?step=${index}`,
+																'_blank',
+																'noopener,noreferrer'
+															);
+														}}
+														sx={{
+															color: 'text.secondary',
+															'&:hover': {
+																color: 'primary.main',
+																backgroundColor: alpha(theme.palette.primary.main, 0.06)
+															}
+														}}
+													>
+														<PictureAsPdf fontSize="small" />
+													</IconButton>
+												</Tooltip>
+											)}
+											{isStepClickable(step, index) && (
+												<IconButton
+													size="small"
+													aria-label="Open step"
+													sx={{
+														color: 'text.secondary',
+														'&:hover': {
+															color: 'primary.main',
+															backgroundColor: alpha(theme.palette.primary.main, 0.06)
+														}
+													}}
+												>
+													<ArrowForward fontSize="small" />
+												</IconButton>
+											)}
+										</Stack>
 									</Box>
 
 									{showPlannedVsActual && (

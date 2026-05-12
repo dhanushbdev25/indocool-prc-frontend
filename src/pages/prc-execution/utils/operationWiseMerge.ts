@@ -87,7 +87,7 @@ function normalizeExecutionRow(raw: unknown): OperationWiseExecutionRow | null {
 		const sum = (l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
 		responsiblePersonCount = sum;
 	} else {
-		responsiblePersonCount = Number.isFinite(rpc) && rpc >= 1 ? Math.floor(rpc) : undefined;
+		responsiblePersonCount = Number.isFinite(rpc) && rpc >= 0 ? Math.max(0, Math.floor(rpc)) : undefined;
 	}
 
 	let responsiblePersons: OperationWiseExecutionRow['responsiblePersons'];
@@ -184,7 +184,7 @@ function legacyRecordToRows(rec: Record<string, unknown>): OperationWiseExecutio
 			id: `legacy-${key}`,
 			operationID,
 			operationName: typeof val.operationName === 'string' ? val.operationName : '',
-			responsiblePersonCount: Number.isFinite(mc) && mc >= 1 ? Math.floor(mc) : undefined,
+			responsiblePersonCount: Number.isFinite(mc) && mc >= 0 ? Math.max(0, Math.floor(mc)) : undefined,
 			responsiblePersons: undefined
 		});
 	}
