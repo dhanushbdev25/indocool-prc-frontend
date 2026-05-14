@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Dialog, DialogContent, Box, Button, Alert, CircularProgress, Chip, Backdrop } from '@mui/material';
+import { Dialog, DialogContent, Box, Button, Alert, Chip } from '@mui/material';
+import { FullScreenFormSavingOverlay } from '../../../../../../components/common/FullScreenFormSavingOverlay';
 import { useResolvePrcTemplateMutation } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import type { OperationsComboResponse } from '../../../../../../store/api/business/prc-template/prc-template.validators';
 import { normalizePrcTemplateSteps, buildPrcTemplatePayload } from '../../../utils/prcTemplatePayload';
@@ -126,9 +127,10 @@ const PrcExecutionPreviewDialog = ({
 				}
 			}}
 		>
-			<Backdrop sx={{ color: '#fff', zIndex: theme => theme.zIndex.modal + 1 }} open={open && isLoading}>
-				<CircularProgress color="inherit" />
-			</Backdrop>
+			<FullScreenFormSavingOverlay
+				open={open && (isLoading || (!executionStub && !error))}
+				message="Loading preview…"
+			/>
 
 			{executionStub && (
 				<>
@@ -164,11 +166,6 @@ const PrcExecutionPreviewDialog = ({
 			)}
 
 			<DialogContent sx={{ p: 0, flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
-				{!executionStub && !error && (isLoading || open) && (
-					<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
-						<CircularProgress />
-					</Box>
-				)}
 				{error && (
 					<Box sx={{ p: 2 }}>
 						<Alert severity="error">{error}</Alert>

@@ -17,6 +17,7 @@ import {
 } from '../../../../../store/api/business/prc-template/prc-template.api';
 import { useFetchProcessSequencesQuery } from '../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../store/api/business/inspection-master/inspection.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 
 const steps = ['Basic Information', 'Template Steps', 'Review & Submit'];
 
@@ -312,6 +313,7 @@ const CreatePrcTemplate = () => {
 
 	return (
 		<FormProvider {...methods}>
+			<>
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
@@ -366,7 +368,7 @@ const CreatePrcTemplate = () => {
 										'&:hover': { backgroundColor: '#1565c0' }
 									}}
 								>
-									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Template' : 'Create Template'}
+									{isEditMode ? 'Update Template' : 'Create Template'}
 								</Button>
 							) : (
 								<Button
@@ -385,6 +387,8 @@ const CreatePrcTemplate = () => {
 					</Box>
 				</Paper>
 			</Box>
+			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+			</>
 		</FormProvider>
 	);
 };

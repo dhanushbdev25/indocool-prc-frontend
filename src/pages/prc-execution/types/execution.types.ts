@@ -163,6 +163,8 @@ export interface StepPreviewData {
 
 export interface TimelineStep {
 	stepNumber: number;
+	/** 0-based index of this step in the full report timeline, even when a live view omits some step types. */
+	reportStepIndex?: number;
 	type: 'setup' | 'rawMaterials' | 'bom' | 'sequence' | 'inspection' | 'sapConfirmations';
 	title: string;
 	description: string;

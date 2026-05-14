@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Alert, CircularProgress, Backdrop } from '@mui/material';
+import { Box, Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
+import { FullScreenFormSavingOverlay } from '../../../../components/common/FullScreenFormSavingOverlay';
 import { useCurrentRole } from '../../../../hooks/useCurrentRole';
 import {
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
 import { calculateSequenceStepGroupTiming } from '../../utils/timelineCardTiming';
-import { buildTimelineSteps } from '../../utils/buildTimelineSteps';
+import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
 	buildAggregatedData,
@@ -31,6 +32,7 @@ import StepList from './components/StepList';
 import StepDetailView from './components/StepDetailView';
 import StepPreview from './components/StepPreview';
 import ExecutionQuickStats from './components/ExecutionQuickStats';
+import BomStep from './components/steps/BomStep';
 
 type ViewState = 'list' | 'detail' | 'preview';
 
@@ -47,6 +49,9 @@ const ExecutePrc = () => {
 	const [previewData, setPreviewData] = useState<StepPreviewData | null>(null);
 	const [timelineSteps, setTimelineSteps] = useState<TimelineStep[]>([]);
 	const [currentAggregatedData, setCurrentAggregatedData] = useState<Record<string, unknown>>({});
+	const [catalystMixingOpen, setCatalystMixingOpen] = useState(false);
+	const catalystMixingStartTimeRef = useRef<string | null>(null);
+	const catalystMixingSubmitRef = useRef<(() => void) | null>(null);
 
 	// API hooks
 	const {
@@ -63,7 +68,7 @@ const ExecutePrc = () => {
 		if (executionData && !isUpdateProgressLoading && !isExecutionDataFetching) {
 			// Extract the actual data from the API response wrapper
 			const actualData = (executionData as { data: ExecutionData }).data;
-			const steps = buildTimelineSteps(actualData);
+			const steps = buildTimelineSteps(actualData, { omitStepTypes: ['bom'] });
 
 			// Use setTimeout to avoid setState in effect warning
 			setTimeout(() => {
@@ -101,7 +106,7 @@ const ExecutePrc = () => {
 	}, [currentAggregatedData, executionData]);
 
 	// Helper function to check if timing data already exists for a step
-	const hasExistingTimingData = (step: TimelineStep, formData?: FormData): boolean => {
+	const hasExistingTimingData = useCallback((step: TimelineStep, formData?: FormData): boolean => {
 		if (!executionData) return false;
 
 		const actualData = (executionData as { data: ExecutionData }).data;
@@ -160,7 +165,7 @@ const ExecutePrc = () => {
 		}
 
 		return false;
-	};
+	}, [executionData]);
 
 	// Initialize step start time when step changes
 	useEffect(() => {
@@ -174,6 +179,72 @@ const ExecutePrc = () => {
 		stepStartTimeRef.current = new Date().toISOString();
 		console.log('🕐 Initialized start time for step group:', stepStartTimeRef.current);
 	};
+
+	const persistStepData = useCallback(
+		async (
+			stepToProcess: TimelineStep,
+			stepFormData: FormData,
+			options?: { startTime?: string | null; resetMainStepStartTime?: boolean }
+		) => {
+			if (!executionData) {
+				throw new Error('Execution data is not available');
+			}
+
+			const endTime = new Date().toISOString();
+			const startTime = options?.startTime || stepStartTimeRef.current || endTime;
+
+			const stepAggregatedData = buildAggregatedData(stepToProcess, stepFormData);
+
+			let stepTimingData = {};
+			const hasExisting = hasExistingTimingData(stepToProcess, stepFormData);
+			console.log('Timing data check:', {
+				stepCategory: stepToProcess.type,
+				hasExisting,
+				stepToProcess: stepToProcess.stepData ? stepToProcess.stepData : 'No stepData',
+				formData: {
+					stepId: stepFormData.stepId,
+					stepGroupId: stepFormData.stepGroupId,
+					prcTemplateStepId: stepFormData.prcTemplateStepId
+				}
+			});
+
+			if (!hasExisting) {
+				stepTimingData = buildTimingData(stepToProcess, startTime, endTime);
+				console.log('Built timing data:', stepTimingData);
+			} else {
+				console.log('Timing data already exists, skipping build');
+			}
+
+			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
+			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
+			const mergedUserApprovalData = mergeUserApprovalData(
+				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
+				userApprovalData
+			);
+
+			await updateProgress({
+				id: executionId,
+				data: {
+					prcAggregatedSteps: {
+						...mergedAggregatedData,
+						stepApprovedBy: mergedUserApprovalData
+					},
+					stepStartEndTime: mergedTimingData
+				}
+			}).unwrap();
+
+			if (options?.resetMainStepStartTime !== false) {
+				stepStartTimeRef.current = null;
+			}
+
+			setCurrentAggregatedData(mergedAggregatedData);
+
+			return { mergedAggregatedData, mergedTimingData };
+		},
+		[executionData, executionId, getCurrentAggregatedData, hasExistingTimingData, updateProgress, userInfo.id]
+	);
 
 	// Update preview data timing when execution data changes (after API refetch)
 	useEffect(() => {
@@ -252,9 +323,6 @@ const ExecutePrc = () => {
 		if (!currentStep || !executionData) return;
 
 		try {
-			const endTime = new Date().toISOString();
-			const startTime = stepStartTimeRef.current || endTime;
-
 			// For sequence steps, we need to create a proper step object with stepData
 			let stepToProcess = currentStep;
 			if (currentStep.type === 'sequence' && currentStep.stepGroup && currentStep.prcTemplateStepId) {
@@ -274,61 +342,7 @@ const ExecutePrc = () => {
 				};
 			}
 
-			// Build aggregated data for this step
-			const stepAggregatedData = buildAggregatedData(stepToProcess, stepFormData);
-
-			// Only build timing data if it doesn't already exist for this step
-			let stepTimingData = {};
-			const hasExisting = hasExistingTimingData(stepToProcess, stepFormData);
-			console.log('Timing data check:', {
-				stepCategory: stepToProcess.type,
-				hasExisting,
-				stepToProcess: stepToProcess.stepData ? stepToProcess.stepData : 'No stepData',
-				formData: {
-					stepId: stepFormData.stepId,
-					stepGroupId: stepFormData.stepGroupId,
-					prcTemplateStepId: stepFormData.prcTemplateStepId
-				}
-			});
-
-			if (!hasExisting) {
-				stepTimingData = buildTimingData(stepToProcess, startTime, endTime);
-				console.log('Built timing data:', stepTimingData);
-			} else {
-				console.log('Timing data already exists, skipping build');
-			}
-
-			// Build user approval data for data entry
-			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
-
-			// Merge with existing data using the most current aggregated data
-			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
-			// Get current timing data from execution data
-			const actualData = (executionData as { data: ExecutionData }).data;
-			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
-			// Merge user approval data
-			const mergedUserApprovalData = mergeUserApprovalData(
-				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
-				userApprovalData
-			);
-
-			// Save step data to backend
-			await updateProgress({
-				id: executionId,
-				data: {
-					prcAggregatedSteps: {
-						...mergedAggregatedData,
-						stepApprovedBy: mergedUserApprovalData
-					},
-					stepStartEndTime: mergedTimingData
-				}
-			}).unwrap();
-
-			// Reset step start time after completion
-			stepStartTimeRef.current = null;
-
-			// Update current aggregated data state
-			setCurrentAggregatedData(mergedAggregatedData);
+			const { mergedAggregatedData, mergedTimingData } = await persistStepData(stepToProcess, stepFormData);
 
 			// Don't rebuild timeline steps immediately - let the API response update the cache naturally
 			// This prevents form data from being reset in step components
@@ -377,11 +391,7 @@ const ExecutePrc = () => {
 					}
 
 					// Calculate timing for this step group
-					const actualData = (executionData as { data: ExecutionData }).data;
-					const timingResult = calculateSequenceStepGroupTiming(
-						currentStep,
-						actualData.stepStartEndTime as Record<string, unknown>
-					);
+					const timingResult = calculateSequenceStepGroupTiming(currentStep, mergedTimingData);
 
 					// Get timing exceeded remarks and reason from the step group data
 					let timingExceededRemarks = '';
@@ -504,9 +514,8 @@ const ExecutePrc = () => {
 				setPreviewData(newPreviewData);
 				setCurrentView('preview');
 			} else {
-				// For raw materials and BOM, go directly to next step without additional save
-				// The data has already been saved above, no need to call handleProceedToNext
-				// which would trigger another unnecessary save API call
+				// For raw materials, go directly to the next step without additional save
+				// because the data has already been persisted above.
 
 				// Move to next step
 				if (currentStepIndex < timelineSteps.length - 1) {
@@ -519,6 +528,51 @@ const ExecutePrc = () => {
 			}
 		} catch (error) {
 			console.error('Failed to save step data:', error);
+		}
+	};
+
+	const handleOpenCatalystMixing = () => {
+		if (!executionData) return;
+
+		const actualData = (executionData as { data: ExecutionData }).data;
+		const existingBomTiming = (actualData.stepStartEndTime as Record<string, unknown> | undefined)?.bom;
+
+		if (existingBomTiming === undefined) {
+			catalystMixingStartTimeRef.current = new Date().toISOString();
+		}
+
+		setCatalystMixingOpen(true);
+	};
+
+	const handleCloseCatalystMixing = () => {
+		if (executionData) {
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const existingBomTiming = (actualData.stepStartEndTime as Record<string, unknown> | undefined)?.bom;
+
+			if (existingBomTiming === undefined) {
+				catalystMixingStartTimeRef.current = null;
+			}
+		}
+
+		setCatalystMixingOpen(false);
+	};
+
+	const handleCatalystMixingSave = async (stepFormData: FormData): Promise<void> => {
+		if (!executionData) return;
+
+		const actualData = (executionData as { data: ExecutionData }).data;
+		const catalystStep = buildCatalystMixingTimelineStep(actualData, { status: 'pending' });
+
+		if (!catalystStep) return;
+
+		try {
+			await persistStepData(catalystStep, stepFormData, {
+				startTime: catalystMixingStartTimeRef.current,
+				resetMainStepStartTime: false
+			});
+			catalystMixingStartTimeRef.current = null;
+		} catch (error) {
+			console.error('Failed to save catalyst mixing:', error);
 		}
 	};
 
@@ -1308,11 +1362,7 @@ const ExecutePrc = () => {
 
 	// Loading state
 	if (isExecutionDataLoading) {
-		return (
-			<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-				<CircularProgress />
-			</Box>
-		);
+		return <FullScreenFormSavingOverlay open message="Loading…" />;
 	}
 
 	// Error state
@@ -1335,6 +1385,15 @@ const ExecutePrc = () => {
 
 	// Extract actual data from API response
 	const actualExecutionData = (executionData as { data: ExecutionData }).data;
+	const catalystMixingExecutionData = {
+		...actualExecutionData,
+		prcAggregatedSteps: getCurrentAggregatedData()
+	};
+	const isCatalystMixingReadOnly =
+		actualExecutionData.status === 'COMPLETED' || actualExecutionData.status === 'INACTIVE';
+	const catalystMixingStep = buildCatalystMixingTimelineStep(actualExecutionData, {
+		status: isCatalystMixingReadOnly ? undefined : 'pending'
+	});
 
 	// No timeline steps state
 	if (timelineSteps.length === 0) {
@@ -1347,12 +1406,10 @@ const ExecutePrc = () => {
 
 	return (
 		<>
-			<Backdrop
-				sx={{ color: '#fff', zIndex: theme => theme.zIndex.drawer + 1 }}
-				open={isExecutionDataLoading || isExecutionDataFetching || isUpdateProgressLoading}
-			>
-				<CircularProgress color="inherit" />
-			</Backdrop>
+			<FullScreenFormSavingOverlay
+				open={isExecutionDataFetching || isUpdateProgressLoading}
+				message={isUpdateProgressLoading ? 'Saving…' : 'Refreshing…'}
+			/>
 			<Box
 				sx={{
 					height: 'calc(100vh - 64px - 38px)', // Subtract header height + padding + border
@@ -1365,7 +1422,11 @@ const ExecutePrc = () => {
 				}}
 			>
 				{/* Header */}
-				<ExecutionHeader executionData={actualExecutionData} />
+				<ExecutionHeader
+					executionData={actualExecutionData}
+					onCatalystMixingClick={catalystMixingStep ? handleOpenCatalystMixing : undefined}
+					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
+				/>
 
 				{/* Main Content */}
 				<Box sx={{ flex: 1, overflow: 'hidden' }}>
@@ -1426,6 +1487,38 @@ const ExecutePrc = () => {
 					)}
 				</Box>
 			</Box>
+			<Dialog open={catalystMixingOpen} onClose={handleCloseCatalystMixing} fullWidth maxWidth="lg">
+				<DialogTitle>Catalyst Mixing</DialogTitle>
+				<DialogContent dividers sx={{ p: 0 }}>
+					{catalystMixingStep ? (
+						<BomStep
+							step={catalystMixingStep}
+							executionData={catalystMixingExecutionData}
+							onStepComplete={handleCatalystMixingSave}
+							readOnlyOverride={isCatalystMixingReadOnly}
+							submitLabel="Save Catalyst Mixing"
+							hideSubmitButton
+							submitActionRef={catalystMixingSubmitRef}
+						/>
+					) : (
+						<Box sx={{ p: 3 }}>
+							<Alert severity="info">No catalyst mixing items are available for this execution.</Alert>
+						</Box>
+					)}
+				</DialogContent>
+				<DialogActions>
+					{catalystMixingStep && !isCatalystMixingReadOnly && (
+						<Button
+							variant="contained"
+							onClick={() => catalystMixingSubmitRef.current?.()}
+							disabled={isUpdateProgressLoading || isExecutionDataFetching}
+						>
+							Save Catalyst Mixing
+						</Button>
+					)}
+					<Button onClick={handleCloseCatalystMixing}>Close</Button>
+				</DialogActions>
+			</Dialog>
 		</>
 	);
 };

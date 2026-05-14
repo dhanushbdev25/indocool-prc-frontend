@@ -109,7 +109,7 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile }: Mo
 							disabled={isLoading || !canReconcile}
 							title={!canReconcile ? 'Not due for reconciliation yet' : undefined}
 						>
-							{isLoading ? 'Reconciling...' : 'Reconcile'}
+							Reconcile
 						</Button>
 					);
 				}

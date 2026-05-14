@@ -15,8 +15,7 @@ import {
 	DialogTitle,
 	DialogContent,
 	DialogActions,
-	IconButton,
-	CircularProgress,
+	IconButton
 } from '@mui/material';
 import { Save, Cancel, Close as CloseIcon } from '@mui/icons-material';
 import Swal from 'sweetalert2';
@@ -47,6 +46,7 @@ import { toFileRenderUrl, toFileStoragePath } from '../../../../../utils/fileUrl
 import type { PartMaster, OperationWisePartRow } from '../../../../../store/api/business/part-master/part.validators';
 import { normalizePrcTemplateSteps, buildPrcTemplatePayload } from '../../utils/prcTemplatePayload';
 import { flattenRhfFieldErrorsToHtml } from '../../../../../utils/flattenRhfFieldErrors';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 
 function mapMouldDetailsToFormMoulds(partMaster: PartMaster): PartMasterFormData['moulds'] {
 	return (partMaster.mouldDetails ?? []).map(item => ({
@@ -937,8 +937,11 @@ const CreatePart = () => {
 		);
 	}
 
+	const isFullScreenBusy = isUploadingImages || isCreating || isUpdating;
+
 	return (
 		<FormProvider {...methods}>
+			<>
 			{/* Match execute-prc: outer column fills viewport segment; header does not scroll; tab body scrolls */}
 			<Box
 				sx={{
@@ -970,27 +973,17 @@ const CreatePart = () => {
 							</Button>
 							<Button
 								variant="contained"
-								startIcon={
-									isUploadingImages || isCreating || isUpdating ? (
-										<CircularProgress size={20} color="inherit" />
-									) : (
-										<Save />
-									)
-								}
+								startIcon={<Save />}
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
 								onClick={handleSubmit(onSubmit as any, onInvalid)}
-								disabled={isCreating || isUpdating || isUploadingImages}
+								disabled={isFullScreenBusy}
 								sx={{
 									textTransform: 'none',
 									backgroundColor: '#1976d2',
 									'&:hover': { backgroundColor: '#1565c0' }
 								}}
 							>
-								{isUploadingImages
-									? 'Uploading images'
-									: isEditMode
-										? 'Update Part'
-										: 'Create Part'}
+								{isEditMode ? 'Update Part' : 'Create Part'}
 							</Button>
 						</Box>
 					</Box>
@@ -1095,6 +1088,12 @@ const CreatePart = () => {
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			<FullScreenFormSavingOverlay
+				open={isFullScreenBusy}
+				message={isUploadingImages ? 'Uploading images…' : 'Saving…'}
+			/>
+			</>
 		</FormProvider>
 	);
 };

@@ -11,8 +11,7 @@ import {
 	Step,
 	StepLabel,
 	Alert,
-	Skeleton,
-	CircularProgress
+	Skeleton
 } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
@@ -21,6 +20,7 @@ import InspectionParameters from './components/InspectionParameters';
 import InspectionReview from './components/InspectionReview';
 import { inspectionFormSchema, defaultInspectionFormData } from './schemas';
 import { InspectionFormData } from './schemas';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	useFetchInspectionByIdQuery,
 	useCreateInspectionMutation,
@@ -370,6 +370,7 @@ const CreateInspection = () => {
 
 	return (
 		<FormProvider {...methods}>
+			<>
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
@@ -414,13 +415,7 @@ const CreateInspection = () => {
 							{activeStep === steps.length - 1 ? (
 								<Button
 									variant="contained"
-									startIcon={
-										isCreating || isUpdating ? (
-											<CircularProgress size={20} color="inherit" />
-										) : (
-											<Save />
-										)
-									}
+									startIcon={<Save />}
 									// eslint-disable-next-line @typescript-eslint/no-explicit-any
 									onClick={handleSubmit(onSubmit as any)}
 									disabled={isCreating || isUpdating}
@@ -449,6 +444,9 @@ const CreateInspection = () => {
 					</Box>
 				</Paper>
 			</Box>
+
+			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+			</>
 		</FormProvider>
 	);
 };

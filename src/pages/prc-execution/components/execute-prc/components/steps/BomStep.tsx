@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type MutableRefObject } from 'react';
 import {
 	Box,
 	Typography,
@@ -43,6 +43,9 @@ interface BomStepProps {
 	readOnlyOverride?: boolean;
 	/** Consolidated PDF/report: every material group expanded; no interaction needed. */
 	expandAccordionsForPdf?: boolean;
+	submitLabel?: string;
+	hideSubmitButton?: boolean;
+	submitActionRef?: MutableRefObject<(() => void) | null>;
 }
 
 // Helper function to find matching catalyst configuration
@@ -157,7 +160,16 @@ const groupAndSortBOMItems = (
 	return grouped;
 };
 
-const BomStep = ({ step, executionData, onStepComplete, readOnlyOverride, expandAccordionsForPdf }: BomStepProps) => {
+const BomStep = ({
+	step,
+	executionData,
+	onStepComplete,
+	readOnlyOverride,
+	expandAccordionsForPdf,
+	submitLabel = 'Complete Catalyst Mixing',
+	hideSubmitButton = false,
+	submitActionRef
+}: BomStepProps) => {
 	const [formData, setFormData] = useState<CatalystMixingFormData>({
 		entries: []
 	});
@@ -426,6 +438,16 @@ const BomStep = ({ step, executionData, onStepComplete, readOnlyOverride, expand
 			onStepComplete(formDataWithAcknowledgments as unknown as FormData);
 		}
 	};
+
+	useEffect(() => {
+		if (!submitActionRef) return;
+
+		submitActionRef.current = handleSubmit;
+
+		return () => {
+			submitActionRef.current = null;
+		};
+	}, [handleSubmit, submitActionRef]);
 
 	const getValidationIcon = (status: 'Accepted' | 'Lesser' | 'Greater') => {
 		switch (status) {
@@ -809,7 +831,7 @@ const BomStep = ({ step, executionData, onStepComplete, readOnlyOverride, expand
 			)}
 
 			{/* Submit Button */}
-			{!isReadOnly && (
+			{!isReadOnly && !hideSubmitButton && (
 				<Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 2 }}>
 					<Button
 						variant="contained"
@@ -821,7 +843,7 @@ const BomStep = ({ step, executionData, onStepComplete, readOnlyOverride, expand
 							textTransform: 'none'
 						}}
 					>
-						Complete Catalyst Mixing
+						{submitLabel}
 					</Button>
 				</Box>
 			)}

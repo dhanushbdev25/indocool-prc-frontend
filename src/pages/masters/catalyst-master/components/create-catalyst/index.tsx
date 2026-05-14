@@ -14,6 +14,7 @@ import {
 	useCreateCatalystMutation,
 	useUpdateCatalystMutation
 } from '../../../../../store/api/business/catalyst-master/catalyst.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 
 const steps = ['Basic Information', 'Configuration Settings'];
 
@@ -282,6 +283,7 @@ const CreateCatalyst = () => {
 
 	return (
 		<FormProvider {...methods}>
+			<>
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
@@ -336,7 +338,7 @@ const CreateCatalyst = () => {
 										'&:hover': { backgroundColor: '#1565c0' }
 									}}
 								>
-									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Chart' : 'Create Chart'}
+									{isEditMode ? 'Update Chart' : 'Create Chart'}
 								</Button>
 							) : (
 								<Button
@@ -355,6 +357,8 @@ const CreateCatalyst = () => {
 					</Box>
 				</Paper>
 			</Box>
+			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+			</>
 		</FormProvider>
 	);
 };

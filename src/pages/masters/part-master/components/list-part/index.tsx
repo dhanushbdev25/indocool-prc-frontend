@@ -8,6 +8,7 @@ import PartManagement, { PART_ALL_CUSTOMERS } from './components/PartManagement'
 import PartTable, { PartData } from './components/PartTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import { useFetchPartsQuery, useDeletePartTaskMutation } from '../../../../../store/api/business/part-master/part.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	type DeletePartRequest,
 	type PartMaster,
@@ -319,10 +320,11 @@ const ListPart = () => {
 						Cancel
 					</Button>
 					<Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={isDeleting}>
-						{isDeleting ? 'Deleting...' : 'Delete Part'}
+						Delete Part
 					</Button>
 				</DialogActions>
 			</Dialog>
+			<FullScreenFormSavingOverlay open={isDeleting} message="Deleting…" />
 		</>
 	);
 };

@@ -10,7 +10,7 @@ import {
 	IconButton,
 	Tooltip
 } from '@mui/material';
-import { ArrowBack, Pause, PictureAsPdf } from '@mui/icons-material';
+import { ArrowBack, PictureAsPdf, Science } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { type ExecutionData } from '../../../types/execution.types';
 import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
@@ -22,6 +22,8 @@ interface ExecutionHeaderProps {
 	onBackOverride?: () => void;
 	/** Hide Pause / Escalate (not applicable outside live execution). */
 	hideExecutionActions?: boolean;
+	onCatalystMixingClick?: () => void;
+	catalystMixingDisabled?: boolean;
 }
 
 function formatCustomerContext(execution: ExecutionData): {
@@ -97,7 +99,9 @@ function MetaField({
 const ExecutionHeader = ({
 	executionData,
 	onBackOverride,
-	hideExecutionActions = false
+	hideExecutionActions = false,
+	onCatalystMixingClick,
+	catalystMixingDisabled = false
 }: ExecutionHeaderProps) => {
 	const theme = useTheme();
 	const navigate = useNavigate();
@@ -237,10 +241,17 @@ const ExecutionHeader = ({
 						<Chip label={durationLabel} size="small" variant="outlined" color="info" />
 					</Stack>
 
-					{!hideExecutionActions && (
+					{!hideExecutionActions && onCatalystMixingClick && (
 						<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
-							<Button startIcon={<Pause />} variant="outlined" size="small" color="inherit">
-								Pause
+							<Button
+								startIcon={<Science />}
+								variant="outlined"
+								size="small"
+								color="inherit"
+								onClick={onCatalystMixingClick}
+								disabled={catalystMixingDisabled}
+							>
+								Catalyst Mixing
 							</Button>
 						</Stack>
 					)}

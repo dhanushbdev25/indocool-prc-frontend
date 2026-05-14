@@ -277,8 +277,9 @@ const StepList = ({
 														aria-label={`Step report PDF for step ${step.stepNumber}`}
 														onClick={e => {
 															e.stopPropagation();
+									const reportStepIndex = step.reportStepIndex ?? index;
 															window.open(
-																`/prc-execution/report/${executionId}?step=${index}`,
+										`/prc-execution/report/${executionId}?step=${reportStepIndex}`,
 																'_blank',
 																'noopener,noreferrer'
 															);

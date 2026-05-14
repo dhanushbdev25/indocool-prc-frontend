@@ -19,6 +19,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useLoginUserMutation } from '../../../store/api/auth/auth.api';
 import Button from '../../../components/common/button/Button';
+import { FullScreenFormSavingOverlay } from '../../../components/common/FullScreenFormSavingOverlay';
 import { displayValidationErrors } from '../../../utils/helpers';
 import Cookie from '../../../utils/Cookie';
 import { useAppDispatch } from '../../../store/store';
@@ -114,6 +115,7 @@ const AuthLogin = () => {
 
 	return (
 		<form noValidate onSubmit={handleSubmit(onSubmit)}>
+			<FullScreenFormSavingOverlay open={isSubmitting} message="Signing in…" />
 			<Stack spacing={3}>
 				{/* Email Field */}
 				<Box>
@@ -321,7 +323,7 @@ const AuthLogin = () => {
 				<Button
 					disableElevation
 					disabled={isSubmitting}
-					label={isSubmitting ? 'Signing in...' : 'Login'}
+					label="Login"
 					fullWidth
 					size="large"
 					type="submit"

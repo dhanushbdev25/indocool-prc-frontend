@@ -23,6 +23,7 @@ import MouldHeader from './components/MouldHeader';
 import MouldSummaryCards from './components/MouldSummaryCards';
 import MouldManagement, { MOULD_ALL_PART_NUMBERS } from './components/MouldManagement';
 import MouldReconciliationTable from './components/MouldReconciliationTable';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 
 const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
@@ -37,6 +38,8 @@ const ListMouldReconciliation = () => {
 	const [selectedRow, setSelectedRow] = useState<MouldReconciliationRow | null>(null);
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [actionError, setActionError] = useState<string | null>(null);
+
+	const isReconcileBusy = reconcilingKey !== null || isReconciling;
 
 	const summary = useMemo(() => {
 		const dueCount = rows.filter(isMouldDueForReconciliation).length;
@@ -181,20 +184,20 @@ const ListMouldReconciliation = () => {
 					</Typography>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={handleConfirmClose} disabled={isReconciling}>
+					<Button onClick={handleConfirmClose} disabled={isReconcileBusy}>
 						Cancel
 					</Button>
 					<Button
 						variant="contained"
 						onClick={handleConfirmReconcile}
-						disabled={!selectedRow || reconcilingKey === getRowKey(selectedRow) || isReconciling}
+						disabled={!selectedRow || isReconcileBusy}
 					>
-						{selectedRow && (reconcilingKey === getRowKey(selectedRow) || isReconciling)
-							? 'Reconciling...'
-							: 'Reconcile'}
+						Reconcile
 					</Button>
 				</DialogActions>
 			</Dialog>
+
+			<FullScreenFormSavingOverlay open={isReconcileBusy} message="Reconciling…" />
 		</>
 	);
 };

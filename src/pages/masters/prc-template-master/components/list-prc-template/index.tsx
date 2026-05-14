@@ -11,6 +11,7 @@ import {
 	useFetchPrcTemplatesQuery,
 	useDeletePrcTemplateTaskMutation
 } from '../../../../../store/api/business/prc-template/prc-template.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	type DeletePrcTemplateTaskRequest,
 	type PrcTemplate,
@@ -211,10 +212,11 @@ const ListPrcTemplate = () => {
 						Cancel
 					</Button>
 					<Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={isDeleting}>
-						{isDeleting ? 'Deleting...' : 'Delete Template'}
+						Delete Template
 					</Button>
 				</DialogActions>
 			</Dialog>
+			<FullScreenFormSavingOverlay open={isDeleting} message="Deleting…" />
 		</>
 	);
 };

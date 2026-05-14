@@ -11,6 +11,7 @@ import {
 	useFetchProcessSequencesQuery,
 	useDeleteSequenceTaskMutation
 } from '../../../../../store/api/business/sequence-master/sequence.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteSequenceTaskRequest } from '../../../../../store/api/business/sequence-master/sequence.validators';
 
 const ListSequence = () => {
@@ -263,10 +264,11 @@ const ListSequence = () => {
 						Cancel
 					</Button>
 					<Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={isDeleting}>
-						{isDeleting ? 'Deleting...' : 'Delete Task'}
+						Delete Task
 					</Button>
 				</DialogActions>
 			</Dialog>
+			<FullScreenFormSavingOverlay open={isDeleting} message="Deleting…" />
 		</>
 	);
 };

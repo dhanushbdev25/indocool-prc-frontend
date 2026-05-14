@@ -9,48 +9,46 @@ import {
 	ListItem,
 	ListItemText,
 	CircularProgress,
-	Stack
+	Stack,
+	Tooltip
 } from '@mui/material';
-import { CheckCircle, CloudSync, Schedule, TrendingUp } from '@mui/icons-material';
+import { CheckCircle, CloudSync, FactCheck, Schedule, TrendingUp } from '@mui/icons-material';
 import { type ExecutionData, type TimelineStep } from '../../../types/execution.types';
 import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
 import { formatExecutionDuration } from '../../../utils/formatExecutionDuration';
 import { useFetchSapConfirmationLogsQuery } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import { type SapConfirmationLogItem } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
+import { parsePrcExecutionOperationStatusList } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
+
+function operationStatusChipBorderColor(prcStatus: boolean, sapStatus: boolean) {
+	if (prcStatus && sapStatus) return '#2e7d32';
+	if (!prcStatus && !sapStatus) return '#9e9e9e';
+	return '#ed6c02';
+}
 
 function SapConfirmationLogCompact({ log }: { log: SapConfirmationLogItem }) {
+	const line = [log.operationId, log.operationText].filter(Boolean).join(' · ');
 	return (
 		<Box
 			sx={{
-				py: 1.25,
+				py: 1,
 				borderBottom: '1px solid',
 				borderColor: 'divider',
 				'&:last-of-type': { borderBottom: 'none', pb: 0 }
 			}}
 		>
-			<Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1} sx={{ mb: 0.75 }}>
-				<Box sx={{ minWidth: 0, flex: 1 }}>
-					<Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>
-						ID
-					</Typography>
-					<Typography variant="body2" sx={{ fontFamily: 'ui-monospace, monospace' }} noWrap title={log.operationId}>
-						{log.operationId}
-					</Typography>
-				</Box>
+			<Stack direction="row" alignItems="center" justifyContent="space-between" gap={1}>
+				<Typography variant="body2" sx={{ minWidth: 0, flex: 1 }} noWrap title={line}>
+					{line || '—'}
+				</Typography>
 				<Chip
 					size="small"
-					label={log.success ? 'Success' : 'Failed'}
+					label={log.success ? 'OK' : 'Fail'}
 					color={log.success ? 'success' : 'error'}
 					variant={log.success ? 'filled' : 'outlined'}
 					sx={{ flexShrink: 0 }}
 				/>
 			</Stack>
-			<Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block' }}>
-				Operation
-			</Typography>
-			<Typography variant="body2" sx={{ wordBreak: 'break-word' }} title={log.operationText}>
-				{log.operationText}
-			</Typography>
 		</Box>
 	);
 }
@@ -83,12 +81,17 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 		skipSapLogs || sapLogsLoading
 			? null
 			: sapLogsError
-				? 'Failed to load logs'
+				? 'Load failed'
 				: sapLogs.length === 0
-					? 'No confirmations yet'
+					? 'None yet'
 					: sapFailedCount > 0
 						? `${sapFailedCount} of ${sapLogs.length} failed`
-						: `All ${sapLogs.length} succeeded`;
+						: `All ${sapLogs.length} ok`;
+
+	const operationRows = parsePrcExecutionOperationStatusList(
+		(executionData as Record<string, unknown>).operationStatus ??
+			(executionData as Record<string, unknown>).operation_status
+	);
 
 	const getProgressColor = (completed: number, total: number) => {
 		const percentage = (completed / total) * 100;
@@ -99,53 +102,54 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 
 	return (
 		<Box sx={{ p: 2, backgroundColor: 'white' }}>
-			<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', mb: 3 }}>
+			<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', mb: 2 }}>
 				Quick Stats
 			</Typography>
-			{/* Steps Completed */}
+
+			{/* Operation status (same source as execution list) */}
 			<Card sx={{ mb: 2 }}>
-				<CardContent sx={{ p: 2 }}>
+				<CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-						<CheckCircle sx={{ color: getProgressColor(executionData.stepsCompleted, executionData.totalSteps) }} />
+						<FactCheck sx={{ color: '#666', fontSize: 20 }} />
 						<Typography variant="body2" sx={{ fontWeight: 500 }}>
-							Steps Completed
+							Operation status
 						</Typography>
 					</Box>
-					<Typography
-						variant="h4"
-						sx={{ fontWeight: 600, color: getProgressColor(executionData.stepsCompleted, executionData.totalSteps) }}
-					>
-						{executionData.stepsCompleted}
-					</Typography>
-					<Typography variant="caption" sx={{ color: '#666' }}>
-						of {executionData.totalSteps} total steps
-					</Typography>
-				</CardContent>
-			</Card>
-			{/* CTQs Passed */}
-			<Card sx={{ mb: 2 }}>
-				<CardContent sx={{ p: 2 }}>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-						<TrendingUp sx={{ color: executionData.completedCtq === executionData.totalCtq ? '#4caf50' : '#ff9800' }} />
-						<Typography variant="body2" sx={{ fontWeight: 500 }}>
-							CTQs Passed
+					{operationRows.length === 0 ? (
+						<Typography variant="caption" sx={{ color: '#999' }}>
+							—
 						</Typography>
-					</Box>
-					<Typography
-						variant="h4"
-						sx={{
-							fontWeight: 600,
-							color: executionData.completedCtq === executionData.totalCtq ? '#4caf50' : '#ff9800'
-						}}
-					>
-						{executionData.completedCtq}
-					</Typography>
-					<Typography variant="caption" sx={{ color: '#666' }}>
-						of {executionData.totalCtq} total CTQs
-					</Typography>
+					) : (
+						<Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5} sx={{ gap: 0.5 }}>
+							{operationRows.map(op => {
+								const label = (op.operationText ?? '').trim() || op.operationId || `Op ${op.id}`;
+								const border = operationStatusChipBorderColor(op.prcStatus, op.sapStatus);
+								const tip = `PRC: ${op.prcStatus ? 'complete' : 'pending'} · SAP: ${op.sapStatus ? 'complete' : 'pending'}`;
+								return (
+									<Tooltip key={op.id} title={tip}>
+										<Chip
+											label={label}
+											size="small"
+											variant="outlined"
+											sx={{
+												borderColor: border,
+												color: border,
+												backgroundColor: `${border}12`,
+												fontSize: '0.7rem',
+												height: 22,
+												maxWidth: '100%',
+												'& .MuiChip-label': { px: 0.75, overflow: 'hidden', textOverflow: 'ellipsis' }
+											}}
+										/>
+									</Tooltip>
+								);
+							})}
+						</Stack>
+					)}
 				</CardContent>
 			</Card>
-			{/* SAP push — operation summary */}
+
+			{/* SAP push */}
 			<Card sx={{ mb: 2 }}>
 				<CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, flexWrap: 'wrap' }}>
@@ -177,24 +181,24 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 					</Box>
 					{skipSapLogs ? (
 						<Typography variant="caption" sx={{ color: '#666' }}>
-							Not available in preview.
+							N/A in preview
 						</Typography>
 					) : sapLogsLoading ? (
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5 }}>
 							<CircularProgress size={22} />
 							<Typography variant="caption" sx={{ color: '#666' }}>
-								Loading confirmation logs…
+								Loading…
 							</Typography>
 						</Box>
 					) : sapLogsError ? (
 						<Typography variant="caption" color="error" sx={{ display: 'block' }}>
 							{sapLogsErr && typeof sapLogsErr === 'object' && 'data' in sapLogsErr
 								? String((sapLogsErr as { data?: unknown }).data)
-								: 'Could not load SAP confirmation logs.'}
+								: 'Could not load logs'}
 						</Typography>
 					) : sapLogs.length === 0 ? (
 						<Typography variant="caption" sx={{ color: '#666' }}>
-							No confirmation log entries yet. They will appear after SAP posting runs for this execution.
+							No confirmations yet.
 						</Typography>
 					) : (
 						<>
@@ -204,53 +208,22 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 						</>
 					)}
 					{sapStepCompleted && (
-						<Typography variant="caption" sx={{ color: '#666', display: 'block', mt: 1.5 }}>
-							SAP step marked complete in this execution.
+						<Typography variant="caption" sx={{ color: '#666', display: 'block', mt: 1 }}>
+							SAP step completed.
 						</Typography>
 					)}
 				</CardContent>
 			</Card>
-			{/* Current Step */}
-			<Card sx={{ mb: 2 }}>
-				<CardContent sx={{ p: 2 }}>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-						<Schedule sx={{ color: '#2196f3' }} />
-						<Typography variant="body2" sx={{ fontWeight: 500 }}>
-							Current Step
-						</Typography>
-					</Box>
-					<Typography variant="h4" sx={{ fontWeight: 600, color: '#2196f3' }}>
-						{currentStep ? currentStep.stepNumber : 0}
-					</Typography>
-					<Typography variant="caption" sx={{ color: '#666' }}>
-						{currentStep ? currentStep.title : 'No active step'}
-					</Typography>
-				</CardContent>
-			</Card>
-			{/* Duration */}
-			<Card sx={{ mb: 2 }}>
-				<CardContent sx={{ p: 2 }}>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-						<Schedule sx={{ color: '#666' }} />
-						<Typography variant="body2" sx={{ fontWeight: 500 }}>
-							Total Duration
-						</Typography>
-					</Box>
-					<Typography variant="h4" sx={{ fontWeight: 600, color: '#666' }}>
-						{durationLabel}
-					</Typography>
-				</CardContent>
-			</Card>
-			<Divider sx={{ my: 2 }} />
-			Recent Activity
-			<Box>
-				<Typography variant="body2" sx={{ fontWeight: 600, color: '#333', mb: 2 }}>
+
+			{/* Recent Activity */}
+			<Box sx={{ mb: 2 }}>
+				<Typography variant="body2" sx={{ fontWeight: 600, color: '#333', mb: 1.5 }}>
 					Recent Activity
 				</Typography>
-				<List dense>
+				<List dense disablePadding>
 					<ListItem sx={{ px: 0 }}>
 						<ListItemText
-							primary="PRC Execution Started"
+							primary="Started"
 							secondary={new Date(executionData.createdAt).toLocaleString()}
 							primaryTypographyProps={{ fontSize: '0.875rem' }}
 							secondaryTypographyProps={{ fontSize: '0.75rem' }}
@@ -259,7 +232,7 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 					{executionData.updatedAt !== executionData.createdAt && (
 						<ListItem sx={{ px: 0 }}>
 							<ListItemText
-								primary="Last Updated"
+								primary="Updated"
 								secondary={new Date(executionData.updatedAt).toLocaleString()}
 								primaryTypographyProps={{ fontSize: '0.875rem' }}
 								secondaryTypographyProps={{ fontSize: '0.75rem' }}
@@ -269,8 +242,8 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 					{currentStep && (
 						<ListItem sx={{ px: 0 }}>
 							<ListItemText
-								primary={`Step ${currentStep.stepNumber} - ${currentStep.title}`}
-								secondary="Currently in progress"
+								primary={`Step ${currentStep.stepNumber}: ${currentStep.title}`}
+								secondary="In progress"
 								primaryTypographyProps={{ fontSize: '0.875rem' }}
 								secondaryTypographyProps={{ fontSize: '0.75rem' }}
 							/>
@@ -278,14 +251,91 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 					)}
 				</List>
 			</Box>
+
+			<Divider sx={{ my: 2 }} />
+
+			{/* Steps Completed */}
+			<Card sx={{ mb: 2 }}>
+				<CardContent sx={{ p: 2 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+						<CheckCircle sx={{ color: getProgressColor(executionData.stepsCompleted, executionData.totalSteps) }} />
+						<Typography variant="body2" sx={{ fontWeight: 500 }}>
+							Steps completed
+						</Typography>
+					</Box>
+					<Typography
+						variant="h4"
+						sx={{ fontWeight: 600, color: getProgressColor(executionData.stepsCompleted, executionData.totalSteps) }}
+					>
+						{executionData.stepsCompleted}
+					</Typography>
+					<Typography variant="caption" sx={{ color: '#666' }}>
+						of {executionData.totalSteps}
+					</Typography>
+				</CardContent>
+			</Card>
+			{/* CTQs Passed */}
+			<Card sx={{ mb: 2 }}>
+				<CardContent sx={{ p: 2 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+						<TrendingUp sx={{ color: executionData.completedCtq === executionData.totalCtq ? '#4caf50' : '#ff9800' }} />
+						<Typography variant="body2" sx={{ fontWeight: 500 }}>
+							CTQs passed
+						</Typography>
+					</Box>
+					<Typography
+						variant="h4"
+						sx={{
+							fontWeight: 600,
+							color: executionData.completedCtq === executionData.totalCtq ? '#4caf50' : '#ff9800'
+						}}
+					>
+						{executionData.completedCtq}
+					</Typography>
+					<Typography variant="caption" sx={{ color: '#666' }}>
+						of {executionData.totalCtq}
+					</Typography>
+				</CardContent>
+			</Card>
+			{/* Current Step */}
+			<Card sx={{ mb: 2 }}>
+				<CardContent sx={{ p: 2 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+						<Schedule sx={{ color: '#2196f3' }} />
+						<Typography variant="body2" sx={{ fontWeight: 500 }}>
+							Current step
+						</Typography>
+					</Box>
+					<Typography variant="h4" sx={{ fontWeight: 600, color: '#2196f3' }}>
+						{currentStep ? currentStep.stepNumber : 0}
+					</Typography>
+					<Typography variant="caption" sx={{ color: '#666' }}>
+						{currentStep ? currentStep.title : '—'}
+					</Typography>
+				</CardContent>
+			</Card>
+			{/* Duration */}
+			<Card sx={{ mb: 2 }}>
+				<CardContent sx={{ p: 2 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+						<Schedule sx={{ color: '#666' }} />
+						<Typography variant="body2" sx={{ fontWeight: 500 }}>
+							Duration
+						</Typography>
+					</Box>
+					<Typography variant="h4" sx={{ fontWeight: 600, color: '#666' }}>
+						{durationLabel}
+					</Typography>
+				</CardContent>
+			</Card>
 			{/* Status Summary */}
-			<Box sx={{ mt: 3 }}>
-				<Typography variant="body2" sx={{ fontWeight: 600, color: '#333', mb: 2 }}>
-					Status Summary
+			<Box sx={{ mt: 1 }}>
+				<Typography variant="body2" sx={{ fontWeight: 600, color: '#333', mb: 1.5 }}>
+					Status
 				</Typography>
 				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
 					<Chip
-						label={`${executionData.stepsCompleted}/${executionData.totalSteps} Steps`}
+						label={`${executionData.stepsCompleted}/${executionData.totalSteps} steps`}
 						size="small"
 						sx={{ backgroundColor: '#e3f2fd', color: '#1976d2' }}
 					/>

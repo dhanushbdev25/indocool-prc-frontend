@@ -11,6 +11,7 @@ import {
 	useFetchCatalystChartsQuery,
 	useDeleteCatalystTaskMutation
 } from '../../../../../store/api/business/catalyst-master/catalyst.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteCatalystTaskRequest } from '../../../../../store/api/business/catalyst-master/catalyst.validators';
 
 const ListCatalyst = () => {
@@ -210,10 +211,11 @@ const ListCatalyst = () => {
 						Cancel
 					</Button>
 					<Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={isDeleting}>
-						{isDeleting ? 'Deleting...' : 'Delete Task'}
+						Delete Task
 					</Button>
 				</DialogActions>
 			</Dialog>
+			<FullScreenFormSavingOverlay open={isDeleting} message="Deleting…" />
 		</>
 	);
 };

@@ -1,13 +1,55 @@
 import { type TimelineStep, type ExecutionData } from '../types/execution.types';
 import { isRawMaterialsStepCompleteForNavigation } from './rawMaterialsNavigation';
 
+export interface BuildTimelineStepsOptions {
+	omitStepTypes?: TimelineStep['type'][];
+}
+
 function isPrcMetadataComplete(prcAggregatedSteps: Record<string, unknown> | undefined): boolean {
 	const meta = prcAggregatedSteps?.prcmetadata;
 	if (!meta || typeof meta !== 'object') return false;
 	return Object.keys(meta as Record<string, unknown>).length > 0;
 }
 
-export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[] {
+export function buildCatalystMixingTimelineStep(
+	executionData: ExecutionData,
+	overrides?: Partial<Pick<TimelineStep, 'stepNumber' | 'status' | 'reportStepIndex'>>
+): TimelineStep | null {
+	if (!executionData.bom || executionData.bom.length === 0) {
+		return null;
+	}
+
+	const isCompleted = executionData.prcAggregatedSteps?.bom !== undefined;
+
+	return {
+		stepNumber: overrides?.stepNumber ?? 1,
+		reportStepIndex: overrides?.reportStepIndex,
+		type: 'bom',
+		title: 'Catalyst Mixing',
+		description: 'Configure catalyst mixing based on temperature, humidity, and material quantities',
+		status: overrides?.status ?? (isCompleted ? 'completed' : 'pending'),
+		ctq: false,
+		items: executionData.bom.map(bom => ({
+			id: bom.id,
+			name: bom.materialName,
+			quantity: bom.quantity,
+			splitQuantity: bom.splitQuantity,
+			uom: bom.uom,
+			description: bom.materialCode,
+			materialType: bom.materialCode,
+			materialCode: bom.materialCode,
+			materialName: bom.materialName,
+			order: bom.order,
+			splitting: bom.splitting,
+			splittingConfiguration: bom.splittingConfiguration
+		}))
+	};
+}
+
+export function buildTimelineSteps(
+	executionData: ExecutionData,
+	options: BuildTimelineStepsOptions = {}
+): TimelineStep[] {
 	const steps: TimelineStep[] = [];
 	let stepNumber = 1;
 	const inspectionDiagramByParameterId = new Map(
@@ -51,30 +93,10 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 	}
 
 	// Step 2: Catalyst Mixing (formerly BOM)
-	if (executionData.bom && executionData.bom.length > 0) {
-		const isCompleted = executionData.prcAggregatedSteps?.bom !== undefined;
-		steps.push({
-			stepNumber: stepNumber++,
-			type: 'bom',
-			title: 'Catalyst Mixing',
-			description: 'Configure catalyst mixing based on temperature, humidity, and material quantities',
-			status: isCompleted ? 'completed' : 'pending',
-			ctq: false,
-			items: executionData.bom.map(bom => ({
-				id: bom.id,
-				name: bom.materialName,
-				quantity: bom.quantity,
-				splitQuantity: bom.splitQuantity,
-				uom: bom.uom,
-				description: bom.materialCode,
-				materialType: bom.materialCode,
-				materialCode: bom.materialCode,
-				materialName: bom.materialName,
-				order: bom.order,
-				splitting: bom.splitting,
-				splittingConfiguration: bom.splittingConfiguration
-			}))
-		});
+	const catalystMixingStep = buildCatalystMixingTimelineStep(executionData, { stepNumber });
+	if (catalystMixingStep) {
+		steps.push(catalystMixingStep);
+		stepNumber += 1;
 	}
 
 	// Process prcTemplateSteps
@@ -328,13 +350,22 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 		ctq: false
 	});
 
-	// Mark the first incomplete step as 'in-progress'
-	const firstIncompleteIndex = steps.findIndex(step => step.status === 'pending');
+	const stepsWithReportIndex = steps.map((step, index) => ({
+		...step,
+		reportStepIndex: index
+	}));
+
+	const omitStepTypes = new Set(options.omitStepTypes ?? []);
+	const visibleSteps =
+		omitStepTypes.size > 0 ? stepsWithReportIndex.filter(step => !omitStepTypes.has(step.type)) : stepsWithReportIndex;
+
+	// Mark the first incomplete visible step as 'in-progress'
+	const firstIncompleteIndex = visibleSteps.findIndex(step => step.status === 'pending');
 	if (firstIncompleteIndex >= 0) {
-		steps[firstIncompleteIndex].status = 'in-progress';
+		visibleSteps[firstIncompleteIndex].status = 'in-progress';
 	}
 
-	return steps;
+	return visibleSteps;
 }
 
 function isSequenceStepGroupCompleted(

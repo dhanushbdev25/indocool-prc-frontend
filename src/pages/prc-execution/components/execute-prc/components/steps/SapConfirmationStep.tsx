@@ -16,6 +16,7 @@ import {
 	Alert
 } from '@mui/material';
 import { KeyboardArrowDown, KeyboardArrowUp, Refresh } from '@mui/icons-material';
+import { FullScreenFormSavingOverlay } from '../../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	useFetchSapConfirmationLogsQuery,
 	useRetriggerSapConfirmationsMutation
@@ -182,6 +183,10 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 
 	return (
 		<Box sx={{ p: 2, maxWidth: 1200, mx: 'auto' }}>
+			<FullScreenFormSavingOverlay
+				open={isRetriggering || completeLoading}
+				message={completeLoading ? 'Completing…' : 'Retrying…'}
+			/>
 			<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
 				SAP confirmation API calls
 			</Typography>
@@ -196,7 +201,7 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 					<Button
 						variant="outlined"
 						color="primary"
-						startIcon={isRetriggering ? <CircularProgress size={18} /> : <Refresh />}
+						startIcon={<Refresh />}
 						disabled={!prcExecutionId || isRetriggering}
 						onClick={() => void handleRetrigger()}
 					>
@@ -208,7 +213,7 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 						disabled={!canComplete || completeLoading}
 						onClick={() => void handleComplete()}
 					>
-						{completeLoading ? <CircularProgress size={22} color="inherit" /> : 'Complete PRC'}
+						Complete PRC
 					</Button>
 				</Box>
 			)}
@@ -222,7 +227,7 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 
 			{logs.length === 0 && !isLoading && !isError && (
 				<Alert severity="info" sx={{ mb: 2 }}>
-					No confirmation log entries yet. They will appear here after SAP posting runs for this execution.
+					No confirmations yet.
 				</Alert>
 			)}
 

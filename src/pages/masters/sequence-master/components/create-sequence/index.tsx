@@ -11,8 +11,7 @@ import {
 	Step,
 	StepLabel,
 	Alert,
-	Skeleton,
-	CircularProgress
+	Skeleton
 } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
@@ -23,6 +22,7 @@ import { sequenceFormSchema, defaultSequenceFormData } from './schemas';
 import { SequenceFormData } from './schemas';
 import { normalizeTableConfig } from './table-config.utils';
 import type { TableConfig } from '../../../../../types/table-config.types';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	useFetchProcessSequenceByIdQuery,
 	useCreateProcessSequenceMutation,
@@ -425,8 +425,9 @@ const CreateSequence = () => {
 
 	return (
 		<FormProvider {...methods}>
-			<Box sx={{ minHeight: '100vh' }}>
-				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+			<>
+				<Box sx={{ minHeight: '100vh' }}>
+					<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
 					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
@@ -469,13 +470,7 @@ const CreateSequence = () => {
 							{activeStep === steps.length - 1 ? (
 								<Button
 									variant="contained"
-									startIcon={
-										isCreating || isUpdating ? (
-											<CircularProgress size={20} color="inherit" />
-										) : (
-											<Save />
-										)
-									}
+									startIcon={<Save />}
 									// eslint-disable-next-line @typescript-eslint/no-explicit-any
 									onClick={handleSubmit(onSubmit as any)}
 									disabled={isCreating || isUpdating}
@@ -504,6 +499,9 @@ const CreateSequence = () => {
 					</Box>
 				</Paper>
 			</Box>
+
+			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+			</>
 		</FormProvider>
 	);
 };
