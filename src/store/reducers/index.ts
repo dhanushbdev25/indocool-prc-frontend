@@ -7,8 +7,10 @@ import { sequenceApi } from '../api/business/sequence-master/sequence.api';
 import { inspectionApi } from '../api/business/inspection-master/inspection.api';
 import { prcTemplateApi } from '../api/business/prc-template/prc-template.api';
 import { partApi } from '../api/business/part-master/part.api';
+import { mouldApi } from '../api/business/mould/mould.api';
 import Cookie from '../../utils/Cookie';
 import { prcExecutionApi } from '../api/business/prc-execution/prc-execution.api';
+import { sapJobRunsApi } from '../api/business/sap-job-runs/sap-job-runs.api';
 
 const rootReducer = combineReducers({
 	[authApi.reducerPath]: authApi.reducer,
@@ -18,13 +20,14 @@ const rootReducer = combineReducers({
 	[inspectionApi.reducerPath]: inspectionApi.reducer,
 	[prcTemplateApi.reducerPath]: prcTemplateApi.reducer,
 	[prcExecutionApi.reducerPath]: prcExecutionApi.reducer,
-	[partApi.reducerPath]: partApi.reducer
+	[partApi.reducerPath]: partApi.reducer,
+	[mouldApi.reducerPath]: mouldApi.reducer,
+	[sapJobRunsApi.reducerPath]: sapJobRunsApi.reducer
 });
 
 // Handle the LOGOUT action
 const appReducer = (state: ReturnType<typeof rootReducer> | undefined, action: AnyAction) => {
 	if (action.type === LOGOUT) {
-		Cookie.delete('token');
 		Cookie.removeToken();
 		state = undefined;
 	}

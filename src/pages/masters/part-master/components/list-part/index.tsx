@@ -1,24 +1,47 @@
 import { useState, useMemo } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
 import PartHeader from './components/PartHeader';
 import SummaryCards from './components/SummaryCards';
-import PartManagement from './components/PartManagement';
+import PartManagement, { PART_ALL_CUSTOMERS } from './components/PartManagement';
 import PartTable, { PartData } from './components/PartTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import { useFetchPartsQuery, useDeletePartTaskMutation } from '../../../../../store/api/business/part-master/part.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	type DeletePartRequest,
 	type PartMaster,
 	type RawMaterial,
 	type Drilling,
-	type Cutting
+	type Cutting,
+	type Mould
 } from '../../../../../store/api/business/part-master/part.validators';
+
+function getMouldSummaryFromDetails(mouldDetails: Mould[] | undefined) {
+	const list = mouldDetails ?? [];
+	const totalMoulds = list.length;
+	const dueMoulds = list.filter(
+		m =>
+			Number(m.reconciliationCount ?? 0) > 0 &&
+			Number(m.currentCount ?? 0) >= Number(m.reconciliationCount)
+	).length;
+	return { totalMoulds, dueMoulds };
+}
+
+function partCustomerLabel(p: PartData): string {
+	const name = (p.customerName ?? '').trim();
+	if (name) return name;
+	return (p.customer ?? '').trim();
+}
 
 const ListPart = () => {
 	const navigate = useNavigate();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [activeFilter, setActiveFilter] = useState('All Parts');
+	const [activeLayupFilter, setActiveLayupFilter] = useState('All layup types');
+	const [activeModelFilter, setActiveModelFilter] = useState('All models');
+	const [activeCustomerFilter, setActiveCustomerFilter] = useState(PART_ALL_CUSTOMERS);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [partToDelete, setPartToDelete] = useState<PartData | null>(null);
 
@@ -32,45 +55,73 @@ const ListPart = () => {
 	const allPartData: PartData[] = useMemo(() => {
 		if (!partData) return [];
 		return partData.detail
-			.filter(
-				(item: {
-					partMaster: PartMaster;
-					rawMaterials: RawMaterial[];
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					bom?: any[]; // BOM might still be in API response but we ignore it
-					drilling: Drilling[];
-					cutting: Cutting[];
-				}) => item.partMaster.id !== undefined
-			)
-			.map(
-				(item: {
-					partMaster: PartMaster;
-					rawMaterials: RawMaterial[];
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					bom?: any[]; // BOM might still be in API response but we ignore it
-					drilling: Drilling[];
-					cutting: Cutting[];
-				}) => ({
+			.filter((item: { partMaster: PartMaster }) => item.partMaster.id !== undefined)
+			.map((item: { partMaster: PartMaster; rawMaterials: RawMaterial[]; drilling: Drilling[]; cutting: Cutting[] }) => {
+				const mouldSummary = getMouldSummaryFromDetails(item.partMaster.mouldDetails);
+				return {
 					id: item.partMaster.id!,
 					partNumber: item.partMaster.partNumber,
 					drawingNumber: item.partMaster.drawingNumber,
-					status: item.partMaster.status,
+					status: item.partMaster.status ?? 'NEW',
 					customer: item.partMaster.customer,
 					customerName: item.partMaster.customerName || '',
 					description: item.partMaster.description,
-					version: item.partMaster.version,
+					sapReferenceNumber: item.partMaster.sapReferenceNumber ?? undefined,
+					layupType: item.partMaster.layupType ?? '',
+					model: item.partMaster.model ?? '',
+					version: item.partMaster.version ?? 1,
 					totalRawMaterials: item.rawMaterials.length,
 					totalDrilling: item.drilling.length,
 					totalCutting: item.cutting.length,
+					totalMoulds: mouldSummary.totalMoulds,
+					dueMoulds: mouldSummary.dueMoulds,
 					createdAt: item.partMaster.createdAt || '',
 					updatedAt: item.partMaster.updatedAt || ''
-				})
-			);
+				};
+			});
 	}, [partData]);
+
+	const layupOptions = useMemo(() => {
+		const s = new Set<string>();
+		for (const p of allPartData) {
+			const v = (p.layupType ?? '').trim();
+			if (v) s.add(v);
+		}
+		return [...s].sort((a, b) => a.localeCompare(b));
+	}, [allPartData]);
+
+	const modelOptions = useMemo(() => {
+		const s = new Set<string>();
+		for (const p of allPartData) {
+			const v = (p.model ?? '').trim();
+			if (v) s.add(v);
+		}
+		return [...s].sort((a, b) => a.localeCompare(b));
+	}, [allPartData]);
+
+	const customerOptions = useMemo(() => {
+		const s = new Set<string>();
+		for (const p of allPartData) {
+			const label = partCustomerLabel(p);
+			if (label) s.add(label);
+		}
+		return [...s].sort((a, b) => a.localeCompare(b));
+	}, [allPartData]);
 
 	// Filter and search logic
 	const filteredData = useMemo(() => {
 		let filtered = allPartData;
+
+		if (activeLayupFilter !== 'All layup types') {
+			filtered = filtered.filter(p => (p.layupType ?? '').trim() === activeLayupFilter);
+		}
+		if (activeModelFilter !== 'All models') {
+			filtered = filtered.filter(p => (p.model ?? '').trim() === activeModelFilter);
+		}
+
+		if (activeCustomerFilter !== PART_ALL_CUSTOMERS) {
+			filtered = filtered.filter(p => partCustomerLabel(p) === activeCustomerFilter);
+		}
 
 		// Apply status filter
 		if (activeFilter !== 'All Parts') {
@@ -79,17 +130,31 @@ const ListPart = () => {
 
 		// Apply search filter
 		if (searchTerm) {
-			filtered = filtered.filter(
-				part =>
-					part.partNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					part.drawingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					part.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					part.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-			);
+			const t = searchTerm.toLowerCase();
+			filtered = filtered.filter(part => {
+				const sap = (part.sapReferenceNumber ?? '').toLowerCase();
+				const layup = (part.layupType ?? '').toLowerCase();
+				const model = (part.model ?? '').toLowerCase();
+				return (
+					part.partNumber.toLowerCase().includes(t) ||
+					part.drawingNumber.toLowerCase().includes(t) ||
+					part.description.toLowerCase().includes(t) ||
+					part.customerName.toLowerCase().includes(t) ||
+					part.customer.toLowerCase().includes(t) ||
+					sap.includes(t) ||
+					layup.includes(t) ||
+					model.includes(t)
+				);
+			});
 		}
 
 		return filtered;
-	}, [allPartData, activeFilter, searchTerm]);
+	}, [allPartData, activeFilter, searchTerm, activeLayupFilter, activeModelFilter, activeCustomerFilter]);
+
+	const listSummary = useMemo(
+		() => formatFilteredListSummary(filteredData.length, allPartData.length, 'parts'),
+		[filteredData.length, allPartData.length]
+	);
 
 	const handleSearchChange = (searchValue: string) => {
 		setSearchTerm(searchValue);
@@ -97,6 +162,18 @@ const ListPart = () => {
 
 	const handleFilterChange = (filter: string) => {
 		setActiveFilter(filter);
+	};
+
+	const handleLayupFilterChange = (value: string) => {
+		setActiveLayupFilter(value);
+	};
+
+	const handleModelFilterChange = (value: string) => {
+		setActiveModelFilter(value);
+	};
+
+	const handleCustomerFilterChange = (value: string) => {
+		setActiveCustomerFilter(value);
 	};
 
 	const handleActionClick = (partId: string, action: string) => {
@@ -133,11 +210,14 @@ const ListPart = () => {
 						version: fullPartDetail.partMaster.version,
 						isLatest: fullPartDetail.partMaster.isLatest,
 						catalyst: fullPartDetail.partMaster.catalyst,
-						prcTemplate: fullPartDetail.partMaster.prcTemplate
+						prcTemplate: fullPartDetail.partMaster.prcTemplate,
+						mouldDetails: fullPartDetail.partMaster.mouldDetails ?? [],
+						sapReferenceNumber: fullPartDetail.partMaster.sapReferenceNumber ?? ''
 					},
 					rawMaterials: fullPartDetail.rawMaterials.map(rm => ({
 						materialName: rm.materialName,
 						materialCode: rm.materialCode,
+						materialGroup: rm.materialGroup ?? '',
 						quantity: rm.quantity,
 						uom: rm.uom,
 						version: rm.version,
@@ -193,7 +273,7 @@ const ListPart = () => {
 	// Show loading state with skeleton
 	if (isPartDataLoading) {
 		return (
-			<Box sx={{ p: 3, minHeight: '100vh' }}>
+			<Box sx={{ minWidth: 0 }}>
 				<PartHeader />
 				<CatalystTableSkeleton />
 			</Box>
@@ -201,22 +281,32 @@ const ListPart = () => {
 	}
 
 	return (
-		<Box sx={{ p: 3, minHeight: '100vh' }}>
-			<PartHeader />
-			{partData && <SummaryCards headerData={partData.header} />}
-			<PartManagement onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
-			<Box
-				sx={{
-					backgroundColor: 'white',
-					borderRadius: '12px',
-					boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-					overflow: 'hidden'
-				}}
-			>
-				<PartTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
-			</Box>
+		<>
+			<MasterListLandingPage
+				header={<PartHeader />}
+				metrics={partData ? <SummaryCards headerData={partData.header} /> : null}
+				toolbar={
+					<PartManagement
+						appliedSearchTerm={searchTerm}
+						searchAriaLabel="Search parts"
+						listSummary={listSummary}
+						onSearchChange={handleSearchChange}
+						onFilterChange={handleFilterChange}
+						onLayupFilterChange={handleLayupFilterChange}
+						onModelFilterChange={handleModelFilterChange}
+						onCustomerFilterChange={handleCustomerFilterChange}
+						layupOptions={layupOptions}
+						modelOptions={modelOptions}
+						customerOptions={customerOptions}
+					/>
+				}
+				table={
+					<Box sx={masterListTableFrame}>
+						<PartTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
+					</Box>
+				}
+			/>
 
-			{/* Delete Confirmation Dialog */}
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
 				<DialogTitle>Delete Part</DialogTitle>
 				<DialogContent>
@@ -230,11 +320,12 @@ const ListPart = () => {
 						Cancel
 					</Button>
 					<Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={isDeleting}>
-						{isDeleting ? 'Deleting...' : 'Delete Part'}
+						Delete Part
 					</Button>
 				</DialogActions>
 			</Dialog>
-		</Box>
+			<FullScreenFormSavingOverlay open={isDeleting} message="Deleting…" />
+		</>
 	);
 };
 

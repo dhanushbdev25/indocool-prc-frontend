@@ -1,12 +1,12 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
-	prcTemplateListResponseSchema,
-	prcTemplateByIdResponseSchema,
-	prcTemplateInspectionsResponseSchema,
-	createPrcTemplateResponseSchema,
-	updatePrcTemplateResponseSchema,
-	deletePrcTemplateTaskResponseSchema,
+	isPrcTemplateListResponse,
+	isPrcTemplateByIdResponse,
+	isPrcTemplateInspectionsResponse,
+	isPrcTemplateMutationResponse,
+	isResolvePrcTemplateResponse,
+	isOperationsComboResponse,
 	type PrcTemplateListResponse,
 	type PrcTemplateByIdResponse,
 	type PrcTemplateInspectionsResponse,
@@ -15,7 +15,9 @@ import {
 	type CreatePrcTemplateResponse,
 	type UpdatePrcTemplateResponse,
 	type DeletePrcTemplateTaskRequest,
-	type DeletePrcTemplateTaskResponse
+	type DeletePrcTemplateTaskResponse,
+	type OperationsComboResponse,
+	type ResolvePrcTemplateResponse
 } from './prc-template.validators';
 
 // API parameters
@@ -25,6 +27,10 @@ export interface FetchPrcTemplateByIdParams {
 
 export interface FetchPrcTemplateInspectionsParams {
 	id: number;
+}
+
+export interface FetchOperationsComboParams {
+	partId?: number;
 }
 
 export const prcTemplateApi = createApi({
@@ -39,12 +45,10 @@ export const prcTemplateApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = prcTemplateListResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for PRC templates response:', parsed.error);
-					throw new Error('Invalid PRC templates response structure');
+				if (!isPrcTemplateListResponse(response)) {
+					console.warn('Invalid PRC templates response structure', response);
 				}
-				return parsed.data;
+				return response as PrcTemplateListResponse;
 			},
 			providesTags: ['PrcTemplate']
 		}),
@@ -55,12 +59,10 @@ export const prcTemplateApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = prcTemplateByIdResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for PRC template by ID response:', parsed.error);
-					throw new Error('Invalid PRC template by ID response structure');
+				if (!isPrcTemplateByIdResponse(response)) {
+					console.warn('Invalid PRC template by ID response structure', response);
 				}
-				return parsed.data;
+				return response as PrcTemplateByIdResponse;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'PrcTemplate', id },
@@ -74,14 +76,26 @@ export const prcTemplateApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = prcTemplateInspectionsResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for PRC template inspections response:', parsed.error);
-					throw new Error('Invalid PRC template inspections response structure');
+				if (!isPrcTemplateInspectionsResponse(response)) {
+					console.warn('Invalid PRC template inspections response structure', response);
 				}
-				return parsed.data;
+				return response as PrcTemplateInspectionsResponse;
 			},
 			providesTags: (_, __, { id }) => [{ type: 'PrcTemplate', id: `inspections-${id}` }]
+		}),
+		// Resolve template payload into hydrated execution shape (preview / unsaved)
+		resolvePrcTemplate: builder.mutation<ResolvePrcTemplateResponse, CreatePrcTemplateRequest>({
+			query: data => ({
+				url: 'prcTemplate/resolveTemplate',
+				method: 'POST',
+				body: { data }
+			}),
+			transformResponse: (response: unknown) => {
+				if (!isResolvePrcTemplateResponse(response)) {
+					console.warn('Invalid resolve PRC template response structure', response);
+				}
+				return response as ResolvePrcTemplateResponse;
+			}
 		}),
 		// Create new PRC template
 		createPrcTemplate: builder.mutation<CreatePrcTemplateResponse, CreatePrcTemplateRequest>({
@@ -91,12 +105,10 @@ export const prcTemplateApi = createApi({
 				body: { data: data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = createPrcTemplateResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for create PRC template response:', parsed.error);
-					throw new Error('Invalid create PRC template response structure');
+				if (!isPrcTemplateMutationResponse(response)) {
+					console.warn('Invalid create PRC template response structure', response);
 				}
-				return parsed.data;
+				return response as CreatePrcTemplateResponse;
 			},
 			invalidatesTags: ['PrcTemplate']
 		}),
@@ -108,18 +120,30 @@ export const prcTemplateApi = createApi({
 				body: { data: data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = updatePrcTemplateResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for update PRC template response:', parsed.error);
-					throw new Error('Invalid update PRC template response structure');
+				if (!isPrcTemplateMutationResponse(response)) {
+					console.warn('Invalid update PRC template response structure', response);
 				}
-				return parsed.data;
+				return response as UpdatePrcTemplateResponse;
 			},
 			invalidatesTags: (_, __, { id }) => [
 				{ type: 'PrcTemplate', id },
 				{ type: 'PrcTemplate', id: 'LIST' },
 				'PrcTemplate'
 			]
+		}),
+		// Fetch operations combo for a part
+		fetchOperationsCombo: builder.query<OperationsComboResponse, FetchOperationsComboParams>({
+			query: ({ partId }) => ({
+				url: 'prcTemplate/operations/combo',
+				method: 'GET',
+				params: partId ? { partId } : undefined
+			}),
+			transformResponse: (response: unknown) => {
+				if (!isOperationsComboResponse(response)) {
+					console.warn('Invalid operations combo response structure', response);
+				}
+				return response as OperationsComboResponse;
+			}
 		}),
 		// Delete PRC template task (set status to INACTIVE)
 		deletePrcTemplateTask: builder.mutation<DeletePrcTemplateTaskResponse, DeletePrcTemplateTaskRequest>({
@@ -129,12 +153,10 @@ export const prcTemplateApi = createApi({
 				body: { data: { ...data, prcTemplate: { ...data.prcTemplate, status: 'INACTIVE' } } }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = deletePrcTemplateTaskResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for delete PRC template task response:', parsed.error);
-					throw new Error('Invalid delete PRC template task response structure');
+				if (!isPrcTemplateMutationResponse(response)) {
+					console.warn('Invalid delete PRC template task response structure', response);
 				}
-				return parsed.data;
+				return response as DeletePrcTemplateTaskResponse;
 			},
 			invalidatesTags: (_, __, { prcTemplate }) => [
 				{ type: 'PrcTemplate', id: prcTemplate?.id },
@@ -149,6 +171,8 @@ export const {
 	useFetchPrcTemplatesQuery,
 	useFetchPrcTemplateByIdQuery,
 	useFetchPrcTemplateInspectionsQuery,
+	useFetchOperationsComboQuery,
+	useResolvePrcTemplateMutation,
 	useCreatePrcTemplateMutation,
 	useUpdatePrcTemplateMutation,
 	useDeletePrcTemplateTaskMutation

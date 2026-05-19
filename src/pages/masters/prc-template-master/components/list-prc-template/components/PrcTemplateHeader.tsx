@@ -1,62 +1,27 @@
-import { Button, Box, Typography } from '@mui/material';
+import { Button } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { MasterListPageTitle } from '../../../../../../components/masters';
 
 const PrcTemplateHeader = () => {
 	const navigate = useNavigate();
 
-	const handleAddTemplate = () => {
-		navigate('/prc-template-master/create-prc-template');
-	};
-
 	return (
-		<Box sx={{ mb: 4 }}>
-			<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
-				<Box>
-					<Typography
-						variant="h3"
-						sx={{
-							fontWeight: 600,
-							color: '#333',
-							mb: 1,
-							fontSize: '2rem'
-						}}
-					>
-						PRC Template Master
-					</Typography>
-					<Typography
-						variant="body1"
-						sx={{
-							color: '#666',
-							fontSize: '1rem',
-							fontWeight: 400
-						}}
-					>
-						Manage and configure PRC templates with sequences and inspections
-					</Typography>
-				</Box>
+		<MasterListPageTitle
+			title="PRC Template Master"
+			description="Control which PRC templates are catalogue-ready and keep step counts aligned with manufacturing."
+			action={
 				<Button
 					variant="contained"
+					size="medium"
 					startIcon={<AddIcon />}
-					onClick={handleAddTemplate}
-					sx={{
-						backgroundColor: '#1976d2',
-						color: 'white',
-						borderRadius: '8px',
-						px: 3,
-						py: 1.5,
-						textTransform: 'none',
-						fontSize: '0.875rem',
-						fontWeight: 500,
-						'&:hover': {
-							backgroundColor: '#1565c0'
-						}
-					}}
+					onClick={() => navigate('/prc-template-master/create-prc-template')}
+					sx={{ textTransform: 'none', borderRadius: 1 }}
 				>
 					Add Template
 				</Button>
-			</Box>
-		</Box>
+			}
+		/>
 	);
 };
 

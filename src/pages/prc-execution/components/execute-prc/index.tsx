@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Box, Alert, CircularProgress, Backdrop } from '@mui/material';
+import { Box, Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
+import { FullScreenFormSavingOverlay } from '../../../../components/common/FullScreenFormSavingOverlay';
 import { useCurrentRole } from '../../../../hooks/useCurrentRole';
 import {
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
-import { buildTimelineSteps } from '../../utils/buildTimelineSteps';
+import { calculateSequenceStepGroupTiming } from '../../utils/timelineCardTiming';
+import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
+import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
 	buildAggregatedData,
 	buildTimingData,
@@ -17,22 +20,19 @@ import {
 	mergeUserApprovalData
 } from '../../utils/dataBuilders';
 
-// Utility function to filter out metadata fields from step data
-const filterMeasurementSteps = (groupData: Record<string, unknown>): Array<[string, unknown]> => {
-	const metadataFields = ['stepCompleted', 'productionApproved', 'ctqApproved', 'partialCtqApprove'];
-	return Object.entries(groupData).filter(([stepId]) => !metadataFields.includes(stepId));
-};
 import {
 	type TimelineStep,
 	type ExecutionData,
 	type FormData,
-	type StepPreviewData
+	type StepPreviewData,
+	type ProceedFromPreviewPayload
 } from '../../types/execution.types';
 import ExecutionHeader from './components/ExecutionHeader';
 import StepList from './components/StepList';
 import StepDetailView from './components/StepDetailView';
 import StepPreview from './components/StepPreview';
 import ExecutionQuickStats from './components/ExecutionQuickStats';
+import BomStep from './components/steps/BomStep';
 
 type ViewState = 'list' | 'detail' | 'preview';
 
@@ -49,6 +49,9 @@ const ExecutePrc = () => {
 	const [previewData, setPreviewData] = useState<StepPreviewData | null>(null);
 	const [timelineSteps, setTimelineSteps] = useState<TimelineStep[]>([]);
 	const [currentAggregatedData, setCurrentAggregatedData] = useState<Record<string, unknown>>({});
+	const [catalystMixingOpen, setCatalystMixingOpen] = useState(false);
+	const catalystMixingStartTimeRef = useRef<string | null>(null);
+	const catalystMixingSubmitRef = useRef<(() => void) | null>(null);
 
 	// API hooks
 	const {
@@ -65,13 +68,25 @@ const ExecutePrc = () => {
 		if (executionData && !isUpdateProgressLoading && !isExecutionDataFetching) {
 			// Extract the actual data from the API response wrapper
 			const actualData = (executionData as { data: ExecutionData }).data;
-			const steps = buildTimelineSteps(actualData);
+			const steps = buildTimelineSteps(actualData, { omitStepTypes: ['bom'] });
 
 			// Use setTimeout to avoid setState in effect warning
 			setTimeout(() => {
 				setTimelineSteps(steps);
-				// Initialize current aggregated data
-				setCurrentAggregatedData(actualData.prcAggregatedSteps || {});
+				const agg = actualData.prcAggregatedSteps;
+				if (agg && typeof agg === 'object' && Object.keys(agg).length > 0) {
+					setCurrentAggregatedData({ ...(agg as Record<string, unknown>) });
+				} else if (
+					(agg == null || (typeof agg === 'object' && Object.keys(agg).length === 0)) &&
+					Array.isArray(actualData.operationWiseData) &&
+					actualData.operationWiseData.length > 0
+				) {
+					setCurrentAggregatedData({
+						operationWiseData: [...actualData.operationWiseData]
+					});
+				} else {
+					setCurrentAggregatedData({});
+				}
 			}, 0);
 		}
 	}, [executionData, isUpdateProgressLoading, isExecutionDataFetching]);
@@ -91,7 +106,7 @@ const ExecutePrc = () => {
 	}, [currentAggregatedData, executionData]);
 
 	// Helper function to check if timing data already exists for a step
-	const hasExistingTimingData = (step: TimelineStep, formData?: FormData): boolean => {
+	const hasExistingTimingData = useCallback((step: TimelineStep, formData?: FormData): boolean => {
 		if (!executionData) return false;
 
 		const actualData = (executionData as { data: ExecutionData }).data;
@@ -141,8 +156,16 @@ const ExecutePrc = () => {
 			return existingTimingData[prcTemplateStepId.toString()] !== undefined;
 		}
 
+		if (step.type === 'setup') {
+			return existingTimingData.prcmetadata !== undefined;
+		}
+
+		if (step.type === 'sapConfirmations') {
+			return existingTimingData.sapConfirmations !== undefined;
+		}
+
 		return false;
-	};
+	}, [executionData]);
 
 	// Initialize step start time when step changes
 	useEffect(() => {
@@ -157,6 +180,72 @@ const ExecutePrc = () => {
 		console.log('🕐 Initialized start time for step group:', stepStartTimeRef.current);
 	};
 
+	const persistStepData = useCallback(
+		async (
+			stepToProcess: TimelineStep,
+			stepFormData: FormData,
+			options?: { startTime?: string | null; resetMainStepStartTime?: boolean }
+		) => {
+			if (!executionData) {
+				throw new Error('Execution data is not available');
+			}
+
+			const endTime = new Date().toISOString();
+			const startTime = options?.startTime || stepStartTimeRef.current || endTime;
+
+			const stepAggregatedData = buildAggregatedData(stepToProcess, stepFormData);
+
+			let stepTimingData = {};
+			const hasExisting = hasExistingTimingData(stepToProcess, stepFormData);
+			console.log('Timing data check:', {
+				stepCategory: stepToProcess.type,
+				hasExisting,
+				stepToProcess: stepToProcess.stepData ? stepToProcess.stepData : 'No stepData',
+				formData: {
+					stepId: stepFormData.stepId,
+					stepGroupId: stepFormData.stepGroupId,
+					prcTemplateStepId: stepFormData.prcTemplateStepId
+				}
+			});
+
+			if (!hasExisting) {
+				stepTimingData = buildTimingData(stepToProcess, startTime, endTime);
+				console.log('Built timing data:', stepTimingData);
+			} else {
+				console.log('Timing data already exists, skipping build');
+			}
+
+			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
+			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
+			const mergedUserApprovalData = mergeUserApprovalData(
+				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
+				userApprovalData
+			);
+
+			await updateProgress({
+				id: executionId,
+				data: {
+					prcAggregatedSteps: {
+						...mergedAggregatedData,
+						stepApprovedBy: mergedUserApprovalData
+					},
+					stepStartEndTime: mergedTimingData
+				}
+			}).unwrap();
+
+			if (options?.resetMainStepStartTime !== false) {
+				stepStartTimeRef.current = null;
+			}
+
+			setCurrentAggregatedData(mergedAggregatedData);
+
+			return { mergedAggregatedData, mergedTimingData };
+		},
+		[executionData, executionId, getCurrentAggregatedData, hasExistingTimingData, updateProgress, userInfo.id]
+	);
+
 	// Update preview data timing when execution data changes (after API refetch)
 	useEffect(() => {
 		if (
@@ -167,13 +256,15 @@ const ExecutePrc = () => {
 			currentStep?.stepGroup
 		) {
 			const actualData = (executionData as { data: ExecutionData }).data;
-			const timingResult = calculateStepGroupTiming(
+			const timingResult = calculateSequenceStepGroupTiming(
 				currentStep,
 				actualData.stepStartEndTime as Record<string, unknown>
 			);
 
-			// Get timing exceeded remarks from the step group data
+			// Get timing exceeded remarks and reason from the step group data
 			let timingExceededRemarks = '';
+			let timingExceededReasonCode: string | number | undefined;
+			let timingExceededReasonLabel: string | undefined;
 			if (currentStep.prcTemplateStepId && currentStep.stepGroup) {
 				const stepGroupData = getCurrentAggregatedData()?.[currentStep.prcTemplateStepId.toString()] as Record<
 					string,
@@ -182,6 +273,14 @@ const ExecutePrc = () => {
 				if (stepGroupData && stepGroupData[currentStep.stepGroup.id.toString()]) {
 					const groupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
 					timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
+					const rc = groupData.timingExceededReasonCode;
+					if (typeof rc === 'string' || typeof rc === 'number') {
+						timingExceededReasonCode = rc;
+					}
+					const rl = groupData.timingExceededReasonLabel;
+					if (typeof rl === 'string') {
+						timingExceededReasonLabel = rl;
+					}
 				}
 			}
 
@@ -190,7 +289,9 @@ const ExecutePrc = () => {
 				previewData.timingExceeded !== timingResult.timingExceeded ||
 				previewData.actualDuration !== timingResult.actualDuration ||
 				previewData.expectedDuration !== timingResult.expectedDuration ||
-				previewData.timingExceededRemarks !== timingExceededRemarks
+				previewData.timingExceededRemarks !== timingExceededRemarks ||
+				previewData.timingExceededReasonCode !== timingExceededReasonCode ||
+				previewData.timingExceededReasonLabel !== timingExceededReasonLabel
 			) {
 				setPreviewData(prev =>
 					prev
@@ -199,7 +300,9 @@ const ExecutePrc = () => {
 								timingExceeded: timingResult.timingExceeded,
 								actualDuration: timingResult.actualDuration,
 								expectedDuration: timingResult.expectedDuration,
-								timingExceededRemarks: timingExceededRemarks
+								timingExceededRemarks: timingExceededRemarks,
+								timingExceededReasonCode,
+								timingExceededReasonLabel
 							}
 						: null
 				);
@@ -220,9 +323,6 @@ const ExecutePrc = () => {
 		if (!currentStep || !executionData) return;
 
 		try {
-			const endTime = new Date().toISOString();
-			const startTime = stepStartTimeRef.current || endTime;
-
 			// For sequence steps, we need to create a proper step object with stepData
 			let stepToProcess = currentStep;
 			if (currentStep.type === 'sequence' && currentStep.stepGroup && currentStep.prcTemplateStepId) {
@@ -242,61 +342,7 @@ const ExecutePrc = () => {
 				};
 			}
 
-			// Build aggregated data for this step
-			const stepAggregatedData = buildAggregatedData(stepToProcess, stepFormData);
-
-			// Only build timing data if it doesn't already exist for this step
-			let stepTimingData = {};
-			const hasExisting = hasExistingTimingData(stepToProcess, stepFormData);
-			console.log('Timing data check:', {
-				stepType: stepToProcess.type,
-				hasExisting,
-				stepToProcess: stepToProcess.stepData ? stepToProcess.stepData : 'No stepData',
-				formData: {
-					stepId: stepFormData.stepId,
-					stepGroupId: stepFormData.stepGroupId,
-					prcTemplateStepId: stepFormData.prcTemplateStepId
-				}
-			});
-
-			if (!hasExisting) {
-				stepTimingData = buildTimingData(stepToProcess, startTime, endTime);
-				console.log('Built timing data:', stepTimingData);
-			} else {
-				console.log('Timing data already exists, skipping build');
-			}
-
-			// Build user approval data for data entry
-			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
-
-			// Merge with existing data using the most current aggregated data
-			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
-			// Get current timing data from execution data
-			const actualData = (executionData as { data: ExecutionData }).data;
-			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
-			// Merge user approval data
-			const mergedUserApprovalData = mergeUserApprovalData(
-				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
-				userApprovalData
-			);
-
-			// Save step data to backend
-			await updateProgress({
-				id: executionId,
-				data: {
-					prcAggregatedSteps: {
-						...mergedAggregatedData,
-						stepApprovedBy: mergedUserApprovalData
-					},
-					stepStartEndTime: mergedTimingData
-				}
-			}).unwrap();
-
-			// Reset step start time after completion
-			stepStartTimeRef.current = null;
-
-			// Update current aggregated data state
-			setCurrentAggregatedData(mergedAggregatedData);
+			const { mergedAggregatedData, mergedTimingData } = await persistStepData(stepToProcess, stepFormData);
 
 			// Don't rebuild timeline steps immediately - let the API response update the cache naturally
 			// This prevents form data from being reset in step components
@@ -315,106 +361,16 @@ const ExecutePrc = () => {
 				});
 
 				if (allStepsFilled) {
-					// All steps completed, show preview screen for sequence steps
-					// Extract actual measurement data from the group with context
 					const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId?.toString() || ''] as Record<
 						string,
 						unknown
 					>;
 					const groupData = stepGroupData?.[currentStep.stepGroup?.id.toString() || ''] as Record<string, unknown>;
 
-					// Create detailed measurement data with context
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					const detailedMeasurements: any[] = [];
-					if (groupData) {
-						const filteredSteps = filterMeasurementSteps(groupData);
-						console.log('🔍 FilterMeasurementSteps result:', filteredSteps);
-						console.log('🔍 Full groupData for debugging:', groupData);
-
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						filteredSteps.forEach(([stepId, stepData]: [string, any]) => {
-							console.log(`🔍 Step ${stepId} data:`, stepData);
-							console.log(`🔍 Step ${stepId} has responsiblePersons:`, !!stepData.responsiblePersons);
-
-							// Find the step definition to get context
-							const stepDefinition = currentStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
-
-							// Extract value from stepData (handle both direct value and nested data)
-							let value = stepData.value || stepData.data;
-							let extractedMinimumAcceptanceValue = stepData.minimumAcceptanceValue;
-							let extractedMaximumAcceptanceValue = stepData.maximumAcceptanceValue;
-							let extractedValidationStatus = stepData.validationStatus;
-
-							// Handle array data (multiple measurements) where each item might have validation info
-							if (
-								Array.isArray(value) &&
-								value.length > 0 &&
-								typeof value[0] === 'object' &&
-								value[0] !== null &&
-								'value' in value[0]
-							) {
-								// Extract values from array of objects
-								const firstItem = value[0] as Record<string, unknown>;
-								value = (value as Array<Record<string, unknown>>).map(item => item.value);
-								// For multiple measurements, use validation status from first item if available
-								if (firstItem.validationStatus) {
-									extractedValidationStatus = firstItem.validationStatus;
-									extractedMinimumAcceptanceValue = firstItem.minimumAcceptanceValue as string | undefined;
-									extractedMaximumAcceptanceValue = firstItem.maximumAcceptanceValue as string | undefined;
-								}
-							} else if (typeof value === 'object' && value !== null && 'value' in value) {
-								// Handle nested structure like { value: "10", minimumAcceptanceValue: "1", ... }
-								const valueObj = value as Record<string, unknown>;
-								value = valueObj.value;
-								extractedMinimumAcceptanceValue =
-									(valueObj.minimumAcceptanceValue as string) || extractedMinimumAcceptanceValue;
-								extractedMaximumAcceptanceValue =
-									(valueObj.maximumAcceptanceValue as string) || extractedMaximumAcceptanceValue;
-								extractedValidationStatus = (valueObj.validationStatus as string) || extractedValidationStatus;
-							}
-
-							const measurementData = {
-								stepId: stepId,
-								value: value,
-								parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-								stepType: stepDefinition?.stepType || 'Unknown',
-								evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-								uom: stepDefinition?.uom || '',
-								notes: stepDefinition?.notes || '',
-								ctq: stepDefinition?.ctq || false,
-								stepNumber: stepDefinition?.stepNumber || 0,
-								// Store acceptance values and validation status if available
-								minimumAcceptanceValue: extractedMinimumAcceptanceValue || stepDefinition?.minimumAcceptanceValue,
-								maximumAcceptanceValue: extractedMaximumAcceptanceValue || stepDefinition?.maximumAcceptanceValue,
-								validationStatus: extractedValidationStatus,
-								responsiblePersons: [] as Array<{
-									role: string;
-									employeeName: string;
-									employeeCode: string;
-								}>
-							};
-
-							// Include responsible persons if they exist for this step
-							// Check both direct responsiblePersons and nested structure
-							let responsiblePersons = null;
-							if (stepData.responsiblePersons && Array.isArray(stepData.responsiblePersons)) {
-								responsiblePersons = stepData.responsiblePersons;
-								console.log(`✅ Found direct responsiblePersons for step ${stepId}:`, responsiblePersons);
-							} else if (stepData.data && typeof stepData.data === 'object' && stepData.data.responsiblePersons) {
-								responsiblePersons = stepData.data.responsiblePersons;
-								console.log(`✅ Found nested responsiblePersons for step ${stepId}:`, responsiblePersons);
-							} else {
-								console.log(`❌ No responsiblePersons found for step ${stepId}`);
-								console.log(`🔍 Step data structure:`, JSON.stringify(stepData, null, 2));
-							}
-
-							if (responsiblePersons && Array.isArray(responsiblePersons)) {
-								measurementData.responsiblePersons = responsiblePersons;
-							}
-
-							detailedMeasurements.push(measurementData);
-						});
-					}
+					const detailedMeasurements =
+						groupData && currentStep.stepGroup
+							? buildSequenceDetailedMeasurements(groupData, currentStep.stepGroup.steps)
+							: [];
 
 					// Load approval state from backend (look inside step group)
 					let productionApproved = false;
@@ -435,14 +391,12 @@ const ExecutePrc = () => {
 					}
 
 					// Calculate timing for this step group
-					const actualData = (executionData as { data: ExecutionData }).data;
-					const timingResult = calculateStepGroupTiming(
-						currentStep,
-						actualData.stepStartEndTime as Record<string, unknown>
-					);
+					const timingResult = calculateSequenceStepGroupTiming(currentStep, mergedTimingData);
 
-					// Get timing exceeded remarks from the step group data
+					// Get timing exceeded remarks and reason from the step group data
 					let timingExceededRemarks = '';
+					let timingExceededReasonCode: string | number | undefined;
+					let timingExceededReasonLabel: string | undefined;
 					if (currentStep.prcTemplateStepId && currentStep.stepGroup) {
 						const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId.toString()] as Record<
 							string,
@@ -451,12 +405,21 @@ const ExecutePrc = () => {
 						if (stepGroupData && stepGroupData[currentStep.stepGroup.id.toString()]) {
 							const groupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
 							timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
+							const rc = groupData.timingExceededReasonCode;
+							if (typeof rc === 'string' || typeof rc === 'number') {
+								timingExceededReasonCode = rc;
+							}
+							const rl = groupData.timingExceededReasonLabel;
+							if (typeof rl === 'string') {
+								timingExceededReasonLabel = rl;
+							}
 						}
 					}
 
 					const newPreviewData: StepPreviewData = {
 						stepNumber: currentStep.stepNumber,
 						title: currentStep.title,
+						description: currentStep.description,
 						type: currentStep.type,
 						ctq: currentStep.ctq,
 						data: detailedMeasurements,
@@ -466,7 +429,9 @@ const ExecutePrc = () => {
 						timingExceeded: timingResult.timingExceeded,
 						actualDuration: timingResult.actualDuration,
 						expectedDuration: timingResult.expectedDuration,
-						timingExceededRemarks: timingExceededRemarks
+						timingExceededRemarks: timingExceededRemarks,
+						timingExceededReasonCode,
+						timingExceededReasonLabel
 					};
 
 					console.log('Creating preview data for completed sequence group:', {
@@ -549,9 +514,8 @@ const ExecutePrc = () => {
 				setPreviewData(newPreviewData);
 				setCurrentView('preview');
 			} else {
-				// For raw materials and BOM, go directly to next step without additional save
-				// The data has already been saved above, no need to call handleProceedToNext
-				// which would trigger another unnecessary save API call
+				// For raw materials, go directly to the next step without additional save
+				// because the data has already been persisted above.
 
 				// Move to next step
 				if (currentStepIndex < timelineSteps.length - 1) {
@@ -564,6 +528,51 @@ const ExecutePrc = () => {
 			}
 		} catch (error) {
 			console.error('Failed to save step data:', error);
+		}
+	};
+
+	const handleOpenCatalystMixing = () => {
+		if (!executionData) return;
+
+		const actualData = (executionData as { data: ExecutionData }).data;
+		const existingBomTiming = (actualData.stepStartEndTime as Record<string, unknown> | undefined)?.bom;
+
+		if (existingBomTiming === undefined) {
+			catalystMixingStartTimeRef.current = new Date().toISOString();
+		}
+
+		setCatalystMixingOpen(true);
+	};
+
+	const handleCloseCatalystMixing = () => {
+		if (executionData) {
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const existingBomTiming = (actualData.stepStartEndTime as Record<string, unknown> | undefined)?.bom;
+
+			if (existingBomTiming === undefined) {
+				catalystMixingStartTimeRef.current = null;
+			}
+		}
+
+		setCatalystMixingOpen(false);
+	};
+
+	const handleCatalystMixingSave = async (stepFormData: FormData): Promise<void> => {
+		if (!executionData) return;
+
+		const actualData = (executionData as { data: ExecutionData }).data;
+		const catalystStep = buildCatalystMixingTimelineStep(actualData, { status: 'pending' });
+
+		if (!catalystStep) return;
+
+		try {
+			await persistStepData(catalystStep, stepFormData, {
+				startTime: catalystMixingStartTimeRef.current,
+				resetMainStepStartTime: false
+			});
+			catalystMixingStartTimeRef.current = null;
+		} catch (error) {
+			console.error('Failed to save catalyst mixing:', error);
 		}
 	};
 
@@ -604,82 +613,6 @@ const ExecutePrc = () => {
 		});
 
 		return allStepsFilled;
-	};
-
-	// Helper function to calculate step group timing
-	const calculateStepGroupTiming = (
-		step: TimelineStep,
-		stepStartEndTime: Record<string, unknown>
-	): { timingExceeded: boolean; actualDuration: number; expectedDuration: number } => {
-		if (!step.stepGroup || !step.prcTemplateStepId || !step.stepGroup.sequenceTiming) {
-			return { timingExceeded: false, actualDuration: 0, expectedDuration: 0 };
-		}
-
-		const prcTemplateStepId = step.prcTemplateStepId.toString();
-		const stepGroupId = step.stepGroup.id.toString();
-
-		console.log('🕐 Calculating timing for step group:', {
-			prcTemplateStepId,
-			stepGroupId,
-			expectedDuration: step.stepGroup.sequenceTiming,
-			stepStartEndTime
-		});
-
-		// Get timing data for this step group
-		const templateTimingData = stepStartEndTime[prcTemplateStepId] as Record<string, unknown>;
-		if (!templateTimingData) {
-			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-		}
-
-		const groupTimingData = templateTimingData[stepGroupId] as Record<string, unknown>;
-		if (!groupTimingData) {
-			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-		}
-
-		// Calculate total active work time by summing individual step durations
-		let totalActiveDuration = 0;
-		let stepsWithTiming = 0;
-
-		step.stepGroup.steps.forEach(subStep => {
-			const stepTiming = groupTimingData[subStep.id.toString()] as { startTime: string; endTime: string } | undefined;
-			if (stepTiming) {
-				const startTime = new Date(stepTiming.startTime);
-				const endTime = new Date(stepTiming.endTime);
-
-				// Calculate individual step duration in seconds
-				const stepDurationMs = endTime.getTime() - startTime.getTime();
-				const stepDuration = Math.round((stepDurationMs / 1000) * 10) / 10; // Round to 1 decimal place
-
-				totalActiveDuration += stepDuration;
-				stepsWithTiming++;
-
-				console.log(`🕐 Step ${subStep.id} timing:`, {
-					startTime: startTime.toISOString(),
-					endTime: endTime.toISOString(),
-					duration: stepDuration
-				});
-			}
-		});
-
-		if (stepsWithTiming === 0) {
-			return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-		}
-
-		// Keep expected duration in seconds
-		const expectedDuration = step.stepGroup.sequenceTiming;
-		const timingExceeded = totalActiveDuration > expectedDuration;
-
-		console.log('🕐 Optimized timing calculation result:', {
-			prcTemplateStepId,
-			stepGroupId,
-			totalActiveDuration,
-			expectedDuration,
-			timingExceeded,
-			stepsWithTiming,
-			calculationMethod: 'sum_of_individual_step_durations'
-		});
-
-		return { timingExceeded, actualDuration: totalActiveDuration, expectedDuration };
 	};
 
 	// Handle approval actions
@@ -1017,7 +950,7 @@ const ExecutePrc = () => {
 	};
 
 	// Handle proceeding to next step after approvals
-	const handleProceedToNext = async (timingExceededRemarks?: string) => {
+	const handleProceedToNext = async (payload?: ProceedFromPreviewPayload) => {
 		if (!currentStep || !executionData) return;
 
 		try {
@@ -1085,8 +1018,15 @@ const ExecutePrc = () => {
 				// Add timing exceeded metadata if applicable
 				if (previewData?.timingExceeded) {
 					timingMetadata.timingExceeded = true;
+					const timingExceededRemarks = payload?.timingExceededRemarks;
 					if (timingExceededRemarks) {
 						timingMetadata.timingExceededRemarks = timingExceededRemarks;
+					}
+					if (payload?.timingExceededReasonCode !== undefined) {
+						timingMetadata.timingExceededReasonCode = payload.timingExceededReasonCode;
+					}
+					if (payload?.timingExceededReasonLabel) {
+						timingMetadata.timingExceededReasonLabel = payload.timingExceededReasonLabel;
 					}
 				}
 
@@ -1202,51 +1142,10 @@ const ExecutePrc = () => {
 				>;
 				const groupData = stepGroupData?.[targetStep.stepGroup?.id.toString() || ''] as Record<string, unknown>;
 
-				// Create detailed measurement data with context
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const detailedMeasurements: any[] = [];
-				if (groupData) {
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					filterMeasurementSteps(groupData).forEach(([stepId, stepData]: [string, any]) => {
-						// Find the step definition to get context
-						const stepDefinition = targetStep.stepGroup?.steps.find(s => s.id.toString() === stepId);
-						const measurementData = {
-							stepId: stepId,
-							value: stepData.value || stepData.data,
-							parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
-							stepType: stepDefinition?.stepType || 'Unknown',
-							evaluationMethod: stepDefinition?.evaluationMethod || 'Unknown',
-							uom: stepDefinition?.uom || '',
-							notes: stepDefinition?.notes || '',
-							ctq: stepDefinition?.ctq || false,
-							stepNumber: stepDefinition?.stepNumber || 0,
-							responsiblePersons: [] as Array<{
-								role: string;
-								employeeName: string;
-								employeeCode: string;
-							}>
-						};
-
-						// Include responsible persons if they exist for this step
-						// Check both direct responsiblePersons and nested structure
-						let responsiblePersons = null;
-						if (stepData.responsiblePersons && Array.isArray(stepData.responsiblePersons)) {
-							responsiblePersons = stepData.responsiblePersons;
-							console.log(`✅ Found direct responsiblePersons for step ${stepId}:`, responsiblePersons);
-						} else if (stepData.data && typeof stepData.data === 'object' && stepData.data.responsiblePersons) {
-							responsiblePersons = stepData.data.responsiblePersons;
-							console.log(`✅ Found nested responsiblePersons for step ${stepId}:`, responsiblePersons);
-						} else {
-							console.log(`❌ No responsiblePersons found for step ${stepId}`);
-						}
-
-						if (responsiblePersons && Array.isArray(responsiblePersons)) {
-							measurementData.responsiblePersons = responsiblePersons;
-						}
-
-						detailedMeasurements.push(measurementData);
-					});
-				}
+				const detailedMeasurements =
+					groupData && targetStep.stepGroup
+						? buildSequenceDetailedMeasurements(groupData, targetStep.stepGroup.steps)
+						: [];
 
 				// Load approval state from backend (look inside step group)
 				let productionApproved = false;
@@ -1268,13 +1167,15 @@ const ExecutePrc = () => {
 
 				// Calculate timing for the step group
 				const actualData = (executionData as { data: ExecutionData }).data;
-				const timingResult = calculateStepGroupTiming(
+				const timingResult = calculateSequenceStepGroupTiming(
 					targetStep,
 					actualData.stepStartEndTime as Record<string, unknown>
 				);
 
-				// Get timing exceeded remarks from the step group data
+				// Get timing exceeded remarks and reason from the step group data
 				let timingExceededRemarks = '';
+				let timingExceededReasonCode: string | number | undefined;
+				let timingExceededReasonLabel: string | undefined;
 				if (targetStep.prcTemplateStepId && targetStep.stepGroup) {
 					const stepGroupData = getCurrentAggregatedData()?.[targetStep.prcTemplateStepId.toString()] as Record<
 						string,
@@ -1283,12 +1184,21 @@ const ExecutePrc = () => {
 					if (stepGroupData && stepGroupData[targetStep.stepGroup.id.toString()]) {
 						const groupData = stepGroupData[targetStep.stepGroup.id.toString()] as Record<string, unknown>;
 						timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
+						const rc = groupData.timingExceededReasonCode;
+						if (typeof rc === 'string' || typeof rc === 'number') {
+							timingExceededReasonCode = rc;
+						}
+						const rl = groupData.timingExceededReasonLabel;
+						if (typeof rl === 'string') {
+							timingExceededReasonLabel = rl;
+						}
 					}
 				}
 
 				const newPreviewData: StepPreviewData = {
 					stepNumber: targetStep.stepNumber,
 					title: targetStep.title,
+					description: targetStep.description,
 					type: targetStep.type,
 					ctq: targetStep.ctq,
 					data: detailedMeasurements,
@@ -1298,7 +1208,9 @@ const ExecutePrc = () => {
 					timingExceeded: timingResult.timingExceeded,
 					actualDuration: timingResult.actualDuration,
 					expectedDuration: timingResult.expectedDuration,
-					timingExceededRemarks: timingExceededRemarks
+					timingExceededRemarks: timingExceededRemarks,
+					timingExceededReasonCode,
+					timingExceededReasonLabel
 				};
 
 				setPreviewData(newPreviewData);
@@ -1390,6 +1302,16 @@ const ExecutePrc = () => {
 			return productionApproved && stepCompleted && ctqApproved;
 		}
 
+		if (step.type === 'setup') {
+			const meta = getCurrentAggregatedData()?.prcmetadata as Record<string, unknown> | undefined;
+			return !!meta && typeof meta === 'object' && Object.keys(meta).length > 0;
+		}
+
+		if (step.type === 'sapConfirmations') {
+			const sap = getCurrentAggregatedData()?.sapConfirmations as Record<string, unknown> | undefined;
+			return sap?.stepCompleted === true;
+		}
+
 		// For other step types (rawMaterials, bom), just check if they have data
 		return step.status === 'completed';
 	};
@@ -1440,11 +1362,7 @@ const ExecutePrc = () => {
 
 	// Loading state
 	if (isExecutionDataLoading) {
-		return (
-			<Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-				<CircularProgress />
-			</Box>
-		);
+		return <FullScreenFormSavingOverlay open message="Loading…" />;
 	}
 
 	// Error state
@@ -1467,6 +1385,15 @@ const ExecutePrc = () => {
 
 	// Extract actual data from API response
 	const actualExecutionData = (executionData as { data: ExecutionData }).data;
+	const catalystMixingExecutionData = {
+		...actualExecutionData,
+		prcAggregatedSteps: getCurrentAggregatedData()
+	};
+	const isCatalystMixingReadOnly =
+		actualExecutionData.status === 'COMPLETED' || actualExecutionData.status === 'INACTIVE';
+	const catalystMixingStep = buildCatalystMixingTimelineStep(actualExecutionData, {
+		status: isCatalystMixingReadOnly ? undefined : 'pending'
+	});
 
 	// No timeline steps state
 	if (timelineSteps.length === 0) {
@@ -1479,12 +1406,10 @@ const ExecutePrc = () => {
 
 	return (
 		<>
-			<Backdrop
-				sx={{ color: '#fff', zIndex: theme => theme.zIndex.drawer + 1 }}
-				open={isExecutionDataLoading || isExecutionDataFetching || isUpdateProgressLoading}
-			>
-				<CircularProgress color="inherit" />
-			</Backdrop>
+			<FullScreenFormSavingOverlay
+				open={isExecutionDataFetching || isUpdateProgressLoading}
+				message={isUpdateProgressLoading ? 'Saving…' : 'Refreshing…'}
+			/>
 			<Box
 				sx={{
 					height: 'calc(100vh - 64px - 38px)', // Subtract header height + padding + border
@@ -1497,7 +1422,11 @@ const ExecutePrc = () => {
 				}}
 			>
 				{/* Header */}
-				<ExecutionHeader executionData={actualExecutionData} />
+				<ExecutionHeader
+					executionData={actualExecutionData}
+					onCatalystMixingClick={catalystMixingStep ? handleOpenCatalystMixing : undefined}
+					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
+				/>
 
 				{/* Main Content */}
 				<Box sx={{ flex: 1, overflow: 'hidden' }}>
@@ -1509,6 +1438,8 @@ const ExecutePrc = () => {
 									steps={timelineSteps}
 									currentStepIndex={currentStepIndex}
 									onStepClick={handleStepNavigation}
+									stepStartEndTime={actualExecutionData.stepStartEndTime ?? {}}
+									executionId={actualExecutionData.id}
 								/>
 							</Box>
 							{/* Quick Stats */}
@@ -1522,6 +1453,7 @@ const ExecutePrc = () => {
 						<StepDetailView
 							step={currentStep}
 							executionData={actualExecutionData}
+							aggregatedStepsSnapshot={getCurrentAggregatedData()}
 							onBackToList={handleBackToList}
 							onPreviousStep={() => {
 								if (currentStepIndex > 0) {
@@ -1542,6 +1474,7 @@ const ExecutePrc = () => {
 					{currentView === 'preview' && previewData && (
 						<Box sx={{ height: '100%', overflowY: 'auto' }}>
 							<StepPreview
+								key={`preview-${currentStepIndex}-${previewData.stepNumber}-${previewData.type}`}
 								previewData={previewData}
 								onBackToStep={handleBackToStep}
 								onApproveProduction={handleApproveProduction}
@@ -1554,6 +1487,38 @@ const ExecutePrc = () => {
 					)}
 				</Box>
 			</Box>
+			<Dialog open={catalystMixingOpen} onClose={handleCloseCatalystMixing} fullWidth maxWidth="lg">
+				<DialogTitle>Catalyst Mixing</DialogTitle>
+				<DialogContent dividers sx={{ p: 0 }}>
+					{catalystMixingStep ? (
+						<BomStep
+							step={catalystMixingStep}
+							executionData={catalystMixingExecutionData}
+							onStepComplete={handleCatalystMixingSave}
+							readOnlyOverride={isCatalystMixingReadOnly}
+							submitLabel="Save Catalyst Mixing"
+							hideSubmitButton
+							submitActionRef={catalystMixingSubmitRef}
+						/>
+					) : (
+						<Box sx={{ p: 3 }}>
+							<Alert severity="info">No catalyst mixing items are available for this execution.</Alert>
+						</Box>
+					)}
+				</DialogContent>
+				<DialogActions>
+					{catalystMixingStep && !isCatalystMixingReadOnly && (
+						<Button
+							variant="contained"
+							onClick={() => catalystMixingSubmitRef.current?.()}
+							disabled={isUpdateProgressLoading || isExecutionDataFetching}
+						>
+							Save Catalyst Mixing
+						</Button>
+					)}
+					<Button onClick={handleCloseCatalystMixing}>Close</Button>
+				</DialogActions>
+			</Dialog>
 		</>
 	);
 };

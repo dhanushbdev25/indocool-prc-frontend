@@ -5,11 +5,12 @@ import {
 	Timeline,
 	Settings,
 	Checklist,
-	Assignment,
 	Build,
 	PlayArrow,
 	PlayCircleFilled,
-	Dashboard as DashboardIcon
+	Dashboard as DashboardIcon,
+	CloudSync,
+	Monitor as MonitorIcon
 } from '@mui/icons-material';
 
 // Lazy-loaded components
@@ -32,9 +33,15 @@ export const imports = {
 	partMaster: Loadable(lazy(() => import('../pages/masters/part-master/components/list-part'))),
 	createPart: Loadable(lazy(() => import('../pages/masters/part-master/components/create-part'))),
 	viewPart: Loadable(lazy(() => import('../pages/masters/part-master/components/view-part'))),
+	mouldReconciliation: Loadable(
+		lazy(() => import('../pages/masters/mould-reconciliation/components/list-mould-reconciliation'))
+	),
+	sapJobs: Loadable(lazy(() => import('../pages/sap-jobs/components/list-sap-jobs'))),
+	sapJobRunHistory: Loadable(lazy(() => import('../pages/sap-jobs/components/view-sap-job-history'))),
 	prcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/list-prc-execution'))),
 	viewPrcExecution: Loadable(lazy(() => import('../pages/prc-execution/components/view-prc-execution'))),
-	executePrc: Loadable(lazy(() => import('../pages/prc-execution/components/execute-prc')))
+	executePrc: Loadable(lazy(() => import('../pages/prc-execution/components/execute-prc'))),
+	prcExecutionReport: Loadable(lazy(() => import('../pages/prc-execution/components/report-prc-execution')))
 };
 
 // Screen configuration interface
@@ -142,6 +149,13 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				showInSidebar: false
 			},
 			{
+				text: 'Clone Sequence',
+				path: 'sequence-master/clone-sequence/:id',
+				element: imports.createSequence,
+				permission: 'CREATEPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
 				icon: Checklist,
 				text: 'Inspection Master',
 				path: 'inspection-master',
@@ -172,32 +186,9 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				showInSidebar: false
 			},
 			{
-				icon: Assignment,
-				text: 'PRC Template Master',
-				path: 'prc-template-master',
-				element: imports.prcTemplateMaster,
-				permission: 'EDITPROCESSSEQUENCE',
-				order: 4,
-				showInSidebar: true
-			},
-			{
-				text: 'Create PRC Template',
-				path: 'prc-template-master/create-prc-template',
-				element: imports.createPrcTemplate,
-				permission: 'EDITPROCESSSEQUENCE',
-				showInSidebar: false
-			},
-			{
-				text: 'View PRC Template',
-				path: 'prc-template-master/view-prc-template/:id',
-				element: imports.viewPrcTemplate,
-				permission: 'EDITPROCESSSEQUENCE',
-				showInSidebar: false
-			},
-			{
-				text: 'Edit PRC Template',
-				path: 'prc-template-master/edit-prc-template/:id',
-				element: imports.createPrcTemplate,
+				text: 'Clone Inspection',
+				path: 'inspection-master/clone-inspection/:id',
+				element: imports.createInspection,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			},
@@ -230,13 +221,45 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				element: imports.createPart,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
+			},
+			{
+				icon: Build,
+				text: 'Mould Reconciliation',
+				path: 'mould-reconciliation',
+				element: imports.mouldReconciliation,
+				permission: 'EDITPROCESSSEQUENCE',
+				order: 6,
+				showInSidebar: true
+			}
+		]
+	},
+	{
+		text: 'Monitor',
+		icon: MonitorIcon,
+		order: 2,
+		submodules: [
+			{
+				icon: CloudSync,
+				text: 'SAP integration jobs',
+				path: 'sap-jobs',
+				element: imports.sapJobs,
+				permission: 'EDITPROCESSSEQUENCE',
+				order: 1,
+				showInSidebar: true
+			},
+			{
+				text: 'SAP job run history',
+				path: 'sap-jobs/history/:jobKey',
+				element: imports.sapJobRunHistory,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
 			}
 		]
 	},
 	{
 		text: 'PRC Execution',
 		icon: PlayArrow,
-		order: 2,
+		order: 3,
 		submodules: [
 			{
 				icon: PlayCircleFilled,
@@ -251,6 +274,13 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'View PRC Execution',
 				path: 'prc-execution/view/:id',
 				element: imports.viewPrcExecution,
+				permission: 'EDITPROCESSSEQUENCE',
+				showInSidebar: false
+			},
+			{
+				text: 'Consolidated report',
+				path: 'prc-execution/report/:id',
+				element: imports.prcExecutionReport,
 				permission: 'EDITPROCESSSEQUENCE',
 				showInSidebar: false
 			},

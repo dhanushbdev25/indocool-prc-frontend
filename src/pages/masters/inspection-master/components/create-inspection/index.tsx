@@ -1,8 +1,18 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
+import {
+	Box,
+	Paper,
+	Typography,
+	Button,
+	Stepper,
+	Step,
+	StepLabel,
+	Alert,
+	Skeleton
+} from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
 import InspectionBasicInfo from './components/InspectionBasicInfo';
@@ -10,6 +20,7 @@ import InspectionParameters from './components/InspectionParameters';
 import InspectionReview from './components/InspectionReview';
 import { inspectionFormSchema, defaultInspectionFormData } from './schemas';
 import { InspectionFormData } from './schemas';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	useFetchInspectionByIdQuery,
 	useCreateInspectionMutation,
@@ -18,20 +29,43 @@ import {
 
 const steps = ['Basic Information', 'Inspection Parameters', 'Review & Submit'];
 
+const MAX_INSPECTION_BUSINESS_ID_LEN = 50;
+const MAX_INSPECTION_NAME_LEN = 1000;
+const CLONE_ID_SUFFIX = '-COPY';
+
+const cloneBusinessId = (sourceId: string): string => {
+	const combined = `${sourceId}${CLONE_ID_SUFFIX}`;
+	if (combined.length <= MAX_INSPECTION_BUSINESS_ID_LEN) return combined;
+	const maxBase = MAX_INSPECTION_BUSINESS_ID_LEN - CLONE_ID_SUFFIX.length;
+	return (maxBase > 0 ? sourceId.slice(0, maxBase) : '') + CLONE_ID_SUFFIX;
+};
+
+const cloneInspectionName = (name: string): string => {
+	const suffix = ' (Copy)';
+	const combined = `${name}${suffix}`;
+	if (combined.length <= MAX_INSPECTION_NAME_LEN) return combined;
+	const maxBase = MAX_INSPECTION_NAME_LEN - suffix.length;
+	return (maxBase > 0 ? name.slice(0, maxBase) : '') + suffix;
+};
+
 const CreateInspection = () => {
 	const navigate = useNavigate();
+	const { pathname } = useLocation();
 	const { id } = useParams();
-	const isEditMode = Boolean(id);
+	const isCloneMode = Boolean(id) && pathname.includes('/clone-inspection/');
+	const isEditMode = Boolean(id) && !isCloneMode;
 
 	const [activeStep, setActiveStep] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 
-	// Fetch inspection data for edit mode
+	const shouldFetchById = Boolean(id) && (isEditMode || isCloneMode);
+
+	// Fetch inspection data for edit or clone mode
 	const {
 		data: inspectionData,
 		isLoading: isFetching,
 		isSuccess: isFetchSuccess
-	} = useFetchInspectionByIdQuery({ id: Number(id) }, { skip: !isEditMode || !id });
+	} = useFetchInspectionByIdQuery({ id: Number(id) }, { skip: !shouldFetchById });
 
 	// API mutations
 	const [createInspection, { isLoading: isCreating }] = useCreateInspectionMutation();
@@ -61,9 +95,31 @@ const CreateInspection = () => {
 		}
 	}, [errors]);
 
-	// Load data for edit mode when API data is available
+	// Load data for edit or clone when API data is available
 	useEffect(() => {
-		if (isEditMode && isFetchSuccess && inspectionData) {
+		if (!isFetchSuccess || !inspectionData) return;
+
+		const inspectionParameters = inspectionData.detail.inspectionParameters.map((param, index) => ({
+			order: param.order ?? index + 1,
+			parameterName: param.parameterName,
+			specification: param.specification,
+			minimumAcceptanceValue: param.minimumAcceptanceValue,
+			maximumAcceptanceValue: param.maximumAcceptanceValue,
+			type: param.type,
+			files: param.files || {},
+			columns: param.columns.map(col => ({
+				name: col.name,
+				type: col.type,
+				defaultValue: col.defaultValue || '',
+				minimumAcceptanceValue: col.minimumAcceptanceValue || '',
+				maximumAcceptanceValue: col.maximumAcceptanceValue || ''
+			})),
+			tableConfig: param.tableConfig || undefined,
+			role: param.role,
+			ctq: param.ctq
+		}));
+
+		if (isEditMode) {
 			const formData: InspectionFormData = {
 				id: inspectionData.detail.inspection.id,
 				inspectionName: inspectionData.detail.inspection.inspectionName,
@@ -76,33 +132,33 @@ const CreateInspection = () => {
 				partImages: inspectionData.detail.inspection.partImages,
 				approveByProduction: inspectionData.detail.inspection.approveByProduction ?? false,
 				approveByQuality: inspectionData.detail.inspection.approveByQuality ?? false,
-				inspectionParameters: inspectionData.detail.inspectionParameters.map(param => ({
-					order: param.order,
-					parameterName: param.parameterName,
-					specification: param.specification,
-					tolerance: param.tolerance,
-					type: param.type,
-					files: param.files || {},
-					columns: param.columns.map(col => ({
-						name: col.name,
-						type: col.type,
-						defaultValue: col.defaultValue || '',
-						tolerance: col.tolerance || ''
-					})),
-					role: param.role,
-					ctq: param.ctq
-				})),
+				inspectionParameters,
 				createdAt: inspectionData.detail.inspection.createdAt,
 				updatedAt: inspectionData.detail.inspection.updatedAt
 			};
 			reset(formData);
+		} else if (isCloneMode) {
+			const formData: InspectionFormData = {
+				inspectionName: cloneInspectionName(inspectionData.detail.inspection.inspectionName),
+				status: inspectionData.detail.inspection.status === 'ACTIVE',
+				inspectionId: cloneBusinessId(inspectionData.detail.inspection.inspectionId),
+				type: inspectionData.detail.inspection.type,
+				version: 1,
+				isLatest: true,
+				showPartImages: inspectionData.detail.inspection.showPartImages,
+				partImages: inspectionData.detail.inspection.partImages ?? [],
+				approveByProduction: inspectionData.detail.inspection.approveByProduction ?? false,
+				approveByQuality: inspectionData.detail.inspection.approveByQuality ?? false,
+				inspectionParameters
+			};
+			reset(formData);
 		}
-	}, [isEditMode, isFetchSuccess, inspectionData, reset]);
+	}, [isEditMode, isCloneMode, isFetchSuccess, inspectionData, reset]);
 
 	const handleNext = async () => {
 		// Define fields to validate for each step
 		const stepFields = {
-			0: ['inspectionName', 'inspectionId', 'type', 'status', 'showPartImages', 'partImages'] as const, // Basic info step
+			0: ['inspectionName', 'inspectionId', 'status', 'showPartImages', 'partImages'] as const, // Basic info step
 			1: ['inspectionParameters'] as const // Parameters step
 		};
 
@@ -159,7 +215,7 @@ const CreateInspection = () => {
 				inspectionName: data.inspectionName,
 				status: data.status ? 'ACTIVE' : 'INACTIVE',
 				inspectionId: data.inspectionId,
-				type: data.type,
+				type: data.inspectionName,
 				version: data.version || 1,
 				isLatest: data.isLatest ?? true,
 				showPartImages: data.showPartImages ?? false,
@@ -168,22 +224,37 @@ const CreateInspection = () => {
 				approveByQuality: data.approveByQuality ?? false
 			};
 
-			const inspectionParameters = (data.inspectionParameters || []).map(param => ({
-				order: param.order,
-				parameterName: param.parameterName,
-				specification: param.specification,
-				tolerance: param.tolerance ? String(param.tolerance) : undefined,
-				type: param.type,
-				files: param.files || {},
-				columns: (param.columns || []).map(col => ({
-					name: col.name,
-					type: col.type,
-					defaultValue: col.defaultValue ? String(col.defaultValue) : undefined,
-					tolerance: col.tolerance ? String(col.tolerance) : undefined
-				})),
-				role: param.role,
-				ctq: param.ctq ?? false
-			}));
+		const inspectionParameters = (data.inspectionParameters || []).map(param => ({
+			order: param.order,
+			parameterName: param.parameterName,
+			specification: param.specification,
+			minimumAcceptanceValue:
+				param.minimumAcceptanceValue !== undefined && param.minimumAcceptanceValue !== ''
+					? String(param.minimumAcceptanceValue)
+					: undefined,
+			maximumAcceptanceValue:
+				param.maximumAcceptanceValue !== undefined && param.maximumAcceptanceValue !== ''
+					? String(param.maximumAcceptanceValue)
+					: undefined,
+			type: param.type,
+			files: param.files || {},
+			columns: (param.columns || []).map(col => ({
+				name: col.name,
+				type: col.type,
+				defaultValue: col.defaultValue ? String(col.defaultValue) : undefined,
+				minimumAcceptanceValue:
+					col.minimumAcceptanceValue !== undefined && col.minimumAcceptanceValue !== ''
+						? String(col.minimumAcceptanceValue)
+						: undefined,
+				maximumAcceptanceValue:
+					col.maximumAcceptanceValue !== undefined && col.maximumAcceptanceValue !== ''
+						? String(col.maximumAcceptanceValue)
+						: undefined
+			})),
+			tableConfig: param.tableConfig || undefined,
+			role: param.role,
+			ctq: param.ctq ?? false
+		}));
 
 			console.log('Saving inspection data:', { inspectionRequestData, inspectionParameters });
 
@@ -263,8 +334,8 @@ const CreateInspection = () => {
 		}
 	};
 
-	// Show skeleton loading state when fetching data in edit mode
-	if (isEditMode && isFetching) {
+	// Show skeleton loading state when fetching data in edit or clone mode
+	if (shouldFetchById && isFetching) {
 		return (
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
@@ -299,6 +370,7 @@ const CreateInspection = () => {
 
 	return (
 		<FormProvider {...methods}>
+			<>
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
@@ -353,7 +425,7 @@ const CreateInspection = () => {
 										'&:hover': { backgroundColor: '#1565c0' }
 									}}
 								>
-									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Inspection' : 'Create Inspection'}
+									{isEditMode ? 'Update Inspection' : 'Create Inspection'}
 								</Button>
 							) : (
 								<Button
@@ -372,6 +444,9 @@ const CreateInspection = () => {
 					</Box>
 				</Paper>
 			</Box>
+
+			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+			</>
 		</FormProvider>
 	);
 };

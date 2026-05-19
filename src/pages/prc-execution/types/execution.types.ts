@@ -1,5 +1,7 @@
 // TypeScript interfaces for PRC Execution screen
 
+import { TableConfig } from '../../../types/table-config.types';
+
 // Annotation types
 export interface AnnotationPoint {
 	type: 'point';
@@ -20,12 +22,31 @@ export interface AnnotationPolygon {
 	category?: string;
 }
 
-export type AnnotationRegion = AnnotationPoint | AnnotationPolygon;
+/** Normalized center (cx, cy) in 0–1 relative to canvas width/height; radius is fraction of min(canvasWidth, canvasHeight) */
+export interface AnnotationCircle {
+	type: 'circle';
+	id: string;
+	cx: number;
+	cy: number;
+	radius: number;
+	cls: string;
+	comment: string;
+	category?: string;
+}
+
+export type AnnotationRegion = AnnotationPoint | AnnotationPolygon | AnnotationCircle;
 
 export interface ImageAnnotation {
 	imageFileName: string;
 	imageUrl: string;
 	regions: AnnotationRegion[];
+}
+
+export interface FixedTableRowAnnotation {
+	rowIndex: number;
+	annotations: ImageAnnotation[];
+	/** Derived client-side from annotations; persisted with row payload when present */
+	defectCounts?: Record<string, number>;
 }
 
 export interface StepGroup {
@@ -36,7 +57,6 @@ export interface StepGroup {
 	steps: Array<{
 		id: number;
 		ctq: boolean;
-		stepType: string;
 		targetValueType: string;
 		uom: string;
 		minValue?: string;
@@ -45,6 +65,7 @@ export interface StepGroup {
 		maximumAcceptanceValue?: string;
 		multipleMeasurements: boolean;
 		multipleMeasurementMaxCount?: number;
+		tableConfig?: TableConfig | null;
 		notes: string;
 		parameterDescription: string;
 		evaluationMethod: string;
@@ -56,12 +77,22 @@ export interface StepGroup {
 		updatedAt: string;
 		processStepGroupId: number;
 		responsiblePerson?: boolean;
+		getInstrumentId?: boolean;
 	}>;
+}
+
+/** Passed from StepPreview when completing a step (remarks + delay reason when timing exceeded). */
+export interface ProceedFromPreviewPayload {
+	timingExceededRemarks?: string;
+	timingExceededReasonCode?: string | number;
+	timingExceededReasonLabel?: string;
 }
 
 export interface StepPreviewData {
 	stepNumber: number;
 	title: string;
+	/** Process description for sequence step groups (`processDescription` from template). */
+	description?: string;
 	type: 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
 	ctq: boolean;
 	data: Record<string, unknown> | unknown[];
@@ -73,6 +104,10 @@ export interface StepPreviewData {
 	actualDuration?: number;
 	expectedDuration?: number;
 	timingExceededRemarks?: string;
+	/** Selected combo value from GET /combo?type=OPERATIONDELAYREASON */
+	timingExceededReasonCode?: string | number;
+	/** Denormalized label for read-only display when combo list is not loaded */
+	timingExceededReasonLabel?: string;
 	// Additional metadata for inspection steps
 	inspectionParameters?: Array<{
 		id: number;
@@ -84,15 +119,26 @@ export interface StepPreviewData {
 			name: string;
 			type: string;
 			defaultValue?: string;
-			tolerance?: string;
+			minimumAcceptanceValue?: string;
+			maximumAcceptanceValue?: string;
 		}>;
+		tableConfig?: TableConfig | null;
 		specification: string;
 		order: number;
-		tolerance?: string;
+		minimumAcceptanceValue?: string;
+		maximumAcceptanceValue?: string;
 		files?: Array<{
 			fileName: string;
 			filePath: string;
 			originalFileName: string;
+		}>;
+		rowMappings?: Array<{
+			rowIndex: number;
+			fileName: Array<{
+				fileName: string;
+				filePath: string;
+				originalFileName: string;
+			}>;
 		}>;
 		version: number;
 		isLatest: boolean;
@@ -117,7 +163,9 @@ export interface StepPreviewData {
 
 export interface TimelineStep {
 	stepNumber: number;
-	type: 'rawMaterials' | 'bom' | 'sequence' | 'inspection';
+	/** 0-based index of this step in the full report timeline, even when a live view omits some step types. */
+	reportStepIndex?: number;
+	type: 'setup' | 'rawMaterials' | 'bom' | 'sequence' | 'inspection' | 'sapConfirmations';
 	title: string;
 	description: string;
 	status: 'completed' | 'in-progress' | 'pending';
@@ -131,7 +179,12 @@ export interface TimelineStep {
 		name: string;
 		quantity: string;
 		splitQuantity?: string;
+		/** Planned / required quantity UOM */
 		uom: string;
+		/** Display UOM for actual line (API); falls back to `uom` when mapped */
+		actualUom?: string;
+		actualQuantity?: string | number;
+		batchNumber?: string;
 		description?: string;
 		materialType?: string;
 		batching?: boolean;
@@ -151,44 +204,56 @@ export interface TimelineStep {
 	// For individual sequence steps (when within a step group)
 	stepData?: {
 		prcTemplateStepId: number;
-		stepGroupId?: number; // Only for sequence steps
-		stepId?: number; // Only for sequence steps
-		stepType?: string; // Measurement, Check, Operation, Inspection (only for sequence steps)
-		targetValueType?: string; // range, exact value, ok/not ok (only for sequence steps)
-		uom?: string; // Only for sequence steps
-		minValue?: string; // Only for sequence steps
-		maxValue?: string; // Only for sequence steps
-		minimumAcceptanceValue?: string; // Only for sequence steps
-		maximumAcceptanceValue?: string; // Only for sequence steps
-		multipleMeasurements?: boolean; // Only for sequence steps
-		multipleMeasurementMaxCount?: number; // Only for sequence steps
-		notes?: string; // Only for sequence steps
-		parameterDescription?: string; // Only for sequence steps
-		evaluationMethod?: string; // Only for sequence steps
-		allowAttachments?: boolean; // Only for sequence steps
-		stepNumber?: number; // Only for sequence steps
-		responsiblePerson?: boolean; // Only for sequence steps
+		stepGroupId?: number;
+		stepId?: number;
+		targetValueType?: string;
+		uom?: string;
+		minValue?: string;
+		maxValue?: string;
+		minimumAcceptanceValue?: string;
+		maximumAcceptanceValue?: string;
+		multipleMeasurements?: boolean;
+		multipleMeasurementMaxCount?: number;
+		tableConfig?: TableConfig | null;
+		notes?: string;
+		parameterDescription?: string;
+		evaluationMethod?: string;
+		allowAttachments?: boolean;
+		stepNumber?: number;
+		responsiblePerson?: boolean;
+		getInstrumentId?: boolean;
 	};
 	// For inspection steps
 	inspectionParameters?: Array<{
 		id: number;
 		parameterName: string;
-		type: string; // number, image, text
+		type: string;
 		ctq: boolean;
 		role: string;
 		columns: Array<{
 			name: string;
 			type: string;
 			defaultValue?: string;
-			tolerance?: string;
+			minimumAcceptanceValue?: string;
+			maximumAcceptanceValue?: string;
 		}>;
+		tableConfig?: TableConfig | null;
 		specification: string;
 		order: number;
-		tolerance?: string;
+		minimumAcceptanceValue?: string;
+		maximumAcceptanceValue?: string;
 		files?: Array<{
 			fileName: string;
 			filePath: string;
 			originalFileName: string;
+		}>;
+		rowMappings?: Array<{
+			rowIndex: number;
+			fileName: Array<{
+				fileName: string;
+				filePath: string;
+				originalFileName: string;
+			}>;
 		}>;
 		version: number;
 		isLatest: boolean;
@@ -212,6 +277,34 @@ export interface TimelineStep {
 	};
 }
 
+/** Operation setup (execution): simplified person line — not sequence-step measurement responsible persons */
+export interface OperationWiseExecutionPerson {
+	id?: string;
+	employeeId: string;
+	employeeName: string;
+	workstation: string;
+}
+
+/**
+ * One row per operation from part master + execution runtime fields.
+ * Matches Part Master `OperationWisePartRow` plus assignments and deviation flag.
+ */
+export interface OperationWiseExecutionRow {
+	id: string | number;
+	operationID: number;
+	operationName: string;
+	/** Optional until part master / runtime supplies a planned headcount */
+	responsiblePersonCount?: number;
+	/** When present, should match sum(l1–l4); used for display and deviation when set */
+	l1Count?: number;
+	l2Count?: number;
+	l3Count?: number;
+	l4Count?: number;
+	responsiblePersons?: OperationWiseExecutionPerson[];
+	/** True when saved count of responsiblePersons differs from expected headcount */
+	countDeviated?: boolean;
+}
+
 export interface ExecutionData {
 	id: number;
 	customer: string;
@@ -221,6 +314,7 @@ export interface ExecutionData {
 	version: number;
 	productionSetId: string;
 	mouldId: string;
+	mouldCode?: string | null;
 	date: string;
 	shift: string;
 	inCharge: number;
@@ -242,6 +336,15 @@ export interface ExecutionData {
 	createdAt: string;
 	updatedAt: string;
 	// Additional fields from API response
+	customerVariantId?: number | null;
+	customerVariantName?: string | null;
+	reservation?: string | null;
+	/** SAP material / production reference (same field as PRC execution list when API returns it) */
+	sapReferenceNumber?: string | null;
+	/** Present on list rows when API returns it; optional on execution detail */
+	sapSync?: boolean;
+	/** From GET root; merged with prcAggregatedSteps.operationWiseData for setup step */
+	operationWiseData?: OperationWiseExecutionRow[];
 	mouldingInspectionParentId: number;
 	mouldingInspectionId: number;
 	ctqMap: unknown;
@@ -270,6 +373,10 @@ export interface ExecutionData {
 		quantity: string;
 		uom: string;
 		batching: boolean;
+		actualQuantity?: string | number;
+		batchNumber?: string;
+		/** Optional; when absent, UI uses `uom` for the actual UOM column */
+		actualUom?: string;
 	}>;
 	bom?: Array<{
 		id: number;
@@ -291,8 +398,28 @@ export interface ExecutionData {
 			splitQuantity: string;
 		}> | null;
 	}>;
+	inspectionDiagrams?: {
+		files?: Array<{
+			inspectionParameterId?: number;
+			fileName?: Array<{
+				fileName: string;
+				filePath: string;
+				originalFileName: string;
+			}>;
+			rowMappings?: Array<{
+				rowIndex: number;
+				fileName: Array<{
+					fileName: string;
+					filePath: string;
+					originalFileName: string;
+				}>;
+			}>;
+		}> | null;
+	};
 	prcAggregatedSteps?: Record<string, unknown> & {
 		stepApprovedBy?: Record<string, unknown>;
+		prcmetadata?: Record<string, unknown>;
+		operationWiseData?: OperationWiseExecutionRow[];
 	};
 	stepStartEndTime?: Record<string, unknown>;
 	catalystData?: {
@@ -342,6 +469,9 @@ export interface FormData {
 	[key: string]: unknown;
 	// Support for annotation data
 	annotations?: ImageAnnotation[];
+	// Support for fixed-table row level annotations
+	rowAnnotations?: FixedTableRowAnnotation[];
+	instrumentId?: string;
 	// Support for responsible person data - now supports both single object (backward compatibility) and array
 	responsiblePersonData?:
 		| {
@@ -369,6 +499,8 @@ export interface CatalystMixingEntry {
 	isSplit: boolean;
 	temperature: string;
 	humidity: string;
+	/** Optional can / container identifier captured during mixing */
+	canNumber: string;
 	actualQuantity: string;
 	catalystQuantity: string;
 	calculatedMin: number;

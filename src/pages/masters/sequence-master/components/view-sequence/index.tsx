@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { Box, Paper, Typography, Button, Alert, Skeleton } from '@mui/material';
-import { ArrowBack, Edit } from '@mui/icons-material';
+import { ArrowBack, Edit, ContentCopy } from '@mui/icons-material';
 import ViewSequenceBasicInfo from './components/ViewSequenceBasicInfo';
 import ViewSequenceStepGroups from './components/ViewSequenceStepGroups';
 import { useFetchProcessSequenceByIdQuery } from '../../../../../store/api/business/sequence-master/sequence.api';
@@ -24,6 +24,10 @@ const ViewSequence = () => {
 
 	const handleEdit = () => {
 		navigate(`/sequence-master/edit-sequence/${sequenceId}`);
+	};
+
+	const handleClone = () => {
+		navigate(`/sequence-master/clone-sequence/${sequenceId}`);
 	};
 
 	// Show loading state
@@ -94,18 +98,28 @@ const ViewSequence = () => {
 							View Process Sequence
 						</Typography>
 					</Box>
-					<Button
-						variant="contained"
-						startIcon={<Edit />}
-						onClick={handleEdit}
-						sx={{
-							textTransform: 'none',
-							backgroundColor: '#1976d2',
-							'&:hover': { backgroundColor: '#1565c0' }
-						}}
-					>
-						Edit Sequence
-					</Button>
+					<Box sx={{ display: 'flex', gap: 2 }}>
+						<Button
+							variant="outlined"
+							startIcon={<ContentCopy />}
+							onClick={handleClone}
+							sx={{ textTransform: 'none' }}
+						>
+							Clone
+						</Button>
+						<Button
+							variant="contained"
+							startIcon={<Edit />}
+							onClick={handleEdit}
+							sx={{
+								textTransform: 'none',
+								backgroundColor: '#1976d2',
+								'&:hover': { backgroundColor: '#1565c0' }
+							}}
+						>
+							Edit Sequence
+						</Button>
+					</Box>
 				</Box>
 
 				{/* Basic Information Section */}
@@ -123,18 +137,28 @@ const ViewSequence = () => {
 					<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
 						Back to List
 					</Button>
-					<Button
-						variant="contained"
-						startIcon={<Edit />}
-						onClick={handleEdit}
-						sx={{
-							textTransform: 'none',
-							backgroundColor: '#1976d2',
-							'&:hover': { backgroundColor: '#1565c0' }
-						}}
-					>
-						Edit Sequence
-					</Button>
+					<Box sx={{ display: 'flex', gap: 2 }}>
+						<Button
+							variant="outlined"
+							startIcon={<ContentCopy />}
+							onClick={handleClone}
+							sx={{ textTransform: 'none' }}
+						>
+							Clone
+						</Button>
+						<Button
+							variant="contained"
+							startIcon={<Edit />}
+							onClick={handleEdit}
+							sx={{
+								textTransform: 'none',
+								backgroundColor: '#1976d2',
+								'&:hover': { backgroundColor: '#1565c0' }
+							}}
+						>
+							Edit Sequence
+						</Button>
+					</Box>
 				</Box>
 			</Paper>
 		</Box>

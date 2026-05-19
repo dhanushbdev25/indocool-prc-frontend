@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type MutableRefObject } from 'react';
 import {
 	Box,
 	Typography,
@@ -40,6 +40,12 @@ interface BomStepProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => void;
+	readOnlyOverride?: boolean;
+	/** Consolidated PDF/report: every material group expanded; no interaction needed. */
+	expandAccordionsForPdf?: boolean;
+	submitLabel?: string;
+	hideSubmitButton?: boolean;
+	submitActionRef?: MutableRefObject<(() => void) | null>;
 }
 
 // Helper function to find matching catalyst configuration
@@ -154,18 +160,27 @@ const groupAndSortBOMItems = (
 	return grouped;
 };
 
-const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
+const BomStep = ({
+	step,
+	executionData,
+	onStepComplete,
+	readOnlyOverride,
+	expandAccordionsForPdf,
+	submitLabel = 'Complete Catalyst Mixing',
+	hideSubmitButton = false,
+	submitActionRef
+}: BomStepProps) => {
 	const [formData, setFormData] = useState<CatalystMixingFormData>({
 		entries: []
 	});
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 
-	const isReadOnly = step.status === 'completed';
+	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 
 	// Process BOM items into catalyst mixing entries
 	const processedEntries = useMemo(() => {
-		if (!step.items || !executionData.catalystData?.catalystConfiguration) return [];
+		if (!step.items) return [];
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const grouped = groupAndSortBOMItems(step.items as any[]);
@@ -190,6 +205,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 					isSplit: item.splitting || false,
 					temperature: '',
 					humidity: '',
+					canNumber: '',
 					actualQuantity: '',
 					catalystQuantity: '',
 					calculatedMin: 0,
@@ -203,7 +219,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 		});
 
 		return entries;
-	}, [step.items, executionData.catalystData?.catalystConfiguration]);
+	}, [step.items]);
 
 	// Initialize form data when processed entries change
 	useEffect(() => {
@@ -232,6 +248,10 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 							catalystQuantity: savedEntry.catalystQuantity || '',
 							validationStatus: savedEntry.validationStatus || 'Accepted',
 							humidity: savedEntry.humidity || '',
+							canNumber:
+								savedEntry.canNumber == null || savedEntry.canNumber === ''
+									? ''
+									: String(savedEntry.canNumber),
 							actualQuantity: savedEntry.actualQuantity || 0,
 							temperature: savedEntry.temperature || ''
 						};
@@ -419,6 +439,16 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 		}
 	};
 
+	useEffect(() => {
+		if (!submitActionRef) return;
+
+		submitActionRef.current = handleSubmit;
+
+		return () => {
+			submitActionRef.current = null;
+		};
+	}, [handleSubmit, submitActionRef]);
+
 	const getValidationIcon = (status: 'Accepted' | 'Lesser' | 'Greater') => {
 		switch (status) {
 			case 'Accepted':
@@ -493,17 +523,32 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 	}, [formData.entries]);
 
 	return (
-		<Box sx={{ p: 3, backgroundColor: '#fafafa' }}>
+		<Box
+			className={expandAccordionsForPdf ? 'prc-report-bom-root' : undefined}
+			sx={{ p: 3, backgroundColor: '#fafafa' }}
+		>
 			{/* Material Groups */}
 			{Object.entries(groupedEntries).map(([materialCode, entries], groupIndex) => (
 				<Accordion
 					key={materialCode}
-					defaultExpanded={groupIndex === 0}
+					{...(expandAccordionsForPdf
+						? {
+								expanded: true,
+								onChange: () => {}
+							}
+						: {
+								defaultExpanded: groupIndex === 0
+							})}
 					sx={{
 						mb: 2,
 						borderRadius: 2,
 						'&:before': { display: 'none' },
-						boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+						boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+						...(expandAccordionsForPdf
+							? {
+									'& .MuiAccordionSummary-expandIconWrapper': { display: 'none' }
+								}
+							: {})
 					}}
 				>
 					<AccordionSummary
@@ -696,6 +741,17 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 													}}
 												/>
 											</Grid>
+
+											<Grid size={{ xs: 12, md: 3 }}>
+												<TextField
+													fullWidth
+													label="Can number"
+													value={entry.canNumber}
+													onChange={e => handleInputChange(entry.id, 'canNumber', e.target.value)}
+													helperText="Optional"
+													disabled={isReadOnly || entry.blocked}
+												/>
+											</Grid>
 										</Grid>
 
 										{/* Range Display and Validation */}
@@ -775,7 +831,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 			)}
 
 			{/* Submit Button */}
-			{!isReadOnly && (
+			{!isReadOnly && !hideSubmitButton && (
 				<Box sx={{ display: 'flex', justifyContent: 'flex-end', pt: 2 }}>
 					<Button
 						variant="contained"
@@ -787,7 +843,7 @@ const BomStep = ({ step, executionData, onStepComplete }: BomStepProps) => {
 							textTransform: 'none'
 						}}
 					>
-						Complete Catalyst Mixing
+						{submitLabel}
 					</Button>
 				</Box>
 			)}

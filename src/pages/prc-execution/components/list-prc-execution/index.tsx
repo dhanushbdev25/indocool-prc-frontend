@@ -1,85 +1,153 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import PrcExecutionHeader from './components/PrcExecutionHeader';
-import SummaryCards from './components/SummaryCards';
-import PrcExecutionManagement from './components/PrcExecutionManagement';
+import PrcExecutionManagement, {
+	PRC_OPERATION_SCOPE_ALL,
+	PRC_EXECUTION_ALL_STATUSES,
+	type PrcOperationCompletionValue
+} from './components/PrcExecutionManagement';
 import PrcExecutionTable, { PrcExecutionData } from './components/PrcExecutionTable';
-import CreatePrcExecutionModal from './components/CreatePrcExecutionModal';
 import CatalystTableSkeleton from '../../../../components/common/skeleton/CatalystTableSkeleton';
 import { useFetchPrcExecutionsQuery } from '../../../../store/api/business/prc-execution/prc-execution.api';
+import {
+	parsePrcExecutionOperationStatusList,
+	executionOperationsAllComplete,
+	executionOperationsHasIncomplete
+} from '../../../../store/api/business/prc-execution/prc-execution.validators';
+
+function rowMatchesOperationHierarchy(
+	row: PrcExecutionData,
+	operationScope: string,
+	completion: PrcOperationCompletionValue
+): boolean {
+	const ops = row.operationStatus ?? [];
+	const scopeAll = operationScope === PRC_OPERATION_SCOPE_ALL;
+
+	if (!scopeAll) {
+		const match = ops.find(op => (op.operationText ?? '').trim() === operationScope);
+		if (!match) return false;
+		if (completion === 'complete') return Boolean(match.prcStatus && match.sapStatus);
+		if (completion === 'incomplete') return !(match.prcStatus && match.sapStatus);
+		return true;
+	}
+
+	if (completion === 'complete') return executionOperationsAllComplete(ops);
+	if (completion === 'incomplete') return executionOperationsHasIncomplete(ops);
+	return true;
+}
 
 const ListPrcExecution = () => {
 	const navigate = useNavigate();
 	const [searchTerm, setSearchTerm] = useState('');
-	const [activeFilter, setActiveFilter] = useState('All Executions');
+	const [activeStatusFilter, setActiveStatusFilter] = useState(PRC_EXECUTION_ALL_STATUSES);
+	const [operationScope, setOperationScope] = useState(PRC_OPERATION_SCOPE_ALL);
+	const [operationCompletion, setOperationCompletion] = useState<PrcOperationCompletionValue>('any');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [executionToDelete, setExecutionToDelete] = useState<PrcExecutionData | null>(null);
-	const [createModalOpen, setCreateModalOpen] = useState(false);
-
 	// Fetch all PRC executions using the API
 	const {
 		data: prcExecutionData,
 		isLoading: isPrcExecutionDataLoading,
-		isFetching: isPrcExecutionDataFetching,
-		refetch: refetchPrcExecutions
+		isFetching: isPrcExecutionDataFetching
 	} = useFetchPrcExecutionsQuery();
 
-	// Extract execution data for table
+	// Extract execution data for table (normalize list API field names)
 	const allExecutionData: PrcExecutionData[] = useMemo(() => {
 		if (!prcExecutionData) return [];
-		return (prcExecutionData as { data?: PrcExecutionData[] })?.data || [];
+		const raw = (prcExecutionData as { data?: PrcExecutionData[] })?.data || [];
+		return raw.map(row => {
+			const legacy = row as { operation_status?: unknown };
+			const rawOps = legacy.operation_status ?? row.operationStatus;
+			return {
+				...row,
+				operationStatus: parsePrcExecutionOperationStatusList(rawOps)
+			};
+		});
 	}, [prcExecutionData]);
+
+	const statusOptions = useMemo(() => {
+		const u = new Set<string>();
+		for (const e of allExecutionData) {
+			if (e.status) u.add(e.status);
+		}
+		return [PRC_EXECUTION_ALL_STATUSES, ...[...u].sort((a, b) => a.localeCompare(b))];
+	}, [allExecutionData]);
+
+	const operationTextOptions = useMemo(() => {
+		const u = new Set<string>();
+		for (const e of allExecutionData) {
+			for (const op of e.operationStatus ?? []) {
+				const t = (op.operationText ?? '').trim();
+				if (t) u.add(t);
+			}
+		}
+		return [...u].sort((a, b) => a.localeCompare(b));
+	}, [allExecutionData]);
+
+	/** Clamp scope when underlying data drops an operation title (avoid invalid filter). */
+	const appliedOperationScope = useMemo(() => {
+		if (operationScope === PRC_OPERATION_SCOPE_ALL) return PRC_OPERATION_SCOPE_ALL;
+		return operationTextOptions.includes(operationScope) ? operationScope : PRC_OPERATION_SCOPE_ALL;
+	}, [operationScope, operationTextOptions]);
+
+	const handleOperationScopeChange = useCallback((value: string) => {
+		setOperationScope(value);
+		setOperationCompletion('any');
+	}, []);
 
 	// Filter and search logic
 	const filteredData = useMemo(() => {
 		let filtered = allExecutionData;
 
-		// Apply status filter
-		if (activeFilter !== 'All Executions') {
-			if (activeFilter === 'Active') {
-				filtered = filtered.filter(execution => execution.status === 'ACTIVE');
-			} else if (activeFilter === 'In Progress') {
-				filtered = filtered.filter(execution => execution.status === 'IN_PROGRESS');
-			} else if (activeFilter === 'Completed') {
-				filtered = filtered.filter(execution => execution.status === 'COMPLETED');
-			} else if (activeFilter === 'Inactive') {
-				filtered = filtered.filter(execution => execution.status === 'INACTIVE');
-			}
+		if (activeStatusFilter !== PRC_EXECUTION_ALL_STATUSES) {
+			filtered = filtered.filter(e => e.status === activeStatusFilter);
 		}
+
+		filtered = filtered.filter(e =>
+			rowMatchesOperationHierarchy(e, appliedOperationScope, operationCompletion)
+		);
 
 		// Apply search filter
 		if (searchTerm) {
-			filtered = filtered.filter(
-				execution =>
-					execution.partNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					execution.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					execution.productionSetId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					execution.mouldId.toLowerCase().includes(searchTerm.toLowerCase())
-			);
+			const q = searchTerm.toLowerCase();
+			filtered = filtered.filter(execution => {
+				const idStr = String(execution.id ?? '').toLowerCase();
+				const orderId = String((execution as { orderId?: string | number | null }).orderId ?? '').toLowerCase();
+				const partNumber = (execution.partNumber ?? '').toLowerCase();
+				const productionSetId = (execution.productionSetId ?? '').toLowerCase();
+				const mould = (execution.mouldId ?? '').toLowerCase();
+				const customerName = (execution.customerName ?? '').toLowerCase();
+				const sapRef = (execution.sapReferenceNumber ?? '').toLowerCase();
+				const opHaystack = (execution.operationStatus ?? [])
+					.flatMap(op => [(op.operationText ?? '').toLowerCase(), (op.operationId ?? '').toLowerCase()])
+					.join(' ');
+				return (
+					idStr.includes(q) ||
+					orderId.includes(q) ||
+					partNumber.includes(q) ||
+					productionSetId.includes(q) ||
+					mould.includes(q) ||
+					customerName.includes(q) ||
+					sapRef.includes(q) ||
+					opHaystack.includes(q)
+				);
+			});
 		}
 
 		return filtered;
-	}, [allExecutionData, activeFilter, searchTerm]);
+	}, [allExecutionData, searchTerm, activeStatusFilter, appliedOperationScope, operationCompletion]);
 
 	const handleSearchChange = (searchValue: string) => {
 		setSearchTerm(searchValue);
 	};
 
-	const handleFilterChange = (filter: string) => {
-		setActiveFilter(filter);
-	};
-
-	const handleCreateClick = () => {
-		setCreateModalOpen(true);
-	};
-
-	const handleCreateSuccess = () => {
-		refetchPrcExecutions();
-	};
-
 	const handleExecute = (executionId: number) => {
 		navigate(`/prc-execution/execute/${executionId}`);
+	};
+
+	const handleOpenReport = (executionId: number) => {
+		navigate(`/prc-execution/report/${executionId}`);
 	};
 
 	const handleDeleteConfirm = async () => {
@@ -94,19 +162,11 @@ const ListPrcExecution = () => {
 		setExecutionToDelete(null);
 	};
 
-	// Mock header data for summary cards (replace with actual API data when available)
-	const mockHeaderData = {
-		ACTIVE: allExecutionData.filter(e => e.status === 'ACTIVE').length,
-		INACTIVE: allExecutionData.filter(e => e.status === 'INACTIVE').length,
-		IN_PROGRESS: allExecutionData.filter(e => e.status === 'IN_PROGRESS').length,
-		COMPLETED: allExecutionData.filter(e => e.status === 'COMPLETED').length
-	};
-
 	// Show loading state with skeleton
 	if (isPrcExecutionDataLoading || isPrcExecutionDataFetching) {
 		return (
 			<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-				<PrcExecutionHeader onCreateClick={handleCreateClick} />
+				<PrcExecutionHeader />
 				<CatalystTableSkeleton />
 			</Box>
 		);
@@ -114,17 +174,20 @@ const ListPrcExecution = () => {
 
 	return (
 		<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-			<PrcExecutionHeader onCreateClick={handleCreateClick} />
-			<SummaryCards headerData={mockHeaderData} />
-			<PrcExecutionManagement onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
-			<PrcExecutionTable data={filteredData} onExecute={handleExecute} />
-
-			{/* Create Modal */}
-			<CreatePrcExecutionModal
-				open={createModalOpen}
-				onClose={() => setCreateModalOpen(false)}
-				onSuccess={handleCreateSuccess}
+			<PrcExecutionHeader />
+			<PrcExecutionManagement
+				searchTerm={searchTerm}
+				onSearchChange={handleSearchChange}
+				activeStatusFilter={activeStatusFilter}
+				onStatusFilterChange={setActiveStatusFilter}
+				statusOptions={statusOptions}
+				operationTextOptions={operationTextOptions}
+				operationScope={appliedOperationScope}
+				onOperationScopeChange={handleOperationScopeChange}
+				operationCompletion={operationCompletion}
+				onOperationCompletionChange={setOperationCompletion}
 			/>
+			<PrcExecutionTable data={filteredData} onExecute={handleExecute} onOpenReport={handleOpenReport} />
 
 			{/* Delete Confirmation Dialog */}
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>

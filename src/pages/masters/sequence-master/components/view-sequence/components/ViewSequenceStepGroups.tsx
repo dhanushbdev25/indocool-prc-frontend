@@ -16,7 +16,6 @@ import {
 	Group as GroupIcon,
 	ExpandMore as ExpandMoreIcon,
 	PlaylistAdd as StepIcon,
-	AttachFile as AttachFileIcon,
 	Assessment as AssessmentIcon,
 	Straighten as StraightenIcon,
 	AccessTime as AccessTimeIcon
@@ -25,6 +24,7 @@ import {
 	type ProcessStepGroup,
 	type ProcessStep
 } from '../../../../../../store/api/business/sequence-master/sequence.validators';
+import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
 
 interface ViewSequenceStepGroupsProps {
 	stepGroups: ProcessStepGroup[];
@@ -43,21 +43,6 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 		setExpandedGroups(newExpanded);
 	};
 
-	const getStepTypeColor = (stepType: string) => {
-		switch (stepType) {
-			case 'Measurement':
-				return '#2196f3';
-			case 'Check':
-				return '#4caf50';
-			case 'Inspection':
-				return '#ff9800';
-			case 'Operation':
-				return '#9c27b0';
-			default:
-				return '#9e9e9e';
-		}
-	};
-
 	const getTargetValueTypeColor = (targetValueType: string) => {
 		switch (targetValueType) {
 			case 'range':
@@ -66,6 +51,8 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 				return '#4caf50';
 			case 'ok/not ok':
 				return '#ff9800';
+			case 'table':
+				return '#7b1fa2';
 			default:
 				return '#9e9e9e';
 		}
@@ -89,17 +76,6 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 							<Typography variant="h6" sx={{ fontWeight: 600 }}>
 								Step {step.stepNumber}
 							</Typography>
-							<Chip
-								label={step.stepType}
-								size="small"
-								sx={{
-									ml: 2,
-									backgroundColor: getStepTypeColor(step.stepType),
-									color: 'white',
-									fontSize: '0.75rem',
-									height: '24px'
-								}}
-							/>
 							{step.ctq && (
 								<Chip
 									label="CTQ"
@@ -152,7 +128,7 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									Target Value Type
 								</Typography>
 								<Chip
-									label={step.targetValueType}
+									label={formatOkNotOkTypeForDisplay(step.targetValueType)}
 									size="small"
 									sx={{
 										backgroundColor: getTargetValueTypeColor(step.targetValueType),
@@ -164,13 +140,40 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 							</Box>
 						</Grid>
 
-						{/* Target Values */}
-						{(step.targetValueType === 'range' || step.targetValueType === 'exact value') && (
+					{/* Table Config Summary */}
+					{step.targetValueType === 'table' && (step as Record<string, unknown>).tableConfig && (
+						<Grid size={{ xs: 12 }}>
+							<Box>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
+									Table Structure
+								</Typography>
+								<Paper sx={{ p: 2, backgroundColor: '#f3e8ff', border: '1px solid #ce93d8' }}>
+									<Typography variant="body2" sx={{ color: '#6a1b9a', fontWeight: 600 }}>
+										{((step as Record<string, unknown>).tableConfig as { columns?: unknown[]; rows?: unknown[] })?.columns?.length || 0} columns,{' '}
+										{((step as Record<string, unknown>).tableConfig as { columns?: unknown[]; rows?: unknown[] })?.rows?.length || 0} rows
+									</Typography>
+								</Paper>
+							</Box>
+						</Grid>
+					)}
+
+					{/* Target Values */}
+					{(step.targetValueType === 'range' || step.targetValueType === 'exact value') && (
 							<Grid size={{ xs: 12 }}>
 								<Box>
 									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
-										Acceptance Values
+										{step.targetValueType === 'exact value' ? 'Target value' : 'Acceptance values'}
 									</Typography>
+									{step.targetValueType === 'exact value' ? (
+										<Paper sx={{ p: 2, backgroundColor: '#e8f5e9', border: '1px solid #4caf50' }}>
+											<Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 600 }}>
+												EXACT TARGET
+											</Typography>
+											<Typography variant="h6" sx={{ color: '#2e7d32', fontWeight: 600 }}>
+												{step.minimumAcceptanceValue ?? step.maximumAcceptanceValue ?? '—'}
+											</Typography>
+										</Paper>
+									) : (
 									<Grid container spacing={2}>
 										<Grid size={{ xs: 6 }}>
 											<Paper sx={{ p: 2, backgroundColor: '#e3f2fd', border: '1px solid #2196f3' }}>
@@ -193,6 +196,7 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 											</Paper>
 										</Grid>
 									</Grid>
+									)}
 								</Box>
 							</Grid>
 						)}
@@ -250,19 +254,6 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									Additional Options
 								</Typography>
 								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-									{step.allowAttachments && (
-										<Chip
-											icon={<AttachFileIcon sx={{ fontSize: '0.875rem' }} />}
-											label="Attachments Allowed"
-											size="small"
-											sx={{
-												backgroundColor: '#4caf50',
-												color: 'white',
-												fontSize: '0.75rem',
-												height: '24px'
-											}}
-										/>
-									)}
 									{step.responsiblePerson && (
 										<Chip
 											icon={<AssessmentIcon sx={{ fontSize: '0.875rem' }} />}
@@ -270,6 +261,19 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 											size="small"
 											sx={{
 												backgroundColor: '#2196f3',
+												color: 'white',
+												fontSize: '0.75rem',
+												height: '24px'
+											}}
+										/>
+									)}
+									{step.getInstrumentId && (
+										<Chip
+											icon={<AssessmentIcon sx={{ fontSize: '0.875rem' }} />}
+											label="Get Instrument id"
+											size="small"
+											sx={{
+												backgroundColor: '#7b1fa2',
 												color: 'white',
 												fontSize: '0.75rem',
 												height: '24px'
@@ -358,6 +362,30 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									height: '24px'
 								}}
 							/>
+							{stepGroup.shift && (
+								<Chip
+									label={stepGroup.shift}
+									size="small"
+									sx={{
+										backgroundColor: '#fff3e0',
+										color: '#e65100',
+										fontSize: '0.75rem',
+										height: '24px'
+									}}
+								/>
+							)}
+							{stepGroup.pfdNumber && (
+								<Chip
+									label={`PFD: ${stepGroup.pfdNumber}`}
+									size="small"
+									sx={{
+										backgroundColor: '#f3e5f5',
+										color: '#6a1b9a',
+										fontSize: '0.75rem',
+										height: '24px'
+									}}
+								/>
+							)}
 							<Chip
 								label={`${stepGroup.steps?.length || 0} steps`}
 								size="small"

@@ -1,14 +1,17 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
-	partsResponseSchema,
-	partByIdResponseSchema,
-	customersResponseSchema,
-	createPartResponseSchema,
-	updatePartResponseSchema,
+	isPartsResponse,
+	isPartByIdResponse,
+	isCustomersResponse,
+	isCustomerVariantComboResponse,
+	isSapComboResponse,
+	isPartMutationResponse,
 	type PartsResponse,
 	type PartByIdResponse,
 	type CustomersResponse,
+	type CustomerVariantComboResponse,
+	type SapComboResponse,
 	type CreatePartRequest,
 	type UpdatePartRequest,
 	type DeletePartRequest,
@@ -21,10 +24,14 @@ export interface FetchPartByIdParams {
 	id: number;
 }
 
+export interface FetchCustomerVariantComboParams {
+	customerCode: string;
+}
+
 export const partApi = createApi({
 	reducerPath: 'partApi',
 	baseQuery,
-	tagTypes: ['Part', 'Customer'],
+	tagTypes: ['Part', 'Customer', 'CustomerVariant', 'SapCombo'],
 	endpoints: builder => ({
 		// Fetch all parts
 		fetchParts: builder.query<PartsResponse, void>({
@@ -33,12 +40,10 @@ export const partApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = partsResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for parts response:', parsed.error);
-					throw new Error('Invalid parts response structure');
+				if (!isPartsResponse(response)) {
+					console.warn('Invalid parts response structure', response);
 				}
-				return parsed.data;
+				return response as PartsResponse;
 			},
 			providesTags: ['Part']
 		}),
@@ -49,12 +54,10 @@ export const partApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = partByIdResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for part by ID response:', parsed.error);
-					throw new Error('Invalid part by ID response structure');
+				if (!isPartByIdResponse(response)) {
+					console.warn('Invalid part by ID response structure', response);
 				}
-				return parsed.data;
+				return response as PartByIdResponse;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'Part', id },
@@ -68,14 +71,50 @@ export const partApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = customersResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for customers response:', parsed.error);
-					throw new Error('Invalid customers response structure');
+				if (!isCustomersResponse(response)) {
+					console.warn('Invalid customers response structure', response);
 				}
-				return parsed.data;
+				return response as CustomersResponse;
 			},
 			providesTags: ['Customer']
+		}),
+		fetchCustomerVariantCombo: builder.query<CustomerVariantComboResponse, FetchCustomerVariantComboParams>({
+			query: ({ customerCode }) => ({
+				url: `/customer/variantCombo?customerCode=${encodeURIComponent(customerCode)}`,
+				method: 'GET'
+			}),
+			transformResponse: (response: unknown): CustomerVariantComboResponse => {
+				if (!isCustomerVariantComboResponse(response)) {
+					console.warn('Invalid customer variant combo response structure', response);
+					return response as CustomerVariantComboResponse;
+				}
+				return {
+					data: response.data.map(row => ({
+						...row,
+						value: String(row.value)
+					}))
+				};
+			},
+			providesTags: (_, __, { customerCode }) => [{ type: 'CustomerVariant', id: customerCode }]
+		}),
+		fetchSapCombo: builder.query<SapComboResponse, void>({
+			query: () => ({
+				url: 'parts/sapCombo',
+				method: 'GET'
+			}),
+			transformResponse: (response: unknown): SapComboResponse => {
+				if (!isSapComboResponse(response)) {
+					console.warn('Invalid SAP combo response structure', response);
+					return response as SapComboResponse;
+				}
+				return {
+					data: response.data.map(row => ({
+						...row,
+						value: String(row.value)
+					}))
+				};
+			},
+			providesTags: ['SapCombo']
 		}),
 		// Create new part
 		createPart: builder.mutation<CreatePartResponse, CreatePartRequest>({
@@ -85,12 +124,10 @@ export const partApi = createApi({
 				body: data
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = createPartResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for create part response:', parsed.error);
-					throw new Error('Invalid create part response structure');
+				if (!isPartMutationResponse(response)) {
+					console.warn('Invalid create part response structure', response);
 				}
-				return parsed.data;
+				return response as CreatePartResponse;
 			},
 			invalidatesTags: ['Part']
 		}),
@@ -102,12 +139,10 @@ export const partApi = createApi({
 				body: { data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = updatePartResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for update part response:', parsed.error);
-					throw new Error('Invalid update part response structure');
+				if (!isPartMutationResponse(response)) {
+					console.warn('Invalid update part response structure', response);
 				}
-				return parsed.data;
+				return response as UpdatePartResponse;
 			},
 			invalidatesTags: (_, __, { id }) => [{ type: 'Part', id }, { type: 'Part', id: 'LIST' }, 'Part']
 		}),
@@ -119,12 +154,10 @@ export const partApi = createApi({
 				body: { data: { ...data, partMaster: { ...data.partMaster, status: 'INACTIVE' } } }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = updatePartResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for delete part task response:', parsed.error);
-					throw new Error('Invalid delete part task response structure');
+				if (!isPartMutationResponse(response)) {
+					console.warn('Invalid delete part task response structure', response);
 				}
-				return parsed.data;
+				return response as UpdatePartResponse;
 			},
 			invalidatesTags: (_, __, { partMaster }) => [
 				{ type: 'Part', id: partMaster?.id },
@@ -139,6 +172,8 @@ export const {
 	useFetchPartsQuery,
 	useFetchPartByIdQuery,
 	useFetchCustomersQuery,
+	useFetchCustomerVariantComboQuery,
+	useFetchSapComboQuery,
 	useCreatePartMutation,
 	useUpdatePartMutation,
 	useDeletePartTaskMutation

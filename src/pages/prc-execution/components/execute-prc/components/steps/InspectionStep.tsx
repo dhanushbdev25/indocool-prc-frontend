@@ -21,7 +21,9 @@ import {
 	FormLabel,
 	RadioGroup,
 	FormControlLabel,
-	Radio
+	Radio,
+	MenuItem,
+	Checkbox
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
@@ -32,23 +34,72 @@ import {
 	type TimelineStep,
 	type ExecutionData,
 	type FormData,
-	type ImageAnnotation
+	type ImageAnnotation,
+	type FixedTableRowAnnotation
 } from '../../../../types/execution.types';
 import ImageAnnotator from '../ImageAnnotator';
+import { countAnnotationsByCategory } from '../defectAnnotationStyles';
 import { transformPrcAggregatedData, debugDataTransformation } from '../../../../utils/dataTransformers';
+import {
+	OK_NOT_OK_NEGATIVE_LABEL,
+	OK_NOT_OK_POSITIVE_LABEL
+} from '../../../../../../utils/okNotOkLabels';
 
 interface InspectionStepProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => void;
+	readOnlyOverride?: boolean;
 }
 
-const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepProps) => {
+const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
+
+const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride }: InspectionStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [annotations, setAnnotations] = useState<ImageAnnotation[]>([]);
 	const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 	const [expandedMultiColumnRows, setExpandedMultiColumnRows] = useState<Set<number>>(new Set());
+	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 	// Default all annotations to open (no need for expand/collapse state)
+
+	const getNotOkCommentKey = (key: string) => `${key}_notOkComment`;
+	const getFixedTableRowAnnotationsKey = (parameterId: number) => `${parameterId}_fixedTable_rowAnnotations`;
+	const getAckKey = (key: string) => `${key}_acknowledge`;
+	const getRangeStatus = (
+		value: number,
+		min?: string | number,
+		max?: string | number
+	): 'InRange' | 'Lesser' | 'Greater' | null => {
+		if (min === undefined || max === undefined || min === '' || max === '') return null;
+		const minNum = Number(min);
+		const maxNum = Number(max);
+		if (Number.isNaN(minNum) || Number.isNaN(maxNum)) return null;
+		if (value < minNum) return 'Lesser';
+		if (value > maxNum) return 'Greater';
+		return 'InRange';
+	};
+
+	const readApiCommentField = (obj: Record<string, unknown>): string => {
+		const c = obj.comments;
+		if (typeof c === 'string') return c;
+		const legacy = obj.notOkComment;
+		return typeof legacy === 'string' ? legacy : '';
+	};
+
+	const parseOkNotOkValue = (rawValue: unknown): { value: string; notOkComment: string } => {
+		if (typeof rawValue === 'string') {
+			return { value: rawValue, notOkComment: '' };
+		}
+		if (typeof rawValue === 'object' && rawValue !== null) {
+			const rec = rawValue as Record<string, unknown>;
+			const valueCandidate = rec.value;
+			return {
+				value: typeof valueCandidate === 'string' ? valueCandidate : '',
+				notOkComment: readApiCommentField(rec)
+			};
+		}
+		return { value: '', notOkComment: '' };
+	};
 
 	// Compute initial form data from existing data
 	const initialFormData = useMemo(() => {
@@ -100,6 +151,25 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								extractedAnnotations.push(...(value as ImageAnnotation[]));
 								hasAnnotations = true;
 								console.log(`Loading annotations for parameter ${parameterId}:`, value);
+							} else if (columnName === 'defectCounts' && value && typeof value === 'object' && !Array.isArray(value)) {
+								paramFormData.defectCounts = value as Record<string, number>;
+							} else if (columnName === 'rowAnnotations' && Array.isArray(value)) {
+								// Handle fixed-table row-level annotations
+								const paramIdNum = Number(parameterId);
+								if (!isNaN(paramIdNum)) {
+									newFormData[getFixedTableRowAnnotationsKey(paramIdNum)] = (
+										value as FixedTableRowAnnotation[]
+									).map(row => {
+										const dc =
+											row.defectCounts && Object.keys(row.defectCounts).length > 0
+												? row.defectCounts
+												: countAnnotationsByCategory(Array.isArray(row.annotations) ? row.annotations : []);
+										return {
+											...row,
+											defectCounts: Object.keys(dc).length > 0 ? dc : undefined
+										};
+									});
+								}
 							} else if (columnName === 'value' && typeof value === 'object' && value !== null) {
 								// Check if this is a table type parameter (value is an array)
 								const param = step.inspectionParameters?.find(p => p.id.toString() === parameterId);
@@ -113,7 +183,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											param.columns.forEach(column => {
 												const key = `${parameterId}_row_${rowIndex}_${column.name}`;
 												const cellValue = row[column.name];
-												newFormData[key] = cellValue !== undefined && cellValue !== null ? String(cellValue) : '';
+												if (column.type === 'ok/not ok') {
+													const parsed = parseOkNotOkValue(cellValue);
+													newFormData[key] = parsed.value;
+													newFormData[getNotOkCommentKey(key)] = parsed.notOkComment;
+												} else {
+													newFormData[key] =
+														cellValue !== undefined && cellValue !== null ? String(cellValue) : '';
+												}
 												console.log(
 													`Loading table data: ${parameterId}.value[${rowIndex}].${column.name} -> ${key} = ${cellValue}`
 												);
@@ -133,7 +210,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 										// Double nesting case: { "value": { "value": { "Date": "213" } } }
 										Object.entries(actualValue as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
 											const key = `${parameterId}_${subColumnName}`;
-											newFormData[key] = String(subValue);
+											const columnMeta = param?.columns?.find(col => col.name === subColumnName);
+											if (columnMeta?.type === 'ok/not ok') {
+												const parsed = parseOkNotOkValue(subValue);
+												newFormData[key] = parsed.value;
+												newFormData[getNotOkCommentKey(key)] = parsed.notOkComment;
+											} else {
+												newFormData[key] = String(subValue);
+											}
 											console.log(
 												`Loading double-nested multi-column data: ${parameterId}.value.value.${subColumnName} -> ${key} = ${subValue}`
 											);
@@ -142,7 +226,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 										// Single nesting case: { "value": { "Date": "213" } }
 										Object.entries(value as Record<string, unknown>).forEach(([subColumnName, subValue]) => {
 											const key = `${parameterId}_${subColumnName}`;
-											newFormData[key] = String(subValue);
+											const columnMeta = param?.columns?.find(col => col.name === subColumnName);
+											if (columnMeta?.type === 'ok/not ok') {
+												const parsed = parseOkNotOkValue(subValue);
+												newFormData[key] = parsed.value;
+												newFormData[getNotOkCommentKey(key)] = parsed.notOkComment;
+											} else {
+												newFormData[key] = String(subValue);
+											}
 											console.log(
 												`Loading single-nested multi-column data: ${parameterId}.value.${subColumnName} -> ${key} = ${subValue}`
 											);
@@ -151,19 +242,32 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								}
 							} else if (columnName === 'value') {
 								// Handle single value parameter: { "value": "1" } or { "value": { "value": "1" } }
-								const actualValue = (value as Record<string, unknown>).value;
-								if (actualValue !== undefined) {
-									// Double nesting case: { "value": { "value": "1" } }
-									paramFormData.value = String(actualValue);
-									console.log(
-										`Loading double-nested single value data: ${parameterId}.value.value -> ${parameterId} = ${actualValue}`
-									);
+								const paramMeta = step.inspectionParameters?.find(p => p.id.toString() === parameterId);
+								const parsed = parseOkNotOkValue(value);
+								if (paramMeta?.type === 'ok/not ok' && parsed.value) {
+									paramFormData.value = parsed.value;
+									if (parsed.notOkComment) {
+										paramFormData.notOkComment = parsed.notOkComment;
+									}
 								} else {
-									// Single nesting case: { "value": "1" }
-									paramFormData.value = String(value);
-									console.log(
-										`Loading single-nested single value data: ${parameterId}.value -> ${parameterId} = ${value}`
-									);
+									const actualValue = (value as Record<string, unknown>).value;
+									if (actualValue !== undefined) {
+										// Double nesting case: { "value": { "value": "1" } }
+										paramFormData.value = String(actualValue);
+										console.log(
+											`Loading double-nested single value data: ${parameterId}.value.value -> ${parameterId} = ${actualValue}`
+										);
+									} else {
+										// Single nesting case: { "value": "1" }
+										paramFormData.value = String(value);
+										console.log(
+											`Loading single-nested single value data: ${parameterId}.value -> ${parameterId} = ${value}`
+										);
+									}
+								}
+								const topComment = readApiCommentField(parameterData as Record<string, unknown>);
+								if (topComment) {
+									paramFormData.notOkComment = topComment;
 								}
 							} else {
 								// Handle direct column data (fallback)
@@ -172,6 +276,17 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								console.log(`Loading direct column data: ${parameterId}.${columnName} -> ${key} = ${value}`);
 							}
 						});
+
+						if (
+							hasAnnotations &&
+							Array.isArray(paramFormData.annotations) &&
+							paramFormData.defectCounts === undefined
+						) {
+							const dc = countAnnotationsByCategory(paramFormData.annotations as ImageAnnotation[]);
+							if (Object.keys(dc).length > 0) {
+								paramFormData.defectCounts = dc;
+							}
+						}
 
 						// If this parameter has annotations or a value, store it as an object
 						if (hasAnnotations || paramFormData.value !== undefined) {
@@ -217,12 +332,43 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				const hasRows = Object.keys(updatedFormData).some(key => key.match(new RegExp(`^${param.id}_row_\\d+_`)));
 
 				if (!hasRows) {
-					// Add one default row (empty values)
 					param.columns.forEach(column => {
 						const key = `${param.id}_row_0_${column.name}`;
 						updatedFormData[key] = '';
 					});
 					console.log(`Added default row for table parameter ${param.id}`);
+				}
+			}
+
+			// For fixed-table type parameters, initialize from tableConfig or existing data
+			if (param.type === 'fixed-table' && param.tableConfig) {
+				const ftKey = `${param.id}_fixedTable`;
+				const ftRowAnnotationsKey = getFixedTableRowAnnotationsKey(param.id);
+				if (!updatedFormData[ftKey]) {
+					let loaded = false;
+					const existingParamData = updatedFormData[param.id.toString()];
+					if (existingParamData && typeof existingParamData === 'object' && 'value' in (existingParamData as Record<string, unknown>)) {
+						const existingRows = (existingParamData as Record<string, unknown>).value;
+						if (Array.isArray(existingRows)) {
+							updatedFormData[ftKey] = existingRows;
+							loaded = true;
+						}
+						const existingRowAnnotations = (existingParamData as Record<string, unknown>).rowAnnotations;
+						if (Array.isArray(existingRowAnnotations)) {
+							updatedFormData[ftRowAnnotationsKey] = existingRowAnnotations;
+						}
+					}
+					if (!loaded) {
+						const defaultRows = param.tableConfig.rows.map(row => {
+							const rowObj: Record<string, string> = {};
+							param.tableConfig!.columns.forEach(col => {
+								const cell = row.cells[col.name];
+								rowObj[col.name] = cell?.readOnly ? cell.value : (cell?.value || '');
+							});
+							return rowObj;
+						});
+						updatedFormData[ftKey] = defaultRows;
+					}
 				}
 			}
 		});
@@ -251,7 +397,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		}
 	}, [initialFormData, step.inspectionParameters]);
 
-	const isReadOnly = step.status === 'completed';
+	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 
 	// Debug logging
 	console.log('InspectionStep Debug:', {
@@ -281,15 +427,27 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						...existingValue,
 						value: value
 					};
+					if (value !== 'not ok') {
+						const entry = newFormData[parameterId.toString()] as Record<string, unknown>;
+						delete entry.notOkComment;
+						delete entry.comments;
+						delete newFormData[getNotOkCommentKey(parameterId.toString())];
+					}
 				} else {
 					// Create new object structure
 					newFormData[parameterId.toString()] = {
 						value: value
 					};
+					if (value !== 'not ok') {
+						delete newFormData[getNotOkCommentKey(parameterId.toString())];
+					}
 				}
 			} else {
 				// For multi-column parameters, use the flat structure
 				newFormData[key] = value;
+				if (value !== 'not ok') {
+					delete newFormData[getNotOkCommentKey(key)];
+				}
 			}
 
 			return newFormData;
@@ -301,6 +459,33 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 				...prev,
 				[key]: ''
 			}));
+		}
+		if (value !== 'not ok' && errors[getNotOkCommentKey(key)]) {
+			setErrors(prev => ({
+				...prev,
+				[getNotOkCommentKey(key)]: ''
+			}));
+		}
+	};
+
+	const handleNotOkCommentChange = (key: string, value: string) => {
+		const commentKey = getNotOkCommentKey(key);
+		setFormData(prev => ({
+			...prev,
+			[commentKey]: value
+		}));
+		if (errors[commentKey]) {
+			setErrors(prev => ({
+				...prev,
+				[commentKey]: ''
+			}));
+		}
+	};
+	const handleAcknowledgmentChange = (key: string, acknowledged: boolean) => {
+		setAcknowledgments(prev => ({ ...prev, [key]: acknowledged }));
+		const ackErrorKey = getAckKey(key);
+		if (errors[ackErrorKey]) {
+			setErrors(prev => ({ ...prev, [ackErrorKey]: '' }));
 		}
 	};
 
@@ -323,13 +508,16 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			return updated;
 		});
 
-		// Also update form data to include annotations
+		// Also update form data to include annotations and derived defect counts
 		setFormData(prev => {
 			const newFormData = { ...prev };
 			if (!newFormData[parameterId.toString()]) {
 				newFormData[parameterId.toString()] = {};
 			}
-			(newFormData[parameterId.toString()] as Record<string, unknown>).annotations = newAnnotations;
+			const paramEntry = newFormData[parameterId.toString()] as Record<string, unknown>;
+			paramEntry.annotations = newAnnotations;
+			const dc = countAnnotationsByCategory(newAnnotations);
+			paramEntry.defectCounts = Object.keys(dc).length > 0 ? dc : undefined;
 
 			console.log('Updated formData with annotations:', newFormData);
 			console.log('Annotations being saved for parameter', parameterId, ':', newAnnotations);
@@ -398,6 +586,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		setFormData(prev => {
 			const newFormData = { ...prev };
 			newFormData[key] = value;
+			if (value !== 'not ok') {
+				delete newFormData[getNotOkCommentKey(key)];
+			}
 			return newFormData;
 		});
 
@@ -406,6 +597,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			setErrors(prev => ({
 				...prev,
 				[key]: ''
+			}));
+		}
+		if (value !== 'not ok' && errors[getNotOkCommentKey(key)]) {
+			setErrors(prev => ({
+				...prev,
+				[getNotOkCommentKey(key)]: ''
 			}));
 		}
 	};
@@ -508,10 +705,82 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 		});
 	};
 
+	const handleFixedTableCellChange = (paramId: number, rowIndex: number, colName: string, value: string) => {
+		const ftKey = `${paramId}_fixedTable`;
+		setFormData(prev => {
+			const rows = (prev[ftKey] as Array<Record<string, string>> | undefined) || [];
+			const updated = [...rows];
+			updated[rowIndex] = { ...updated[rowIndex], [colName]: value };
+			return { ...prev, [ftKey]: updated };
+		});
+	};
+
+	const getFixedTableRowAnnotations = (paramId: number, rowIndex: number): ImageAnnotation[] => {
+		const rowAnnotationsKey = getFixedTableRowAnnotationsKey(paramId);
+		const rowAnnotations = (formData[rowAnnotationsKey] as FixedTableRowAnnotation[] | undefined) || [];
+		const entry = rowAnnotations.find(item => item.rowIndex === rowIndex);
+		return Array.isArray(entry?.annotations) ? entry.annotations : [];
+	};
+
+	const getFixedTableRowFiles = (paramId: number, rowIndex: number) => {
+		const param = step.inspectionParameters?.find(p => p.id === paramId);
+		const rowMapping = param?.rowMappings?.find(item => item.rowIndex === rowIndex);
+		return Array.isArray(rowMapping?.fileName) ? rowMapping.fileName : [];
+	};
+
+	const handleFixedTableRowAnnotationSave = (paramId: number, rowIndex: number, newAnnotations: ImageAnnotation[]) => {
+		const rowAnnotationsKey = getFixedTableRowAnnotationsKey(paramId);
+		setFormData(prev => {
+			const current = (prev[rowAnnotationsKey] as FixedTableRowAnnotation[] | undefined) || [];
+			const withoutRow = current.filter(item => item.rowIndex !== rowIndex);
+			const dc = countAnnotationsByCategory(newAnnotations);
+			const cleaned: FixedTableRowAnnotation[] =
+				newAnnotations.length > 0
+					? [
+							...withoutRow,
+							{
+								rowIndex,
+								annotations: newAnnotations,
+								defectCounts: Object.keys(dc).length > 0 ? dc : undefined
+							}
+						]
+					: withoutRow;
+			cleaned.sort((a, b) => a.rowIndex - b.rowIndex);
+			return {
+				...prev,
+				[rowAnnotationsKey]: cleaned
+			};
+		});
+	};
+
 	const validateForm = () => {
 		const newErrors: Record<string, string> = {};
 
 		step.inspectionParameters?.forEach(param => {
+			if (param.type === 'fixed-table' && param.tableConfig) {
+				const ftKey = `${param.id}_fixedTable`;
+				const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
+				param.tableConfig.columns.forEach(col => {
+					rows.forEach((row, rowIdx) => {
+						const rowConfig = param.tableConfig!.rows[rowIdx];
+						const cellConfig = rowConfig?.cells[col.name];
+						if (cellConfig?.readOnly) return;
+						const val = row[col.name];
+						if (!val || val.trim() === '') {
+							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} is required`;
+						} else if (col.type === 'number' && isNaN(parseFloat(val))) {
+							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a number`;
+						} else if (
+							col.type === 'shift' &&
+							!SHIFT_OPTIONS.includes(String(val) as (typeof SHIFT_OPTIONS)[number])
+						) {
+							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a valid shift`;
+						}
+					});
+				});
+				return;
+			}
+
 			const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
 			if (isTableType && param.columns) {
@@ -535,14 +804,38 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 							const numValue = parseFloat(String(value));
 							if (isNaN(numValue)) {
 								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be a valid number`;
+							} else {
+								const status = getRangeStatus(
+									numValue,
+									column.minimumAcceptanceValue,
+									column.maximumAcceptanceValue
+								);
+								if (
+									status &&
+									status !== 'InRange' &&
+									!acknowledgments[key]
+								) {
+									newErrors[getAckKey(key)] =
+										`Row ${rowIndex + 1}, ${column.name} out of range. Please acknowledge deviation.`;
+								}
 							}
 						} else if (column.type === 'ok/not ok') {
 							if (value !== 'ok' && value !== 'not ok') {
-								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be either OK or Not OK`;
+								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be either ${OK_NOT_OK_POSITIVE_LABEL} or ${OK_NOT_OK_NEGATIVE_LABEL}`;
+							} else if (value === 'not ok') {
+								const commentKey = getNotOkCommentKey(key);
+								const commentValue = formData[commentKey];
+								if (!commentValue || (typeof commentValue === 'string' && commentValue.trim() === '')) {
+									newErrors[commentKey] = `Row ${rowIndex + 1}, ${column.name} comment is required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
+								}
 							}
 						} else if (column.type === 'datetime') {
 							if (!value || !String(value).trim()) {
 								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} is required`;
+							}
+						} else if (column.type === 'shift') {
+							if (!SHIFT_OPTIONS.includes(String(value) as (typeof SHIFT_OPTIONS)[number])) {
+								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be a valid shift`;
 							}
 						}
 					});
@@ -558,14 +851,33 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						const numValue = parseFloat(String(value));
 						if (isNaN(numValue)) {
 							newErrors[key] = `${column.name} must be a valid number`;
+						} else {
+							const status = getRangeStatus(
+								numValue,
+								column.minimumAcceptanceValue,
+								column.maximumAcceptanceValue
+							);
+							if (status && status !== 'InRange' && !acknowledgments[key]) {
+								newErrors[getAckKey(key)] = `${column.name} is out of range. Please acknowledge deviation.`;
+							}
 						}
 					} else if (column.type === 'ok/not ok') {
 						if (value !== 'ok' && value !== 'not ok') {
-							newErrors[key] = `${column.name} must be either OK or Not OK`;
+							newErrors[key] = `${column.name} must be either ${OK_NOT_OK_POSITIVE_LABEL} or ${OK_NOT_OK_NEGATIVE_LABEL}`;
+						} else if (value === 'not ok') {
+							const commentKey = getNotOkCommentKey(key);
+							const commentValue = formData[commentKey];
+							if (!commentValue || (typeof commentValue === 'string' && commentValue.trim() === '')) {
+								newErrors[commentKey] = `${column.name} comment is required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
+							}
 						}
 					} else if (column.type === 'datetime') {
 						if (!value || !String(value).trim()) {
 							newErrors[key] = `${column.name} is required`;
+						}
+					} else if (column.type === 'shift') {
+						if (!SHIFT_OPTIONS.includes(String(value) as (typeof SHIFT_OPTIONS)[number])) {
+							newErrors[key] = `${column.name} must be a valid shift`;
 						}
 					}
 				});
@@ -589,14 +901,36 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					const numValue = parseFloat(value);
 					if (isNaN(numValue)) {
 						newErrors[key] = 'Value must be a valid number';
+					} else {
+						const status = getRangeStatus(
+							numValue,
+							param.minimumAcceptanceValue,
+							param.maximumAcceptanceValue
+						);
+						if (status && status !== 'InRange' && !acknowledgments[key]) {
+							newErrors[getAckKey(key)] = 'Value is out of range. Please acknowledge deviation.';
+						}
 					}
 				} else if (param.type === 'ok/not ok') {
 					if (value !== 'ok' && value !== 'not ok') {
-						newErrors[key] = 'Value must be either OK or Not OK';
+						newErrors[key] = `Value must be either ${OK_NOT_OK_POSITIVE_LABEL} or ${OK_NOT_OK_NEGATIVE_LABEL}`;
+					} else if (value === 'not ok') {
+						const fromObject =
+							typeof paramData === 'object' && paramData !== null
+								? readApiCommentField(paramData as Record<string, unknown>)
+								: '';
+						const commentFromKey = String(formData[getNotOkCommentKey(key)] || '');
+						if (!fromObject.trim() && !commentFromKey.trim()) {
+							newErrors[getNotOkCommentKey(key)] = `Comment is required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
+						}
 					}
 				} else if (param.type === 'datetime') {
 					if (!value || !value.trim()) {
 						newErrors[key] = 'Value is required';
+					}
+				} else if (param.type === 'shift') {
+					if (!SHIFT_OPTIONS.includes(String(value) as (typeof SHIFT_OPTIONS)[number])) {
+						newErrors[key] = 'Value must be a valid shift';
 					}
 				}
 			}
@@ -614,6 +948,22 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			// Process each parameter
 			step.inspectionParameters?.forEach(param => {
 				const paramData: Record<string, unknown> = {};
+
+				if (param.type === 'fixed-table' && param.tableConfig) {
+					const ftKey = `${param.id}_fixedTable`;
+					const ftRowAnnotationsKey = getFixedTableRowAnnotationsKey(param.id);
+					const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
+					paramData.value = rows;
+					const rowAnnotations = formData[ftRowAnnotationsKey];
+					if (Array.isArray(rowAnnotations)) {
+						paramData.rowAnnotations = rowAnnotations;
+					}
+					if (Object.keys(paramData).length > 0) {
+						nestedData[param.id.toString()] = paramData;
+					}
+					return;
+				}
+
 				const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
 				if (isTableType && param.columns) {
@@ -627,7 +977,31 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 							const key = `${param.id}_row_${rowIndex}_${column.name}`;
 							const value = formData[key];
 							if (value !== undefined && value !== null) {
-								rowObj[column.name] = value;
+								if (column.type === 'ok/not ok') {
+									const commentValue = formData[getNotOkCommentKey(key)];
+									rowObj[column.name] = {
+										value,
+										comments: typeof commentValue === 'string' ? commentValue.trim() : ''
+									};
+								} else {
+									if (column.type === 'number') {
+										const parsed = Number(value);
+										const status = getRangeStatus(
+											parsed,
+											column.minimumAcceptanceValue,
+											column.maximumAcceptanceValue
+										);
+										if (status) {
+											rowObj[`${column.name}_validationStatus`] = status;
+											rowObj[`${column.name}_minimumAcceptanceValue`] =
+												column.minimumAcceptanceValue;
+											rowObj[`${column.name}_maximumAcceptanceValue`] =
+												column.maximumAcceptanceValue;
+											rowObj[`${column.name}_acknowledged`] = acknowledgments[key] || false;
+										}
+									}
+									rowObj[column.name] = value;
+								}
 							}
 						});
 						if (Object.keys(rowObj).length > 0) {
@@ -647,7 +1021,31 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						const key = `${param.id}_${column.name}`;
 						const value = formData[key];
 						if (value !== undefined && value !== null) {
-							valueObj[column.name] = value;
+							if (column.type === 'ok/not ok') {
+								const commentValue = formData[getNotOkCommentKey(key)];
+								valueObj[column.name] = {
+									value,
+									comments: typeof commentValue === 'string' ? commentValue.trim() : ''
+								};
+							} else {
+								if (column.type === 'number') {
+									const parsed = Number(value);
+									const status = getRangeStatus(
+										parsed,
+										column.minimumAcceptanceValue,
+										column.maximumAcceptanceValue
+									);
+									if (status) {
+										valueObj[`${column.name}_validationStatus`] = status;
+										valueObj[`${column.name}_minimumAcceptanceValue`] =
+											column.minimumAcceptanceValue;
+										valueObj[`${column.name}_maximumAcceptanceValue`] =
+											column.maximumAcceptanceValue;
+										valueObj[`${column.name}_acknowledged`] = acknowledgments[key] || false;
+									}
+								}
+								valueObj[column.name] = value;
+							}
 						}
 					});
 
@@ -667,19 +1065,56 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 						if ((formValue as Record<string, unknown>).annotations) {
 							paramData.annotations = (formValue as Record<string, unknown>).annotations;
 						}
+						const fv = formValue as Record<string, unknown>;
+						const existingComment = readApiCommentField(fv);
+						if (existingComment) {
+							paramData.comments = existingComment;
+						}
+						if (param.type === 'ok/not ok') {
+							const commentValue = formData[getNotOkCommentKey(key)];
+							if (typeof commentValue === 'string') {
+								paramData.comments = commentValue.trim();
+							}
+						}
 					} else {
 						// Direct value
 						paramData.value = formValue;
+						if (param.type === 'number') {
+							const parsed = Number(formValue);
+							const status = getRangeStatus(
+								parsed,
+								param.minimumAcceptanceValue,
+								param.maximumAcceptanceValue
+							);
+							if (status) {
+								paramData.validationStatus = status;
+								paramData.minimumAcceptanceValue = param.minimumAcceptanceValue;
+								paramData.maximumAcceptanceValue = param.maximumAcceptanceValue;
+								paramData.acknowledged = acknowledgments[key] || false;
+							}
+						}
+						if (param.type === 'ok/not ok' && formValue === 'not ok') {
+							const commentValue = formData[getNotOkCommentKey(key)];
+							paramData.comments = typeof commentValue === 'string' ? commentValue.trim() : '';
+						}
 					}
 
 					console.log(`Single value parameter ${param.id}:`, paramData.value);
 				}
 
-				// Add annotations if they exist for this parameter
+				// Add annotations / defect counts if they exist for this parameter
 				if (formData[param.id.toString()] && typeof formData[param.id.toString()] === 'object') {
 					const paramFormData = formData[param.id.toString()] as Record<string, unknown>;
 					if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
 						paramData.annotations = paramFormData.annotations;
+					}
+					if (
+						paramFormData.defectCounts &&
+						typeof paramFormData.defectCounts === 'object' &&
+						!Array.isArray(paramFormData.defectCounts) &&
+						Object.keys(paramFormData.defectCounts as object).length > 0
+					) {
+						paramData.defectCounts = paramFormData.defectCounts;
 					}
 				}
 
@@ -734,15 +1169,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 			{step.inspectionMetadata && (
 				<Box sx={{ mb: 2, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
 					<Grid container spacing={1.5}>
-						<Grid size={{ xs: 6, sm: 3 }}>
-							<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
-								Inspection ID
-							</Typography>
-							<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-								{step.inspectionMetadata.inspectionId}
-							</Typography>
-						</Grid>
-						<Grid size={{ xs: 6, sm: 3 }}>
+						<Grid size={{ xs: 6, sm: 4 }}>
 							<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
 								Inspection Type
 							</Typography>
@@ -750,7 +1177,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								{step.inspectionMetadata.type}
 							</Typography>
 						</Grid>
-						<Grid size={{ xs: 6, sm: 3 }}>
+						<Grid size={{ xs: 6, sm: 4 }}>
 							<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
 								Status
 							</Typography>
@@ -758,7 +1185,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 								{step.inspectionMetadata.status}
 							</Typography>
 						</Grid>
-						<Grid size={{ xs: 6, sm: 3 }}>
+						<Grid size={{ xs: 6, sm: 4 }}>
 							<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
 								Version
 							</Typography>
@@ -787,8 +1214,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 					<TableBody>
 						{step.inspectionParameters?.map((param, index) => {
 							const hasImages = Array.isArray(param.files) && param.files.length > 0;
+							const isFixedTableType = param.type === 'fixed-table' && param.tableConfig;
 							const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
-							const hasMultipleColumns = !isTableType && param.columns && param.columns.length > 0;
+							const hasMultipleColumns = !isTableType && !isFixedTableType && param.columns && param.columns.length > 0;
 							const isExpanded = expandedRows.has(param.id);
 							const isMultiColumnExpanded = expandedMultiColumnRows.has(param.id);
 							const annotationCount = getAnnotationCount(param.id);
@@ -818,8 +1246,20 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 											{param.ctq && <Chip label="CTQ" size="small" color="warning" sx={{ fontSize: '0.75rem' }} />}
 										</TableCell>
 										<TableCell>
-											{isTableType ? (
-												// Table type parameter - show row count and expand button
+											{isFixedTableType ? (
+												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+													<Typography variant="caption" sx={{ color: '#666' }}>
+														Fixed Table ({param.tableConfig!.columns.length} cols, {param.tableConfig!.rows.length} rows)
+													</Typography>
+													<IconButton
+														size="small"
+														onClick={() => toggleMultiColumnRowExpansion(param.id)}
+														sx={{ color: 'primary' }}
+													>
+														{isMultiColumnExpanded ? <ExpandLess /> : <ExpandMore />}
+													</IconButton>
+												</Box>
+											) : isTableType ? (
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 													<Typography variant="caption" sx={{ color: '#666' }}>
 														{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
@@ -860,8 +1300,9 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 
 													// Handle different parameter types
 													if (param.type === 'ok/not ok') {
+														const commentKey = getNotOkCommentKey(param.id.toString());
 														return (
-															<FormControl component="fieldset" disabled={isReadOnly}>
+															<FormControl component="fieldset" disabled={isReadOnly} fullWidth sx={{ width: '100%' }}>
 																<FormLabel component="legend" sx={{ fontSize: '0.875rem', color: '#666', mb: 1 }}>
 																	Select Result
 																</FormLabel>
@@ -884,16 +1325,37 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																	/>
 																	<FormControlLabel
 																		value="not ok"
-																		control={<Radio size="small" color="error" />}
-																		label="Not OK"
+																		control={<Radio size="small" color="warning" />}
+																		label={OK_NOT_OK_NEGATIVE_LABEL}
 																		sx={{
 																			'& .MuiFormControlLabel-label': {
 																				fontSize: '0.875rem',
-																				color: currentValue === 'not ok' ? '#d32f2f' : '#666'
+																				color: currentValue === 'not ok' ? '#ed6c02' : '#666'
 																			}
 																		}}
 																	/>
 																</RadioGroup>
+																{currentValue === 'not ok' && (
+																	<TextField
+																		fullWidth
+																		multiline
+																		rows={2}
+																		label="Comments"
+																		placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+																		value={String(
+																			formData[commentKey] ||
+																				(typeof paramData === 'object' && paramData !== null
+																					? readApiCommentField(paramData as Record<string, unknown>)
+																					: '')
+																		)}
+																		onChange={e => handleNotOkCommentChange(param.id.toString(), e.target.value)}
+																		error={!!errors[commentKey]}
+																		helperText={errors[commentKey] || `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`}
+																		disabled={isReadOnly}
+																		required
+																		sx={{ mt: 1 }}
+																	/>
+																)}
 															</FormControl>
 														);
 													}
@@ -927,30 +1389,91 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 															</LocalizationProvider>
 														);
 													}
+													if (param.type === 'shift') {
+														return (
+															<TextField
+																select
+																label="Value"
+																value={currentValue}
+																onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
+																error={!!errors[param.id.toString()]}
+																helperText={errors[param.id.toString()]}
+																size="small"
+																disabled={isReadOnly}
+																variant="outlined"
+																sx={{
+																	minWidth: 160,
+																	'& .MuiOutlinedInput-root': { height: '40px' }
+																}}
+															>
+																{SHIFT_OPTIONS.map(option => (
+																	<MenuItem key={option} value={option}>
+																		{option}
+																	</MenuItem>
+																))}
+															</TextField>
+														);
+													}
 
 													// Default text/number input
+													const numericStatus =
+														param.type === 'number' && currentValue !== ''
+															? getRangeStatus(
+																	Number(currentValue),
+																	param.minimumAcceptanceValue,
+																	param.maximumAcceptanceValue
+																)
+															: null;
 													return (
-														<TextField
-															label="Value"
-															type={param.type === 'number' ? 'number' : 'text'}
-															value={currentValue}
-															onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
-															error={!!errors[param.id.toString()]}
-															helperText={errors[param.id.toString()]}
-															size="small"
-															disabled={isReadOnly}
-															variant="outlined"
-															inputProps={{
-																min: 0,
-																step: param.type === 'number' ? 0.01 : undefined
-															}}
-															sx={{
-																minWidth: 120,
-																'& .MuiOutlinedInput-root': {
-																	height: '40px'
-																}
-															}}
-														/>
+														<Box>
+															<TextField
+																label="Value"
+																type={param.type === 'number' ? 'number' : 'text'}
+																value={currentValue}
+																onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
+																error={!!errors[param.id.toString()]}
+																helperText={errors[param.id.toString()]}
+																size="small"
+																disabled={isReadOnly}
+																variant="outlined"
+																inputProps={{
+																	min: 0,
+																	step: param.type === 'number' ? 0.01 : undefined
+																}}
+																sx={{
+																	minWidth: 120,
+																	'& .MuiOutlinedInput-root': {
+																		height: '40px'
+																	}
+																}}
+															/>
+															{param.type === 'number' && (
+																<Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
+																	Range: {param.minimumAcceptanceValue ?? '-'} to {param.maximumAcceptanceValue ?? '-'}
+																</Typography>
+															)}
+															{numericStatus && numericStatus !== 'InRange' && (
+																<FormControlLabel
+																	control={
+																		<Checkbox
+																			size="small"
+																			checked={acknowledgments[param.id.toString()] || false}
+																			onChange={e =>
+																				handleAcknowledgmentChange(param.id.toString(), e.target.checked)
+																			}
+																			disabled={isReadOnly}
+																		/>
+																	}
+																	label="Acknowledge deviation"
+																	sx={{ mt: 0.5 }}
+																/>
+															)}
+															{errors[getAckKey(param.id.toString())] && (
+																<Typography variant="caption" color="error">
+																	{errors[getAckKey(param.id.toString())]}
+																</Typography>
+															)}
+														</Box>
 													);
 												})()
 											)}
@@ -1011,16 +1534,217 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 										</TableCell>
 									</TableRow>
 
-									{/* Expandable Table Type Row */}
-									{isTableType && (
+								{/* Expandable Fixed Table Type Row */}
+								{isFixedTableType && param.tableConfig && (
+									<TableRow key={`${param.id}-fixed-table`}>
+										<TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
+											<Collapse in={isMultiColumnExpanded} timeout="auto" unmountOnExit>
+												<Box sx={{ p: 2, backgroundColor: '#f0f4ff' }}>
+													<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#1a237e' }}>
+														{param.parameterName} - Fixed Table
+													</Typography>
+													<TableContainer component={Paper} variant="outlined">
+														<Table size="small">
+															<TableHead>
+																<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
+																	{param.tableConfig.columns.map(col => (
+																		<TableCell key={col.name} sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+																			{col.name}
+																			<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400 }}>
+																				{col.type}
+																			</Typography>
+																		</TableCell>
+																	))}
+																	<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem' }}>Row Images</TableCell>
+																</TableRow>
+															</TableHead>
+															<TableBody>
+																{(() => {
+																	const ftKey = `${param.id}_fixedTable`;
+																	const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
+																	return rows.map((row, rowIdx) => (
+																		<TableRow key={rowIdx}>
+																			{param.tableConfig!.columns.map(col => {
+																				const rowConfig = param.tableConfig!.rows[rowIdx];
+																				const cellConfig = rowConfig?.cells[col.name];
+																				const cellValue = row[col.name] || '';
+																				const isCellReadOnly = cellConfig?.readOnly || isReadOnly;
+																				const errKey = `ft_${param.id}_${rowIdx}_${col.name}`;
+
+																				if (isCellReadOnly) {
+																					return (
+																						<TableCell key={col.name} sx={{ backgroundColor: '#f5f5f5' }}>
+																							<Typography variant="body2">{cellValue || '-'}</Typography>
+																						</TableCell>
+																					);
+																				}
+
+																				if (col.type === 'ok/not ok') {
+																					return (
+																						<TableCell key={col.name}>
+																							<RadioGroup
+																								row
+																								value={cellValue}
+																								onChange={e => handleFixedTableCellChange(param.id, rowIdx, col.name, e.target.value)}
+																								sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
+																							>
+																								<FormControlLabel value="ok" control={<Radio size="small" color="success" />} label="OK" />
+																								<FormControlLabel value="not ok" control={<Radio size="small" color="warning" />} label={OK_NOT_OK_NEGATIVE_LABEL} />
+																							</RadioGroup>
+																							{errors[errKey] && (
+																								<Typography variant="caption" color="error">{errors[errKey]}</Typography>
+																							)}
+																						</TableCell>
+																					);
+																				}
+
+																				if (col.type === 'datetime') {
+																					return (
+																						<TableCell key={col.name}>
+																							<LocalizationProvider dateAdapter={AdapterDayjs}>
+																								<DateTimePicker
+																									value={cellValue ? dayjs(cellValue) : null}
+																									onChange={newValue => {
+																										const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																										handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
+																									}}
+																									disabled={isReadOnly}
+																									slotProps={{
+																										textField: {
+																											size: 'small',
+																											error: !!errors[errKey],
+																											helperText: errors[errKey],
+																											variant: 'outlined',
+																											fullWidth: true
+																										}
+																									}}
+																								/>
+																							</LocalizationProvider>
+																						</TableCell>
+																					);
+																				}
+																				if (col.type === 'shift') {
+																					return (
+																						<TableCell key={col.name}>
+																							<TextField
+																								select
+																								value={cellValue}
+																								onChange={e =>
+																									handleFixedTableCellChange(param.id, rowIdx, col.name, e.target.value)
+																								}
+																								error={!!errors[errKey]}
+																								helperText={errors[errKey]}
+																								size="small"
+																								disabled={isReadOnly}
+																								variant="outlined"
+																								fullWidth
+																							>
+																								{SHIFT_OPTIONS.map(option => (
+																									<MenuItem key={option} value={option}>
+																										{option}
+																									</MenuItem>
+																								))}
+																							</TextField>
+																						</TableCell>
+																					);
+																				}
+
+																				return (
+																					<TableCell key={col.name}>
+																						<TextField
+																							type={col.type === 'number' ? 'number' : 'text'}
+																							value={cellValue}
+																							onChange={e => handleFixedTableCellChange(param.id, rowIdx, col.name, e.target.value)}
+																							error={!!errors[errKey]}
+																							helperText={errors[errKey]}
+																							size="small"
+																							disabled={isReadOnly}
+																							variant="outlined"
+																							fullWidth
+																							inputProps={{
+																								min: 0,
+																								step: col.type === 'number' ? 0.01 : undefined
+																							}}
+																						/>
+																					</TableCell>
+																				);
+																			})}
+																			<TableCell sx={{ minWidth: 280 }}>
+																				{(() => {
+																					const rowFiles = getFixedTableRowFiles(param.id, rowIdx);
+																					const rowExistingAnnotations = getFixedTableRowAnnotations(param.id, rowIdx);
+																					if (rowFiles.length === 0) {
+																						return (
+																							<Typography variant="caption" sx={{ color: '#999' }}>
+																								No row images mapped
+																							</Typography>
+																						);
+																					}
+
+																					return (
+																						<Box>
+																							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+																								<CameraAlt color="primary" fontSize="small" />
+																								<Typography variant="caption" sx={{ color: '#666' }}>
+																									{rowFiles.length} mapped file{rowFiles.length !== 1 ? 's' : ''}
+																								</Typography>
+																								{rowExistingAnnotations.length > 0 && (
+																									<Chip
+																										label={rowExistingAnnotations.length}
+																										size="small"
+																										color="primary"
+																										sx={{ fontSize: '0.7rem', height: 20 }}
+																									/>
+																								)}
+																							</Box>
+																							<ImageAnnotator
+																								images={rowFiles}
+																								existingAnnotations={rowExistingAnnotations}
+																								onSave={newAnnotations =>
+																									handleFixedTableRowAnnotationSave(param.id, rowIdx, newAnnotations)
+																								}
+																								readOnly={isReadOnly}
+																								parameterContext={{
+																									parameterName: param.parameterName,
+																									specification: param.specification,
+																									ctq: param.ctq,
+																									minimumAcceptanceValue: param.minimumAcceptanceValue,
+																									maximumAcceptanceValue: param.maximumAcceptanceValue,
+																									parameterType: param.type,
+																									fixedTableRowLabel: `Row ${rowIdx + 1}`
+																								}}
+																							/>
+																						</Box>
+																					);
+																				})()}
+																			</TableCell>
+																		</TableRow>
+																	));
+																})()}
+															</TableBody>
+														</Table>
+													</TableContainer>
+												</Box>
+											</Collapse>
+										</TableCell>
+									</TableRow>
+								)}
+
+								{/* Expandable Table Type Row (styled like fixed table) */}
+								{isTableType && (
 										<TableRow key={`${param.id}-table`}>
 											<TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
 												<Collapse in={isMultiColumnExpanded} timeout="auto" unmountOnExit>
-													<Box sx={{ p: 2, backgroundColor: '#f8f9fa' }}>
-														<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-															<Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-																{param.parameterName} - Table
-															</Typography>
+													<Box sx={{ p: 2, backgroundColor: '#f0f4ff' }}>
+														<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+															<Box>
+																<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#1a237e' }}>
+																	{param.parameterName} - Table
+																</Typography>
+																<Typography variant="caption" sx={{ color: '#5c6bc0', display: 'block', mt: 0.25 }}>
+																	Add rows as needed; column types match your inspection definition.
+																</Typography>
+															</Box>
 															{!isReadOnly && (
 																<Button
 																	variant="outlined"
@@ -1029,7 +1753,10 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																	onClick={() => handleAddTableRow(param.id)}
 																	sx={{
 																		textTransform: 'none',
-																		borderRadius: '4px'
+																		borderRadius: '8px',
+																		borderColor: '#1976d2',
+																		color: '#1976d2',
+																		'&:hover': { borderColor: '#1565c0', backgroundColor: '#f3f8ff' }
 																	}}
 																>
 																	Add Row
@@ -1038,37 +1765,32 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 														</Box>
 
 														{tableRowCount === 0 && !isReadOnly ? (
-															<Box sx={{ textAlign: 'center', py: 4, color: '#999' }}>
-																<Typography variant="body2">No rows added. Click "Add Row" to start.</Typography>
+															<Box sx={{ textAlign: 'center', py: 3, color: '#7986cb', backgroundColor: 'rgba(255,255,255,0.6)', borderRadius: '8px', border: '1px dashed #c5cae9' }}>
+																<Typography variant="body2">No rows yet. Click &quot;Add Row&quot; to start.</Typography>
 															</Box>
 														) : (
-															<TableContainer component={Paper} variant="outlined">
+															<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
 																<Table size="small">
 																	<TableHead>
-																		<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+																		<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
 																			{param.columns?.map(column => (
-																				<TableCell key={column.name} sx={{ fontWeight: 600, fontSize: '0.875rem' }}>
+																				<TableCell key={column.name} sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>
 																					{column.name}
-																					{column.defaultValue && (
-																						<Typography
-																							variant="caption"
-																							sx={{ display: 'block', color: '#666', fontWeight: 400 }}
-																						>
-																							Default: {column.defaultValue}
-																						</Typography>
-																					)}
+																					<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400 }}>
+																						{column.type}
+																					</Typography>
 																				</TableCell>
 																			))}
 																			{!isReadOnly && (
-																				<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', width: 80 }}>
-																					Actions
+																				<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', width: 72, textAlign: 'center' }}>
+																					Remove
 																				</TableCell>
 																			)}
 																		</TableRow>
 																	</TableHead>
 																	<TableBody>
 																		{Array.from({ length: tableRowCount }, (_, rowIndex) => (
-																			<TableRow key={rowIndex}>
+																			<TableRow key={rowIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
 																				{param.columns?.map(column => {
 																					const key = `${param.id}_row_${rowIndex}_${column.name}`;
 																					const currentValue = String(formData[key] || '');
@@ -1076,7 +1798,13 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																					return (
 																						<TableCell key={column.name}>
 																							{column.type === 'ok/not ok' ? (
-																								<FormControl component="fieldset" disabled={isReadOnly} size="small">
+																								<FormControl
+																									component="fieldset"
+																									disabled={isReadOnly}
+																									size="small"
+																									fullWidth
+																									sx={{ width: '100%' }}
+																								>
 																									<RadioGroup
 																										row
 																										value={currentValue}
@@ -1104,17 +1832,37 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																										/>
 																										<FormControlLabel
 																											value="not ok"
-																											control={<Radio size="small" color="error" />}
-																											label="Not OK"
+																											control={<Radio size="small" color="warning" />}
+																											label={OK_NOT_OK_NEGATIVE_LABEL}
 																											sx={{
 																												m: 0,
 																												'& .MuiFormControlLabel-label': {
 																													fontSize: '0.75rem',
-																													color: currentValue === 'not ok' ? '#d32f2f' : '#666'
+																													color: currentValue === 'not ok' ? '#ed6c02' : '#666'
 																												}
 																											}}
 																										/>
 																									</RadioGroup>
+																									{currentValue === 'not ok' && (
+																										<TextField
+																											fullWidth
+																											multiline
+																											rows={2}
+																											label="Comments"
+																											placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+																											value={String(formData[getNotOkCommentKey(key)] || '')}
+																											onChange={e => handleNotOkCommentChange(key, e.target.value)}
+																											error={!!errors[getNotOkCommentKey(key)]}
+																											helperText={
+																												errors[getNotOkCommentKey(key)] ||
+																												`Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+																											}
+																											disabled={isReadOnly}
+																											required
+																											size="small"
+																											sx={{ mt: 1 }}
+																										/>
+																									)}
 																								</FormControl>
 																							) : column.type === 'datetime' ? (
 																								<LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -1144,6 +1892,32 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																									/>
 																								</LocalizationProvider>
 																							) : (
+																								column.type === 'shift' ? (
+																									<TextField
+																										select
+																										value={currentValue}
+																										onChange={e =>
+																											handleTableRowChange(
+																												param.id,
+																												rowIndex,
+																												column.name,
+																												e.target.value
+																											)
+																										}
+																										error={!!errors[key]}
+																										helperText={errors[key]}
+																										size="small"
+																										disabled={isReadOnly}
+																										variant="outlined"
+																										fullWidth
+																									>
+																										{SHIFT_OPTIONS.map(option => (
+																											<MenuItem key={option} value={option}>
+																												{option}
+																											</MenuItem>
+																										))}
+																									</TextField>
+																								) : (
 																								<TextField
 																									type={column.type === 'number' ? 'number' : 'text'}
 																									value={currentValue}
@@ -1166,6 +1940,7 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																										step: column.type === 'number' ? 0.01 : undefined
 																									}}
 																								/>
+																								)
 																							)}
 																						</TableCell>
 																					);
@@ -1213,10 +1988,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																	<Grid key={column.name} size={{ xs: 12, sm: 6, md: 4 }}>
 																		{column.type === 'ok/not ok' ? (
 																			<Box>
+																				{(() => {
+																					const commentKey = getNotOkCommentKey(key);
+																					return (
+																						<>
 																				<Typography variant="body2" sx={{ mb: 1, fontWeight: 500 }}>
 																					{column.name}
 																				</Typography>
-																				<FormControl component="fieldset" disabled={isReadOnly}>
+																				<FormControl component="fieldset" disabled={isReadOnly} fullWidth sx={{ width: '100%' }}>
 																					<RadioGroup
 																						row
 																						value={currentValue}
@@ -1236,12 +2015,12 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																						/>
 																						<FormControlLabel
 																							value="not ok"
-																							control={<Radio size="small" color="error" />}
-																							label="Not OK"
+																							control={<Radio size="small" color="warning" />}
+																							label={OK_NOT_OK_NEGATIVE_LABEL}
 																							sx={{
 																								'& .MuiFormControlLabel-label': {
 																									fontSize: '0.75rem',
-																									color: currentValue === 'not ok' ? '#d32f2f' : '#666'
+																									color: currentValue === 'not ok' ? '#ed6c02' : '#666'
 																								}
 																							}}
 																						/>
@@ -1256,6 +2035,26 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																						{errors[key]}
 																					</Typography>
 																				)}
+																				{currentValue === 'not ok' && (
+																					<TextField
+																						fullWidth
+																						multiline
+																						rows={2}
+																						label="Comments"
+																						placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+																						value={String(formData[commentKey] || '')}
+																						onChange={e => handleNotOkCommentChange(key, e.target.value)}
+																						error={!!errors[commentKey]}
+																						helperText={errors[commentKey] || `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`}
+																						disabled={isReadOnly}
+																						required
+																						size="small"
+																						sx={{ mt: 1 }}
+																					/>
+																				)}
+																						</>
+																					);
+																				})()}
 																			</Box>
 																		) : column.type === 'datetime' ? (
 																			<LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -1278,6 +2077,25 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																				/>
 																			</LocalizationProvider>
 																		) : (
+																			column.type === 'shift' ? (
+																				<TextField
+																					select
+																					label={column.name}
+																					value={currentValue}
+																					onChange={e => handleParameterChange(param.id, column.name, e.target.value)}
+																					error={!!errors[key]}
+																					helperText={errors[key]}
+																					fullWidth
+																					disabled={isReadOnly}
+																					variant="outlined"
+																				>
+																					{SHIFT_OPTIONS.map(option => (
+																						<MenuItem key={option} value={option}>
+																							{option}
+																						</MenuItem>
+																					))}
+																				</TextField>
+																			) : (
 																			<TextField
 																				label={column.name}
 																				type={column.type === 'number' ? 'number' : 'text'}
@@ -1293,17 +2111,47 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 																					step: column.type === 'number' ? 0.01 : undefined
 																				}}
 																			/>
+																			)
 																		)}
-																		{column.defaultValue && (
+																		{(column.minimumAcceptanceValue !== undefined ||
+																			column.maximumAcceptanceValue !== undefined) && (
 																			<Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
-																				Default: {column.defaultValue}
+																				Range: {column.minimumAcceptanceValue ?? '-'} to{' '}
+																				{column.maximumAcceptanceValue ?? '-'}
 																			</Typography>
 																		)}
-																		{column.tolerance && (
-																			<Typography variant="caption" sx={{ color: '#666', mt: 0.5, display: 'block' }}>
-																				Tolerance: ±{column.tolerance}
-																			</Typography>
-																		)}
+																		{(() => {
+																			const status =
+																				column.type === 'number' && currentValue !== ''
+																					? getRangeStatus(
+																							Number(currentValue),
+																							column.minimumAcceptanceValue,
+																							column.maximumAcceptanceValue
+																						)
+																					: null;
+																			return status && status !== 'InRange' ? (
+																				<>
+																					<FormControlLabel
+																						control={
+																							<Checkbox
+																								size="small"
+																								checked={acknowledgments[key] || false}
+																								onChange={e =>
+																									handleAcknowledgmentChange(key, e.target.checked)
+																								}
+																								disabled={isReadOnly}
+																							/>
+																						}
+																						label="Acknowledge deviation"
+																					/>
+																					{errors[getAckKey(key)] && (
+																						<Typography variant="caption" color="error">
+																							{errors[getAckKey(key)]}
+																						</Typography>
+																					)}
+																				</>
+																			) : null;
+																		})()}
 																	</Grid>
 																);
 															})}
@@ -1375,6 +2223,14 @@ const InspectionStep = ({ step, executionData, onStepComplete }: InspectionStepP
 															})()}
 															onSave={newAnnotations => handleAnnotationSave(param.id, newAnnotations)}
 															readOnly={isReadOnly}
+															parameterContext={{
+																parameterName: param.parameterName,
+																specification: param.specification,
+																ctq: param.ctq,
+																minimumAcceptanceValue: param.minimumAcceptanceValue,
+																maximumAcceptanceValue: param.maximumAcceptanceValue,
+																parameterType: param.type
+															}}
 														/>
 													</Box>
 												</Collapse>

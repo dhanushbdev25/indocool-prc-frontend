@@ -1,17 +1,81 @@
 import { type TimelineStep, type ExecutionData } from '../types/execution.types';
+import { isRawMaterialsStepCompleteForNavigation } from './rawMaterialsNavigation';
 
-export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[] {
+export interface BuildTimelineStepsOptions {
+	omitStepTypes?: TimelineStep['type'][];
+}
+
+function isPrcMetadataComplete(prcAggregatedSteps: Record<string, unknown> | undefined): boolean {
+	const meta = prcAggregatedSteps?.prcmetadata;
+	if (!meta || typeof meta !== 'object') return false;
+	return Object.keys(meta as Record<string, unknown>).length > 0;
+}
+
+export function buildCatalystMixingTimelineStep(
+	executionData: ExecutionData,
+	overrides?: Partial<Pick<TimelineStep, 'stepNumber' | 'status' | 'reportStepIndex'>>
+): TimelineStep | null {
+	if (!executionData.bom || executionData.bom.length === 0) {
+		return null;
+	}
+
+	const isCompleted = executionData.prcAggregatedSteps?.bom !== undefined;
+
+	return {
+		stepNumber: overrides?.stepNumber ?? 1,
+		reportStepIndex: overrides?.reportStepIndex,
+		type: 'bom',
+		title: 'Catalyst Mixing',
+		description: 'Configure catalyst mixing based on temperature, humidity, and material quantities',
+		status: overrides?.status ?? (isCompleted ? 'completed' : 'pending'),
+		ctq: false,
+		items: executionData.bom.map(bom => ({
+			id: bom.id,
+			name: bom.materialName,
+			quantity: bom.quantity,
+			splitQuantity: bom.splitQuantity,
+			uom: bom.uom,
+			description: bom.materialCode,
+			materialType: bom.materialCode,
+			materialCode: bom.materialCode,
+			materialName: bom.materialName,
+			order: bom.order,
+			splitting: bom.splitting,
+			splittingConfiguration: bom.splittingConfiguration
+		}))
+	};
+}
+
+export function buildTimelineSteps(
+	executionData: ExecutionData,
+	options: BuildTimelineStepsOptions = {}
+): TimelineStep[] {
 	const steps: TimelineStep[] = [];
 	let stepNumber = 1;
+	const inspectionDiagramByParameterId = new Map(
+		(executionData.inspectionDiagrams?.files || [])
+			.filter(file => typeof file?.inspectionParameterId === 'number')
+			.map(file => [file.inspectionParameterId as number, file] as const)
+	);
 
-	// Step 1: Raw Materials
+	const setupCompleted = isPrcMetadataComplete(executionData.prcAggregatedSteps as Record<string, unknown> | undefined);
+	steps.push({
+		stepNumber: stepNumber++,
+		type: 'setup',
+		title: 'Execution setup',
+		description: 'Confirm production setup, mould details, and shift before starting',
+		status: setupCompleted ? 'completed' : 'pending',
+		ctq: false
+	});
+
+	// Bill of Material
 	if (executionData.rawMaterials && executionData.rawMaterials.length > 0) {
-		const isCompleted = executionData.prcAggregatedSteps?.rawMaterials !== undefined;
+		const isCompleted = isRawMaterialsStepCompleteForNavigation(executionData);
 		steps.push({
 			stepNumber: stepNumber++,
 			type: 'rawMaterials',
-			title: 'Raw Materials Validation',
-			description: 'Validate raw materials quantities and batch tracking',
+			title: 'Bill of Material Validation',
+			description: 'Validate bill of material quantities and batch tracking',
 			status: isCompleted ? 'completed' : 'pending',
 			ctq: false,
 			items: executionData.rawMaterials.map(material => ({
@@ -19,6 +83,9 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 				name: material.materialName,
 				quantity: material.quantity,
 				uom: material.uom,
+				actualUom: material.actualUom ?? material.uom,
+				actualQuantity: material.actualQuantity,
+				batchNumber: material.batchNumber,
 				description: material.materialCode,
 				batching: material.batching
 			}))
@@ -26,30 +93,10 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 	}
 
 	// Step 2: Catalyst Mixing (formerly BOM)
-	if (executionData.bom && executionData.bom.length > 0) {
-		const isCompleted = executionData.prcAggregatedSteps?.bom !== undefined;
-		steps.push({
-			stepNumber: stepNumber++,
-			type: 'bom',
-			title: 'Catalyst Mixing',
-			description: 'Configure catalyst mixing based on temperature, humidity, and material quantities',
-			status: isCompleted ? 'completed' : 'pending',
-			ctq: false,
-			items: executionData.bom.map(bom => ({
-				id: bom.id,
-				name: bom.materialName,
-				quantity: bom.quantity,
-				splitQuantity: bom.splitQuantity,
-				uom: bom.uom,
-				description: bom.materialCode,
-				materialType: bom.materialCode,
-				materialCode: bom.materialCode,
-				materialName: bom.materialName,
-				order: bom.order,
-				splitting: bom.splitting,
-				splittingConfiguration: bom.splittingConfiguration
-			}))
-		});
+	const catalystMixingStep = buildCatalystMixingTimelineStep(executionData, { stepNumber });
+	if (catalystMixingStep) {
+		steps.push(catalystMixingStep);
+		stepNumber += 1;
 	}
 
 	// Process prcTemplateSteps
@@ -59,31 +106,32 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 		for (const prcTemplateStep of sortedSteps) {
 			if (prcTemplateStep.type === 'sequence' && prcTemplateStep.data) {
 				// For sequence type, create step groups as main timeline steps
-				const sequenceData = prcTemplateStep.data as {
-					stepGroups: Array<{
+			const sequenceData = prcTemplateStep.data as {
+				stepGroups: Array<{
+					id: number;
+					steps: Array<{
 						id: number;
-						steps: Array<{
-							id: number;
-							ctq: boolean;
-							stepType: string;
-							targetValueType: string;
-							uom: string;
-							minValue?: string;
-							maxValue?: string;
-							minimumAcceptanceValue?: string | null;
-							maximumAcceptanceValue?: string | null;
-							multipleMeasurements: boolean;
-							notes: string;
-							parameterDescription: string;
-							evaluationMethod: string;
-							allowAttachments: boolean;
-							responsiblePerson?: boolean;
-						}>;
-						processName: string;
-						processDescription: string;
-						sequenceTiming: number;
+						ctq: boolean;
+						targetValueType: string;
+						uom: string;
+						minValue?: string;
+						maxValue?: string;
+						minimumAcceptanceValue?: string | null;
+						maximumAcceptanceValue?: string | null;
+						multipleMeasurements: boolean;
+						tableConfig?: Record<string, unknown> | null;
+						notes: string;
+						parameterDescription: string;
+						evaluationMethod: string;
+						allowAttachments: boolean;
+						responsiblePerson?: boolean;
+						getInstrumentId?: boolean;
 					}>;
-				};
+					processName: string;
+					processDescription: string;
+					sequenceTiming: number;
+				}>;
+			};
 				if (sequenceData.stepGroups) {
 					for (const stepGroup of sequenceData.stepGroups) {
 						const isCompleted = isSequenceStepGroupCompleted(
@@ -103,6 +151,12 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							stepGroup.steps.some(step => step.ctq)
 						);
 
+						const seqStepAgg = executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()] as
+							| Record<string, unknown>
+							| undefined;
+						const seqGroupAgg = seqStepAgg?.[stepGroup.id.toString()] as Record<string, unknown> | undefined;
+						const partialCtqApproveSeq = seqGroupAgg?.partialCtqApprove === true;
+
 						steps.push({
 							stepNumber: stepNumber++,
 							type: 'sequence',
@@ -110,6 +164,7 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							description: stepGroup.processDescription,
 							status: isCompleted ? 'completed' : isReadyForCompletion ? 'in-progress' : 'pending',
 							ctq: stepGroup.steps.some(step => step.ctq),
+							partialCtqApprove: partialCtqApproveSeq,
 							prcTemplateStepId: prcTemplateStep.id,
 							stepGroup: {
 								id: stepGroup.id,
@@ -128,7 +183,8 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 									createdAt: new Date().toISOString(),
 									updatedAt: new Date().toISOString(),
 									processStepGroupId: stepGroup.id,
-									responsiblePerson: step.responsiblePerson || false // Use actual responsiblePerson value from API response
+									responsiblePerson: step.responsiblePerson || false, // Use actual responsiblePerson value from API response
+									getInstrumentId: step.getInstrumentId || false
 								}))
 							}
 						});
@@ -150,7 +206,8 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							name: string;
 							type: string;
 							defaultValue?: string;
-							tolerance?: string;
+							minimumAcceptanceValue?: string;
+							maximumAcceptanceValue?: string;
 						}>;
 						specification: string;
 						order: number;
@@ -158,6 +215,14 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 							fileName: string;
 							filePath: string;
 							originalFileName: string;
+						}>;
+						rowMappings?: Array<{
+							rowIndex: number;
+							fileName: Array<{
+								fileName: string;
+								filePath: string;
+								originalFileName: string;
+							}>;
 						}>;
 					}>;
 				};
@@ -174,6 +239,11 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 					inspectionData.inspectionParameters?.some(p => p.ctq) || false
 				);
 
+				const inspStepAgg = executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()] as
+					| Record<string, unknown>
+					| undefined;
+				const partialCtqApproveInsp = inspStepAgg?.partialCtqApprove === true;
+
 				steps.push({
 					stepNumber: stepNumber++,
 					type: 'inspection',
@@ -181,11 +251,11 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 					description: inspectionData.inspection?.inspectionName || 'Quality inspection parameters',
 					status: isCompleted ? 'completed' : isReadyForCompletion ? 'in-progress' : 'pending',
 					ctq: inspectionData.inspectionParameters?.some(p => p.ctq) || false,
+					partialCtqApprove: partialCtqApproveInsp,
 					stepData: {
 						prcTemplateStepId: prcTemplateStep.id,
 						stepGroupId: 0,
 						stepId: 0,
-						stepType: 'inspection',
 						targetValueType: 'text',
 						uom: '',
 						multipleMeasurements: false,
@@ -194,30 +264,47 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 						evaluationMethod: '',
 						allowAttachments: false
 					},
-					inspectionParameters:
-						inspectionData.inspectionParameters?.map(param => ({
-							id: param.id,
-							parameterName: param.parameterName,
-							type: param.type,
-							ctq: param.ctq,
-							role: param.role,
-							columns: param.columns || [],
-							specification: param.specification,
-							order: param.order,
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							tolerance: (param as any).tolerance || '',
-							files: param.files || [],
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							version: (param as any).version || 1,
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							isLatest: (param as any).isLatest !== undefined ? (param as any).isLatest : true,
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							createdAt: (param as any).createdAt || new Date().toISOString(),
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							updatedAt: (param as any).updatedAt || new Date().toISOString(),
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							inspectionId: (param as any).inspectionId || prcTemplateStep.id
-						})) || [],
+				inspectionParameters:
+					inspectionData.inspectionParameters?.map((param, index) => ({
+						// Prefer direct inspection parameter mappings; fallback to part-level inspectionDiagrams mappings
+						...(() => {
+							const fallbackDiagram = inspectionDiagramByParameterId.get(param.id);
+							const directFiles = Array.isArray(param.files) ? param.files : [];
+							const directRowMappings = Array.isArray(param.rowMappings) ? param.rowMappings : [];
+							const fallbackFiles = Array.isArray(fallbackDiagram?.fileName) ? fallbackDiagram.fileName : [];
+							const fallbackRowMappings = Array.isArray(fallbackDiagram?.rowMappings)
+								? fallbackDiagram.rowMappings
+								: [];
+							return {
+								files: directFiles.length > 0 ? directFiles : fallbackFiles,
+								rowMappings: directRowMappings.length > 0 ? directRowMappings : fallbackRowMappings
+							};
+						})(),
+						id: param.id,
+						parameterName: param.parameterName,
+						type: param.type,
+						ctq: param.ctq,
+						role: param.role,
+						columns: param.columns || [],
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						tableConfig: (param as any).tableConfig || null,
+						specification: param.specification,
+						order: param.order ?? index + 1,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						minimumAcceptanceValue: (param as any).minimumAcceptanceValue || '',
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						maximumAcceptanceValue: (param as any).maximumAcceptanceValue || '',
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						version: (param as any).version || 1,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						isLatest: (param as any).isLatest !== undefined ? (param as any).isLatest : true,
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						createdAt: (param as any).createdAt || new Date().toISOString(),
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						updatedAt: (param as any).updatedAt || new Date().toISOString(),
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						inspectionId: (param as any).inspectionId || prcTemplateStep.id
+					})) || [],
 					inspectionMetadata: inspectionData.inspection
 						? {
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -252,13 +339,33 @@ export function buildTimelineSteps(executionData: ExecutionData): TimelineStep[]
 		}
 	}
 
-	// Mark the first incomplete step as 'in-progress'
-	const firstIncompleteIndex = steps.findIndex(step => step.status === 'pending');
+	const sapAgg = executionData.prcAggregatedSteps?.sapConfirmations as Record<string, unknown> | undefined;
+	const sapStepCompleted = sapAgg?.stepCompleted === true;
+	steps.push({
+		stepNumber: stepNumber++,
+		type: 'sapConfirmations',
+		title: 'SAP confirmations',
+		description: 'Review SAP API confirmation calls and retry failures',
+		status: sapStepCompleted ? 'completed' : 'pending',
+		ctq: false
+	});
+
+	const stepsWithReportIndex = steps.map((step, index) => ({
+		...step,
+		reportStepIndex: index
+	}));
+
+	const omitStepTypes = new Set(options.omitStepTypes ?? []);
+	const visibleSteps =
+		omitStepTypes.size > 0 ? stepsWithReportIndex.filter(step => !omitStepTypes.has(step.type)) : stepsWithReportIndex;
+
+	// Mark the first incomplete visible step as 'in-progress'
+	const firstIncompleteIndex = visibleSteps.findIndex(step => step.status === 'pending');
 	if (firstIncompleteIndex >= 0) {
-		steps[firstIncompleteIndex].status = 'in-progress';
+		visibleSteps[firstIncompleteIndex].status = 'in-progress';
 	}
 
-	return steps;
+	return visibleSteps;
 }
 
 function isSequenceStepGroupCompleted(

@@ -1,135 +1,91 @@
-import { useState } from 'react';
-import { Box, Typography, TextField, InputAdornment, Button, Stack } from '@mui/material';
-import { Search as SearchIcon, Assignment as TemplateIcon } from '@mui/icons-material';
+import { useState, useMemo, useCallback } from 'react';
+import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { MasterListToolbar } from '../../../../../../components/masters';
+
+/** Sentinel for toolbar: no filter by template `isActive`. */
+export const PRC_TEMPLATE_ALL_CATALOGUE = 'All';
 
 interface PrcTemplateManagementProps {
 	onSearchChange?: (searchTerm: string) => void;
 	onFilterChange?: (filter: string) => void;
+	onCatalogueActiveFilterChange?: (value: string) => void;
+	appliedSearchTerm?: string;
+	listSummary?: string | null;
+	searchAriaLabel?: string;
 }
 
-const PrcTemplateManagement = ({ onSearchChange, onFilterChange }: PrcTemplateManagementProps) => {
+const PrcTemplateManagement = ({
+	onSearchChange,
+	onFilterChange,
+	onCatalogueActiveFilterChange,
+	appliedSearchTerm = '',
+	listSummary,
+	searchAriaLabel
+}: PrcTemplateManagementProps) => {
 	const [activeFilter, setActiveFilter] = useState('All Templates');
-	const [searchTerm, setSearchTerm] = useState('');
+	const [catalogueFilter, setCatalogueFilter] = useState(PRC_TEMPLATE_ALL_CATALOGUE);
 
-	const filterButtons = ['All Templates', 'ACTIVE', 'NEW', 'INACTIVE'];
+	const statusOptions = ['All Templates', 'ACTIVE', 'NEW', 'INACTIVE'];
+	const catalogueOptions = [PRC_TEMPLATE_ALL_CATALOGUE, 'In catalogue', 'Out of catalogue'];
 
-	const handleFilterClick = (filter: string) => {
+	const handleStatusChange = (filter: string) => {
 		setActiveFilter(filter);
 		onFilterChange?.(filter);
 	};
 
-	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const value = event.target.value;
-		setSearchTerm(value);
-		onSearchChange?.(value);
+	const handleCatalogueChange = (value: string) => {
+		setCatalogueFilter(value);
+		onCatalogueActiveFilterChange?.(value);
 	};
 
+	const handleReset = useCallback(() => {
+		setActiveFilter('All Templates');
+		setCatalogueFilter(PRC_TEMPLATE_ALL_CATALOGUE);
+		onFilterChange?.('All Templates');
+		onCatalogueActiveFilterChange?.(PRC_TEMPLATE_ALL_CATALOGUE);
+	}, [onCatalogueActiveFilterChange, onFilterChange]);
+
+	const filterDirty = useMemo(
+		() =>
+			Boolean(appliedSearchTerm.trim()) ||
+			activeFilter !== 'All Templates' ||
+			catalogueFilter !== PRC_TEMPLATE_ALL_CATALOGUE,
+		[activeFilter, appliedSearchTerm, catalogueFilter]
+	);
+
+	const selectSx = { minWidth: 180, borderRadius: 1 };
+
 	return (
-		<Box sx={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', mb: 3 }}>
-			{/* Section Header */}
-			<Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
-				<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-					<TemplateIcon sx={{ color: '#666', mr: 1, fontSize: '1.25rem' }} />
-					<Typography
-						variant="h5"
-						sx={{
-							fontWeight: 600,
-							color: '#333',
-							fontSize: '1.25rem'
-						}}
-					>
-						Template Management
-					</Typography>
-				</Box>
-				<Typography
-					variant="body2"
-					sx={{
-						color: '#666',
-						fontSize: '0.875rem'
-					}}
-				>
-					Manage and configure PRC templates with sequences and inspections
-				</Typography>
-			</Box>
-
-			{/* Search and Filter Section */}
-			<Box sx={{ p: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-				<TextField
-					placeholder="Search by Template ID or name"
-					variant="outlined"
-					size="small"
-					value={searchTerm}
-					onChange={handleSearchChange}
-					InputProps={{
-						startAdornment: (
-							<InputAdornment position="start">
-								<SearchIcon sx={{ color: '#999' }} />
-							</InputAdornment>
-						)
-					}}
-					sx={{
-						flex: 1,
-						'& .MuiOutlinedInput-root': {
-							borderRadius: '8px',
-							backgroundColor: '#fafafa',
-							'& fieldset': {
-								borderColor: '#e0e0e0'
-							},
-							'&:hover fieldset': {
-								borderColor: '#ccc'
-							},
-							'&.Mui-focused fieldset': {
-								borderColor: '#1976d2'
-							}
-						},
-						'& .MuiInputBase-input': {
-							fontSize: '0.875rem',
-							color: '#666',
-							'&::placeholder': {
-								color: '#999',
-								opacity: 1
-							}
-						}
-					}}
-				/>
-
-				<Stack direction="row" spacing={1}>
-					{filterButtons.map(filter => (
-						<Button
-							key={filter}
-							variant={activeFilter === filter ? 'contained' : 'outlined'}
-							onClick={() => handleFilterClick(filter)}
-							sx={{
-								borderRadius: '8px',
-								textTransform: 'none',
-								fontSize: '0.875rem',
-								fontWeight: 500,
-								px: 2,
-								py: 1,
-								minWidth: 'auto',
-								...(activeFilter === filter
-									? {
-											backgroundColor: '#1976d2',
-											color: 'white',
-											'&:hover': {
-												backgroundColor: '#1565c0'
-											}
-										}
-									: {
-											color: '#666',
-											borderColor: '#e0e0e0',
-											'&:hover': {
-												borderColor: '#ccc',
-												backgroundColor: '#f5f5f5'
-											}
-										})
-							}}
-						>
-							{filter}
-						</Button>
-					))}
-				</Stack>
-			</Box>
+		<Box>
+			<MasterListToolbar
+				searchPlaceholder="Search by Template ID or name"
+				searchAriaLabel={searchAriaLabel}
+				listSummary={listSummary}
+				onSearchChange={onSearchChange}
+				filterDirty={filterDirty}
+				onReset={handleReset}
+			>
+				<FormControl size="small" sx={selectSx}>
+					<InputLabel shrink>Status</InputLabel>
+					<Select value={activeFilter} label="Status" onChange={e => handleStatusChange(e.target.value)}>
+						{statusOptions.map(opt => (
+							<MenuItem key={opt} value={opt}>
+								{opt}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+				<FormControl size="small" sx={{ ...selectSx, minWidth: 200 }}>
+					<InputLabel shrink>Catalogue</InputLabel>
+					<Select value={catalogueFilter} label="Catalogue" onChange={e => handleCatalogueChange(e.target.value)}>
+						{catalogueOptions.map(opt => (
+							<MenuItem key={opt} value={opt}>
+								{opt}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+			</MasterListToolbar>
 		</Box>
 	);
 };

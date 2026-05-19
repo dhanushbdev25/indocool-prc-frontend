@@ -1,6 +1,7 @@
 import { Box, Grid, Typography, Chip, Paper } from '@mui/material';
 import { PartMaster, PartDrawing } from '../../../../../../store/api/business/part-master/part.validators';
 import PartImageUpload from '../../create-part/components/PartImageUpload';
+import { toFileRenderUrl } from '../../../../../../utils/fileUrl';
 
 interface ViewGeneralInfoProps {
 	partMaster: PartMaster;
@@ -8,13 +9,17 @@ interface ViewGeneralInfoProps {
 }
 
 const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
+	const moulds = partMaster.mouldDetails ?? [];
+
 	// Convert files to gallery format for display
 	const displayGallery = files.map((file, index) => ({
 		id: index,
 		file: null,
-		image: file.filePath ? `${process.env.API_BASE_URL_PRE_AUTH}${file.filePath}` : '', // Prepend base URL to file path
+		image: toFileRenderUrl(file.filePath),
 		fileName: file.fileName || `Image ${index}`
 	}));
+
+	const statusDisplay = partMaster.status ?? 'NEW';
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -86,9 +91,9 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 							Status
 						</Typography>
 						<Chip
-							label={partMaster.status}
+							label={statusDisplay}
 							color={
-								getStatusColor(partMaster.status) as
+								getStatusColor(statusDisplay) as
 									| 'default'
 									| 'primary'
 									| 'secondary'
@@ -198,6 +203,29 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 							<Typography variant="body1" sx={{ color: '#333', lineHeight: 1.6 }}>
 								{partMaster.notes}
 							</Typography>
+						</Box>
+					</Grid>
+				)}
+
+				{moulds.length > 0 && (
+					<Grid size={{ xs: 12 }}>
+						<Box sx={{ mb: 2 }}>
+							<Typography variant="body2" sx={{ color: '#666', fontWeight: 500, mb: 1 }}>
+								Mould mapping
+							</Typography>
+							<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+								{moulds.map((mould, index) => (
+									<Chip
+										key={
+											typeof mould.id === 'number'
+												? `mould-${mould.id}`
+												: `${mould.mouldCode}-${index}`
+										}
+										label={`${mould.mouldCode} | Count: ${mould.reconciliationCount}`}
+										variant="outlined"
+									/>
+								))}
+							</Box>
 						</Box>
 					</Grid>
 				)}

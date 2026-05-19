@@ -1,211 +1,268 @@
-import { z } from 'zod/v4';
+import { TableConfig } from '../../../../types/table-config.types';
 
-// Zod schemas for sequence response validation
-export const processStepSchema = z
-	.object({
-		id: z.number(),
-		processStepGroupId: z.number(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		parameterDescription: z.string(),
-		stepNumber: z.number(),
-		stepType: z.string(),
-		evaluationMethod: z.string(),
-		targetValueType: z.string(),
-		minimumAcceptanceValue: z.string().nullable(),
-		maximumAcceptanceValue: z.string().nullable(),
-		multipleMeasurements: z.boolean(),
-		multipleMeasurementMaxCount: z.number().nullable(),
-		uom: z.string().optional(),
-		ctq: z.boolean(),
-		allowAttachments: z.boolean(),
-		responsiblePerson: z.boolean().nullable().optional(),
-		notes: z.string(),
-		createdAt: z.string(),
-		updatedAt: z.string()
-	})
-	.loose();
+export interface ProcessStep {
+	id: number;
+	processStepGroupId: number;
+	version: number;
+	isLatest: boolean;
+	parameterDescription: string;
+	stepNumber: number;
+	evaluationMethod: string;
+	targetValueType: string;
+	minimumAcceptanceValue: string | null;
+	maximumAcceptanceValue: string | null;
+	multipleMeasurements: boolean;
+	multipleMeasurementMaxCount: number | null;
+	tableConfig?: TableConfig | null;
+	uom?: string;
+	ctq: boolean;
+	allowAttachments: boolean;
+	responsiblePerson?: boolean | null;
+	getInstrumentId?: boolean | null;
+	notes: string;
+	createdAt: string;
+	updatedAt: string;
+	[key: string]: unknown;
+}
 
-export const processStepGroupSchema = z
-	.object({
-		id: z.number(),
-		processSequenceId: z.number(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		processName: z.string(),
-		processDescription: z.string(),
-		sequenceTiming: z.number(),
-		createdAt: z.string(),
-		updatedAt: z.string(),
-		steps: z.array(processStepSchema)
-	})
-	.loose();
+export interface ProcessStepGroup {
+	id: number;
+	processSequenceId: number;
+	version: number;
+	isLatest: boolean;
+	processName: string;
+	processDescription: string;
+	sequenceTiming: number;
+	shift?: string | null;
+	pfdNumber?: string | null;
+	createdAt: string;
+	updatedAt: string;
+	steps: ProcessStep[];
+	[key: string]: unknown;
+}
 
-export const processSequenceSchema = z
-	.object({
-		id: z.number(),
-		status: z.string(),
-		sequenceId: z.string(),
-		sequenceName: z.string(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		category: z.string(),
-		type: z.string(),
-		notes: z.string(),
-		totalSteps: z.number(),
-		ctqSteps: z.number(),
-		createdAt: z.string(),
-		updatedAt: z.string(),
-		stepGroups: z.array(processStepGroupSchema)
-	})
-	.loose();
+export interface ProcessSequence {
+	id: number;
+	status: string;
+	sequenceId: string;
+	sequenceName: string;
+	version: number;
+	isLatest: boolean;
+	category: string;
+	type: string;
+	/** Set when API returns an item label for the sequence */
+	item?: string | null;
+	notes: string | null;
+	totalSteps: number;
+	ctqSteps: number;
+	createdAt: string;
+	updatedAt: string;
+	stepGroups: ProcessStepGroup[];
+	[key: string]: unknown;
+}
 
-export const sequenceHeaderSchema = z
-	.object({
-		ACTIVE: z.number(),
-		INACTIVE: z.number()
-	})
-	.loose();
+export interface SequenceHeader {
+	ACTIVE: number;
+	INACTIVE: number;
+}
 
-export const sequenceListResponseSchema = z
-	.object({
-		header: sequenceHeaderSchema,
-		detail: z.array(processSequenceSchema)
-	})
-	.loose();
+export interface SequenceListResponse {
+	header: SequenceHeader;
+	detail: ProcessSequence[];
+}
 
-// Schema for single sequence response (has header and detail structure)
-export const sequenceByIdResponseSchema = z
-	.object({
-		header: sequenceHeaderSchema,
-		detail: processSequenceSchema
-	})
-	.loose();
+export interface SequenceByIdResponse {
+	header: SequenceHeader;
+	detail: ProcessSequence;
+}
 
-// Request schemas for create/update operations
-export const processStepRequestSchema = z.object({
-	parameterDescription: z.string(),
-	stepNumber: z.number(),
-	stepType: z.string(),
-	evaluationMethod: z.string(),
-	targetValueType: z.string(),
-	minimumAcceptanceValue: z.number().nullable(),
-	maximumAcceptanceValue: z.number().nullable(),
-	multipleMeasurements: z.boolean(),
-	multipleMeasurementMaxCount: z.number().nullable(),
-	uom: z.string().optional(),
-	ctq: z.boolean(),
-	allowAttachments: z.boolean(),
-	responsiblePerson: z.boolean().nullable().optional(),
-	notes: z.string()
-});
+export interface ProcessStepRequest {
+	parameterDescription: string;
+	stepNumber: number;
+	evaluationMethod: string;
+	targetValueType: string;
+	minimumAcceptanceValue: number | null;
+	maximumAcceptanceValue: number | null;
+	multipleMeasurements: boolean;
+	multipleMeasurementMaxCount: number | null;
+	tableConfig?: TableConfig | null;
+	uom?: string;
+	ctq: boolean;
+	allowAttachments: boolean;
+	responsiblePerson?: boolean | null;
+	getInstrumentId?: boolean | null;
+	notes: string;
+}
 
-export const processStepGroupRequestSchema = z.object({
-	processName: z.string(),
-	processDescription: z.string(),
-	sequenceTiming: z.number(),
-	processSteps: z.array(processStepRequestSchema)
-});
+export interface ProcessStepGroupRequest {
+	processName: string;
+	processDescription: string;
+	sequenceTiming: number;
+	shift?: string | null;
+	pfdNumber?: string | null;
+	processSteps: ProcessStepRequest[];
+}
 
-export const processSequenceRequestSchema = z.object({
-	status: z.string(),
-	sequenceId: z.string(),
-	sequenceName: z.string(),
-	version: z.number(),
-	isLatest: z.boolean(),
-	category: z.string(),
-	type: z.string(),
-	notes: z.string(),
-	totalSteps: z.number(),
-	ctqSteps: z.number()
-});
+export interface ProcessSequenceRequest {
+	status: string;
+	sequenceId: string;
+	sequenceName: string;
+	version: number;
+	isLatest: boolean;
+	category: string;
+	type: string;
+	notes: string;
+	totalSteps: number;
+	ctqSteps: number;
+}
 
-export const createSequenceRequestSchema = z.object({
-	data: z.object({
-		processSequence: processSequenceRequestSchema,
-		processStepGroups: z.array(processStepGroupRequestSchema)
-	})
-});
+export interface CreateSequenceRequest {
+	data: {
+		processSequence: ProcessSequenceRequest;
+		processStepGroups: ProcessStepGroupRequest[];
+	};
+}
 
-export const updateSequenceRequestSchema = z.object({
-	id: z.number(),
-	data: z.object({
-		processSequence: processSequenceRequestSchema,
-		processStepGroups: z.array(processStepGroupRequestSchema)
-	})
-});
+export interface UpdateSequenceRequest {
+	id: number;
+	data: {
+		processSequence: ProcessSequenceRequest;
+		processStepGroups: ProcessStepGroupRequest[];
+	};
+}
 
-// Response schemas for create/update operations
-// Create response doesn't include stepGroups, only basic sequence info
-export const processSequenceBasicSchema = z
-	.object({
-		id: z.number(),
-		status: z.string(),
-		sequenceId: z.string(),
-		sequenceName: z.string(),
-		version: z.number(),
-		isLatest: z.boolean(),
-		category: z.string(),
-		type: z.string(),
-		notes: z.string(),
-		totalSteps: z.number(),
-		ctqSteps: z.number(),
-		createdAt: z.string(),
-		updatedAt: z.string()
-	})
-	.loose();
+export interface ProcessSequenceBasic {
+	id: number;
+	status: string;
+	sequenceId: string;
+	sequenceName: string;
+	version: number;
+	isLatest: boolean;
+	category: string;
+	type: string;
+	notes: string | null;
+	totalSteps: number;
+	ctqSteps: number;
+	createdAt: string;
+	updatedAt: string;
+	[key: string]: unknown;
+}
 
-export const createSequenceResponseSchema = z
-	.object({
-		message: z.string(),
-		data: processSequenceBasicSchema
-	})
-	.loose();
+export interface CreateSequenceResponse {
+	message: string;
+	data: ProcessSequenceBasic;
+}
 
-export const updateSequenceResponseSchema = z
-	.object({
-		message: z.string(),
-		data: processSequenceBasicSchema
-	})
-	.loose();
+export interface UpdateSequenceResponse {
+	message: string;
+	data: ProcessSequenceBasic;
+}
 
-// Delete task request schema - sets status to INACTIVE and sends remaining data
-export const deleteSequenceTaskRequestSchema = z.object({
-	id: z.number(),
-	data: z.object({
-		processSequence: processSequenceRequestSchema,
-		processStepGroups: z.array(processStepGroupRequestSchema)
-	})
-});
+export interface DeleteSequenceTaskRequest {
+	id: number;
+	data: {
+		processSequence: ProcessSequenceRequest;
+		processStepGroups: ProcessStepGroupRequest[];
+	};
+}
 
-// Delete task response schema
-export const deleteSequenceTaskResponseSchema = z
-	.object({
-		message: z.string(),
-		data: processSequenceBasicSchema
-	})
-	.loose();
+export interface DeleteSequenceTaskResponse {
+	message: string;
+	data: ProcessSequenceBasic;
+}
 
-// TypeScript types inferred from Zod schemas
-export type ProcessStep = z.infer<typeof processStepSchema>;
-export type ProcessStepGroup = z.infer<typeof processStepGroupSchema>;
-export type ProcessSequence = z.infer<typeof processSequenceSchema>;
-export type ProcessSequenceBasic = z.infer<typeof processSequenceBasicSchema>;
-export type SequenceHeader = z.infer<typeof sequenceHeaderSchema>;
-export type SequenceListResponse = z.infer<typeof sequenceListResponseSchema>;
-export type SequenceByIdResponse = z.infer<typeof sequenceByIdResponseSchema>;
+function isProcessStep(value: unknown): value is ProcessStep {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const s = value as Record<string, unknown>;
+	return (
+		typeof s.id === 'number' &&
+		typeof s.processStepGroupId === 'number' &&
+		typeof s.version === 'number' &&
+		typeof s.isLatest === 'boolean' &&
+		typeof s.parameterDescription === 'string' &&
+		typeof s.stepNumber === 'number'
+	);
+}
 
-// Request types
-export type ProcessStepRequest = z.infer<typeof processStepRequestSchema>;
-export type ProcessStepGroupRequest = z.infer<typeof processStepGroupRequestSchema>;
-export type ProcessSequenceRequest = z.infer<typeof processSequenceRequestSchema>;
-export type CreateSequenceRequest = z.infer<typeof createSequenceRequestSchema>;
-export type UpdateSequenceRequest = z.infer<typeof updateSequenceRequestSchema>;
+function isProcessStepGroup(value: unknown): value is ProcessStepGroup {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const g = value as Record<string, unknown>;
+	return (
+		typeof g.id === 'number' &&
+		typeof g.processSequenceId === 'number' &&
+		typeof g.processName === 'string' &&
+		Array.isArray(g.steps) &&
+		g.steps.every(isProcessStep)
+	);
+}
 
-// Response types
-export type CreateSequenceResponse = z.infer<typeof createSequenceResponseSchema>;
-export type UpdateSequenceResponse = z.infer<typeof updateSequenceResponseSchema>;
+function isProcessSequence(value: unknown): value is ProcessSequence {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const p = value as Record<string, unknown>;
+	return (
+		typeof p.id === 'number' &&
+		typeof p.status === 'string' &&
+		typeof p.sequenceId === 'string' &&
+		typeof p.sequenceName === 'string' &&
+		Array.isArray(p.stepGroups) &&
+		p.stepGroups.every(isProcessStepGroup)
+	);
+}
 
-// Delete task types
-export type DeleteSequenceTaskRequest = z.infer<typeof deleteSequenceTaskRequestSchema>;
-export type DeleteSequenceTaskResponse = z.infer<typeof deleteSequenceTaskResponseSchema>;
+function isSequenceHeader(value: unknown): value is SequenceHeader {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const h = value as Record<string, unknown>;
+	return typeof h.ACTIVE === 'number' && typeof h.INACTIVE === 'number';
+}
+
+export function isSequenceListResponse(value: unknown): value is SequenceListResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!isSequenceHeader(o.header) || !Array.isArray(o.detail)) {
+		return false;
+	}
+	return o.detail.every(isProcessSequence);
+}
+
+export function isSequenceByIdResponse(value: unknown): value is SequenceByIdResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return isSequenceHeader(o.header) && isProcessSequence(o.detail);
+}
+
+function isProcessSequenceBasic(value: unknown): value is ProcessSequenceBasic {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const b = value as Record<string, unknown>;
+	return (
+		typeof b.id === 'number' &&
+		typeof b.status === 'string' &&
+		typeof b.sequenceId === 'string' &&
+		typeof b.sequenceName === 'string' &&
+		typeof b.createdAt === 'string' &&
+		typeof b.updatedAt === 'string'
+	);
+}
+
+export function isSequenceMutationResponse(
+	value: unknown
+): value is CreateSequenceResponse | UpdateSequenceResponse | DeleteSequenceTaskResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return typeof o.message === 'string' && isProcessSequenceBasic(o.data);
+}

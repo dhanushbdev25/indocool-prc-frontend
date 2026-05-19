@@ -1,6 +1,24 @@
-import { type TimelineStep, type FormData } from '../types/execution.types';
+import { type TimelineStep, type FormData, type OperationWiseExecutionRow } from '../types/execution.types';
+import { mergeOperationWiseExecutionArrays, normalizeOperationWiseToArray } from './operationWiseMerge';
 
 export function buildAggregatedData(step: TimelineStep, formData: FormData): Record<string, unknown> {
+	if (step.type === 'setup') {
+		const out: Record<string, unknown> = {
+			prcmetadata: {
+				productionSetId: formData.productionSetId,
+				mouldId: formData.mouldId,
+				shift: formData.shift,
+				date: formData.date,
+				recordedByUserId: formData.recordedByUserId
+			}
+		};
+		const ow = formData.operationWiseData;
+		if (ow && Array.isArray(ow)) {
+			out.operationWiseData = ow as OperationWiseExecutionRow[];
+		}
+		return out;
+	}
+
 	if (step.type === 'rawMaterials') {
 		return { rawMaterials: formData };
 	}
@@ -30,6 +48,7 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 					validationStatus: entry.validationStatus,
 					humidity: entry.humidity,
 					temperature: entry.temperature,
+					canNumber: entry.canNumber ?? '',
 					actualQuantity: entry.actualQuantity,
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					acknowledged: (formData as any).acknowledgments?.[entry.id] || false
@@ -97,8 +116,33 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 				if (existingParamData.annotations && Array.isArray(existingParamData.annotations)) {
 					paramData.annotations = existingParamData.annotations;
 				}
+				if (
+					existingParamData.defectCounts &&
+					typeof existingParamData.defectCounts === 'object' &&
+					!Array.isArray(existingParamData.defectCounts) &&
+					Object.keys(existingParamData.defectCounts as object).length > 0
+				) {
+					paramData.defectCounts = existingParamData.defectCounts;
+				}
+				if (existingParamData.rowAnnotations && Array.isArray(existingParamData.rowAnnotations)) {
+					paramData.rowAnnotations = existingParamData.rowAnnotations;
+				}
 			} else {
 				// Data is in flat format - process it
+				// Fixed-table: data is pre-structured as { [paramId]_fixedTable: [...rows] }
+				if (param.type === 'fixed-table') {
+					const ftKey = `${paramId}_fixedTable`;
+					const rowAnnotationsKey = `${paramId}_fixedTable_rowAnnotations`;
+					const ftData = formData[ftKey];
+					if (Array.isArray(ftData)) {
+						paramData.value = ftData;
+					}
+					const rowAnnotations = formData[rowAnnotationsKey];
+					if (Array.isArray(rowAnnotations)) {
+						paramData.rowAnnotations = rowAnnotations;
+					}
+				}
+
 				const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
 				if (isTableType && param.columns) {
@@ -169,11 +213,19 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 					}
 				}
 
-				// Handle annotations for this parameter
+				// Handle annotations / defect counts for this parameter
 				if (formData[paramId] && typeof formData[paramId] === 'object') {
 					const paramFormData = formData[paramId] as Record<string, unknown>;
 					if (paramFormData.annotations && Array.isArray(paramFormData.annotations)) {
 						paramData.annotations = paramFormData.annotations;
+					}
+					if (
+						paramFormData.defectCounts &&
+						typeof paramFormData.defectCounts === 'object' &&
+						!Array.isArray(paramFormData.defectCounts) &&
+						Object.keys(paramFormData.defectCounts as object).length > 0
+					) {
+						paramData.defectCounts = paramFormData.defectCounts;
 					}
 				}
 			}
@@ -189,10 +241,27 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 		};
 	}
 
+	if (step.type === 'sapConfirmations') {
+		return {
+			sapConfirmations: {
+				stepCompleted: formData.stepCompleted === true
+			}
+		};
+	}
+
 	return {};
 }
 
 export function buildTimingData(step: TimelineStep, startTime: string, endTime: string): Record<string, unknown> {
+	if (step.type === 'setup') {
+		return {
+			prcmetadata: {
+				startTime,
+				endTime
+			}
+		};
+	}
+
 	if (step.type === 'rawMaterials') {
 		return {
 			rawMaterials: {
@@ -244,6 +313,15 @@ export function buildTimingData(step: TimelineStep, startTime: string, endTime: 
 		};
 	}
 
+	if (step.type === 'sapConfirmations') {
+		return {
+			sapConfirmations: {
+				startTime,
+				endTime
+			}
+		};
+	}
+
 	return {};
 }
 
@@ -259,6 +337,13 @@ export function mergeAggregatedData(
 	const merged = { ...existingData };
 
 	for (const [key, value] of Object.entries(newData)) {
+		if (key === 'operationWiseData' && Array.isArray(value)) {
+			merged[key] = mergeOperationWiseExecutionArrays(
+				normalizeOperationWiseToArray(merged[key]),
+				value as OperationWiseExecutionRow[]
+			);
+			continue;
+		}
 		if (merged[key] && typeof merged[key] === 'object' && typeof value === 'object') {
 			// Special handling for sequence step data to preserve responsiblePersons
 			if (isSequenceStepData(merged[key], value)) {
@@ -406,6 +491,14 @@ export function buildApprovalActionTimingData(
 		};
 	}
 
+	if (step.type === 'sapConfirmations') {
+		return {
+			sapConfirmations: {
+				[actionType]: timestamp
+			}
+		};
+	}
+
 	return {};
 }
 
@@ -415,6 +508,14 @@ export function buildUserApprovalData(
 	actionType: 'dataEnteredBy' | 'productionApprovedBy' | 'ctqApprovedBy' | 'stepCompletedBy',
 	userId: number
 ): Record<string, unknown> {
+	if (step.type === 'setup') {
+		return {
+			prcmetadata: {
+				[actionType]: userId
+			}
+		};
+	}
+
 	if (step.type === 'rawMaterials') {
 		return {
 			rawMaterials: {
@@ -463,6 +564,14 @@ export function buildUserApprovalData(
 
 		return {
 			[prcTemplateStepId.toString()]: {
+				[actionType]: userId
+			}
+		};
+	}
+
+	if (step.type === 'sapConfirmations') {
+		return {
+			sapConfirmations: {
 				[actionType]: userId
 			}
 		};

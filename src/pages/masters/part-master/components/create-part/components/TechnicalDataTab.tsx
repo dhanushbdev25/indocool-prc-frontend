@@ -16,7 +16,6 @@ import {
 	DialogTitle,
 	DialogContent,
 	DialogActions,
-	Alert,
 	Tabs,
 	Tab,
 	Grid
@@ -29,12 +28,11 @@ import {
 	Build as BuildIcon,
 	ContentCut as CutIcon
 } from '@mui/icons-material';
-import { useFieldArray, Control, FieldErrors } from 'react-hook-form';
+import { useFieldArray, Control } from 'react-hook-form';
 import { PartMasterFormData, defaultDrilling, defaultCutting } from '../schemas';
 
 interface TechnicalDataTabProps {
 	control: Control<PartMasterFormData>;
-	errors: FieldErrors<PartMasterFormData>;
 }
 
 interface TabPanelProps {
@@ -59,7 +57,7 @@ function TabPanel(props: TabPanelProps) {
 	);
 }
 
-const TechnicalDataTab = ({ control, errors }: TechnicalDataTabProps) => {
+const TechnicalDataTab = ({ control }: TechnicalDataTabProps) => {
 	const [activeSubTab, setActiveSubTab] = useState(0);
 	const [drillingDialogOpen, setDrillingDialogOpen] = useState(false);
 	const [cuttingDialogOpen, setCuttingDialogOpen] = useState(false);
@@ -177,11 +175,6 @@ const TechnicalDataTab = ({ control, errors }: TechnicalDataTabProps) => {
 			</Box>
 
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-				{(errors.drilling || errors.cutting) && (
-					<Alert severity="error" sx={{ mb: 3 }}>
-						{errors.drilling?.message || errors.cutting?.message}
-					</Alert>
-				)}
 
 				<Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
 					<Tabs value={activeSubTab} onChange={handleSubTabChange} aria-label="technical data tabs">

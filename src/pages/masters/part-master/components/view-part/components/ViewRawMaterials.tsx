@@ -35,10 +35,10 @@ const ViewRawMaterials = ({ rawMaterials }: ViewRawMaterialsProps) => {
 		return (
 			<Paper sx={{ p: 3, borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
 				<Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: '#333' }}>
-					Raw Materials
+					Bill of Material
 				</Typography>
 				<Typography variant="body1" color="textSecondary" textAlign="center" sx={{ py: 4 }}>
-					No raw materials configured for this part
+					No bill of material entries configured for this part
 				</Typography>
 			</Paper>
 		);
@@ -47,7 +47,7 @@ const ViewRawMaterials = ({ rawMaterials }: ViewRawMaterialsProps) => {
 	return (
 		<Paper sx={{ p: 3, borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
 			<Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#333' }}>
-				Raw Materials ({rawMaterials.length})
+				Bill of Material ({rawMaterials.length})
 			</Typography>
 
 			<TableContainer>
@@ -59,7 +59,6 @@ const ViewRawMaterials = ({ rawMaterials }: ViewRawMaterialsProps) => {
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Material Code</TableCell>
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Quantity</TableCell>
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>UOM</TableCell>
-							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Batching</TableCell>
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Splitting</TableCell>
 							<TableCell sx={{ fontWeight: 600, color: '#333' }}>Version</TableCell>
 						</TableRow>
@@ -81,7 +80,6 @@ const ViewRawMaterials = ({ rawMaterials }: ViewRawMaterialsProps) => {
 									<TableCell sx={{ color: '#666' }}>{material.materialCode}</TableCell>
 									<TableCell sx={{ color: '#666' }}>{material.quantity}</TableCell>
 									<TableCell sx={{ color: '#666' }}>{material.uom}</TableCell>
-									<TableCell sx={{ color: '#666' }}>{material.batching ? 'Yes' : 'No'}</TableCell>
 									<TableCell sx={{ color: '#666' }}>{material.splitting ? 'Yes' : 'No'}</TableCell>
 									<TableCell sx={{ color: '#666' }}>v{material.version}</TableCell>
 								</TableRow>
@@ -89,7 +87,7 @@ const ViewRawMaterials = ({ rawMaterials }: ViewRawMaterialsProps) => {
 									material.splittingConfiguration &&
 									material.splittingConfiguration.length > 0 && (
 										<TableRow>
-											<TableCell colSpan={8} sx={{ py: 0 }}>
+											<TableCell colSpan={7} sx={{ py: 0 }}>
 												<Collapse in={expandedRows.has(index)} timeout="auto" unmountOnExit>
 													<Box sx={{ margin: 1 }}>
 														<Typography

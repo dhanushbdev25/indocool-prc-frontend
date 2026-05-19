@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
 	Box,
 	Typography,
@@ -21,7 +21,10 @@ import {
 	ButtonGroup,
 	Menu,
 	MenuItem,
-	Collapse
+	Collapse,
+	Autocomplete,
+	CircularProgress,
+	Tooltip
 } from '@mui/material';
 import {
 	ArrowBack,
@@ -36,10 +39,111 @@ import {
 	Warning,
 	Error as ErrorIcon
 } from '@mui/icons-material';
-import { type StepPreviewData } from '../../../types/execution.types';
+import { type StepPreviewData, type ProceedFromPreviewPayload } from '../../../types/execution.types';
+import { formatExecutionDuration } from '../../../utils/timelineCardTiming';
+import { useFetchOperationDelayReasonComboQuery } from '../../../../../store/api/business/prc-execution/prc-execution.api';
+import { type OperationDelayReasonComboOption } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 import ImageDisplay from './ImageDisplay';
 import { debugDataTransformation } from '../../../utils/dataTransformers';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
+import { toFileRenderUrl } from '../../../../../utils/fileUrl';
+import {
+	formatOkNotOkTypeForDisplay,
+	formatOkNotOkValueForDisplay,
+	isNegativeOkNotOk
+} from '../../../../../utils/okNotOkLabels';
+
+import {
+	findMatchingPreviewFile,
+	buildPreviewImageUrl,
+	type PreviewAnnotation
+} from '../../../utils/inspectionPreviewImageHelpers';
+import { normalizeInspectionStepAggregatedData } from '../../../utils/inspectionAggregatedNormalization';
+
+const COMMENT_PREVIEW_MAX_CHARS = 50;
+
+const truncateCommentForPreview = (text: string, maxChars = COMMENT_PREVIEW_MAX_CHARS) => {
+	const t = text.trim();
+	if (t.length <= maxChars) {
+		return { display: t, full: t, isTruncated: false };
+	}
+	return { display: `${t.slice(0, maxChars)}…`, full: t, isTruncated: true };
+};
+
+type PreviewRowAnnotationEntry = {
+	rowIndex?: number;
+	annotations?: PreviewAnnotation[];
+};
+
+const normalizePreviewTargetType = (t: string | undefined): string =>
+	typeof t === 'string' ? t.trim().toLowerCase() : '';
+
+/** Range or exact-value numeric targets (not ok/not ok, not table). */
+const isNumericTargetValueType = (t: string | undefined): boolean => {
+	const n = normalizePreviewTargetType(t);
+	return n === 'range' || n === 'exact value';
+};
+
+const isExactPreviewTarget = (t: string | undefined): boolean => normalizePreviewTargetType(t) === 'exact value';
+
+const formatSignedDeviationPreview = (measured: number, target: number): string => {
+	const delta = measured - target;
+	if (!Number.isFinite(delta)) return '';
+	if (delta === 0) return '0';
+	const abs = Math.abs(delta);
+	const dec = abs.toFixed(6).replace(/\.?0+$/, '');
+	return `${delta > 0 ? '+' : '-'}${dec}`;
+};
+
+const formatSequenceNumericValueForPreview = (value: unknown, uom: string | undefined): string => {
+	if (value === undefined || value === null) return '';
+	const suffix = uom && uom !== 'None' ? ` ${uom}` : '';
+	if (Array.isArray(value)) {
+		const parts = value.map(v => {
+			if (typeof v === 'object' && v !== null && 'value' in v) {
+				return String((v as Record<string, unknown>).value ?? '');
+			}
+			return String(v);
+		});
+		return `${parts.join(', ')}${suffix}`.trim();
+	}
+	if (typeof value === 'object') {
+		const valueObj = value as Record<string, unknown>;
+		if ('value' in valueObj) {
+			return formatSequenceNumericValueForPreview(valueObj.value, uom);
+		}
+		if ('data' in valueObj) {
+			return formatSequenceNumericValueForPreview(valueObj.data, uom);
+		}
+		return '';
+	}
+	return `${String(value)}${suffix}`.trim();
+};
+
+const NotOkCommentPreview = ({ comment }: { comment: string }) => {
+	const { display, full, isTruncated } = truncateCommentForPreview(comment);
+	const body = (
+		<Typography
+			variant="caption"
+			sx={{
+				color: '#d32f2f',
+				display: 'block',
+				mt: 0.5,
+				...(isTruncated ? { cursor: 'help' as const } : {})
+			}}
+		>
+			Comment: {display}
+		</Typography>
+	);
+	if (!isTruncated) {
+		return body;
+	}
+	return (
+		<Tooltip title={full} enterDelay={300} leaveDelay={0}>
+			<span style={{ display: 'block' }}>{body}</span>
+		</Tooltip>
+	);
+};
 
 interface StepPreviewProps {
 	previewData: StepPreviewData;
@@ -47,8 +151,10 @@ interface StepPreviewProps {
 	onApproveProduction: () => void;
 	onApproveCTQ: () => void;
 	onPartialApproveCTQ: () => void;
-	onProceedToNext: (timingExceededRemarks?: string) => void;
+	onProceedToNext: (payload?: ProceedFromPreviewPayload) => void;
 	onBackToStepGroup?: () => void;
+	/** Read-only embed (e.g. consolidated PDF/report): no approvals, no delay inputs, full-height tables. */
+	embeddedReportMode?: boolean;
 }
 
 const StepPreview = ({
@@ -58,7 +164,8 @@ const StepPreview = ({
 	onApproveCTQ,
 	onPartialApproveCTQ,
 	onProceedToNext,
-	onBackToStepGroup
+	onBackToStepGroup,
+	embeddedReportMode = false
 }: StepPreviewProps) => {
 	const { currentRole } = useCurrentRole();
 	// Dynamic role checks for inspection steps based on approveByProduction and approveByQuality
@@ -93,16 +200,9 @@ const StepPreview = ({
 		});
 	};
 	const [timingExceededRemarks, setTimingExceededRemarks] = useState('');
+	const [selectedDelayReason, setSelectedDelayReason] = useState<OperationDelayReasonComboOption | null>(null);
 	const [ctqMenuAnchor, setCtqMenuAnchor] = useState<null | HTMLElement>(null);
 	const [ctqApprovalMode, setCtqApprovalMode] = useState<'full' | 'partial'>('full');
-
-	// Helper function to format seconds to HH:MM:SS
-	const formatSecondsToTime = (seconds: number): string => {
-		const hours = Math.floor(seconds / 3600);
-		const mins = Math.floor((seconds % 3600) / 60);
-		const secs = Math.round(seconds % 60);
-		return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-	};
 
 	// Helper functions for validation status display
 	const getValidationIcon = (status: 'Accepted' | 'Lesser' | 'Greater') => {
@@ -116,22 +216,21 @@ const StepPreview = ({
 		}
 	};
 
-	const getValidationChip = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+	const getValidationChip = (
+		status: 'Accepted' | 'Lesser' | 'Greater',
+		ctx?: { isExact: boolean; measured: number; target: number }
+	) => {
 		const color = status === 'Accepted' ? 'success' : status === 'Lesser' ? 'warning' : 'error';
+		if (ctx?.isExact) {
+			const label =
+				status === 'Accepted'
+					? 'Matches target'
+					: `Deviation: ${formatSignedDeviationPreview(ctx.measured, ctx.target)}`;
+			return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
+		}
 		const label = `Range: ${status}`;
-
 		return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
 	};
-
-	// Debug logging
-	console.log('StepPreview Debug:', {
-		previewData,
-		productionApproved,
-		ctqApproved,
-		stepCompleted: previewData.stepCompleted,
-		ctq: previewData.ctq,
-		canProceed: productionApproved && (!previewData.ctq || ctqApproved) && !previewData.stepCompleted
-	});
 
 	const handleApproveProduction = () => {
 		setProductionApproved(true);
@@ -166,134 +265,169 @@ const StepPreview = ({
 		setCtqMenuAnchor(null);
 	};
 
+	const {
+		data: operationDelayReasonOptions = [],
+		isLoading: isDelayReasonLoading,
+		isFetching: isDelayReasonFetching
+	} = useFetchOperationDelayReasonComboQuery(undefined, {
+		skip: embeddedReportMode || previewData.type !== 'sequence' || !previewData.timingExceeded
+	});
+
+	const delayReasonComboBusy = isDelayReasonLoading || isDelayReasonFetching;
+
+	// Hydrate delay reason from saved execution data only. Do not clear when code is missing — the
+	// combo list loading would otherwise wipe the user's selection before submit.
+	/* eslint-disable react-hooks/set-state-in-effect -- sync selected combo row when options load / step changes */
+	useEffect(() => {
+		if (embeddedReportMode) {
+			return;
+		}
+		if (previewData.type !== 'sequence' || !previewData.timingExceeded) {
+			setSelectedDelayReason(null);
+			return;
+		}
+		const code = previewData.timingExceededReasonCode;
+		if (code === undefined || code === null || code === '') {
+			return;
+		}
+		const match = operationDelayReasonOptions.find(
+			o => o.value === code || String(o.value) === String(code)
+		);
+		if (match) {
+			setSelectedDelayReason(match);
+		} else if (previewData.timingExceededReasonLabel) {
+			setSelectedDelayReason({
+				label: previewData.timingExceededReasonLabel,
+				value: String(code)
+			});
+		} else {
+			setSelectedDelayReason({ label: String(code), value: String(code) });
+		}
+	}, [
+		embeddedReportMode,
+		previewData.type,
+		previewData.timingExceeded,
+		previewData.timingExceededReasonCode,
+		previewData.timingExceededReasonLabel,
+		previewData.stepNumber,
+		operationDelayReasonOptions
+	]);
+	/* eslint-enable react-hooks/set-state-in-effect */
+
+	const remarksSatisfied =
+		timingExceededRemarks.trim().length > 0 || Boolean((previewData.timingExceededRemarks ?? '').trim().length > 0);
+	const persistedReasonOk = ((): boolean => {
+		const rc = previewData.timingExceededReasonCode;
+		if (rc === undefined || rc === null) return false;
+		if (typeof rc === 'number') return Number.isFinite(rc);
+		return String(rc).trim().length > 0;
+	})();
+	const reasonSatisfied = selectedDelayReason !== null || persistedReasonOk;
+	const delayDocumentationSatisfied =
+		embeddedReportMode ||
+		!previewData.timingExceeded ||
+		previewData.stepCompleted ||
+		(remarksSatisfied && reasonSatisfied);
+
 	const canProceed =
 		productionApproved &&
 		(!previewData.ctq || ctqApproved || partialCtqApproved) &&
 		!previewData.stepCompleted &&
-		(!previewData.timingExceeded || timingExceededRemarks.trim().length > 0);
+		delayDocumentationSatisfied;
+
+	console.log('StepPreview Debug:', {
+		previewData,
+		productionApproved,
+		ctqApproved,
+		stepCompleted: previewData.stepCompleted,
+		ctq: previewData.ctq,
+		canProceed,
+		delayDocumentationSatisfied
+	});
+
+	const parseOkNotOkValue = (rawValue: unknown): { value: string; notOkComment: string } => {
+		if (typeof rawValue === 'string') {
+			return { value: rawValue, notOkComment: '' };
+		}
+		if (typeof rawValue === 'object' && rawValue !== null) {
+			const rec = rawValue as Record<string, unknown>;
+			const value = rec.value;
+			const comments = rec.comments;
+			const legacy = rec.notOkComment;
+			const commentStr =
+				typeof comments === 'string' ? comments : typeof legacy === 'string' ? legacy : '';
+			return {
+				value: typeof value === 'string' ? value : '',
+				notOkComment: commentStr
+			};
+		}
+		return { value: '', notOkComment: '' };
+	};
+
+	/** Green check for OK, warning for OK with deviation, neutral circle when indeterminate (sequence / inspection status column). */
+	const renderOkNotOkResultStatusIcon = (parsed: { value: string; notOkComment: string }) => {
+		if (isNegativeOkNotOk(parsed.value)) {
+			return (
+				<Box
+					sx={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						width: 24,
+						height: 24,
+						borderRadius: '50%',
+						backgroundColor: '#fff4e5'
+					}}
+				>
+					<Warning sx={{ color: 'warning.main', fontSize: 16 }} />
+				</Box>
+			);
+		}
+		if (parsed.value === 'ok') {
+			return (
+				<Box
+					sx={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						width: 24,
+						height: 24,
+						borderRadius: '50%',
+						backgroundColor: '#e8f5e8'
+					}}
+				>
+					<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+				</Box>
+			);
+		}
+		return (
+			<Box
+				sx={{
+					display: 'flex',
+					alignItems: 'center',
+					justifyContent: 'center',
+					width: 24,
+					height: 24,
+					borderRadius: '50%',
+					backgroundColor: '#f5f5f5'
+				}}
+			>
+				<CheckCircle sx={{ color: '#9e9e9e', fontSize: 16 }} />
+			</Box>
+		);
+	};
 
 	const renderDataSummary = () => {
 		let { data } = previewData;
 
-		// Transform data if it's in the new nested format
+		// Normalize object-shaped annotations to arrays (shared with consolidated report)
 		if (previewData.type === 'inspection' && typeof data === 'object' && data !== null) {
-			console.log('🔍 StepPreview: Processing inspection data...', data);
-
-			// Check if data has the nested structure (prcAggregatedSteps format)
-			const dataKeys = Object.keys(data);
-			console.log('🔍 StepPreview: Data keys:', dataKeys);
-
-			// Check if any parameter has annotations in object format instead of array format
-			const needsTransformation = dataKeys.some(key => {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const value = (data as any)[key];
-				if (typeof value === 'object' && value !== null && 'annotations' in value) {
-					const annotations = value.annotations;
-					// Check if annotations is an object instead of an array
-					return typeof annotations === 'object' && annotations !== null && !Array.isArray(annotations);
-				}
-				return false;
-			});
-
-			if (needsTransformation) {
-				console.log('🔄 StepPreview: Detected object-based annotations, transforming...', data);
-
-				// Transform the data to convert object-based annotations to arrays
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				const transformedData: Record<string, any> = {};
-
-				Object.entries(data).forEach(([key, value]) => {
-					// Skip system parameters
-					if (['stepCompleted', 'productionApproved', 'ctqApproved', 'partialCtqApprove'].includes(key)) {
-						return;
-					}
-
-					if (typeof value === 'object' && value !== null) {
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						const transformedParam: any = {};
-
-						// Copy value if it exists
-						if ('value' in value) {
-							transformedParam.value = value.value;
-						}
-
-						// Transform annotations from object to array
-						if ('annotations' in value && value.annotations) {
-							const annotations = value.annotations;
-							if (typeof annotations === 'object' && !Array.isArray(annotations)) {
-								// Convert object to array and transform regions within each annotation
-								transformedParam.annotations = Object.keys(annotations)
-									.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-									.map(key => {
-										// eslint-disable-next-line @typescript-eslint/no-explicit-any
-										const annotation = (annotations as any)[key];
-										if (typeof annotation === 'object' && annotation !== null) {
-											const transformedAnnotation = { ...annotation };
-
-											// Transform regions from object to array
-											if ('regions' in annotation && annotation.regions) {
-												const regions = annotation.regions;
-												if (typeof regions === 'object' && !Array.isArray(regions)) {
-													// Convert regions object to array
-													transformedAnnotation.regions = Object.keys(regions)
-														.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-														.map(regionKey => {
-															// eslint-disable-next-line @typescript-eslint/no-explicit-any
-															const region = (regions as any)[regionKey];
-															if (typeof region === 'object' && region !== null) {
-																const transformedRegion = { ...region };
-
-																// Transform points from object to array
-																if ('points' in region && region.points) {
-																	const points = region.points;
-																	if (typeof points === 'object' && !Array.isArray(points)) {
-																		// Convert points object to array
-																		transformedRegion.points = Object.keys(points)
-																			.sort((a, b) => parseInt(a, 10) - parseInt(b, 10))
-																			.map(pointKey => {
-																				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-																				const point = (points as any)[pointKey];
-																				if (
-																					typeof point === 'object' &&
-																					point !== null &&
-																					'0' in point &&
-																					'1' in point
-																				) {
-																					return [point['0'], point['1']];
-																				}
-																				return [0, 0];
-																			});
-																	}
-																}
-
-																return transformedRegion;
-															}
-															return region;
-														});
-												}
-											}
-
-											return transformedAnnotation;
-										}
-										return annotation;
-									});
-							} else {
-								transformedParam.annotations = annotations;
-							}
-						}
-
-						// Only add if there's actual data
-						if (Object.keys(transformedParam).length > 0) {
-							transformedData[key] = transformedParam;
-						}
-					}
-				});
-
-				data = transformedData;
-				debugDataTransformation(previewData.data, data, 'StepPreview');
-			} else {
-				console.log('StepPreview: Data appears to be in expected format already');
+			const raw = data as Record<string, unknown>;
+			const normalized = normalizeInspectionStepAggregatedData(raw);
+			if (normalized !== raw) {
+				debugDataTransformation(raw, normalized, 'StepPreview');
 			}
+			data = normalized;
 		}
 
 		if (previewData.type === 'sequence') {
@@ -332,55 +466,122 @@ const StepPreview = ({
 									/>
 								</Box>
 								<Typography variant="body2" sx={{ color: '#bf360c', fontSize: '0.875rem' }}>
-									<strong>{formatSecondsToTime(previewData.actualDuration || 0)}</strong> actual vs{' '}
-									<strong>{formatSecondsToTime(previewData.expectedDuration || 0)}</strong> expected
+									<strong>{formatExecutionDuration(previewData.actualDuration || 0)}</strong> actual vs{' '}
+									<strong>{formatExecutionDuration(previewData.expectedDuration || 0)}</strong> expected
 								</Typography>
 							</Alert>
-							<TextField
-								fullWidth
-								multiline
-								rows={2}
-								label="Reason for delay"
-								placeholder="Brief explanation for the timing delay"
-								value={
-									previewData.stepCompleted
-										? previewData.timingExceededRemarks || 'No reason provided'
-										: timingExceededRemarks
-								}
-								onChange={e => setTimingExceededRemarks(e.target.value)}
-								required={!previewData.stepCompleted}
-								disabled={previewData.stepCompleted}
-								sx={{
-									mt: 2,
-									'& .MuiOutlinedInput-root': {
-										borderColor: !previewData.stepCompleted && !timingExceededRemarks.trim() ? '#f44336' : '#e0e0e0',
-										'&:hover .MuiOutlinedInput-notchedOutline': {
-											borderColor: !previewData.stepCompleted && !timingExceededRemarks.trim() ? '#f44336' : '#1976d2'
-										},
-										'&.Mui-disabled': {
-											backgroundColor: '#f5f5f5',
-											color: '#666'
+							{embeddedReportMode ? (
+								<Box sx={{ mt: 2, pl: 0.5 }}>
+									{(previewData.timingExceededReasonLabel != null ||
+										previewData.timingExceededReasonCode !== undefined) && (
+										<Typography variant="body2" sx={{ color: 'text.primary' }}>
+											<strong>Delay reason:</strong>{' '}
+											{previewData.timingExceededReasonLabel ??
+												(previewData.timingExceededReasonCode !== undefined
+													? String(previewData.timingExceededReasonCode)
+													: '—')}
+										</Typography>
+									)}
+									<Typography variant="body2" sx={{ mt: 0.75, color: 'text.secondary' }}>
+										<strong>Remarks:</strong>{' '}
+										{(previewData.timingExceededRemarks ?? '').trim() || '—'}
+									</Typography>
+								</Box>
+							) : (
+								<>
+									<Autocomplete<OperationDelayReasonComboOption, false, false, false>
+										fullWidth
+										sx={{ mt: 2 }}
+										options={operationDelayReasonOptions}
+										loading={delayReasonComboBusy}
+										value={selectedDelayReason}
+										onChange={(_, v) => setSelectedDelayReason(v)}
+										getOptionLabel={o => o.label}
+										isOptionEqualToValue={(a, b) => a.value === b.value}
+										disabled={previewData.stepCompleted}
+										renderInput={params => (
+											<TextField
+												{...params}
+												label="Operation delay reason"
+												placeholder="Select a reason code"
+												required={!previewData.stepCompleted}
+												error={!previewData.stepCompleted && !selectedDelayReason}
+												helperText={
+													!previewData.stepCompleted && !selectedDelayReason
+														? 'Required to proceed'
+														: undefined
+												}
+												InputProps={{
+													...params.InputProps,
+													endAdornment: (
+														<>
+															{delayReasonComboBusy ? (
+																<CircularProgress color="inherit" size={20} />
+															) : null}
+															{params.InputProps.endAdornment}
+														</>
+													)
+												}}
+											/>
+										)}
+									/>
+									<TextField
+										fullWidth
+										multiline
+										rows={2}
+										label="Reason for delay"
+										placeholder="Brief explanation for the timing delay"
+										value={
+											previewData.stepCompleted
+												? previewData.timingExceededRemarks || 'No reason provided'
+												: timingExceededRemarks
 										}
-									}
-								}}
-								error={!previewData.stepCompleted && !timingExceededRemarks.trim()}
-								helperText={'Required to proceed'}
-							/>
+										onChange={e => setTimingExceededRemarks(e.target.value)}
+										required={!previewData.stepCompleted}
+										disabled={previewData.stepCompleted}
+										sx={{
+											mt: 2,
+											'& .MuiOutlinedInput-root': {
+												borderColor:
+													!previewData.stepCompleted && !timingExceededRemarks.trim()
+														? '#f44336'
+														: '#e0e0e0',
+												'&:hover .MuiOutlinedInput-notchedOutline': {
+													borderColor:
+														!previewData.stepCompleted && !timingExceededRemarks.trim()
+															? '#f44336'
+															: '#1976d2'
+												},
+												'&.Mui-disabled': {
+													backgroundColor: '#f5f5f5',
+													color: '#666'
+												}
+											}
+										}}
+										error={!previewData.stepCompleted && !timingExceededRemarks.trim()}
+										helperText={'Required to proceed'}
+									/>
+								</>
+							)}
 						</Box>
 					)}
 					<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 						Measurement Report ({Array.isArray(data) ? data.length : 0} measurements)
 					</Typography>
-					<TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
-						<Table size="small" stickyHeader>
+					<TableContainer
+						component={Paper}
+						variant="outlined"
+						sx={embeddedReportMode ? undefined : { maxHeight: 400 }}
+					>
+						<Table size="small" stickyHeader={!embeddedReportMode}>
 							<TableHead>
 								<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Step</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Parameter</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Value</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Type</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target Value Type</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Method</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Range</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
 								</TableRow>
 							</TableHead>
@@ -429,11 +630,72 @@ const StepPreview = ({
 													{measurement.parameterDescription}
 												</Typography>
 											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+										<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+											{measurement.targetValueType === 'table' && Array.isArray(measurement.value) ? (
+												<Box>
+													<Chip
+														label={`Table (${measurement.value.length} rows)`}
+														size="small"
+														sx={{ backgroundColor: '#f3e8ff', color: '#7b1fa2', fontSize: '0.7rem', height: 20 }}
+													/>
+													{measurement.tableConfig && (
+														<Box
+															component="table"
+															sx={{
+																mt: 1,
+																width: '100%',
+																borderCollapse: 'collapse',
+																fontSize: '0.75rem',
+																'& th, & td': { border: '1px solid #e0e0e0', p: 0.5, textAlign: 'left' },
+																'& th': { backgroundColor: '#f5f5f5', fontWeight: 600 }
+															}}
+														>
+															<thead>
+																<tr>
+																	{measurement.tableConfig.columns?.map((col: { name: string }) => (
+																		<th key={col.name}>{col.name}</th>
+																	))}
+																</tr>
+															</thead>
+															<tbody>
+																{measurement.value.map((row: Record<string, string>, rIdx: number) => (
+																	<tr key={rIdx}>
+																		{measurement.tableConfig.columns?.map((col: { name: string }) => {
+																			const cellConfig = measurement.tableConfig.rows?.[rIdx]?.cells?.[col.name];
+																			return (
+																				<td
+																					key={col.name}
+																					style={cellConfig?.readOnly ? { backgroundColor: '#f9f9f9', fontStyle: 'italic' } : undefined}
+																				>
+																					{row[col.name] || '-'}
+																				</td>
+																			);
+																		})}
+																	</tr>
+																))}
+															</tbody>
+														</Box>
+													)}
+												</Box>
+											) : (
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-													{measurement.stepType === 'Check' || measurement.stepType === 'Inspection' ? (
+													{isNumericTargetValueType(measurement.targetValueType) ? (
+														<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+															{formatSequenceNumericValueForPreview(measurement.value, measurement.uom)}
+														</Typography>
+													) : measurement.targetValueType === 'ok/not ok' ? (
 														<Chip
-															label={measurement.value}
+															label={(() => {
+																const parsedValue = parseOkNotOkValue(measurement.value);
+																if (parsedValue.value === 'ok' || isNegativeOkNotOk(parsedValue.value)) {
+																	return formatOkNotOkValueForDisplay(parsedValue.value);
+																}
+																return (
+																	parsedValue.value ||
+																	formatSequenceNumericValueForPreview(measurement.value, measurement.uom) ||
+																	'-'
+																);
+															})()}
 															size="small"
 															sx={{
 																backgroundColor: '#e3f2fd',
@@ -444,52 +706,135 @@ const StepPreview = ({
 														/>
 													) : (
 														<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-															{Array.isArray(measurement.value) ? measurement.value.join(', ') : measurement.value}{' '}
-															{measurement.uom && measurement.uom !== 'None' ? measurement.uom : ''}
+															{formatSequenceNumericValueForPreview(measurement.value, measurement.uom)}
 														</Typography>
 													)}
 												</Box>
-											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{measurement.stepType}</TableCell>
+											)}
+											{(() => {
+												const parsedValue = parseOkNotOkValue(measurement.value);
+												const shouldShowComment =
+													isNegativeOkNotOk(parsedValue.value) && parsedValue.notOkComment.trim().length > 0;
+												if (!shouldShowComment) return null;
+												return <NotOkCommentPreview comment={parsedValue.notOkComment} />;
+											})()}
+											{typeof measurement.instrumentId === 'string' && measurement.instrumentId.trim() && (
+												<Typography variant="caption" sx={{ color: '#6a1b9a', display: 'block', mt: 0.5 }}>
+													Instrument id: {measurement.instrumentId}
+												</Typography>
+											)}
+										</TableCell>
+											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{formatOkNotOkTypeForDisplay(measurement.targetValueType)}</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
 												{measurement.evaluationMethod}
 											</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												{measurement.stepType === 'Measurement' &&
-												measurement.minimumAcceptanceValue &&
-												measurement.maximumAcceptanceValue ? (
-													<Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
-														{measurement.minimumAcceptanceValue} - {measurement.maximumAcceptanceValue}{' '}
-														{measurement.uom && measurement.uom !== 'None' ? measurement.uom : ''}
-													</Typography>
-												) : (
-													<Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
-														N/A
-													</Typography>
-												)}
+												{(() => {
+													const uom =
+														measurement.uom && measurement.uom !== 'None' ? ` ${measurement.uom}` : '';
+													const minV = measurement.minimumAcceptanceValue;
+													const maxV = measurement.maximumAcceptanceValue;
+													const isExact = isExactPreviewTarget(measurement.targetValueType);
+													if (
+														(minV === undefined || minV === null || minV === '') &&
+														(maxV === undefined || maxV === null || maxV === '')
+													) {
+														return (
+															<Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
+																N/A
+															</Typography>
+														);
+													}
+													if (isExact) {
+														const t = minV ?? maxV;
+														return (
+															<Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
+																{t}
+																{uom}
+															</Typography>
+														);
+													}
+													if (
+														maxV != null &&
+														minV != null &&
+														String(minV).length > 0 &&
+														String(maxV).length > 0
+													) {
+														return (
+															<Typography variant="body2" sx={{ color: '#666', fontWeight: 500 }}>
+																{minV} - {maxV}
+																{uom}
+															</Typography>
+														);
+													}
+													return (
+														<Typography variant="body2" sx={{ color: '#999', fontStyle: 'italic' }}>
+															N/A
+														</Typography>
+													);
+												})()}
 											</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												{measurement.validationStatus &&
-												measurement.minimumAcceptanceValue &&
-												measurement.maximumAcceptanceValue ? (
-													<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-														{getValidationChip(measurement.validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
-													</Box>
-												) : (
-													<Box
-														sx={{
-															display: 'flex',
-															alignItems: 'center',
-															justifyContent: 'center',
-															width: 24,
-															height: 24,
-															borderRadius: '50%',
-															backgroundColor: '#e8f5e8'
-														}}
-													>
-														<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
-													</Box>
-												)}
+												{(() => {
+													const minV = measurement.minimumAcceptanceValue;
+													const maxV = measurement.maximumAcceptanceValue;
+													const hasTarget =
+														(minV !== undefined && minV !== null && minV !== '') ||
+														(maxV !== undefined && maxV !== null && maxV !== '');
+													if (!hasTarget || !measurement.validationStatus) {
+														const parsed = parseOkNotOkValue(measurement.value);
+														const isOkNotOkRow =
+															measurement.targetValueType === 'ok/not ok' ||
+															(measurement.targetValueType === 'ok/not ok' &&
+																(parsed.value === 'ok' || parsed.value === 'not ok'));
+														if (isOkNotOkRow) {
+															return renderOkNotOkResultStatusIcon(parsed);
+														}
+														return (
+															<Box
+																sx={{
+																	display: 'flex',
+																	alignItems: 'center',
+																	justifyContent: 'center',
+																	width: 24,
+																	height: 24,
+																	borderRadius: '50%',
+																	backgroundColor: '#e8f5e8'
+																}}
+															>
+																<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+															</Box>
+														);
+													}
+													const targetNum = parseFloat(
+														String(minV ?? maxV ?? '')
+													);
+													const measuredNum = parseFloat(
+														String(
+															typeof measurement.value === 'object' && measurement.value !== null
+																? (measurement.value as Record<string, unknown>).value ?? ''
+																: measurement.value ?? ''
+														)
+													);
+													const chipCtx =
+														isExactPreviewTarget(measurement.targetValueType) &&
+														!Number.isNaN(targetNum) &&
+														!Number.isNaN(measuredNum)
+															? {
+																	isExact: true as const,
+																	measured: measuredNum,
+																	target: targetNum
+																}
+															: undefined;
+													return (
+														<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+															{getValidationChip(
+																measurement.validationStatus as 'Accepted' | 'Lesser' | 'Greater',
+																chipCtx
+															)}
+														</Box>
+													);
+												})()}
 											</TableCell>
 										</TableRow>
 									))
@@ -611,7 +956,7 @@ const StepPreview = ({
 													}}
 												>
 													<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', fontSize: '0.9rem' }}>
-														Step {stepGroup.stepId}: {stepGroup.parameterDescription}
+														{stepGroup.parameterDescription}
 													</Typography>
 												</Box>
 
@@ -659,6 +1004,101 @@ const StepPreview = ({
 			// Handle inspection data - show as detailed inspection report table
 			const inspectionParams = previewData.inspectionParameters || [];
 			const inspectionMeta = previewData.inspectionMetadata;
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const hasAnyAnnotationData = Object.entries(data).some(([key, parameterData]: [string, any]) => {
+				if (
+					key === 'data' ||
+					key === 'startTime' ||
+					key === 'endTime' ||
+					key === 'stepCompleted' ||
+					key === 'productionApproved' ||
+					key === 'ctqApproved'
+				) {
+					return false;
+				}
+				if (typeof parameterData !== 'object' || parameterData === null) return false;
+				const direct = Array.isArray(parameterData.annotations) && parameterData.annotations.length > 0;
+				const row = Array.isArray(parameterData.rowAnnotations)
+					? parameterData.rowAnnotations.some(
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							ra => Array.isArray((ra as any).annotations) && (ra as any).annotations.length > 0
+					  )
+					: false;
+				return direct || row;
+			});
+
+			type PreviewRegion = Record<string, unknown>;
+			const renderAnnotationRegions = (annotation: PreviewAnnotation) => {
+				if (!annotation?.regions || annotation.regions.length === 0) return null;
+				return (
+					<Box sx={{ mt: 1 }}>
+						<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
+							Annotation Details:
+						</Typography>
+						{annotation.regions.map((region, regionIndex: number) => {
+							const regionObj = region as PreviewRegion;
+							const regionType = String(regionObj.type || '');
+							return (
+							<Box
+								key={regionIndex}
+								sx={{
+									mt: 0.5,
+									p: 1,
+									backgroundColor: '#fff',
+									borderRadius: 0.5,
+									border: '1px solid #e0e0e0'
+								}}
+							>
+								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+									<Chip
+										label={`${regionIndex + 1}`}
+										size="small"
+										sx={{
+											backgroundColor: '#f44336',
+											color: 'white',
+											fontSize: '0.6rem',
+											fontWeight: 'bold',
+											height: 16,
+											minWidth: 20,
+											'& .MuiChip-label': { px: 0.5 }
+										}}
+									/>
+									<Chip
+											label={regionType}
+										size="small"
+										sx={{
+												backgroundColor: regionType === 'point' ? '#e8f5e8' : '#fff3e0',
+												color: regionType === 'point' ? '#4caf50' : '#f57c00',
+											fontSize: '0.6rem',
+											height: 16
+										}}
+									/>
+								</Box>
+									{regionObj.comment && (
+									<Typography variant="body2" sx={{ fontSize: '0.8rem', color: '#333', fontStyle: 'italic' }}>
+											"{String(regionObj.comment)}"
+									</Typography>
+								)}
+									{regionObj.category && (
+									<Box sx={{ mt: 0.5 }}>
+										<Chip
+												label={String(regionObj.category)}
+											size="small"
+											sx={{
+												backgroundColor: '#e3f2fd',
+												color: '#1976d2',
+												fontSize: '0.6rem',
+												height: 18
+											}}
+										/>
+									</Box>
+								)}
+							</Box>
+						);
+						})}
+					</Box>
+				);
+			};
 
 			// Debug logging for inspection preview
 			console.log('🖼️ INSPECTION_PREVIEW_DEBUG:', {
@@ -681,15 +1121,7 @@ const StepPreview = ({
 					{inspectionMeta && (
 						<Box sx={{ mb: 2, p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}>
 							<Grid container spacing={1.5}>
-								<Grid size={{ xs: 6, sm: 3 }}>
-									<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
-										Inspection ID
-									</Typography>
-									<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#1565c0' }}>
-										{inspectionMeta.inspectionId}
-									</Typography>
-								</Grid>
-								<Grid size={{ xs: 6, sm: 3 }}>
+								<Grid size={{ xs: 6, sm: 4 }}>
 									<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
 										Type
 									</Typography>
@@ -697,7 +1129,7 @@ const StepPreview = ({
 										{inspectionMeta.type}
 									</Typography>
 								</Grid>
-								<Grid size={{ xs: 6, sm: 3 }}>
+								<Grid size={{ xs: 6, sm: 4 }}>
 									<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
 										Status
 									</Typography>
@@ -705,7 +1137,7 @@ const StepPreview = ({
 										{inspectionMeta.status}
 									</Typography>
 								</Grid>
-								<Grid size={{ xs: 6, sm: 3 }}>
+								<Grid size={{ xs: 6, sm: 4 }}>
 									<Typography variant="caption" sx={{ fontWeight: 600, color: '#1565c0', fontSize: '0.75rem' }}>
 										Version
 									</Typography>
@@ -732,8 +1164,12 @@ const StepPreview = ({
 						}{' '}
 						parameters)
 					</Typography>
-					<TableContainer component={Paper} variant="outlined" sx={{ maxHeight: 400 }}>
-						<Table size="small" stickyHeader>
+					<TableContainer
+						component={Paper}
+						variant="outlined"
+						sx={embeddedReportMode ? undefined : { maxHeight: 400 }}
+					>
+						<Table size="small" stickyHeader={!embeddedReportMode}>
 							<TableHead>
 								<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>#</TableCell>
@@ -761,38 +1197,44 @@ const StepPreview = ({
 										const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
 
 										// Handle different data structures
-										let displayValue = '';
-										let hasAnnotations = false;
-										let isMultiColumn = false;
-										let isTableType = false;
-										let tableRowCount = 0;
-										let ctqStatus = paramMeta?.ctq || false;
-										let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
-										let parameterType = paramMeta?.type || 'text';
-										let specification = paramMeta?.specification || 'N/A';
+									let displayValue = '';
+									let hasAnnotations = false;
+									let isMultiColumn = false;
+									let isTableType = false;
+									let isFixedTableType = false;
+									let tableRowCount = 0;
+									let ctqStatus = paramMeta?.ctq || false;
+									let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
+									let parameterType = paramMeta?.type || 'text';
+									let specification = paramMeta?.specification || 'N/A';
+									let notOkComment = '';
+									let okNotOkMultiColumnHasNegative = false;
+									let singleOkNotOkParsed: { value: string; notOkComment: string } | null = null;
 
-										// Check if this is a table type parameter
-										if (parameterType === 'table' && paramMeta?.columns && paramMeta.columns.length > 0) {
-											isTableType = true;
+									if (parameterType === 'table' && paramMeta?.columns && paramMeta.columns.length > 0) {
+										isTableType = true;
+									}
+
+									if (parameterType === 'fixed-table' && (paramMeta as Record<string, unknown>)?.tableConfig) {
+										isFixedTableType = true;
+									}
+
+									if (typeof parameterData === 'object' && parameterData !== null) {
+										const paramObj = parameterData as Record<string, unknown>;
+
+										if (paramObj.annotations && Array.isArray(paramObj.annotations)) {
+											hasAnnotations = true;
 										}
 
-										if (typeof parameterData === 'object' && parameterData !== null) {
-											// Handle object structure: { "value": "1", "annotations": [...] }
-											const paramObj = parameterData as Record<string, unknown>;
-
-											// Check for annotations
-											if (paramObj.annotations && Array.isArray(paramObj.annotations)) {
-												hasAnnotations = true;
-											}
-
-											// Handle value
-											if (paramObj.value) {
-												if (isTableType && Array.isArray(paramObj.value)) {
-													// Table type: value is an array of row objects
-													isMultiColumn = true; // Use same expansion logic
-													tableRowCount = (paramObj.value as unknown[]).length;
-													displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
-												} else if (
+										if (paramObj.value) {
+											if (isFixedTableType && Array.isArray(paramObj.value)) {
+												tableRowCount = (paramObj.value as unknown[]).length;
+												displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
+											} else if (isTableType && Array.isArray(paramObj.value)) {
+												isMultiColumn = true;
+												tableRowCount = (paramObj.value as unknown[]).length;
+												displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
+											} else if (
 													typeof paramObj.value === 'object' &&
 													paramObj.value !== null &&
 													!Array.isArray(paramObj.value)
@@ -804,7 +1246,18 @@ const StepPreview = ({
 														.map(([col, val]) => {
 															// Format values based on parameter type
 															if (parameterType === 'ok/not ok') {
-																return `${col}: ${val === 'ok' ? 'OK' : val === 'not ok' ? 'Not OK' : val}`;
+																const parsedValue = parseOkNotOkValue(val);
+																if (isNegativeOkNotOk(parsedValue.value)) {
+																	okNotOkMultiColumnHasNegative = true;
+																}
+																const formatted = formatOkNotOkValueForDisplay(parsedValue.value);
+																const commentSuffix =
+																	isNegativeOkNotOk(parsedValue.value) && parsedValue.notOkComment.trim()
+																		? ` (Comment: ${
+																				truncateCommentForPreview(parsedValue.notOkComment).display
+																		  })`
+																		: '';
+																return `${col}: ${formatted}${commentSuffix}`;
 															} else if (parameterType === 'datetime') {
 																return `${col}: ${val}`;
 															}
@@ -813,10 +1266,17 @@ const StepPreview = ({
 														.join(', ');
 												} else {
 													// Single value
-													const value = String(paramObj.value);
 													if (parameterType === 'ok/not ok') {
-														displayValue = value === 'ok' ? 'OK' : value === 'not ok' ? 'Not OK' : value;
+														const parsedValue = parseOkNotOkValue(paramObj.value);
+														const value = parsedValue.value;
+														notOkComment =
+															parsedValue.notOkComment ||
+															(typeof paramObj.comments === 'string' ? String(paramObj.comments) : '') ||
+															(typeof paramObj.notOkComment === 'string' ? String(paramObj.notOkComment) : '');
+														singleOkNotOkParsed = { value, notOkComment };
+														displayValue = formatOkNotOkValueForDisplay(value);
 													} else {
+														const value = String(paramObj.value);
 														displayValue = value;
 													}
 												}
@@ -825,7 +1285,10 @@ const StepPreview = ({
 											// Simple string/number value
 											const value = String(parameterData);
 											if (parameterType === 'ok/not ok') {
-												displayValue = value === 'ok' ? 'OK' : value === 'not ok' ? 'Not OK' : value;
+												const p = parseOkNotOkValue(parameterData);
+												singleOkNotOkParsed = p;
+												notOkComment = p.notOkComment;
+												displayValue = formatOkNotOkValueForDisplay(p.value);
 											} else {
 												displayValue = value;
 											}
@@ -835,16 +1298,24 @@ const StepPreview = ({
 											<React.Fragment key={parameterId}>
 												{/* Main Row */}
 												<TableRow
-													sx={{
-														'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
-														'&:hover': { backgroundColor: '#f0f0f0' },
-														cursor: isMultiColumn || isTableType ? 'pointer' : 'default'
-													}}
-													onClick={isMultiColumn || isTableType ? () => toggleMultiValueParam(parameterId) : undefined}
-												>
-													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-														<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-															{(isMultiColumn || isTableType) && (
+												sx={{
+													'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
+													'&:hover': { backgroundColor: '#f0f0f0' },
+													cursor:
+														embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType)
+															? 'default'
+															: 'pointer'
+												}}
+												onClick={
+													embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType)
+														? undefined
+														: () => toggleMultiValueParam(parameterId)
+												}
+											>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+														{!embeddedReportMode &&
+															(isMultiColumn || isTableType || isFixedTableType) && (
 																<IconButton size="small" sx={{ p: 0.25 }}>
 																	{expandedMultiValueParams.has(parameterId) ? <ExpandLess /> : <ExpandMore />}
 																</IconButton>
@@ -894,6 +1365,19 @@ const StepPreview = ({
 																	}}
 																/>
 															)}
+															{isFixedTableType && (
+																<Chip
+																	label="Fixed Table"
+																	size="small"
+																	sx={{
+																		backgroundColor: '#f3e8ff',
+																		color: '#7b1fa2',
+																		fontSize: '0.6rem',
+																		height: 16,
+																		'& .MuiChip-label': { px: 0.5 }
+																	}}
+																/>
+															)}
 															{isMultiColumn && !isTableType && (
 																<Chip
 																	label="Multi"
@@ -922,13 +1406,17 @@ const StepPreview = ({
 															)}
 														</Box>
 													</TableCell>
-													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{parameterType}</TableCell>
-													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-														{isTableType ? (
-															<Typography variant="body2" sx={{ fontWeight: 600, color: '#0277bd' }}>
-																{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
-															</Typography>
-														) : isMultiColumn ? (
+													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{formatOkNotOkTypeForDisplay(parameterType)}</TableCell>
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													{isFixedTableType ? (
+														<Typography variant="body2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
+															{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
+														</Typography>
+													) : isTableType ? (
+														<Typography variant="body2" sx={{ fontWeight: 600, color: '#0277bd' }}>
+															{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
+														</Typography>
+													) : isMultiColumn ? (
 															<Typography variant="body2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
 																{
 																	Object.keys(
@@ -938,9 +1426,17 @@ const StepPreview = ({
 																fields
 															</Typography>
 														) : (
-															<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
-																{displayValue}
-															</Typography>
+															<>
+																<Typography variant="body2" sx={{ fontWeight: 600, color: '#1976d2' }}>
+																	{displayValue}
+																</Typography>
+																{parameterType === 'ok/not ok' &&
+																	singleOkNotOkParsed &&
+																	isNegativeOkNotOk(singleOkNotOkParsed.value) &&
+																	notOkComment.trim() && (
+																	<NotOkCommentPreview comment={notOkComment} />
+																)}
+															</>
 														)}
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
@@ -971,55 +1467,229 @@ const StepPreview = ({
 														</Typography>
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-														<Box
-															sx={{
-																display: 'flex',
-																alignItems: 'center',
-																justifyContent: 'center',
-																width: 24,
-																height: 24,
-																borderRadius: '50%',
-																backgroundColor: '#e8f5e8'
-															}}
-														>
-															<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
-														</Box>
+														{parameterType === 'ok/not ok' && !isTableType && !isFixedTableType ? (
+															(() => {
+																if (isMultiColumn) {
+																	return renderOkNotOkResultStatusIcon({
+																		value: okNotOkMultiColumnHasNegative ? 'not ok' : 'ok',
+																		notOkComment: ''
+																	});
+																}
+																if (singleOkNotOkParsed && isNegativeOkNotOk(singleOkNotOkParsed.value)) {
+																	return renderOkNotOkResultStatusIcon({
+																		value: 'not ok',
+																		notOkComment: ''
+																	});
+																}
+																if (singleOkNotOkParsed?.value === 'ok') {
+																	return renderOkNotOkResultStatusIcon({
+																		value: 'ok',
+																		notOkComment: ''
+																	});
+																}
+																return (
+																	<Box
+																		sx={{
+																			display: 'flex',
+																			alignItems: 'center',
+																			justifyContent: 'center',
+																			width: 24,
+																			height: 24,
+																			borderRadius: '50%',
+																			backgroundColor: '#e8f5e8'
+																		}}
+																	>
+																		<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+																	</Box>
+																);
+															})()
+														) : (
+															<Box
+																sx={{
+																	display: 'flex',
+																	alignItems: 'center',
+																	justifyContent: 'center',
+																	width: 24,
+																	height: 24,
+																	borderRadius: '50%',
+																	backgroundColor: '#e8f5e8'
+																}}
+															>
+																<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+															</Box>
+														)}
 													</TableCell>
 												</TableRow>
 
-												{/* Collapsible Detail Row for Multi-Column and Table Parameters */}
-												{isMultiColumn && (
+											{/* Collapsible Detail Row for Fixed-Table Parameters */}
+											{isFixedTableType && (
+												<TableRow>
+													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+														<Collapse
+															in={embeddedReportMode || expandedMultiValueParams.has(parameterId)}
+															timeout="auto"
+															unmountOnExit={!embeddedReportMode}
+														>
+															<Box sx={{ p: 2, backgroundColor: '#f0f4ff', borderRadius: '8px', m: 1 }}>
+																<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a237e' }}>
+																	{parameterName} - Fixed Table Data
+																</Typography>
+																{(() => {
+																	const tc = (paramMeta as Record<string, unknown>)?.tableConfig as {
+																		columns?: Array<{ name: string; type: string }>;
+																		rows?: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }>;
+																	} | null;
+																	const rows = Array.isArray((parameterData as Record<string, unknown>).value)
+																		? ((parameterData as Record<string, unknown>).value as Record<string, string>[])
+																		: [];
+																	const rowMappings = Array.isArray(paramMeta?.rowMappings) ? paramMeta.rowMappings : [];
+																	const rowAnnotations = Array.isArray((parameterData as Record<string, unknown>).rowAnnotations)
+																		? ((parameterData as Record<string, unknown>).rowAnnotations as Array<{
+																				rowIndex: number;
+																				annotations: Array<{
+																					imageFileName: string;
+																					imageUrl?: string;
+																					regions?: unknown[];
+																				}>;
+																			}>)
+																		: [];
+																	if (!tc?.columns) return <Typography variant="body2" color="text.secondary">No table configuration</Typography>;
+																	return (
+																		<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
+																			<Table size="small">
+																				<TableHead>
+																					<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
+																						{tc.columns.map(col => (
+																							<TableCell key={col.name} sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75, px: 1, borderRight: '1px solid #e0e0e0' }}>
+																								{col.name}
+																								<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}>
+																									{col.type}
+																								</Typography>
+																							</TableCell>
+																						))}
+																						<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75, px: 1 }}>
+																							Row Images
+																						</TableCell>
+																					</TableRow>
+																				</TableHead>
+																				<TableBody>
+																					{rows.map((row, rIdx) => (
+																						<TableRow key={rIdx} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
+																							{tc.columns!.map(col => {
+																								const cellConfig = tc.rows?.[rIdx]?.cells?.[col.name];
+																								const cellValue = row[col.name] || '';
+																								return (
+																									<TableCell
+																										key={col.name}
+																										sx={{
+																											fontSize: '0.75rem',
+																											py: 0.5,
+																											px: 1,
+																											borderRight: '1px solid #e0e0e0',
+																											maxWidth: 150,
+																											...(cellConfig?.readOnly ? { backgroundColor: '#f5f5f5', fontStyle: 'italic' } : {})
+																										}}
+																									>
+																										<Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cellValue}>
+																											{cellValue || '-'}
+																										</Typography>
+																									</TableCell>
+																								);
+																							})}
+																							<TableCell sx={{ minWidth: 260 }}>
+																								{(() => {
+																									const mappedFiles = rowMappings.find(m => m.rowIndex === rIdx)?.fileName || [];
+																									const rowAnn = rowAnnotations.find(a => a.rowIndex === rIdx)?.annotations || [];
+																									if (rowAnn.length === 0) {
+																										return (
+																											<Typography variant="caption" sx={{ color: '#999' }}>
+																												No row annotations
+																											</Typography>
+																										);
+																									}
+
+																									return (
+																										<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+																											{rowAnn.map((annotation, annIdx) => {
+																												const mappedFile =
+																													findMatchingPreviewFile(mappedFiles, annotation) ||
+																													findMatchingPreviewFile(paramMeta?.files || [], annotation);
+																												const imageUrl = buildPreviewImageUrl(annotation, mappedFile);
+																												return (
+																													<Box key={`${parameterId}-${rIdx}-${annIdx}-${annotation.imageFileName}`}>
+																														<ImageDisplay
+																															imageUrl={imageUrl}
+																															imageFileName={annotation.imageFileName}
+																															originalFileName={
+																																mappedFile?.originalFileName || annotation.imageFileName
+																															}
+																															annotations={annotation.regions || []}
+																															readOnly={true}
+																															showAnnotations={true}
+																														/>
+																														{renderAnnotationRegions(annotation)}
+																													</Box>
+																												);
+																											})}
+																										</Box>
+																									);
+																								})()}
+																							</TableCell>
+																						</TableRow>
+																					))}
+																				</TableBody>
+																			</Table>
+																		</TableContainer>
+																	);
+																})()}
+															</Box>
+														</Collapse>
+													</TableCell>
+												</TableRow>
+											)}
+
+											{/* Collapsible Detail Row for Multi-Column and Table Parameters */}
+											{isMultiColumn && (
 													<TableRow>
 														<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
-															<Collapse in={expandedMultiValueParams.has(parameterId)} timeout="auto" unmountOnExit>
+															<Collapse
+															in={embeddedReportMode || expandedMultiValueParams.has(parameterId)}
+															timeout="auto"
+															unmountOnExit={!embeddedReportMode}
+														>
 																<Box
 																	sx={{
 																		p: 2,
-																		backgroundColor: '#f8f9fa',
-																		border: '1px solid #e0e0e0',
-																		borderRadius: 1,
+																		backgroundColor: isTableType ? '#f0f4ff' : '#f8f9fa',
+																		border: isTableType ? 'none' : '1px solid #e0e0e0',
+																		borderRadius: '8px',
 																		m: 1
 																	}}
 																>
-																	<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#333' }}>
+																	<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: isTableType ? '#1a237e' : '#333' }}>
 																		{parameterName} - {isTableType ? 'Table Data' : 'Detailed Values'}
 																	</Typography>
-																	<TableContainer component={Paper} variant="outlined">
+																	<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
 																		<Table size="small">
 																			<TableHead>
-																				<TableRow sx={{ backgroundColor: '#fafafa' }}>
+																				<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
 																					{paramMeta?.columns?.map(column => (
 																						<TableCell
 																							key={column.name}
 																							sx={{
 																								fontWeight: 600,
 																								fontSize: '0.75rem',
-																								py: 0.5,
+																								py: 0.75,
 																								px: 1,
 																								borderRight: '1px solid #e0e0e0'
 																							}}
 																						>
 																							{column.name}
+																							{isTableType && (
+																								<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}>
+																									{formatOkNotOkTypeForDisplay(column.type)}
+																								</Typography>
+																							)}
 																						</TableCell>
 																					))}
 																				</TableRow>
@@ -1034,16 +1704,16 @@ const StepPreview = ({
 																							unknown
 																						>[]
 																					).map((row, rowIndex) => (
-																						<TableRow key={rowIndex}>
+																						<TableRow key={rowIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
 																							{paramMeta?.columns?.map(column => {
 																								const value = row[column.name];
+																								const parsedValue =
+																									column.type === 'ok/not ok'
+																										? parseOkNotOkValue(value)
+																										: { value: String(value || ''), notOkComment: '' };
 																								const formattedValue =
 																									column.type === 'ok/not ok'
-																										? value === 'ok'
-																											? 'OK'
-																											: value === 'not ok'
-																												? 'Not OK'
-																												: String(value || '')
+																										? formatOkNotOkValueForDisplay(parsedValue.value)
 																										: String(value || '');
 
 																								return (
@@ -1068,6 +1738,11 @@ const StepPreview = ({
 																										>
 																											{formattedValue}
 																										</Typography>
+																										{column.type === 'ok/not ok' &&
+																											isNegativeOkNotOk(parsedValue.value) &&
+																											parsedValue.notOkComment.trim() && (
+																												<NotOkCommentPreview comment={parsedValue.notOkComment} />
+																											)}
 																									</TableCell>
 																								);
 																							})}
@@ -1083,13 +1758,13 @@ const StepPreview = ({
 																									unknown
 																								>
 																							)[column.name];
+																							const parsedValue =
+																								column.type === 'ok/not ok'
+																									? parseOkNotOkValue(value)
+																									: { value: String(value), notOkComment: '' };
 																							const formattedValue =
 																								column.type === 'ok/not ok'
-																									? value === 'ok'
-																										? 'OK'
-																										: value === 'not ok'
-																											? 'Not OK'
-																											: String(value)
+																									? formatOkNotOkValueForDisplay(parsedValue.value)
 																									: String(value);
 
 																							return (
@@ -1114,6 +1789,11 @@ const StepPreview = ({
 																									>
 																										{formattedValue}
 																									</Typography>
+																									{column.type === 'ok/not ok' &&
+																										isNegativeOkNotOk(parsedValue.value) &&
+																										parsedValue.notOkComment.trim() && (
+																											<NotOkCommentPreview comment={parsedValue.notOkComment} />
+																										)}
 																								</TableCell>
 																							);
 																						})}
@@ -1135,26 +1815,7 @@ const StepPreview = ({
 					</TableContainer>
 
 					{/* Image Annotations Section */}
-					{Object.entries(data)
-						.filter(
-							([key]) =>
-								key !== 'data' &&
-								key !== 'startTime' &&
-								key !== 'endTime' &&
-								key !== 'stepCompleted' &&
-								key !== 'productionApproved' &&
-								key !== 'ctqApproved'
-						)
-						.some(
-							([_, parameterData]) =>
-								typeof parameterData === 'object' &&
-								parameterData !== null &&
-								'annotations' in parameterData &&
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								Array.isArray((parameterData as any).annotations) &&
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								(parameterData as any).annotations.length > 0
-						) && (
+					{hasAnyAnnotationData && (
 						<Box sx={{ mt: 2 }}>
 							<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 								Image Annotations
@@ -1173,9 +1834,17 @@ const StepPreview = ({
 									// Find the corresponding inspection parameter metadata
 									const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
 
-									if (typeof parameterData === 'object' && parameterData !== null && 'annotations' in parameterData) {
-										// eslint-disable-next-line @typescript-eslint/no-explicit-any
-										const annotations = (parameterData as any).annotations;
+									if (typeof parameterData === 'object' && parameterData !== null) {
+										const parameterDataObj = parameterData as Record<string, unknown>;
+										const annotations = Array.isArray(parameterDataObj.annotations)
+											? (parameterDataObj.annotations as PreviewAnnotation[])
+											: [];
+										const rowAnnotations = Array.isArray(parameterDataObj.rowAnnotations)
+											? (parameterDataObj.rowAnnotations as PreviewRowAnnotationEntry[])
+											: [];
+										const hasRowAnnotations = rowAnnotations.some(
+											ra => Array.isArray(ra.annotations) && ra.annotations.length > 0
+										);
 										console.log('🖼️ StepPreview: Processing annotations for parameter:', {
 											parameterId,
 											parameterData,
@@ -1184,27 +1853,17 @@ const StepPreview = ({
 											length: annotations?.length
 										});
 
-										if (Array.isArray(annotations) && annotations.length > 0) {
+										if ((Array.isArray(annotations) && annotations.length > 0) || hasRowAnnotations) {
 											return (
 												<Box key={parameterId} sx={{ mb: 2 }}>
 													<Paper variant="outlined" sx={{ p: 2 }}>
 														<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: '#1976d2' }}>
 															{paramMeta?.parameterName || `Parameter ${parameterId}`}
 														</Typography>
-														{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-														{annotations.map((annotation: any, annotationIndex: number) => {
-															// Find the original filename by matching the generated filename
-															const originalFileName =
-																paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)
-																	?.originalFileName || annotation.imageFileName;
-
-															// Construct image URL - use annotation.imageUrl if available, otherwise construct from filePath
-															let imageUrl =
-																annotation.imageUrl ||
-																`${process.env.API_BASE_URL_PRE_AUTH}${paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath || ''}`;
-
-															// Normalize URL - replace backslashes with forward slashes
-															imageUrl = imageUrl.replace(/\\/g, '/');
+														{annotations.map((annotation: PreviewAnnotation, annotationIndex: number) => {
+															const matchedFile = findMatchingPreviewFile(paramMeta?.files || [], annotation);
+															const originalFileName = matchedFile?.originalFileName || annotation.imageFileName;
+															const imageUrl = buildPreviewImageUrl(annotation, matchedFile);
 
 															console.log('🖼️ StepPreview: Image URL construction:', {
 																parameterId,
@@ -1213,7 +1872,9 @@ const StepPreview = ({
 																paramMeta,
 																imageUrl,
 																annotationImageUrl: annotation.imageUrl,
-																constructedUrl: `${process.env.API_BASE_URL_PRE_AUTH}${paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath || ''}`
+																constructedUrl: toFileRenderUrl(
+																	paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath
+																)
 															});
 
 															return (
@@ -1240,109 +1901,52 @@ const StepPreview = ({
 																		/>
 																	</Box>
 
-																	{/* Display annotation regions details */}
-																	{annotation.regions && annotation.regions.length > 0 && (
-																		<Box sx={{ mt: 1 }}>
-																			<Typography
-																				variant="caption"
-																				sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}
-																			>
-																				Annotation Details:
-																			</Typography>
-																			{/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-																			{annotation.regions.map((region: any, regionIndex: number) => (
-																				<Box
-																					key={regionIndex}
-																					sx={{
-																						mt: 0.5,
-																						p: 1,
-																						backgroundColor: '#fff',
-																						borderRadius: 0.5,
-																						border: '1px solid #e0e0e0'
-																					}}
-																				>
-																					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-																						{/* Annotation number badge */}
-																						<Chip
-																							label={`${regionIndex + 1}`}
-																							size="small"
-																							sx={{
-																								backgroundColor: '#f44336',
-																								color: 'white',
-																								fontSize: '0.6rem',
-																								fontWeight: 'bold',
-																								height: 16,
-																								minWidth: 20,
-																								'& .MuiChip-label': { px: 0.5 }
-																							}}
-																						/>
-																						<Chip
-																							label={region.type}
-																							size="small"
-																							sx={{
-																								backgroundColor: region.type === 'point' ? '#e8f5e8' : '#fff3e0',
-																								color: region.type === 'point' ? '#4caf50' : '#f57c00',
-																								fontSize: '0.6rem',
-																								height: 16
-																							}}
-																						/>
-																						<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
-																							ID: {region.id}
-																						</Typography>
-																					</Box>
-																					{region.comment && (
-																						<Typography
-																							variant="body2"
-																							sx={{ fontSize: '0.8rem', color: '#333', fontStyle: 'italic' }}
-																						>
-																							"{region.comment}"
-																						</Typography>
-																					)}
-																					{region.category && (
-																						<Box sx={{ mt: 0.5 }}>
-																							<Chip
-																								label={region.category}
-																								size="small"
-																								sx={{
-																									backgroundColor: '#e3f2fd',
-																									color: '#1976d2',
-																									fontSize: '0.6rem',
-																									height: 18
-																								}}
-																							/>
-																						</Box>
-																					)}
-																					{region.type === 'point' && (
-																						<Typography
-																							variant="caption"
-																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
-																						>
-																							Position: ({region.x}, {region.y})
-																						</Typography>
-																					)}
-																					{region.type === 'polygon' && region.points && (
-																						<Typography
-																							variant="caption"
-																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
-																						>
-																							Points: {region.points.length} vertices
-																						</Typography>
-																					)}
-																					{region.cls && (
-																						<Typography
-																							variant="caption"
-																							sx={{ color: '#666', fontSize: '0.7rem', display: 'block', mt: 0.5 }}
-																						>
-																							Class: {region.cls}
-																						</Typography>
-																					)}
-																				</Box>
-																			))}
-																		</Box>
-																	)}
+																	{renderAnnotationRegions(annotation)}
 																</Box>
 															);
 														})}
+														{hasRowAnnotations && (
+															<Box sx={{ mt: 1.5 }}>
+																<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#6a1b9a' }}>
+																	Row-Mapped Defects
+																</Typography>
+																{rowAnnotations.map((rowEntry: PreviewRowAnnotationEntry) => {
+																	const rowAnns = Array.isArray(rowEntry?.annotations) ? rowEntry.annotations : [];
+																	const rowIndex = Number(rowEntry?.rowIndex);
+																	const rowMappedFiles = Array.isArray(paramMeta?.rowMappings)
+																		? paramMeta.rowMappings.find(rm => rm.rowIndex === rowIndex)?.fileName || []
+																		: [];
+																	if (rowAnns.length === 0) return null;
+																	return (
+																		<Box key={`${parameterId}-row-${rowIndex}`} sx={{ mb: 1.5, p: 1, backgroundColor: '#f7f0ff', borderRadius: 1 }}>
+																			<Typography variant="caption" sx={{ fontWeight: 600, color: '#6a1b9a' }}>
+																				Row {rowIndex + 1}
+																			</Typography>
+																			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 0.75 }}>
+																				{rowAnns.map((annotation: PreviewAnnotation, rowAnnIndex: number) => {
+																					const matchedFile =
+																						findMatchingPreviewFile(rowMappedFiles, annotation) ||
+																						findMatchingPreviewFile(paramMeta?.files || [], annotation);
+																					return (
+																						<Box key={`${parameterId}-row-${rowIndex}-ann-${rowAnnIndex}`}>
+																							<ImageDisplay
+																								imageUrl={buildPreviewImageUrl(annotation, matchedFile)}
+																								imageFileName={annotation.imageFileName}
+																								originalFileName={matchedFile?.originalFileName || annotation.imageFileName}
+																								annotations={annotation.regions || []}
+																								readOnly={true}
+																								showAnnotations={true}
+																							/>
+																							{renderAnnotationRegions(annotation)}
+																						</Box>
+																					);
+																				})}
+																			</Box>
+																		</Box>
+																	);
+																})}
+															</Box>
+														)}
 													</Paper>
 												</Box>
 											);
@@ -1440,6 +2044,16 @@ const StepPreview = ({
 		);
 	};
 
+	if (embeddedReportMode) {
+		return (
+			<Box sx={{ py: 0 }}>
+				<Card variant="outlined" sx={{ border: 'none', boxShadow: 'none', bgcolor: 'transparent' }}>
+					<CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>{renderDataSummary()}</CardContent>
+				</Card>
+			</Box>
+		);
+	}
+
 	return (
 		<Box sx={{ p: 2 }}>
 			{/* Header with Approval Buttons */}
@@ -1459,6 +2073,13 @@ const StepPreview = ({
 						<Typography variant="caption" sx={{ color: 'text.secondary' }}>
 							{previewData.title}
 						</Typography>
+						{previewData.type === 'sequence' &&
+							previewData.description &&
+							previewData.description !== previewData.title && (
+								<Typography variant="body2" sx={{ color: 'text.secondary', display: 'block', mt: 0.25, lineHeight: 1.35 }}>
+									{previewData.description}
+								</Typography>
+							)}
 					</Box>
 				</Box>
 
@@ -1469,7 +2090,9 @@ const StepPreview = ({
 						color={productionApproved ? 'success' : 'primary'}
 						onClick={handleApproveProduction}
 						disabled={
-							productionApproved || (!canApproveProduction && !(previewData.type === 'inspection' && canApproveCTQ))
+							!delayDocumentationSatisfied ||
+							productionApproved ||
+							(!canApproveProduction && !(previewData.type === 'inspection' && canApproveCTQ))
 						}
 						startIcon={<Check />}
 						size="small"
@@ -1488,7 +2111,12 @@ const StepPreview = ({
 								<Button
 									color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
 									onClick={handleApproveCTQ}
-									disabled={ctqApproved || partialCtqApproved || !canApproveCTQ}
+									disabled={
+										!delayDocumentationSatisfied ||
+										ctqApproved ||
+										partialCtqApproved ||
+										!canApproveCTQ
+									}
 									startIcon={<Check />}
 								>
 									{ctqApproved
@@ -1502,7 +2130,12 @@ const StepPreview = ({
 								<Button
 									color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
 									onClick={handleCtqMenuOpen}
-									disabled={ctqApproved || partialCtqApproved || !canApproveCTQ}
+									disabled={
+										!delayDocumentationSatisfied ||
+										ctqApproved ||
+										partialCtqApproved ||
+										!canApproveCTQ
+									}
 									sx={{ minWidth: 'auto', px: 1 }}
 								>
 									<ArrowDropDown />
@@ -1533,7 +2166,21 @@ const StepPreview = ({
 					<Button
 						variant="contained"
 						color="success"
-						onClick={() => onProceedToNext(timingExceededRemarks)}
+						onClick={() =>
+							onProceedToNext(
+								previewData.timingExceeded
+									? {
+											timingExceededRemarks:
+												timingExceededRemarks.trim() ||
+												(previewData.timingExceededRemarks ?? '').trim(),
+											timingExceededReasonCode:
+												selectedDelayReason?.value ?? previewData.timingExceededReasonCode,
+											timingExceededReasonLabel:
+												selectedDelayReason?.label ?? previewData.timingExceededReasonLabel
+										}
+									: undefined
+							)
+						}
 						disabled={!canProceed}
 						startIcon={previewData.stepCompleted ? <CheckCircle /> : <ArrowForward />}
 						size="small"

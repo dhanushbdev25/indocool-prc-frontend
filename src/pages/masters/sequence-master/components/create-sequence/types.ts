@@ -1,5 +1,6 @@
 import { Control, FieldErrors } from 'react-hook-form';
 import { SequenceFormData } from './schemas';
+import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/okNotOkLabels';
 
 export interface SequenceBasicInfoProps {
 	control: Control<SequenceFormData>;
@@ -16,19 +17,21 @@ export interface SequenceReviewProps {
 	errors: FieldErrors<SequenceFormData>;
 }
 
-// Step type options
-export const stepTypeOptions = [
-	{ value: 'Measurement', label: 'Measurement' },
-	{ value: 'Check', label: 'Check' },
-	{ value: 'Inspection', label: 'Inspection' },
-	{ value: 'Operation', label: 'Operation' }
-];
-
 // Target value type options
 export const targetValueTypeOptions = [
 	{ value: 'range', label: 'Range' },
 	{ value: 'exact value', label: 'Exact Value' },
-	{ value: 'ok/not ok', label: 'OK/Not OK' }
+	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
+	{ value: 'table', label: 'Table' }
+];
+
+// Column type options for table target value type
+export const tableColumnTypeOptions = [
+	{ value: 'text', label: 'Text' },
+	{ value: 'number', label: 'Number' },
+	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
+	{ value: 'datetime', label: 'Date & Time' },
+	{ value: 'shift', label: 'Shift' }
 ];
 
 // Common UOM options

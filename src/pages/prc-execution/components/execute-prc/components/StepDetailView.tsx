@@ -2,31 +2,39 @@ import { useState } from 'react';
 import { Box, Typography, Button, Avatar, Chip, IconButton } from '@mui/material';
 import { ArrowBack, ArrowForward, CheckCircle, PlayArrow } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../types/execution.types';
+import { isRawMaterialsStepCompleteForNavigation } from '../../../utils/rawMaterialsNavigation';
 import RawMaterialsStep from './steps/RawMaterialsStep';
 import BomStep from './steps/BomStep';
 import SequenceStep from './steps/SequenceStep';
 import InspectionStep from './steps/InspectionStep';
+import ExecutionSetupStep from './steps/ExecutionSetupStep';
+import SapConfirmationStep from './steps/SapConfirmationStep';
 
 interface StepDetailViewProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
+	aggregatedStepsSnapshot?: Record<string, unknown>;
 	onBackToList: () => void;
 	onPreviousStep: () => void;
 	onNextStep: () => void;
 	onStepComplete: (formData: FormData) => void;
 	canGoPrevious: boolean;
 	canGoNext: boolean;
+	/** Browse-only mode: same step UI as execution, inputs disabled, Prev/Next navigate without completing. */
+	readOnly?: boolean;
 }
 
 const StepDetailView = ({
 	step,
 	executionData,
+	aggregatedStepsSnapshot,
 	onBackToList,
 	onPreviousStep,
 	onNextStep,
 	onStepComplete,
 	canGoPrevious,
-	canGoNext
+	canGoNext,
+	readOnly = false
 }: StepDetailViewProps) => {
 	// For sequence step groups, we need to handle sub-steps
 	const isSequenceGroup = step.type === 'sequence' && step.stepGroup;
@@ -103,7 +111,60 @@ const StepDetailView = ({
 		return step.stepGroup.steps.every(subStep => groupData[subStep.id.toString()] !== undefined);
 	};
 
+	const isCurrentSubStepFilled = (): boolean => {
+		if (!isSequenceGroup || !currentSubStep || !step.prcTemplateStepId || !step.stepGroup) {
+			return false;
+		}
+		const stepData = executionData.prcAggregatedSteps?.[step.prcTemplateStepId.toString()] as Record<string, unknown>;
+		if (!stepData) return false;
+		const groupData = stepData[step.stepGroup.id.toString()] as Record<string, unknown>;
+		if (!groupData) return false;
+		return groupData[currentSubStep.id.toString()] !== undefined;
+	};
+
+	const isNonSequenceStepFilled = (): boolean => {
+		if (isSequenceGroup) return false;
+		switch (step.type) {
+			case 'setup': {
+				const meta = executionData.prcAggregatedSteps?.prcmetadata as Record<string, unknown> | undefined;
+				return !!meta && typeof meta === 'object' && Object.keys(meta).length > 0;
+			}
+		case 'rawMaterials':
+			return isRawMaterialsStepCompleteForNavigation(executionData);
+		case 'bom':
+			return executionData.prcAggregatedSteps?.bom !== undefined;
+			case 'inspection': {
+				const prcTemplateStepId = step.stepData?.prcTemplateStepId;
+				if (!prcTemplateStepId) return false;
+				const inspData = executionData.prcAggregatedSteps?.[prcTemplateStepId.toString()] as Record<string, unknown>;
+				return !!inspData && Object.keys(inspData).length > 0;
+			}
+			case 'sapConfirmations': {
+				const sap = executionData.prcAggregatedSteps?.sapConfirmations as Record<string, unknown> | undefined;
+				return sap?.stepCompleted === true;
+			}
+			default:
+				return false;
+		}
+	};
+
 	const handleNextSubStep = async () => {
+		if (readOnly) {
+			if (isSequenceGroup) {
+				if (currentSubStepIndex < subSteps.length - 1) {
+					setCurrentSubStepIndex(prev => prev + 1);
+				} else {
+					onNextStep();
+				}
+			} else {
+				onNextStep();
+			}
+			return;
+		}
+
+		if (isSequenceGroup && !isCurrentSubStepFilled()) return;
+		if (!isSequenceGroup && !isNonSequenceStepFilled()) return;
+
 		if (isSequenceGroup) {
 			if (currentSubStepIndex < subSteps.length - 1) {
 				// Go to next sub-step
@@ -121,6 +182,15 @@ const StepDetailView = ({
 	};
 
 	const handlePreviousSubStep = () => {
+		if (readOnly) {
+			if (isSequenceGroup && currentSubStepIndex > 0) {
+				setCurrentSubStepIndex(prev => prev - 1);
+			} else {
+				onPreviousStep();
+			}
+			return;
+		}
+
 		if (isSequenceGroup && currentSubStepIndex > 0) {
 			setCurrentSubStepIndex(prev => prev - 1);
 		} else {
@@ -130,10 +200,13 @@ const StepDetailView = ({
 
 	const canGoPreviousSubStep = isSequenceGroup ? currentSubStepIndex > 0 : canGoPrevious;
 
-	// For sequence groups, check if we can go to next sub-step OR if all steps are filled (to go to preview)
-	const canGoNextSubStep = isSequenceGroup
-		? currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled()
-		: canGoNext;
+	const canGoNextSubStep = readOnly
+		? isSequenceGroup
+			? currentSubStepIndex < subSteps.length - 1 || canGoNext
+			: canGoNext
+		: isSequenceGroup
+			? isCurrentSubStepFilled() && (currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled())
+			: isNonSequenceStepFilled() && canGoNext;
 
 	const renderStepContent = () => {
 		if (isSequenceGroup && currentSubStep) {
@@ -145,41 +218,86 @@ const StepDetailView = ({
 				description: currentSubStep.notes || step.description,
 				status: step.status,
 				ctq: currentSubStep.ctq,
-				stepData: {
-					prcTemplateStepId: step.prcTemplateStepId!,
-					stepGroupId: step.stepGroup!.id,
-					stepId: currentSubStep.id,
-					stepType: currentSubStep.stepType,
-					targetValueType: currentSubStep.targetValueType,
-					uom: currentSubStep.uom,
-					minValue: currentSubStep.minValue,
-					maxValue: currentSubStep.maxValue,
-					minimumAcceptanceValue: currentSubStep.minimumAcceptanceValue,
-					maximumAcceptanceValue: currentSubStep.maximumAcceptanceValue,
-					multipleMeasurements: currentSubStep.multipleMeasurements,
-					multipleMeasurementMaxCount: currentSubStep.multipleMeasurementMaxCount,
-					notes: currentSubStep.notes,
-					parameterDescription: currentSubStep.parameterDescription,
-					evaluationMethod: currentSubStep.evaluationMethod,
-					allowAttachments: currentSubStep.allowAttachments,
-					stepNumber: currentSubStep.stepNumber,
-					responsiblePerson: currentSubStep.responsiblePerson
-				}
+			stepData: {
+				prcTemplateStepId: step.prcTemplateStepId!,
+				stepGroupId: step.stepGroup!.id,
+				stepId: currentSubStep.id,
+				targetValueType: currentSubStep.targetValueType,
+				uom: currentSubStep.uom,
+				minValue: currentSubStep.minValue,
+				maxValue: currentSubStep.maxValue,
+				minimumAcceptanceValue: currentSubStep.minimumAcceptanceValue,
+				maximumAcceptanceValue: currentSubStep.maximumAcceptanceValue,
+				multipleMeasurements: currentSubStep.multipleMeasurements,
+				multipleMeasurementMaxCount: currentSubStep.multipleMeasurementMaxCount,
+				tableConfig: currentSubStep.tableConfig,
+				notes: currentSubStep.notes,
+				parameterDescription: currentSubStep.parameterDescription,
+				evaluationMethod: currentSubStep.evaluationMethod,
+				allowAttachments: currentSubStep.allowAttachments,
+				stepNumber: currentSubStep.stepNumber,
+				responsiblePerson: currentSubStep.responsiblePerson,
+				getInstrumentId: currentSubStep.getInstrumentId
+			}
 			};
 
 			return (
-				<SequenceStep step={subStepTimelineStep} executionData={executionData} onStepComplete={handleSubStepComplete} />
+				<SequenceStep
+					key={`${step.prcTemplateStepId}-${step.stepGroup!.id}-${currentSubStep.id}`}
+					step={subStepTimelineStep}
+					executionData={executionData}
+					onStepComplete={handleSubStepComplete}
+					readOnlyOverride={readOnly}
+				/>
 			);
 		}
 
 		// For non-sequence steps, render the appropriate component
 		switch (step.type) {
+			case 'setup':
+				return (
+					<ExecutionSetupStep
+						step={step}
+						executionData={executionData}
+						aggregatedStepsSnapshot={aggregatedStepsSnapshot}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
 			case 'rawMaterials':
-				return <RawMaterialsStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
+				return (
+					<RawMaterialsStep
+						step={step}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
 			case 'bom':
-				return <BomStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
+				return (
+					<BomStep
+						step={step}
+						executionData={executionData}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
 			case 'inspection':
-				return <InspectionStep step={step} executionData={executionData} onStepComplete={handleSubStepComplete} />;
+				return (
+					<InspectionStep
+						step={step}
+						executionData={executionData}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
+			case 'sapConfirmations':
+				return (
+					<SapConfirmationStep
+						executionData={executionData}
+						onStepComplete={handleSubStepComplete}
+						readOnlyOverride={readOnly}
+					/>
+				);
 			default:
 				return <div>Unknown step type: {step.type}</div>;
 		}
@@ -206,6 +324,13 @@ const StepDetailView = ({
 						<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', lineHeight: 1.2 }}>
 							{step.title}
 						</Typography>
+						{step.type === 'sequence' &&
+							step.description &&
+							step.description !== step.title && (
+								<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', mt: 0.5, lineHeight: 1.4 }}>
+									{step.description}
+								</Typography>
+							)}
 					</Box>
 					<Box sx={{ display: 'flex', gap: 0.5 }}>
 						{step.ctq && (

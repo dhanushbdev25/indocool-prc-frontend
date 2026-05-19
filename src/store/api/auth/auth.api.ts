@@ -1,7 +1,11 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { rawBaseQuery } from '../baseApi';
 
-type LoginRes = { message: string };
+type LoginRes = { 
+	message: string;
+	accessToken?: string;
+	refreshToken?: string;
+};
 type LogoutRes = { message: string };
 
 export const authApi = createApi({
@@ -21,8 +25,7 @@ export const authApi = createApi({
 		logoutUser: builder.mutation<LogoutRes, void>({
 			query: () => ({
 				url: 'auth/logout',
-				method: 'post',
-				credentials: 'include'
+				method: 'post'
 			})
 		})
 	})

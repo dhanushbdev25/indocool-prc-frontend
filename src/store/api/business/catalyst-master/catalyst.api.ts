@@ -1,11 +1,9 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
-	catalystChartResponseSchema,
-	catalystByIdResponseSchema,
-	createCatalystResponseSchema,
-	updateCatalystResponseSchema,
-	deleteCatalystTaskResponseSchema,
+	isCatalystChartResponse,
+	isCatalystByIdResponse,
+	isCatalystMutationResponse,
 	type CatalystChartResponse,
 	type CatalystByIdResponse,
 	type CreateCatalystRequest,
@@ -33,12 +31,10 @@ export const catalystApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = catalystChartResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for catalyst charts response:', parsed.error);
-					throw new Error('Invalid catalyst charts response structure');
+				if (!isCatalystChartResponse(response)) {
+					console.warn('Invalid catalyst charts response structure', response);
 				}
-				return parsed.data;
+				return response as CatalystChartResponse;
 			},
 			providesTags: ['Catalyst']
 		}),
@@ -49,12 +45,10 @@ export const catalystApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = catalystByIdResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for catalyst by ID response:', parsed.error);
-					throw new Error('Invalid catalyst by ID response structure');
+				if (!isCatalystByIdResponse(response)) {
+					console.warn('Invalid catalyst by ID response structure', response);
 				}
-				return parsed.data;
+				return response as CatalystByIdResponse;
 			},
 			providesTags: (_, __, { id }) => [
 				{ type: 'Catalyst', id },
@@ -69,12 +63,10 @@ export const catalystApi = createApi({
 				body: { data: data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = createCatalystResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for create catalyst response:', parsed.error);
-					throw new Error('Invalid create catalyst response structure');
+				if (!isCatalystMutationResponse(response)) {
+					console.warn('Invalid create catalyst response structure', response);
 				}
-				return parsed.data;
+				return response as CreateCatalystResponse;
 			},
 			invalidatesTags: ['Catalyst']
 		}),
@@ -86,12 +78,10 @@ export const catalystApi = createApi({
 				body: { data: data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = updateCatalystResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for update catalyst response:', parsed.error);
-					throw new Error('Invalid update catalyst response structure');
+				if (!isCatalystMutationResponse(response)) {
+					console.warn('Invalid update catalyst response structure', response);
 				}
-				return parsed.data;
+				return response as UpdateCatalystResponse;
 			},
 			invalidatesTags: (_, __, { id }) => [{ type: 'Catalyst', id }, { type: 'Catalyst', id: 'LIST' }, 'Catalyst']
 		}),
@@ -103,12 +93,10 @@ export const catalystApi = createApi({
 				body: { data: { ...data, catalyst: { ...data.catalyst, status: 'INACTIVE' } } }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = deleteCatalystTaskResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for delete catalyst task response:', parsed.error);
-					throw new Error('Invalid delete catalyst task response structure');
+				if (!isCatalystMutationResponse(response)) {
+					console.warn('Invalid delete catalyst task response structure', response);
 				}
-				return parsed.data;
+				return response as DeleteCatalystTaskResponse;
 			},
 			invalidatesTags: (_, __, { catalyst }) => [
 				{ type: 'Catalyst', id: catalyst?.id },

@@ -1,108 +1,197 @@
-// Type definitions for PRC Execution (without Zod validation)
-// Since PRC Execution APIs are dynamic, we use flexible types
-
-// Parts combo types
-export interface PartsComboItem {
-	label: string;
-	value: number;
-	data: {
-		partNumber: string;
-		drawingNumber: string;
-		model?: string;
-		description: string;
-		version: number;
-		prcTemplate: number;
-		catalyst: number;
-	};
+/** Per-operation row nested on list GET `/prcExecution` (camelCase); backend may alias as `operation_status`. */
+export interface PrcExecutionOperationStatusRow {
+	id: number;
+	prcExecutionId?: number;
+	operationId: string;
+	operationText: string;
+	prcStatus: boolean;
+	sapStatus: boolean;
+	metadata?: unknown | null;
+	createdAt?: string;
+	updatedAt?: string;
 }
 
-// Plant combo types
-export interface PlantComboItem {
-	label: string;
-	value: string;
-	data: Record<string, unknown>;
+/** Normalize list/detail `operationStatus` arrays from the API into typed rows (ignores invalid entries). */
+export function parsePrcExecutionOperationStatusList(value: unknown): PrcExecutionOperationStatusRow[] {
+	if (!Array.isArray(value)) return [];
+	const out: PrcExecutionOperationStatusRow[] = [];
+	for (const item of value) {
+		if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+		const o = item as Record<string, unknown>;
+		const id = typeof o.id === 'number' ? o.id : Number(o.id);
+		if (!Number.isFinite(id)) continue;
+		const prcExeIdRaw = o.prcExecutionId;
+		const prcExecutionId =
+			typeof prcExeIdRaw === 'number'
+				? prcExeIdRaw
+				: prcExeIdRaw != null && String(prcExeIdRaw).trim() !== ''
+					? Number(prcExeIdRaw)
+					: undefined;
+
+		out.push({
+			id,
+			prcExecutionId:
+				prcExecutionId !== undefined && Number.isFinite(prcExecutionId) ? prcExecutionId : undefined,
+			operationId: o.operationId != null ? String(o.operationId) : '',
+			operationText:
+				typeof o.operationText === 'string'
+					? o.operationText
+					: o.operationText != null
+						? String(o.operationText)
+						: '',
+			prcStatus: Boolean(o.prcStatus),
+			sapStatus: Boolean(o.sapStatus),
+			metadata: o.metadata ?? null,
+			createdAt: typeof o.createdAt === 'string' ? o.createdAt : undefined,
+			updatedAt: typeof o.updatedAt === 'string' ? o.updatedAt : undefined
+		});
+	}
+	return out;
 }
 
-export interface PartsComboResponse {
-	data: PartsComboItem[];
+/** At least one operation and every row has both PRC and SAP complete. */
+export function executionOperationsAllComplete(
+	ops: PrcExecutionOperationStatusRow[] | undefined
+): boolean {
+	const list = ops ?? [];
+	return list.length > 0 && list.every(op => op.prcStatus && op.sapStatus);
 }
 
-export interface PlantComboResponse {
-	data: PlantComboItem[];
+/** At least one operation exists and at least one row is missing PRC or SAP completion. */
+export function executionOperationsHasIncomplete(
+	ops: PrcExecutionOperationStatusRow[] | undefined
+): boolean {
+	const list = ops ?? [];
+	return list.length > 0 && list.some(op => !op.prcStatus || !op.sapStatus);
 }
 
-// PRC Execution types (flexible to handle dynamic data)
+/** List row for PRC execution table (GET /prcExecution list) */
 export interface PrcExecution {
 	id: number;
-	customer: string;
-	partId: number;
+	orderId?: string | number | null;
 	partNumber: string;
-	partDescription: string;
+	updatedAt?: string;
 	version: number;
+	customer: string;
 	productionSetId: string;
-	mouldId: string;
-	date: string;
-	shift: string;
-	inCharge: number;
-	remarks?: string;
-	drawingNumber: string;
+	mouldId?: string | null;
+	shift?: string | null;
+	sapSync?: boolean;
+	customerName?: string | null;
+	customerVariantName?: string | null;
+	sapReferenceNumber?: string | null;
+	progress: string | number;
+	stepsCompleted?: number;
+	totalSteps?: number;
 	status: string;
-	prcTemplate: number;
-	catalyst: number;
-	progress: string | number; // Can be either string or number
-	completedCtq: number;
-	totalCtq: number;
-	duration: string | number; // Can be either string or number
-	stepsCompleted: number;
-	totalSteps?: number; // Total number of steps in the process
-	currentStage: number;
-	nextStage: number;
-	createdBy: number;
-	updatedBy: number;
-	createdAt: string;
-	updatedAt: string;
-	// Additional fields from API response
-	mouldingInspectionParentId: number;
-	mouldingInspectionId: number;
-	ctqMap: unknown;
-	sequenceIds: unknown;
-	prcCurrentTemplate?: unknown;
-	rawMaterials?: unknown[];
-	bom?: unknown[];
-	currentStep?: unknown;
-	prcAggregatedSteps?: unknown;
-	stepStartEndTime?: unknown;
-	// Allow for additional dynamic fields
-	[key: string]: unknown;
+	/** Per-operation PRC/SAP completion flags when the API returns nested rows. */
+	operationStatus?: PrcExecutionOperationStatusRow[];
+	date: string;
 }
 
-export interface PrcExecutionResponse {
-	data: PrcExecution[];
+/** GET /web/combo?type=... — comboFormatter formatComboData */
+
+export interface WebComboItem {
+	label: string;
+	value: number | string;
+	data?: Record<string, unknown>;
 }
 
-// Create PRC Execution types
-export interface CreatePrcExecutionRequest {
-	data: {
-		customer: string;
-		partId: number;
-		catalyst: number;
-		partNumber: string;
-		partDescription: string;
-		version: number;
-		productionSetId: string;
-		mouldId: string;
-		date: string;
-		shift: string;
-		inCharge: number;
-		remarks?: string;
-		drawingNumber: string;
-		status: string;
-		prcTemplate: number;
-		plantCode: string;
-	};
+export interface WebComboResponse {
+	data: WebComboItem[];
 }
 
-export interface CreatePrcExecutionResponse {
-	message?: string;
-	data?: PrcExecution;
+function isWebComboItem(value: unknown): value is WebComboItem {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (typeof o.label !== 'string' || (typeof o.value !== 'number' && typeof o.value !== 'string')) {
+		return false;
+	}
+	if (o.data !== undefined) {
+		if (o.data === null || typeof o.data !== 'object' || Array.isArray(o.data)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+export function isWebComboResponse(value: unknown): value is WebComboResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	for (const item of o.data) {
+		if (!isWebComboItem(item)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/** Nested `data` on GET /combo?type=OPERATIONDELAYREASON items */
+
+export interface OperationDelayReasonComboItemData {
+	id: number;
+	type: string;
+	sequence: number;
+}
+
+export interface OperationDelayReasonComboItem {
+	label: string;
+	/** Business code persisted as timingExceededReasonCode (e.g. RM, FG, WIP) */
+	value: string;
+	data: OperationDelayReasonComboItemData;
+}
+
+/** API row or a minimal hydrated `{ label, value }` when restoring from saved execution without combo loaded */
+export type OperationDelayReasonComboOption = OperationDelayReasonComboItem | { label: string; value: string };
+
+export interface OperationDelayReasonComboResponse {
+	data: OperationDelayReasonComboItem[];
+}
+
+function isOperationDelayReasonComboItemData(value: unknown): value is OperationDelayReasonComboItemData {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	return (
+		typeof o.id === 'number' &&
+		typeof o.type === 'string' &&
+		typeof o.sequence === 'number'
+	);
+}
+
+function isOperationDelayReasonComboItem(value: unknown): value is OperationDelayReasonComboItem {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (typeof o.label !== 'string' || typeof o.value !== 'string') {
+		return false;
+	}
+	return isOperationDelayReasonComboItemData(o.data);
+}
+
+export function isOperationDelayReasonComboResponse(
+	value: unknown
+): value is OperationDelayReasonComboResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	for (const item of o.data) {
+		if (!isOperationDelayReasonComboItem(item)) {
+			return false;
+		}
+	}
+	return true;
 }

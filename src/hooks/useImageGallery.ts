@@ -6,7 +6,7 @@ export type ImageItem = {
 	image: string;
 	fileName?: string;
 	inspectionParameterId?: number;
-	filePath?: string; // Original file path for existing files (without API_BASE_URL_PRE_AUTH)
+	filePath?: string; // Persisted file path key (e.g. files/part_drawings/...)
 	originalFileName?: string; // Original file name for existing files
 };
 

@@ -1,20 +1,43 @@
-import { useState } from 'react';
-import { Box, Typography, TextField, InputAdornment, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { Search as SearchIcon, AccountTree as SequenceIcon } from '@mui/icons-material';
+import { useState, useMemo, useCallback } from 'react';
+import { Box, FormControl, InputLabel, MenuItem, Select } from '@mui/material';
+import { MasterListToolbar } from '../../../../../../components/masters';
+
+export const SEQUENCE_ALL_ITEMS = 'All items';
 
 interface SequenceManagementProps {
 	onSearchChange?: (searchTerm: string) => void;
 	onFilterChange?: (filter: string) => void;
 	onTypeFilterChange?: (typeFilter: string) => void;
+	onCategoryFilterChange?: (category: string) => void;
+	onItemFilterChange?: (item: string) => void;
+	appliedSearchTerm?: string;
+	categoryOptions?: string[];
+	itemOptions?: string[];
+	listSummary?: string | null;
+	searchAriaLabel?: string;
 }
 
-const SequenceManagement = ({ onSearchChange, onFilterChange, onTypeFilterChange }: SequenceManagementProps) => {
+const SequenceManagement = ({
+	onSearchChange,
+	onFilterChange,
+	onTypeFilterChange,
+	onCategoryFilterChange,
+	onItemFilterChange,
+	appliedSearchTerm = '',
+	categoryOptions = [],
+	itemOptions = [],
+	listSummary,
+	searchAriaLabel
+}: SequenceManagementProps) => {
 	const [activeFilter, setActiveFilter] = useState('All Sequences');
 	const [activeTypeFilter, setActiveTypeFilter] = useState('All Types');
-	const [searchTerm, setSearchTerm] = useState('');
+	const [activeCategory, setActiveCategory] = useState('All categories');
+	const [activeItem, setActiveItem] = useState(SEQUENCE_ALL_ITEMS);
 
 	const filterButtons = ['All Sequences', 'ACTIVE', 'INACTIVE'];
 	const typeFilterButtons = ['All Types', 'Layout', 'ISP'];
+	const categoryFilterButtons = ['All categories', ...categoryOptions];
+	const itemFilterButtons = [SEQUENCE_ALL_ITEMS, ...itemOptions];
 
 	const handleFilterClick = (filter: string) => {
 		setActiveFilter(filter);
@@ -26,89 +49,62 @@ const SequenceManagement = ({ onSearchChange, onFilterChange, onTypeFilterChange
 		onTypeFilterChange?.(typeFilter);
 	};
 
-	const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const value = event.target.value;
-		setSearchTerm(value);
-		onSearchChange?.(value);
+	const handleCategoryFilterClick = (category: string) => {
+		setActiveCategory(category);
+		onCategoryFilterChange?.(category);
 	};
 
+	const handleItemFilterClick = (item: string) => {
+		setActiveItem(item);
+		onItemFilterChange?.(item);
+	};
+
+	const handleReset = useCallback(() => {
+		setActiveFilter('All Sequences');
+		setActiveTypeFilter('All Types');
+		setActiveCategory('All categories');
+		setActiveItem(SEQUENCE_ALL_ITEMS);
+		onFilterChange?.('All Sequences');
+		onTypeFilterChange?.('All Types');
+		onCategoryFilterChange?.('All categories');
+		onItemFilterChange?.(SEQUENCE_ALL_ITEMS);
+	}, [onCategoryFilterChange, onFilterChange, onItemFilterChange, onTypeFilterChange]);
+
+	const filterDirty = useMemo(
+		() =>
+			Boolean(appliedSearchTerm.trim()) ||
+			activeFilter !== 'All Sequences' ||
+			activeTypeFilter !== 'All Types' ||
+			activeCategory !== 'All categories' ||
+			activeItem !== SEQUENCE_ALL_ITEMS,
+		[appliedSearchTerm, activeCategory, activeFilter, activeItem, activeTypeFilter]
+	);
+
+	const selectSx = { minWidth: 140, borderRadius: 1 };
+
 	return (
-		<Box sx={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-			{/* Section Header */}
-			<Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
-				<Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-					<SequenceIcon sx={{ color: '#666', mr: 1, fontSize: '1.25rem' }} />
-					<Typography
-						variant="h5"
-						sx={{
-							fontWeight: 600,
-							color: '#333',
-							fontSize: '1.25rem'
-						}}
-					>
-						Sequence Management
-					</Typography>
-				</Box>
-				<Typography
-					variant="body2"
-					sx={{
-						color: '#666',
-						fontSize: '0.875rem'
-					}}
-				>
-					Manage and configure process sequences for production workflows
-				</Typography>
-			</Box>
-
-			{/* Search and Filter Section */}
-			<Box sx={{ p: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-				<TextField
-					placeholder="Search by Sequence ID or notes"
-					variant="outlined"
-					size="small"
-					value={searchTerm}
-					onChange={handleSearchChange}
-					InputProps={{
-						startAdornment: (
-							<InputAdornment position="start">
-								<SearchIcon sx={{ color: '#999' }} />
-							</InputAdornment>
-						)
-					}}
-					sx={{
-						flex: 1,
-						'& .MuiOutlinedInput-root': {
-							borderRadius: '8px',
-							backgroundColor: '#fafafa',
-							'& fieldset': {
-								borderColor: '#e0e0e0'
-							},
-							'&:hover fieldset': {
-								borderColor: '#ccc'
-							},
-							'&.Mui-focused fieldset': {
-								borderColor: '#1976d2'
-							}
-						},
-						'& .MuiInputBase-input': {
-							fontSize: '0.875rem',
-							color: '#666',
-							'&::placeholder': {
-								color: '#999',
-								opacity: 1
-							}
-						}
-					}}
-				/>
-
-				<FormControl size="small" sx={{ minWidth: 150 }}>
-					<InputLabel>Status</InputLabel>
-					<Select
-						value={activeFilter}
-						label="Status"
-						onChange={e => handleFilterClick(e.target.value)}
-						sx={{ borderRadius: '8px' }}
-					>
+		<Box>
+			<MasterListToolbar
+				searchPlaceholder="Sequence ID, name, category, item, type, or notes"
+				searchAriaLabel={searchAriaLabel}
+				listSummary={listSummary}
+				onSearchChange={onSearchChange}
+				filterDirty={filterDirty}
+				onReset={handleReset}
+			>
+				<FormControl size="small" sx={selectSx}>
+					<InputLabel shrink>Category</InputLabel>
+					<Select value={activeCategory} label="Category" onChange={e => handleCategoryFilterClick(e.target.value)}>
+						{categoryFilterButtons.map(cat => (
+							<MenuItem key={cat} value={cat}>
+								{cat}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+				<FormControl size="small" sx={selectSx}>
+					<InputLabel shrink>Status</InputLabel>
+					<Select value={activeFilter} label="Status" onChange={e => handleFilterClick(e.target.value)}>
 						{filterButtons.map(filter => (
 							<MenuItem key={filter} value={filter}>
 								{filter}
@@ -116,15 +112,9 @@ const SequenceManagement = ({ onSearchChange, onFilterChange, onTypeFilterChange
 						))}
 					</Select>
 				</FormControl>
-
-				<FormControl size="small" sx={{ minWidth: 150 }}>
-					<InputLabel>Type</InputLabel>
-					<Select
-						value={activeTypeFilter}
-						label="Type"
-						onChange={e => handleTypeFilterClick(e.target.value)}
-						sx={{ borderRadius: '8px' }}
-					>
+				<FormControl size="small" sx={selectSx}>
+					<InputLabel shrink>Type</InputLabel>
+					<Select value={activeTypeFilter} label="Type" onChange={e => handleTypeFilterClick(e.target.value)}>
 						{typeFilterButtons.map(typeFilter => (
 							<MenuItem key={typeFilter} value={typeFilter}>
 								{typeFilter}
@@ -132,7 +122,17 @@ const SequenceManagement = ({ onSearchChange, onFilterChange, onTypeFilterChange
 						))}
 					</Select>
 				</FormControl>
-			</Box>
+				<FormControl size="small" sx={{ ...selectSx, minWidth: 160 }}>
+					<InputLabel shrink>Item</InputLabel>
+					<Select value={activeItem} label="Item" onChange={e => handleItemFilterClick(e.target.value)}>
+						{itemFilterButtons.map(it => (
+							<MenuItem key={it} value={it}>
+								{it}
+							</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+			</MasterListToolbar>
 		</Box>
 	);
 };

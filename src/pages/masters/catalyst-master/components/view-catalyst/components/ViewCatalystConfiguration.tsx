@@ -166,16 +166,6 @@ const ViewCatalystConfiguration = ({ configurations }: ViewCatalystConfiguration
 									</Typography>
 								</Paper>
 							</Grid>
-							<Grid size={{ xs: 12 }}>
-								<Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #6c757d' }}>
-									<Typography variant="caption" sx={{ color: '#495057', fontWeight: 600 }}>
-										GELCOAT LABEL
-									</Typography>
-									<Typography variant="body1" sx={{ color: '#495057', fontWeight: 500 }}>
-										{config.gelcoatLabel}
-									</Typography>
-								</Paper>
-							</Grid>
 
 							{/* Resin Settings */}
 							<Grid size={{ xs: 12 }}>
@@ -206,16 +196,6 @@ const ViewCatalystConfiguration = ({ configurations }: ViewCatalystConfiguration
 									</Typography>
 								</Paper>
 							</Grid>
-							<Grid size={{ xs: 12 }}>
-								<Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #6c757d' }}>
-									<Typography variant="caption" sx={{ color: '#495057', fontWeight: 600 }}>
-										RESIN LABEL
-									</Typography>
-									<Typography variant="body1" sx={{ color: '#495057', fontWeight: 500 }}>
-										{config.resinLabel}
-									</Typography>
-								</Paper>
-							</Grid>
 
 							{/* Top Coat Settings */}
 							<Grid size={{ xs: 12 }}>
@@ -243,16 +223,6 @@ const ViewCatalystConfiguration = ({ configurations }: ViewCatalystConfiguration
 									</Typography>
 									<Typography variant="h6" sx={{ color: '#283593', fontWeight: 600 }}>
 										{config.maxTopCoat ? `${config.maxTopCoat}%` : 'N/A'}
-									</Typography>
-								</Paper>
-							</Grid>
-							<Grid size={{ xs: 12 }}>
-								<Paper sx={{ p: 2, backgroundColor: '#f8f9fa', border: '1px solid #6c757d' }}>
-									<Typography variant="caption" sx={{ color: '#495057', fontWeight: 600 }}>
-										TOP COAT LABEL
-									</Typography>
-									<Typography variant="body1" sx={{ color: '#495057', fontWeight: 500 }}>
-										{config.topCoatLabel || 'N/A'}
 									</Typography>
 								</Paper>
 							</Grid>

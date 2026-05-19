@@ -1,8 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
+import {
+	Box,
+	Paper,
+	Typography,
+	Button,
+	Stepper,
+	Step,
+	StepLabel,
+	Alert,
+	Skeleton
+} from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
 import SequenceBasicInfo from './components/SequenceBasicInfo';
@@ -10,6 +20,9 @@ import SequenceStepGroups from './components/SequenceStepGroups';
 import SequenceReview from './components/SequenceReview';
 import { sequenceFormSchema, defaultSequenceFormData } from './schemas';
 import { SequenceFormData } from './schemas';
+import { normalizeTableConfig } from './table-config.utils';
+import type { TableConfig } from '../../../../../types/table-config.types';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	useFetchProcessSequenceByIdQuery,
 	useCreateProcessSequenceMutation,
@@ -17,6 +30,25 @@ import {
 } from '../../../../../store/api/business/sequence-master/sequence.api';
 
 const steps = ['Basic Information', 'Step Groups & Steps', 'Review & Submit'];
+
+const MAX_SEQUENCE_BUSINESS_ID_LEN = 50;
+const MAX_SEQUENCE_NAME_LEN = 100;
+const CLONE_ID_SUFFIX = '-COPY';
+
+const cloneBusinessId = (sourceId: string): string => {
+	const combined = `${sourceId}${CLONE_ID_SUFFIX}`;
+	if (combined.length <= MAX_SEQUENCE_BUSINESS_ID_LEN) return combined;
+	const maxBase = MAX_SEQUENCE_BUSINESS_ID_LEN - CLONE_ID_SUFFIX.length;
+	return (maxBase > 0 ? sourceId.slice(0, maxBase) : '') + CLONE_ID_SUFFIX;
+};
+
+const cloneSequenceName = (name: string): string => {
+	const suffix = ' (Copy)';
+	const combined = `${name}${suffix}`;
+	if (combined.length <= MAX_SEQUENCE_NAME_LEN) return combined;
+	const maxBase = MAX_SEQUENCE_NAME_LEN - suffix.length;
+	return (maxBase > 0 ? name.slice(0, maxBase) : '') + suffix;
+};
 
 // Helper function to convert time string (HH:MM) to seconds
 const convertTimeToSeconds = (timeString: string): number => {
@@ -36,18 +68,22 @@ const convertSecondsToTime = (seconds: number): string => {
 
 const CreateSequence = () => {
 	const navigate = useNavigate();
+	const { pathname } = useLocation();
 	const { id } = useParams();
-	const isEditMode = Boolean(id);
+	const isCloneMode = Boolean(id) && pathname.includes('/clone-sequence/');
+	const isEditMode = Boolean(id) && !isCloneMode;
 
 	const [activeStep, setActiveStep] = useState(0);
 	const [error, setError] = useState<string | null>(null);
 
-	// Fetch sequence data for edit mode
+	const shouldFetchById = Boolean(id) && (isEditMode || isCloneMode);
+
+	// Fetch sequence data for edit or clone mode
 	const {
 		data: sequenceData,
 		isLoading: isFetching,
 		isSuccess: isFetchSuccess
-	} = useFetchProcessSequenceByIdQuery({ id: Number(id) }, { skip: !isEditMode || !id });
+	} = useFetchProcessSequenceByIdQuery({ id: Number(id) }, { skip: !shouldFetchById });
 
 	// API mutations
 	const [createSequence, { isLoading: isCreating }] = useCreateProcessSequenceMutation();
@@ -115,9 +151,57 @@ const CreateSequence = () => {
 		}
 	}, [errors]);
 
-	// Load data for edit mode when API data is available
+	// Load data for edit or clone when API data is available
 	useEffect(() => {
-		if (isEditMode && isFetchSuccess && sequenceData) {
+		if (!isFetchSuccess || !sequenceData) return;
+
+		const processStepGroups = (sequenceData.detail.stepGroups ?? [])
+			.filter((group): group is NonNullable<typeof group> => group != null)
+			.map(group => ({
+				processName: group.processName,
+				processDescription: group.processDescription,
+				sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60),
+				shift: group.shift || '',
+				pfdNumber: group.pfdNumber || '',
+				processSteps: (group.steps ?? [])
+					.filter((step): step is NonNullable<typeof step> => step != null)
+					.map(step => {
+						const stepRec = step as Record<string, unknown>;
+						const rawTable = (step.tableConfig ?? stepRec.table_config) as Parameters<typeof normalizeTableConfig>[0];
+						const tableConfig =
+							step.targetValueType === 'table' ? normalizeTableConfig(rawTable ?? null) : null;
+
+						const minNum = step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null;
+						const maxNum = step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null;
+						let minimumAcceptanceValue = minNum;
+						let maximumAcceptanceValue = maxNum;
+						if (step.targetValueType === 'exact value') {
+							const target = minNum ?? maxNum;
+							minimumAcceptanceValue = target;
+							maximumAcceptanceValue = target;
+						}
+
+						return {
+							parameterDescription: step.parameterDescription,
+							stepNumber: step.stepNumber,
+							evaluationMethod: step.evaluationMethod,
+							targetValueType: step.targetValueType,
+							minimumAcceptanceValue,
+							maximumAcceptanceValue,
+							multipleMeasurements: step.multipleMeasurements ?? false,
+							multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
+							tableConfig,
+							uom: step.uom,
+							ctq: step.ctq ?? false,
+							allowAttachments: step.allowAttachments ?? false,
+							responsiblePerson: step.responsiblePerson ?? false,
+							getInstrumentId: step.getInstrumentId ?? false,
+							notes: step.notes
+						};
+					})
+			}));
+
+		if (isEditMode) {
 			const formData: SequenceFormData = {
 				id: sequenceData.detail.id,
 				sequenceId: sequenceData.detail.sequenceId,
@@ -128,33 +212,26 @@ const CreateSequence = () => {
 				notes: sequenceData.detail.notes || '',
 				totalSteps: sequenceData.detail.totalSteps,
 				ctqSteps: sequenceData.detail.ctqSteps,
-				processStepGroups: sequenceData.detail.stepGroups.map(group => ({
-					processName: group.processName,
-					processDescription: group.processDescription,
-					sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60), // Convert seconds to HH:MM
-					processSteps: group.steps.map(step => ({
-						parameterDescription: step.parameterDescription,
-						stepNumber: step.stepNumber,
-						stepType: step.stepType,
-						evaluationMethod: step.evaluationMethod,
-						targetValueType: step.targetValueType,
-						minimumAcceptanceValue: step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null,
-						maximumAcceptanceValue: step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null,
-						multipleMeasurements: step.multipleMeasurements ?? false,
-						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
-						uom: step.uom,
-						ctq: step.ctq ?? false,
-						allowAttachments: step.allowAttachments ?? false,
-						responsiblePerson: step.responsiblePerson ?? false,
-						notes: step.notes
-					}))
-				})),
+				processStepGroups,
 				createdAt: sequenceData.detail.createdAt,
 				updatedAt: sequenceData.detail.updatedAt
 			};
 			reset(formData);
+		} else if (isCloneMode) {
+			const formData: SequenceFormData = {
+				sequenceId: cloneBusinessId(sequenceData.detail.sequenceId),
+				sequenceName: cloneSequenceName(sequenceData.detail.sequenceName),
+				category: sequenceData.detail.category,
+				type: sequenceData.detail.type,
+				status: sequenceData.detail.status === 'ACTIVE',
+				notes: sequenceData.detail.notes || '',
+				totalSteps: sequenceData.detail.totalSteps,
+				ctqSteps: sequenceData.detail.ctqSteps,
+				processStepGroups
+			};
+			reset(formData);
 		}
-	}, [isEditMode, isFetchSuccess, sequenceData, reset]);
+	}, [isEditMode, isCloneMode, isFetchSuccess, sequenceData, reset]);
 
 	const handleNext = async () => {
 		// Define fields to validate for each step
@@ -226,22 +303,34 @@ const CreateSequence = () => {
 						processName: group.processName,
 						processDescription: group.processDescription,
 						sequenceTiming: convertTimeToSeconds(group.sequenceTiming),
-						processSteps: (group.processSteps || []).map((step, stepIndex) => ({
-							parameterDescription: step.parameterDescription,
-							stepNumber: stepIndex + 1, // Auto-calculate step number
-							stepType: step.stepType,
-							evaluationMethod: step.evaluationMethod,
-							targetValueType: step.targetValueType,
-							minimumAcceptanceValue: step.minimumAcceptanceValue ?? null,
-							maximumAcceptanceValue: step.maximumAcceptanceValue ?? null,
-							multipleMeasurements: step.multipleMeasurements ?? false,
-							multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
-							uom: step.uom,
-							ctq: step.ctq ?? false,
-							allowAttachments: step.allowAttachments ?? false,
-							responsiblePerson: step.responsiblePerson ?? false,
-							notes: step.notes || ''
-						}))
+						shift: group.shift || null,
+						pfdNumber: group.pfdNumber || null,
+					processSteps: (group.processSteps || []).map((step, stepIndex) => {
+						const isExact = step.targetValueType === 'exact value';
+						const minVal = step.minimumAcceptanceValue ?? null;
+						const maxVal = isExact ? minVal : step.maximumAcceptanceValue ?? null;
+
+						return {
+						parameterDescription: step.parameterDescription,
+						stepNumber: stepIndex + 1,
+						evaluationMethod: step.evaluationMethod,
+						targetValueType: step.targetValueType,
+						minimumAcceptanceValue: minVal,
+						maximumAcceptanceValue: maxVal,
+						multipleMeasurements: step.multipleMeasurements ?? false,
+						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
+						tableConfig:
+							step.targetValueType === 'table'
+								? ((step.tableConfig ?? null) as TableConfig | null)
+								: null,
+						uom: step.uom,
+						ctq: step.ctq ?? false,
+						allowAttachments: step.allowAttachments ?? false,
+						responsiblePerson: step.responsiblePerson ?? false,
+						getInstrumentId: step.getInstrumentId ?? false,
+						notes: step.notes || ''
+					};
+					})
 					}))
 				}
 			};
@@ -308,8 +397,8 @@ const CreateSequence = () => {
 		}
 	};
 
-	// Show skeleton loading state when fetching data in edit mode
-	if (isEditMode && isFetching) {
+	// Show skeleton loading state when fetching data in edit or clone mode
+	if (shouldFetchById && isFetching) {
 		return (
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
@@ -340,8 +429,9 @@ const CreateSequence = () => {
 
 	return (
 		<FormProvider {...methods}>
-			<Box sx={{ minHeight: '100vh' }}>
-				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+			<>
+				<Box sx={{ minHeight: '100vh' }}>
+					<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
 					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
@@ -394,7 +484,7 @@ const CreateSequence = () => {
 										'&:hover': { backgroundColor: '#1565c0' }
 									}}
 								>
-									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Sequence' : 'Create Sequence'}
+									{isEditMode ? 'Update Sequence' : 'Create Sequence'}
 								</Button>
 							) : (
 								<Button
@@ -413,6 +503,9 @@ const CreateSequence = () => {
 					</Box>
 				</Paper>
 			</Box>
+
+			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+			</>
 		</FormProvider>
 	);
 };

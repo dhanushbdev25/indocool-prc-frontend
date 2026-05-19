@@ -68,21 +68,6 @@ const ViewCatalystBasicInfo = ({ catalyst }: ViewCatalystBasicInfoProps) => {
 						</Box>
 					</Grid>
 
-					{/* MEKP Density */}
-					<Grid size={{ xs: 12, md: 6 }}>
-						<Box>
-							<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
-								MEKP Density
-							</Typography>
-							<Typography variant="body1" sx={{ color: '#333', fontSize: '1.1rem', fontWeight: 500 }}>
-								{catalyst.mekpDensity} g/cm³
-							</Typography>
-							<Typography variant="caption" sx={{ color: '#666' }}>
-								Methyl Ethyl Ketone Peroxide density
-							</Typography>
-						</Box>
-					</Grid>
-
 					{/* Status */}
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>

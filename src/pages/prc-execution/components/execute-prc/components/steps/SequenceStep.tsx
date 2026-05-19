@@ -21,11 +21,16 @@ import {
 } from '@mui/material';
 import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
+import {
+	OK_NOT_OK_NEGATIVE_LABEL
+} from '../../../../../../utils/okNotOkLabels';
 
 interface SequenceStepProps {
 	step: TimelineStep;
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => void;
+	/** When true, all inputs are disabled (e.g. part master template preview). */
+	readOnlyOverride?: boolean;
 }
 
 // Helper function to validate measurement value against acceptance range
@@ -35,19 +40,122 @@ const validateMeasurementRange = (value: number, min: number, max: number): 'Acc
 	return 'Accepted';
 };
 
-const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps) => {
+/** Signed delta for exact-target deviation chip (compact, trim useless trailing zeros). */
+const formatSignedDeviation = (measured: number, target: number): string => {
+	const delta = measured - target;
+	if (!Number.isFinite(delta)) return '';
+	if (delta === 0) return '0';
+	const abs = Math.abs(delta);
+	const dec = abs.toFixed(6).replace(/\.?0+$/, '');
+	return `${delta > 0 ? '+' : '-'}${dec}`;
+};
+
+const parseOptionalNumber = (value: string | number | undefined | null): number | null => {
+	if (value === undefined || value === null || value === '') return null;
+	const n = typeof value === 'number' ? value : parseFloat(String(value).trim());
+	return Number.isFinite(n) ? n : null;
+};
+
+const normalizeTargetValueType = (t: string | undefined): string => (typeof t === 'string' ? t.trim().toLowerCase() : '');
+
+const isRangeOrExactTarget = (t: string | undefined): boolean => {
+	const n = normalizeTargetValueType(t);
+	return n === 'range' || n === 'exact value';
+};
+
+const isExactTargetValueType = (t: string | undefined): boolean => normalizeTargetValueType(t) === 'exact value';
+
+/**
+ * Numeric band for Measurement validation: prefer minValue/maxValue when both parse;
+ * else minimumAcceptanceValue/maximumAcceptanceValue (sequence master often only persists acceptance).
+ * For exact value, a single bound (min or max) is enough — treated as target t..t.
+ */
+const getNumericMeasurementBounds = (stepData: {
+	targetValueType?: string;
+	minValue?: string;
+	maxValue?: string;
+	minimumAcceptanceValue?: string;
+	maximumAcceptanceValue?: string;
+}): { min: number; max: number } | null => {
+	const specMin = parseOptionalNumber(stepData.minValue);
+	const specMax = parseOptionalNumber(stepData.maxValue);
+	if (specMin !== null && specMax !== null) {
+		return { min: specMin, max: specMax };
+	}
+	const accMin = parseOptionalNumber(stepData.minimumAcceptanceValue);
+	const accMax = parseOptionalNumber(stepData.maximumAcceptanceValue);
+	if (isExactTargetValueType(stepData.targetValueType)) {
+		const t = accMin ?? accMax;
+		if (t !== null) return { min: t, max: t };
+		return null;
+	}
+	if (accMin !== null && accMax !== null) {
+		return { min: accMin, max: accMax };
+	}
+	return null;
+};
+
+/** Any sequence step with range/exact target and parsable spec or acceptance bounds (Measurement, Inspection, Check, Operation, etc.). */
+const isNumericRangeStepWithBounds = (stepData: {
+	targetValueType?: string;
+	minValue?: string;
+	maxValue?: string;
+	minimumAcceptanceValue?: string;
+	maximumAcceptanceValue?: string;
+}): boolean => {
+	if (!isRangeOrExactTarget(stepData.targetValueType)) return false;
+	return getNumericMeasurementBounds(stepData) !== null;
+};
+
+const buildEmptyMeasurements = (n: number) =>
+	Array.from({ length: n }, (_, i) => ({ id: String(i + 1), value: '' }));
+
+const normalizeMeasurementsToCount = (
+	loaded: Array<{ id: string; value: string }>,
+	n: number
+): Array<{ id: string; value: string }> => {
+	const out = buildEmptyMeasurements(n);
+	for (let i = 0; i < Math.min(loaded.length, n); i++) {
+		out[i] = { id: String(i + 1), value: loaded[i].value ?? '' };
+	}
+	return out;
+};
+
+const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }: SequenceStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
+
+	const getOkNotOkValue = (value: unknown): string => {
+		if (typeof value === 'string') return value;
+		if (typeof value === 'object' && value !== null && 'value' in value) {
+			const innerValue = (value as Record<string, unknown>).value;
+			return typeof innerValue === 'string' ? innerValue : '';
+		}
+		return '';
+	};
+
+	const readApiComment = (obj: Record<string, unknown>): string => {
+		const fromComments = obj.comments;
+		if (typeof fromComments === 'string') return fromComments;
+		const legacy = obj.notOkComment;
+		return typeof legacy === 'string' ? legacy : '';
+	};
 
 	// Compute initial data from existing data
 	const initialData = useMemo(() => {
 		const stepData = step.stepData;
 		const defaultResponsiblePersonData = [{ id: '1', role: 'l1' as const, employeeName: '', employeeCode: '' }];
+		const fixedMeasurementCount =
+			stepData?.multipleMeasurements && stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0
+				? stepData.multipleMeasurementMaxCount
+				: null;
+
 		if (!stepData)
 			return {
 				formData: {},
-				measurements: [{ id: '1', value: '' }],
-				responsiblePersonData: defaultResponsiblePersonData
+				measurements: fixedMeasurementCount ? buildEmptyMeasurements(fixedMeasurementCount) : [{ id: '1', value: '' }],
+				responsiblePersonData: defaultResponsiblePersonData,
+				instrumentId: ''
 			};
 		if (executionData.prcAggregatedSteps) {
 			const existingData =
@@ -104,28 +212,82 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					}
 				}
 
+				const extractedInstrumentId = (() => {
+					if (typeof existingData === 'object' && existingData !== null && 'instrumentId' in existingData) {
+						const value = (existingData as Record<string, unknown>).instrumentId;
+						if (typeof value === 'string') return value;
+					}
+					if (typeof actualData === 'object' && actualData !== null && 'instrumentId' in actualData) {
+						const value = (actualData as Record<string, unknown>).instrumentId;
+						if (typeof value === 'string') return value;
+					}
+					return '';
+				})();
+
+				if (stepData.targetValueType === 'table' && Array.isArray(actualData)) {
+					return {
+						formData: {},
+						measurements: [{ id: '1', value: '' }],
+						responsiblePersonData,
+						instrumentId: extractedInstrumentId,
+						tableData: actualData as Array<Record<string, string>>
+					};
+				}
+
 				if (stepData.multipleMeasurements && Array.isArray(actualData)) {
-					// Load multiple measurements from array
-					const loadedMeasurements = actualData.map((value: string | number, index: number) => ({
-						id: (index + 1).toString(),
-						value: value.toString()
-					}));
-					return { formData: {}, measurements: loadedMeasurements, responsiblePersonData };
+					// Load multiple measurements from array (primitives or { value } from saved validation objects)
+					const loadedMeasurements = actualData.map((item: unknown, index: number) => {
+						let raw: string | number;
+						if (typeof item === 'object' && item !== null && 'value' in item) {
+							const v = (item as Record<string, unknown>).value;
+							raw = typeof v === 'number' || typeof v === 'string' ? v : '';
+						} else {
+							raw = item as string | number;
+						}
+						return {
+							id: (index + 1).toString(),
+							value: raw === '' || raw === undefined || raw === null ? '' : String(raw)
+						};
+					});
+					const measurements =
+						fixedMeasurementCount && fixedMeasurementCount > 0
+							? normalizeMeasurementsToCount(loadedMeasurements, fixedMeasurementCount)
+							: loadedMeasurements;
+					return { formData: {}, measurements, responsiblePersonData, instrumentId: extractedInstrumentId };
 				} else if (typeof actualData === 'string' || typeof actualData === 'number') {
 					// Load single value directly
 					return {
 						formData: { value: actualData.toString() },
 						measurements: [{ id: '1', value: '' }],
-						responsiblePersonData
+						responsiblePersonData,
+						instrumentId: extractedInstrumentId
 					};
 				} else if (typeof actualData === 'object' && actualData !== null) {
 					// Handle object data (like { value: "ok" })
 					if ('value' in actualData) {
+						const candidateValue = (actualData as Record<string, unknown>).value;
+						const resolvedValue =
+							typeof candidateValue === 'string'
+								? candidateValue
+								: typeof candidateValue === 'object' && candidateValue !== null && 'value' in candidateValue
+									? String((candidateValue as Record<string, unknown>).value || '')
+									: '';
+						const resolvedNotOkComment = (() => {
+							const fromRoot = readApiComment(actualData as Record<string, unknown>);
+							if (fromRoot) return fromRoot;
+							if (typeof candidateValue === 'object' && candidateValue !== null) {
+								return readApiComment(candidateValue as Record<string, unknown>);
+							}
+							return '';
+						})();
 						return {
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							formData: { value: (actualData as any).value.toString() },
+							formData: {
+								value: resolvedValue,
+								notOkComment: resolvedNotOkComment
+							},
 							measurements: [{ id: '1', value: '' }],
-							responsiblePersonData
+							responsiblePersonData,
+							instrumentId: extractedInstrumentId
 						};
 					}
 				}
@@ -133,8 +295,13 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		}
 		return {
 			formData: {},
-			measurements: [{ id: '1', value: '' }],
-			responsiblePersonData: defaultResponsiblePersonData
+			measurements:
+				stepData?.multipleMeasurements && fixedMeasurementCount && fixedMeasurementCount > 0
+					? buildEmptyMeasurements(fixedMeasurementCount)
+					: [{ id: '1', value: '' }],
+			responsiblePersonData: defaultResponsiblePersonData,
+			instrumentId: '',
+			tableData: undefined as Array<Record<string, string>> | undefined
 		};
 	}, [executionData.prcAggregatedSteps, step]);
 
@@ -148,13 +315,36 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 			employeeCode: string;
 		}>
 	>(initialData.responsiblePersonData);
+	const [instrumentId, setInstrumentId] = useState<string>(initialData.instrumentId || '');
+
+	const initTableData = useMemo(() => {
+		if (initialData.tableData) return initialData.tableData;
+		const tc = step.stepData?.tableConfig;
+		if (!tc || step.stepData?.targetValueType !== 'table') return undefined;
+		return tc.rows.map(row => {
+			const rowObj: Record<string, string> = {};
+			tc.columns.forEach(col => {
+				const cell = row.cells[col.name];
+				rowObj[col.name] = cell?.readOnly ? cell.value : (cell?.value || '');
+			});
+			return rowObj;
+		});
+	}, [initialData.tableData, step.stepData?.tableConfig, step.stepData?.targetValueType]);
+
+	const [tableData, setTableData] = useState<Array<Record<string, string>> | undefined>(initTableData);
 
 	// Update form data when initial data changes
 	useEffect(() => {
 		setFormData(initialData.formData);
 		setMeasurements(initialData.measurements);
 		setResponsiblePersonData(initialData.responsiblePersonData);
-	}, [initialData]);
+		setInstrumentId(initialData.instrumentId || '');
+		if (initialData.tableData) {
+			setTableData(initialData.tableData);
+		} else if (initTableData) {
+			setTableData(initTableData);
+		}
+	}, [initialData, initTableData]);
 
 	const stepData = step.stepData;
 	if (!stepData) {
@@ -162,11 +352,21 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	}
 
 	// Check if this specific sub-step is already filled
-	const isSubStepFilled =
+	const isSubStepFilled = Boolean(
 		initialData &&
-		((initialData.formData && Object.keys(initialData.formData).length > 0) ||
-			(initialData.measurements && initialData.measurements.some(m => m.value && m.value.trim() !== '')));
-	const isReadOnly = step.status === 'completed' || isSubStepFilled;
+			(!!initialData.tableData ||
+				(stepData.multipleMeasurements && initialData.measurements
+					? stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0
+						? initialData.measurements.length === stepData.multipleMeasurementMaxCount &&
+							initialData.measurements.every(
+								m => m.value.trim() !== '' && !isNaN(parseFloat(m.value))
+							)
+						: initialData.measurements.every(
+								m => m.value.trim() !== '' && !isNaN(parseFloat(m.value))
+							)
+					: initialData.formData && Object.keys(initialData.formData).length > 0))
+	);
+	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed' || isSubStepFilled;
 
 	// Debug logging
 	console.log('SequenceStep Debug:', {
@@ -180,7 +380,8 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	const handleValueChange = (value: string) => {
 		setFormData(prev => ({
 			...prev,
-			value: value
+			value: value,
+			...(value !== 'not ok' ? { notOkComment: '' } : {})
 		}));
 
 		// Clear error when user starts typing
@@ -198,6 +399,20 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				delete newAcks.value;
 				return newAcks;
 			});
+		}
+	};
+
+	const handleNotOkCommentChange = (comment: string) => {
+		setFormData(prev => ({
+			...prev,
+			notOkComment: comment
+		}));
+
+		if (errors.notOkComment) {
+			setErrors(prev => ({
+				...prev,
+				notOkComment: ''
+			}));
 		}
 	};
 
@@ -224,11 +439,13 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	};
 
 	const addMeasurement = () => {
+		if (stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0) return;
 		const newId = (measurements.length + 1).toString();
 		setMeasurements(prev => [...prev, { id: newId, value: '' }]);
 	};
 
 	const removeMeasurement = (measurementId: string) => {
+		if (stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0) return;
 		if (measurements.length > 1) {
 			setMeasurements(prev => prev.filter(m => m.id !== measurementId));
 		}
@@ -270,18 +487,59 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		}));
 	};
 
+	const handleInstrumentIdChange = (value: string) => {
+		setInstrumentId(value);
+		if (errors.instrumentId) {
+			setErrors(prev => ({
+				...prev,
+				instrumentId: ''
+			}));
+		}
+	};
+
+	const handleTableCellChange = (rowIndex: number, colName: string, value: string) => {
+		setTableData(prev => {
+			if (!prev) return prev;
+			const updated = [...prev];
+			updated[rowIndex] = { ...updated[rowIndex], [colName]: value };
+			return updated;
+		});
+	};
+
 	const validateForm = () => {
 		const newErrors: Record<string, string> = {};
+		const ackRequiredMsg = isExactTargetValueType(stepData.targetValueType)
+			? 'Please acknowledge the deviation from the exact target'
+			: 'Please acknowledge the out-of-range value';
 
-		// Check if this is a Measurement step with range type that requires acceptance value validation
-		const isMeasurementRange =
-			stepData.stepType === 'Measurement' &&
-			stepData.targetValueType === 'range' &&
-			stepData.minimumAcceptanceValue &&
-			stepData.maximumAcceptanceValue;
+		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
+			stepData.tableConfig.columns.forEach(col => {
+				tableData.forEach((row, rowIdx) => {
+					const rowConfig = stepData.tableConfig!.rows[rowIdx];
+					const cellConfig = rowConfig?.cells[col.name];
+					if (cellConfig?.readOnly) return;
+					const val = row[col.name];
+					if (!val || val.trim() === '') {
+						newErrors[`table_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} is required`;
+					} else if (col.type === 'number' && isNaN(parseFloat(val))) {
+						newErrors[`table_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a number`;
+					}
+				});
+			});
+			setErrors(newErrors);
+			return Object.keys(newErrors).length === 0;
+		}
+
+		const rangeStepWithBounds = isNumericRangeStepWithBounds(stepData);
+		const numericBounds = getNumericMeasurementBounds(stepData);
 
 		// For multiple measurements, only validate the measurements array
 		if (stepData.multipleMeasurements) {
+			if (stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0) {
+				if (measurements.length !== stepData.multipleMeasurementMaxCount) {
+					newErrors.measurements_count = `Exactly ${stepData.multipleMeasurementMaxCount} measurements are required`;
+				}
+			}
 			measurements.forEach((measurement, index) => {
 				if (!measurement.value || measurement.value.trim() === '') {
 					newErrors[`measurement_${measurement.id}`] = `Measurement ${index + 1} is required`;
@@ -289,27 +547,10 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					const numValue = parseFloat(measurement.value);
 					if (isNaN(numValue)) {
 						newErrors[`measurement_${measurement.id}`] = `Measurement ${index + 1} must be a valid number`;
-					} else {
-						// Check range validation for range type steps
-						if (stepData.targetValueType === 'range' && stepData.minValue && stepData.maxValue) {
-							const min = parseFloat(stepData.minValue);
-							const max = parseFloat(stepData.maxValue);
-							if (numValue < min || numValue > max) {
-								newErrors[`measurement_${measurement.id}`] =
-									`Measurement ${index + 1} must be between ${min} and ${max} ${stepData.uom || ''}`;
-							}
-						}
-
-						// For Measurement range type, check against acceptance values
-						if (isMeasurementRange) {
-							const minAcceptance = parseFloat(stepData.minimumAcceptanceValue!);
-							const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue!);
-							if (!isNaN(minAcceptance) && !isNaN(maxAcceptance)) {
-								const validationStatus = validateMeasurementRange(numValue, minAcceptance, maxAcceptance);
-								if (validationStatus !== 'Accepted' && !acknowledgments[`measurement_${measurement.id}`]) {
-									newErrors[`measurement_${measurement.id}_acknowledge`] = 'Please acknowledge the out-of-range value';
-								}
-							}
+					} else if (rangeStepWithBounds && numericBounds) {
+						const validationStatus = validateMeasurementRange(numValue, numericBounds.min, numericBounds.max);
+						if (validationStatus !== 'Accepted' && !acknowledgments[`measurement_${measurement.id}`]) {
+							newErrors[`measurement_${measurement.id}_acknowledge`] = ackRequiredMsg;
 						}
 					}
 				}
@@ -317,8 +558,13 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		} else {
 			// For single measurements, validate the main formData.value
 			if (stepData.targetValueType === 'ok/not ok') {
-				if (!formData.value) {
+				const selectedValue = getOkNotOkValue(formData.value);
+				const notOkComment = typeof formData.notOkComment === 'string' ? formData.notOkComment.trim() : '';
+
+				if (!selectedValue) {
 					newErrors.value = 'Please select an option';
+				} else if (selectedValue === 'not ok' && !notOkComment) {
+					newErrors.notOkComment = `Comment is required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`;
 				}
 			} else {
 				if (!formData.value || (typeof formData.value === 'string' && formData.value.trim() === '')) {
@@ -327,26 +573,10 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					const numValue = parseFloat(String(formData.value));
 					if (isNaN(numValue)) {
 						newErrors.value = 'Please enter a valid number';
-					} else {
-						// Check range validation for range type steps
-						if (stepData.targetValueType === 'range' && stepData.minValue && stepData.maxValue) {
-							const min = parseFloat(stepData.minValue);
-							const max = parseFloat(stepData.maxValue);
-							if (numValue < min || numValue > max) {
-								newErrors.value = `Value must be between ${min} and ${max} ${stepData.uom || ''}`;
-							}
-						}
-
-						// For Measurement range type, check against acceptance values
-						if (isMeasurementRange) {
-							const minAcceptance = parseFloat(stepData.minimumAcceptanceValue!);
-							const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue!);
-							if (!isNaN(minAcceptance) && !isNaN(maxAcceptance)) {
-								const validationStatus = validateMeasurementRange(numValue, minAcceptance, maxAcceptance);
-								if (validationStatus !== 'Accepted' && !acknowledgments.value) {
-									newErrors.value_acknowledge = 'Please acknowledge the out-of-range value';
-								}
-							}
+					} else if (rangeStepWithBounds && numericBounds) {
+						const validationStatus = validateMeasurementRange(numValue, numericBounds.min, numericBounds.max);
+						if (validationStatus !== 'Accepted' && !acknowledgments.value) {
+							newErrors.value_acknowledge = ackRequiredMsg;
 						}
 					}
 				}
@@ -370,24 +600,24 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 			});
 		}
 
+		if (stepData.getInstrumentId && instrumentId.trim() === '') {
+			newErrors.instrumentId = 'Instrument id is required';
+		}
+
 		setErrors(newErrors);
 		return Object.keys(newErrors).length === 0;
 	};
 
 	// Helper functions for validation status UI
 	const getValidationStatus = (value: string | number | undefined): 'Accepted' | 'Lesser' | 'Greater' | null => {
-		if (!stepData.stepType || stepData.stepType !== 'Measurement') return null;
-		if (stepData.targetValueType !== 'range') return null;
-		if (!stepData.minimumAcceptanceValue || !stepData.maximumAcceptanceValue) return null;
+		if (!isNumericRangeStepWithBounds(stepData)) return null;
+		const bounds = getNumericMeasurementBounds(stepData);
+		if (!bounds) return null;
 
-		const numValue = typeof value === 'string' ? parseFloat(value) : typeof value === 'number' ? value : undefined;
-		if (numValue === undefined || isNaN(numValue)) return null;
+		const numValue = typeof value === 'string' ? parseFloat(value) : typeof value === 'number' ? value : NaN;
+		if (isNaN(numValue)) return null;
 
-		const minAcceptance = parseFloat(stepData.minimumAcceptanceValue);
-		const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue);
-		if (isNaN(minAcceptance) || isNaN(maxAcceptance)) return null;
-
-		return validateMeasurementRange(numValue, minAcceptance, maxAcceptance);
+		return validateMeasurementRange(numValue, bounds.min, bounds.max);
 	};
 
 	const getValidationIcon = (status: 'Accepted' | 'Lesser' | 'Greater') => {
@@ -401,10 +631,19 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 		}
 	};
 
-	const getValidationChip = (status: 'Accepted' | 'Lesser' | 'Greater') => {
+	const getValidationChip = (
+		status: 'Accepted' | 'Lesser' | 'Greater',
+		ctx?: { isExact: boolean; measured: number; target: number }
+	) => {
 		const color = status === 'Accepted' ? 'success' : status === 'Lesser' ? 'warning' : 'error';
+		if (ctx?.isExact) {
+			const label =
+				status === 'Accepted'
+					? 'Matches target'
+					: `Deviation: ${formatSignedDeviation(ctx.measured, ctx.target)}`;
+			return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
+		}
 		const label = `Range: ${status}`;
-
 		return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
 	};
 
@@ -438,11 +677,40 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 
 	const handleSubmit = () => {
 		if (validateForm()) {
-			let submitData: string | string[];
+			if (stepData.targetValueType === 'table' && tableData) {
+				const formDataToSubmit: FormData = {
+					data: tableData,
+					stepId: stepData.stepId,
+					stepGroupId: stepData.stepGroupId,
+					prcTemplateStepId: stepData.prcTemplateStepId
+				};
+				if (stepData.responsiblePerson) {
+					formDataToSubmit.responsiblePersons = responsiblePersonData.map(p => ({
+						id: p.id,
+						role: p.role,
+						employeeName: p.employeeName,
+						employeeCode: p.employeeCode
+					}));
+				}
+				if (stepData.getInstrumentId) {
+					formDataToSubmit.instrumentId = instrumentId.trim();
+				}
+				onStepComplete(formDataToSubmit);
+				return;
+			}
+
+			let submitData: string | string[] | Record<string, unknown>;
 
 			if (stepData.multipleMeasurements) {
 				// For multiple measurements, send array directly
 				submitData = measurements.map(m => m.value);
+			} else if (stepData.targetValueType === 'ok/not ok') {
+				const selectedValue = getOkNotOkValue(formData.value);
+				const notOkComment = typeof formData.notOkComment === 'string' ? formData.notOkComment.trim() : '';
+				submitData = {
+					value: selectedValue,
+					comments: notOkComment
+				};
 			} else {
 				// For single values, send string directly
 				submitData = String(formData.value);
@@ -465,31 +733,24 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					employeeCode: person.employeeCode
 				}));
 			}
+			if (stepData.getInstrumentId) {
+				formDataToSubmit.instrumentId = instrumentId.trim();
+			}
 
-			// For Measurement steps with range type, store acceptance values and validation status
-			const isMeasurementRange =
-				stepData.stepType === 'Measurement' &&
-				stepData.targetValueType === 'range' &&
-				stepData.minimumAcceptanceValue &&
-				stepData.maximumAcceptanceValue;
-
-			if (isMeasurementRange) {
+			// Numeric range/exact steps: persist acceptance fields + validation status
+			if (isNumericRangeStepWithBounds(stepData)) {
+				const bounds = getNumericMeasurementBounds(stepData);
 				if (stepData.multipleMeasurements) {
-					// For multiple measurements, store validation status for each measurement
 					const valuesWithValidation = measurements.map(m => {
 						const value = parseFloat(m.value);
-						if (!isNaN(value)) {
-							const minAcceptance = parseFloat(stepData.minimumAcceptanceValue!);
-							const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue!);
-							if (!isNaN(minAcceptance) && !isNaN(maxAcceptance)) {
-								const validationStatus = validateMeasurementRange(value, minAcceptance, maxAcceptance);
-								return {
-									value: m.value,
-									minimumAcceptanceValue: stepData.minimumAcceptanceValue,
-									maximumAcceptanceValue: stepData.maximumAcceptanceValue,
-									validationStatus: validationStatus
-								};
-							}
+						if (!isNaN(value) && bounds) {
+							const validationStatus = validateMeasurementRange(value, bounds.min, bounds.max);
+							return {
+								value: m.value,
+								minimumAcceptanceValue: stepData.minimumAcceptanceValue,
+								maximumAcceptanceValue: stepData.maximumAcceptanceValue,
+								validationStatus: validationStatus
+							};
 						}
 						return {
 							value: m.value,
@@ -500,20 +761,15 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					(formDataToSubmit as any).data = valuesWithValidation;
 				} else {
-					// For single measurement, store acceptance values and validation status
 					const value = parseFloat(String(formData.value));
-					if (!isNaN(value)) {
-						const minAcceptance = parseFloat(stepData.minimumAcceptanceValue!);
-						const maxAcceptance = parseFloat(stepData.maximumAcceptanceValue!);
-						if (!isNaN(minAcceptance) && !isNaN(maxAcceptance)) {
-							const validationStatus = validateMeasurementRange(value, minAcceptance, maxAcceptance);
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(formDataToSubmit as any).minimumAcceptanceValue = stepData.minimumAcceptanceValue;
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(formDataToSubmit as any).maximumAcceptanceValue = stepData.maximumAcceptanceValue;
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							(formDataToSubmit as any).validationStatus = validationStatus;
-						}
+					if (!isNaN(value) && bounds) {
+						const validationStatus = validateMeasurementRange(value, bounds.min, bounds.max);
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(formDataToSubmit as any).minimumAcceptanceValue = stepData.minimumAcceptanceValue;
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(formDataToSubmit as any).maximumAcceptanceValue = stepData.maximumAcceptanceValue;
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						(formDataToSubmit as any).validationStatus = validationStatus;
 					}
 				}
 			}
@@ -523,15 +779,104 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 	};
 
 	const renderInput = () => {
-		if (stepData.targetValueType === 'ok/not ok') {
+		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
+			const tc = stepData.tableConfig;
 			return (
-				<FormControl component="fieldset" disabled={isReadOnly}>
+				<Box sx={{ overflowX: 'auto' }}>
+					<Box
+						component="table"
+						sx={{
+							width: '100%',
+							borderCollapse: 'collapse',
+							'& th, & td': { border: '1px solid #e0e0e0', p: 1, textAlign: 'left', fontSize: '0.875rem' },
+							'& th': { backgroundColor: '#f5f5f5', fontWeight: 600 }
+						}}
+					>
+						<thead>
+							<tr>
+								{tc.columns.map(col => (
+									<th key={col.name}>
+										{col.name}
+										<Typography variant="caption" sx={{ display: 'block', color: '#999', fontWeight: 400 }}>
+											{col.type}
+										</Typography>
+									</th>
+								))}
+							</tr>
+						</thead>
+						<tbody>
+							{tableData.map((row, rowIdx) => (
+								<tr key={rowIdx}>
+									{tc.columns.map(col => {
+										const rowConfig = tc.rows[rowIdx];
+										const cellConfig = rowConfig?.cells[col.name];
+										const cellValue = row[col.name] || '';
+										const isCellReadOnly = cellConfig?.readOnly || isReadOnly;
+
+										if (isCellReadOnly) {
+											return (
+												<td key={col.name} style={{ backgroundColor: '#f9f9f9' }}>
+													<Typography variant="body2" sx={{ color: '#333' }}>
+														{cellValue || '-'}
+													</Typography>
+												</td>
+											);
+										}
+
+										if (col.type === 'ok/not ok') {
+											return (
+												<td key={col.name}>
+													<RadioGroup
+														row
+														value={cellValue}
+														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
+														sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
+													>
+														<FormControlLabel value="ok" control={<Radio size="small" />} label="OK" />
+														<FormControlLabel value="not ok" control={<Radio size="small" color="warning" />} label={OK_NOT_OK_NEGATIVE_LABEL} />
+													</RadioGroup>
+													{errors[`table_${rowIdx}_${col.name}`] && (
+														<Typography variant="caption" color="error">
+															{errors[`table_${rowIdx}_${col.name}`]}
+														</Typography>
+													)}
+												</td>
+											);
+										}
+
+										return (
+											<td key={col.name}>
+												<TextField
+													size="small"
+													fullWidth
+													type={col.type === 'number' ? 'number' : 'text'}
+													value={cellValue}
+													onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
+													error={!!errors[`table_${rowIdx}_${col.name}`]}
+													helperText={errors[`table_${rowIdx}_${col.name}`]}
+													sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px' } }}
+												/>
+											</td>
+										);
+									})}
+								</tr>
+							))}
+						</tbody>
+					</Box>
+				</Box>
+			);
+		}
+
+		if (stepData.targetValueType === 'ok/not ok') {
+			const selectedValue = getOkNotOkValue(formData.value);
+			return (
+				<FormControl component="fieldset" disabled={isReadOnly} fullWidth sx={{ width: '100%' }}>
 					<FormLabel component="legend" sx={{ fontSize: '0.875rem', color: '#666', mb: 1 }}>
 						Select Result
 					</FormLabel>
 					<RadioGroup
 						row
-						value={formData.value || ''}
+						value={selectedValue}
 						onChange={e => handleValueChange(e.target.value)}
 						sx={{ gap: 2 }}
 					>
@@ -542,43 +887,95 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							sx={{
 								'& .MuiFormControlLabel-label': {
 									fontSize: '0.875rem',
-									color: formData.value === 'ok' ? '#2e7d32' : '#666'
+									color: selectedValue === 'ok' ? '#2e7d32' : '#666'
 								}
 							}}
 						/>
 						<FormControlLabel
 							value="not ok"
-							control={<Radio size="small" color="error" />}
-							label="Not OK"
+							control={<Radio size="small" color="warning" />}
+							label={OK_NOT_OK_NEGATIVE_LABEL}
 							sx={{
 								'& .MuiFormControlLabel-label': {
 									fontSize: '0.875rem',
-									color: formData.value === 'not ok' ? '#d32f2f' : '#666'
+									color: selectedValue === 'not ok' ? '#ed6c02' : '#666'
 								}
 							}}
 						/>
 					</RadioGroup>
+					{selectedValue === 'not ok' && (
+						<TextField
+							fullWidth
+							multiline
+							rows={3}
+							label="Comments"
+							placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+							value={typeof formData.notOkComment === 'string' ? formData.notOkComment : ''}
+							onChange={e => handleNotOkCommentChange(e.target.value)}
+							error={!!errors.notOkComment}
+							helperText={errors.notOkComment || `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`}
+							sx={{ mt: 1.5 }}
+							disabled={isReadOnly}
+							required
+						/>
+					)}
 				</FormControl>
 			);
 		}
 
 		if (stepData.multipleMeasurements) {
-			const maxCount = stepData.multipleMeasurementMaxCount || 10;
-			const isMeasurementRange =
-				stepData.stepType === 'Measurement' &&
-				stepData.targetValueType === 'range' &&
-				stepData.minimumAcceptanceValue &&
-				stepData.maximumAcceptanceValue;
+			const fixedN =
+				stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0
+					? stepData.multipleMeasurementMaxCount
+					: null;
+			const maxCount = fixedN ?? stepData.multipleMeasurementMaxCount ?? 10;
+			const showMeasurementBoundsUi = isNumericRangeStepWithBounds(stepData);
+			const resolvedBounds = getNumericMeasurementBounds(stepData);
+			const isExactStep = isExactTargetValueType(stepData.targetValueType);
+			const specMin = parseOptionalNumber(stepData.minValue);
+			const specMax = parseOptionalNumber(stepData.maxValue);
+			const numberInputProps =
+				showMeasurementBoundsUi && resolvedBounds
+					? isExactStep
+						? { step: 0.01 }
+						: { min: resolvedBounds.min, max: resolvedBounds.max, step: 0.01 }
+					: {
+							min: specMin ?? 0,
+							...(specMax !== null ? { max: specMax } : {}),
+							step: 0.01
+						};
+			const ackLabelText = isExactStep
+				? 'I acknowledge the deviation from the exact target value'
+				: 'I acknowledge that the measurement value is outside the acceptable range';
 
 			return (
 				<Box>
 					<Typography variant="body2" sx={{ mb: 1, fontWeight: 500, color: '#666' }}>
-						Multiple Measurements (Max {maxCount} allowed):
+						{fixedN
+							? `Multiple Measurements (${fixedN} required)`
+							: `Multiple Measurements (Max ${maxCount} allowed)`}
 					</Typography>
+					{errors.measurements_count && (
+						<Alert severity="error" sx={{ mb: 1 }}>
+							{errors.measurements_count}
+						</Alert>
+					)}
+					{!fixedN && measurements.length < maxCount && !isReadOnly && (
+						<Box sx={{ mb: 1.5 }}>
+							<Button startIcon={<Add />} onClick={addMeasurement} variant="outlined" size="small">
+								Add Measurement ({measurements.length}/{maxCount})
+							</Button>
+						</Box>
+					)}
 					{measurements.map((measurement, index) => {
 						const validationStatus =
-							isMeasurementRange && measurement.value ? getValidationStatus(measurement.value) : null;
+							showMeasurementBoundsUi && measurement.value ? getValidationStatus(measurement.value) : null;
 						const showAcknowledgment = validationStatus && validationStatus !== 'Accepted';
+						const measuredNum = measurement.value ? parseFloat(measurement.value) : NaN;
+						const validationChipCtx =
+							isExactStep && resolvedBounds && !Number.isNaN(measuredNum)
+								? { isExact: true as const, measured: measuredNum, target: resolvedBounds.min }
+								: undefined;
 
 						return (
 							<Box key={measurement.id} sx={{ mb: 2 }}>
@@ -594,11 +991,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 										error={!!errors[`measurement_${measurement.id}`]}
 										helperText={errors[`measurement_${measurement.id}`]}
 										sx={{ flex: 1 }}
-										inputProps={{
-											min: stepData.minValue ? parseFloat(stepData.minValue) : 0,
-											max: stepData.maxValue ? parseFloat(stepData.maxValue) : undefined,
-											step: 0.01
-										}}
+										inputProps={numberInputProps}
 										disabled={isReadOnly}
 									/>
 									{stepData.uom && stepData.uom !== 'None' && (
@@ -606,7 +999,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 											{stepData.uom}
 										</Typography>
 									)}
-									{measurements.length > 1 && !isReadOnly && (
+									{!fixedN && measurements.length > 1 && !isReadOnly && (
 										<IconButton onClick={() => removeMeasurement(measurement.id)} color="error" size="small">
 											<Delete />
 										</IconButton>
@@ -614,7 +1007,10 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 								</Box>
 
 								{/* Range Display and Validation */}
-								{isMeasurementRange && measurement.value && validationStatus && validationStatus !== null && (
+								{showMeasurementBoundsUi &&
+									measurement.value &&
+									validationStatus &&
+									validationStatus !== null && (
 									<Paper
 										elevation={0}
 										sx={{
@@ -631,14 +1027,18 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 												{getValidationIcon(validationStatus)}
 												<Box>
 													<Typography variant="body2" color="text.secondary">
-														Acceptance Range
+														{isExactStep ? 'Exact target' : 'Acceptance range'}
 													</Typography>
 													<Typography variant="h6" sx={{ fontWeight: 600 }}>
-														{stepData.minimumAcceptanceValue} - {stepData.maximumAcceptanceValue} {stepData.uom || ''}
+														{resolvedBounds
+															? isExactStep
+																? `${resolvedBounds.min} ${stepData.uom || ''}`.trim()
+																: `${resolvedBounds.min} - ${resolvedBounds.max} ${stepData.uom || ''}`.trim()
+															: ''}
 													</Typography>
 												</Box>
 											</Box>
-											{getValidationChip(validationStatus)}
+											{getValidationChip(validationStatus, validationChipCtx)}
 										</Box>
 									</Paper>
 								)}
@@ -656,7 +1056,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 											}
 											label={
 												<Typography variant="body2" color="text.secondary">
-													I acknowledge that the measurement value is outside the acceptable range
+													{ackLabelText}
 												</Typography>
 											}
 										/>
@@ -670,26 +1070,44 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							</Box>
 						);
 					})}
-					{measurements.length < maxCount && !isReadOnly && (
-						<Button startIcon={<Add />} onClick={addMeasurement} variant="outlined" size="small">
-							Add Measurement ({measurements.length}/{maxCount})
-						</Button>
-					)}
 				</Box>
 			);
 		}
 
 		// Single value input
-		const isMeasurementRange =
-			stepData.stepType === 'Measurement' &&
-			stepData.targetValueType === 'range' &&
-			stepData.minimumAcceptanceValue &&
-			stepData.maximumAcceptanceValue;
+		const showMeasurementBoundsUiSingle = isNumericRangeStepWithBounds(stepData);
+		const resolvedBoundsSingle = getNumericMeasurementBounds(stepData);
+		const isExactStepSingle = isExactTargetValueType(stepData.targetValueType);
+		const specMinSingle = parseOptionalNumber(stepData.minValue);
+		const specMaxSingle = parseOptionalNumber(stepData.maxValue);
+		const singleNumberInputProps =
+			showMeasurementBoundsUiSingle && resolvedBoundsSingle
+				? isExactStepSingle
+					? { step: 0.01 }
+					: { min: resolvedBoundsSingle.min, max: resolvedBoundsSingle.max, step: 0.01 }
+				: {
+						min: specMinSingle ?? 0,
+						...(specMaxSingle !== null ? { max: specMaxSingle } : {}),
+						step: 0.01
+					};
 		const validationStatus =
-			isMeasurementRange && formData.value && (typeof formData.value === 'string' || typeof formData.value === 'number')
+			showMeasurementBoundsUiSingle &&
+			formData.value &&
+			(typeof formData.value === 'string' || typeof formData.value === 'number')
 				? getValidationStatus(formData.value)
 				: null;
 		const showAcknowledgment = validationStatus && validationStatus !== 'Accepted';
+		const measuredNumSingle =
+			formData.value === '' || formData.value === undefined || formData.value === null
+				? NaN
+				: parseFloat(String(formData.value));
+		const validationChipCtxSingle =
+			isExactStepSingle && resolvedBoundsSingle && !Number.isNaN(measuredNumSingle)
+				? { isExact: true as const, measured: measuredNumSingle, target: resolvedBoundsSingle.min }
+				: undefined;
+		const singleAckLabelText = isExactStepSingle
+			? 'I acknowledge the deviation from the exact target value'
+			: 'I acknowledge that the measurement value is outside the acceptable range';
 
 		return (
 			<Box>
@@ -701,11 +1119,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					error={!!errors.value}
 					helperText={errors.value}
 					fullWidth
-					inputProps={{
-						min: stepData.minValue ? parseFloat(stepData.minValue) : 0,
-						max: stepData.maxValue ? parseFloat(stepData.maxValue) : undefined,
-						step: 0.01
-					}}
+					inputProps={singleNumberInputProps}
 					disabled={isReadOnly}
 				/>
 				{stepData.uom && stepData.uom !== 'None' && (
@@ -715,7 +1129,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				)}
 
 				{/* Range Display and Validation */}
-				{isMeasurementRange && formData.value && validationStatus !== null ? (
+				{showMeasurementBoundsUiSingle && formData.value && validationStatus !== null ? (
 					<Paper
 						elevation={0}
 						sx={{
@@ -731,15 +1145,18 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 								{getValidationIcon(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
 								<Box>
 									<Typography variant="body2" color="text.secondary">
-										Acceptance Range
+										{isExactStepSingle ? 'Exact target' : 'Acceptance range'}
 									</Typography>
 									<Typography variant="h6" sx={{ fontWeight: 600 }}>
-										{String(stepData.minimumAcceptanceValue || '')} - {String(stepData.maximumAcceptanceValue || '')}{' '}
-										{stepData.uom || ''}
+										{resolvedBoundsSingle
+											? isExactStepSingle
+												? `${resolvedBoundsSingle.min} ${stepData.uom || ''}`.trim()
+												: `${resolvedBoundsSingle.min} - ${resolvedBoundsSingle.max} ${stepData.uom || ''}`.trim()
+											: ''}
 									</Typography>
 								</Box>
 							</Box>
-							{getValidationChip(validationStatus as 'Accepted' | 'Lesser' | 'Greater')}
+							{getValidationChip(validationStatus as 'Accepted' | 'Lesser' | 'Greater', validationChipCtxSingle)}
 						</Box>
 					</Paper>
 				) : null}
@@ -757,7 +1174,7 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 							}
 							label={
 								<Typography variant="body2" color="text.secondary">
-									I acknowledge that the measurement value is outside the acceptable range
+									{singleAckLabelText}
 								</Typography>
 							}
 						/>
@@ -791,10 +1208,10 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				<Grid container spacing={1.5}>
 					<Grid size={{ xs: 6, sm: 3 }}>
 						<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
-							Step Type
+							Target Value Type
 						</Typography>
 						<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-							{stepData.stepType}
+							{stepData.targetValueType}
 						</Typography>
 					</Grid>
 					<Grid size={{ xs: 6, sm: 3 }}>
@@ -815,70 +1232,13 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 					</Grid>
 					<Grid size={{ xs: 6, sm: 3 }}>
 						<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
-							Target Type
+							Step Number
 						</Typography>
 						<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 500 }}>
-							{stepData.targetValueType}
+							{stepData.stepNumber ?? '-'}
 						</Typography>
 					</Grid>
 				</Grid>
-
-				{/* Acceptance Values for Range Type */}
-				{stepData.targetValueType === 'range' && stepData.minValue && stepData.maxValue && (
-					<Box sx={{ mt: 1.5, p: 1, backgroundColor: '#fff3cd', borderRadius: 0.5, border: '1px solid #ffeaa7' }}>
-						<Grid container spacing={1.5}>
-							<Grid size={{ xs: 6, sm: 3 }}>
-								<Typography variant="caption" sx={{ fontWeight: 600, color: '#856404', fontSize: '0.75rem' }}>
-									Min Acceptable Value
-								</Typography>
-								<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#856404' }}>
-									{stepData.minValue} {stepData.uom}
-								</Typography>
-							</Grid>
-							<Grid size={{ xs: 6, sm: 3 }}>
-								<Typography variant="caption" sx={{ fontWeight: 600, color: '#856404', fontSize: '0.75rem' }}>
-									Max Acceptable Value
-								</Typography>
-								<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#856404' }}>
-									{stepData.maxValue} {stepData.uom}
-								</Typography>
-							</Grid>
-							{/* Show acceptance range for Measurement type */}
-							{stepData.stepType === 'Measurement' &&
-								stepData.minimumAcceptanceValue &&
-								stepData.maximumAcceptanceValue && (
-									<>
-										<Grid size={{ xs: 6, sm: 3 }}>
-											<Typography variant="caption" sx={{ fontWeight: 600, color: '#d32f2f', fontSize: '0.75rem' }}>
-												Acceptance Range Min
-											</Typography>
-											<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#d32f2f' }}>
-												{stepData.minimumAcceptanceValue} {stepData.uom}
-											</Typography>
-										</Grid>
-										<Grid size={{ xs: 6, sm: 3 }}>
-											<Typography variant="caption" sx={{ fontWeight: 600, color: '#d32f2f', fontSize: '0.75rem' }}>
-												Acceptance Range Max
-											</Typography>
-											<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#d32f2f' }}>
-												{stepData.maximumAcceptanceValue} {stepData.uom}
-											</Typography>
-										</Grid>
-									</>
-								)}
-							{stepData.multipleMeasurements && stepData.multipleMeasurementMaxCount && (
-								<Grid size={{ xs: 12, sm: 6 }}>
-									<Typography variant="caption" sx={{ fontWeight: 600, color: '#856404', fontSize: '0.75rem' }}>
-										Multiple Measurements
-									</Typography>
-									<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#856404' }}>
-										Max {stepData.multipleMeasurementMaxCount} measurements allowed
-									</Typography>
-								</Grid>
-							)}
-						</Grid>
-					</Box>
-				)}
 
 				{/* Step Notes */}
 				{stepData.notes && stepData.notes.trim() && (
@@ -900,6 +1260,24 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 				</Typography>
 				{renderInput()}
 			</Box>
+
+			{/* Responsible Person Section */}
+			{stepData.getInstrumentId && (
+				<Box sx={{ mb: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+					<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333', fontSize: '1rem', mb: 1.5 }}>
+						Instrument id
+					</Typography>
+					<TextField
+						fullWidth
+						label="Instrument id"
+						value={instrumentId}
+						onChange={e => handleInstrumentIdChange(e.target.value)}
+						error={!!errors.instrumentId}
+						helperText={errors.instrumentId}
+						disabled={isReadOnly}
+					/>
+				</Box>
+			)}
 
 			{/* Responsible Person Section */}
 			{stepData.responsiblePerson && (
@@ -990,17 +1368,18 @@ const SequenceStep = ({ step, executionData, onStepComplete }: SequenceStepProps
 			)}
 
 			{/* CTQ Warning */}
-			{step.ctq && stepData.minValue && stepData.maxValue && (
+			{step.ctq && getNumericMeasurementBounds(stepData) !== null && (
 				<Alert severity="warning" sx={{ mb: 2, py: 1 }}>
-					This is a Critical to Quality (CTQ) parameter. Values outside the acceptable range may require supervisor
-					approval.
+					{isExactTargetValueType(stepData.targetValueType)
+						? 'This is a Critical to Quality (CTQ) parameter. Deviations from the exact target may require supervisor approval.'
+						: 'This is a Critical to Quality (CTQ) parameter. Values outside the acceptable range may require supervisor approval.'}
 				</Alert>
 			)}
 
 			{/* Validation Alert */}
 			{Object.keys(errors).length > 0 && (
 				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} icon={<ErrorIcon />}>
-					Please fill in all required fields with valid values and acknowledge any out-of-range values.
+					Please fill in all required fields with valid values and acknowledge any deviations or out-of-range values.
 				</Alert>
 			)}
 

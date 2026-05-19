@@ -1,15 +1,17 @@
 import { useState, useMemo } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
 import PrcTemplateHeader from './components/PrcTemplateHeader';
 import SummaryCards from './components/SummaryCards';
-import PrcTemplateManagement from './components/PrcTemplateManagement';
+import PrcTemplateManagement, { PRC_TEMPLATE_ALL_CATALOGUE } from './components/PrcTemplateManagement';
 import PrcTemplateTable, { PrcTemplateData } from './components/PrcTemplateTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import {
 	useFetchPrcTemplatesQuery,
 	useDeletePrcTemplateTaskMutation
 } from '../../../../../store/api/business/prc-template/prc-template.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	type DeletePrcTemplateTaskRequest,
 	type PrcTemplate,
@@ -20,6 +22,7 @@ const ListPrcTemplate = () => {
 	const navigate = useNavigate();
 	const [searchTerm, setSearchTerm] = useState('');
 	const [activeFilter, setActiveFilter] = useState('All Templates');
+	const [catalogueFilter, setCatalogueFilter] = useState(PRC_TEMPLATE_ALL_CATALOGUE);
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [templateToDelete, setTemplateToDelete] = useState<PrcTemplateData | null>(null);
 
@@ -49,7 +52,8 @@ const ListPrcTemplate = () => {
 				totalSteps: item.prcTemplateSteps.length,
 				notes: item.prcTemplate.notes,
 				createdAt: item.prcTemplate.createdAt || '',
-				updatedAt: item.prcTemplate.updatedAt || ''
+				updatedAt: item.prcTemplate.updatedAt || '',
+				isActive: item.prcTemplate.isActive
 			}));
 	}, [prcTemplateData]);
 
@@ -62,6 +66,12 @@ const ListPrcTemplate = () => {
 			filtered = filtered.filter(template => template.status === activeFilter);
 		}
 
+		if (catalogueFilter === 'In catalogue') {
+			filtered = filtered.filter(t => t.isActive);
+		} else if (catalogueFilter === 'Out of catalogue') {
+			filtered = filtered.filter(t => !t.isActive);
+		}
+
 		// Apply search filter
 		if (searchTerm) {
 			filtered = filtered.filter(
@@ -72,7 +82,12 @@ const ListPrcTemplate = () => {
 		}
 
 		return filtered;
-	}, [allTemplateData, activeFilter, searchTerm]);
+	}, [allTemplateData, activeFilter, catalogueFilter, searchTerm]);
+
+	const listSummary = useMemo(
+		() => formatFilteredListSummary(filteredData.length, allTemplateData.length, 'templates'),
+		[filteredData.length, allTemplateData.length]
+	);
 
 	const handleSearchChange = (searchValue: string) => {
 		setSearchTerm(searchValue);
@@ -80,6 +95,10 @@ const ListPrcTemplate = () => {
 
 	const handleFilterChange = (filter: string) => {
 		setActiveFilter(filter);
+	};
+
+	const handleCatalogueFilterChange = (value: string) => {
+		setCatalogueFilter(value);
 	};
 
 	const handleActionClick = (templateId: string, action: string) => {
@@ -151,7 +170,7 @@ const ListPrcTemplate = () => {
 	// Show loading state with skeleton
 	if (isPrcTemplateDataLoading) {
 		return (
-			<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+			<Box sx={{ minWidth: 0 }}>
 				<PrcTemplateHeader />
 				<CatalystTableSkeleton />
 			</Box>
@@ -159,13 +178,27 @@ const ListPrcTemplate = () => {
 	}
 
 	return (
-		<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-			<PrcTemplateHeader />
-			{prcTemplateData && <SummaryCards headerData={prcTemplateData.header} />}
-			<PrcTemplateManagement onSearchChange={handleSearchChange} onFilterChange={handleFilterChange} />
-			<PrcTemplateTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
+		<>
+			<MasterListLandingPage
+				header={<PrcTemplateHeader />}
+				metrics={prcTemplateData ? <SummaryCards headerData={prcTemplateData.header} /> : null}
+				toolbar={
+					<PrcTemplateManagement
+						appliedSearchTerm={searchTerm}
+						searchAriaLabel="Search templates"
+						listSummary={listSummary}
+						onSearchChange={handleSearchChange}
+						onFilterChange={handleFilterChange}
+						onCatalogueActiveFilterChange={handleCatalogueFilterChange}
+					/>
+				}
+				table={
+					<Box sx={masterListTableFrame}>
+						<PrcTemplateTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
+					</Box>
+				}
+			/>
 
-			{/* Delete Confirmation Dialog */}
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
 				<DialogTitle>Delete PRC Template</DialogTitle>
 				<DialogContent>
@@ -179,11 +212,12 @@ const ListPrcTemplate = () => {
 						Cancel
 					</Button>
 					<Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={isDeleting}>
-						{isDeleting ? 'Deleting...' : 'Delete Template'}
+						Delete Template
 					</Button>
 				</DialogActions>
 			</Dialog>
-		</Box>
+			<FullScreenFormSavingOverlay open={isDeleting} message="Deleting…" />
+		</>
 	);
 };
 

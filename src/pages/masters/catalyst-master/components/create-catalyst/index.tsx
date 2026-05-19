@@ -14,8 +14,16 @@ import {
 	useCreateCatalystMutation,
 	useUpdateCatalystMutation
 } from '../../../../../store/api/business/catalyst-master/catalyst.api';
+import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 
 const steps = ['Basic Information', 'Configuration Settings'];
+
+/** Maps empty optional config strings to 0 for API payloads (aligned with Yup optional fields). */
+const toConfigNumber = (value: unknown): number => {
+	if (value === undefined || value === null || String(value).trim() === '') return 0;
+	const n = Number(value);
+	return Number.isFinite(n) ? n : 0;
+};
 
 const CreateCatalyst = () => {
 	const navigate = useNavigate();
@@ -68,7 +76,6 @@ const CreateCatalyst = () => {
 				chartId: catalystData.detail.catalyst.chartId,
 				chartSupplier: catalystData.detail.catalyst.chartSupplier,
 				notes: catalystData.detail.catalyst.notes || '',
-				mekpDensity: catalystData.detail.catalyst.mekpDensity,
 				isActive: catalystData.detail.catalyst.status === 'ACTIVE',
 				catalystConfiguration: catalystData.detail.catalystConfiguration.map(config => ({
 					...config,
@@ -87,7 +94,7 @@ const CreateCatalyst = () => {
 	const handleNext = async () => {
 		// Define fields to validate for each step
 		const stepFields = {
-			0: ['chartId', 'chartSupplier', 'mekpDensity', 'isActive', 'notes'] as const, // Basic info step
+			0: ['chartId', 'chartSupplier', 'isActive', 'notes'] as const, // Basic info step
 			1: ['catalystConfiguration'] as const // Configuration step
 		};
 
@@ -143,23 +150,22 @@ const CreateCatalyst = () => {
 				chartId: data.chartId,
 				chartSupplier: data.chartSupplier,
 				notes: data.notes || '',
-				mekpDensity: Number(data.mekpDensity),
 				isActive: data.isActive ?? true
 			};
 
 			const catalystConfiguration = (data.catalystConfiguration || []).map(config => ({
-				minTemperature: Number(config.minTemperature),
-				maxTemperature: Number(config.maxTemperature),
-				minHumidity: Number(config.minHumidity),
-				maxHumidity: Number(config.maxHumidity),
-				minGelcoat: Number(config.minGelcoat),
-				maxGelcoat: Number(config.maxGelcoat),
+				minTemperature: toConfigNumber(config.minTemperature),
+				maxTemperature: toConfigNumber(config.maxTemperature),
+				minHumidity: toConfigNumber(config.minHumidity),
+				maxHumidity: toConfigNumber(config.maxHumidity),
+				minGelcoat: toConfigNumber(config.minGelcoat),
+				maxGelcoat: toConfigNumber(config.maxGelcoat),
 				gelcoatLabel: config.gelcoatLabel || '',
-				minResinDosage: Number(config.minResinDosage),
-				maxResinDosage: Number(config.maxResinDosage),
+				minResinDosage: toConfigNumber(config.minResinDosage),
+				maxResinDosage: toConfigNumber(config.maxResinDosage),
 				resinLabel: config.resinLabel || '',
-				minTopCoat: config.minTopCoat ? Number(config.minTopCoat) : 0,
-				maxTopCoat: config.maxTopCoat ? Number(config.maxTopCoat) : 0,
+				minTopCoat: toConfigNumber(config.minTopCoat),
+				maxTopCoat: toConfigNumber(config.maxTopCoat),
 				topCoatLabel: config.topCoatLabel || '',
 				blockCatalystMixing: config.blockCatalystMixing ?? false,
 				requestSupervisorApproval: config.requestSupervisorApproval ?? false
@@ -277,6 +283,7 @@ const CreateCatalyst = () => {
 
 	return (
 		<FormProvider {...methods}>
+			<>
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
@@ -331,7 +338,7 @@ const CreateCatalyst = () => {
 										'&:hover': { backgroundColor: '#1565c0' }
 									}}
 								>
-									{isCreating || isUpdating ? 'Saving...' : isEditMode ? 'Update Chart' : 'Create Chart'}
+									{isEditMode ? 'Update Chart' : 'Create Chart'}
 								</Button>
 							) : (
 								<Button
@@ -350,6 +357,8 @@ const CreateCatalyst = () => {
 					</Box>
 				</Paper>
 			</Box>
+			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+			</>
 		</FormProvider>
 	);
 };

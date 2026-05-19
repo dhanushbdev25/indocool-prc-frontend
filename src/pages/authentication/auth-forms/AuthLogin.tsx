@@ -19,7 +19,11 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useLoginUserMutation } from '../../../store/api/auth/auth.api';
 import Button from '../../../components/common/button/Button';
+import { FullScreenFormSavingOverlay } from '../../../components/common/FullScreenFormSavingOverlay';
 import { displayValidationErrors } from '../../../utils/helpers';
+import Cookie from '../../../utils/Cookie';
+import { useAppDispatch } from '../../../store/store';
+import { sessionApi } from '../../../store/api/auth/session.api';
 
 interface FormValues {
 	email: string;
@@ -36,6 +40,7 @@ const AuthLogin = () => {
 	const [showPassword, setShowPassword] = useState(false);
 	const [submitError, setSubmitError] = useState<string>('');
 	const navigate = useNavigate();
+	const dispatch = useAppDispatch();
 
 	const [loginUser] = useLoginUserMutation();
 
@@ -63,10 +68,22 @@ const AuthLogin = () => {
 	const onSubmit = async (values: FormValues) => {
 		try {
 			setSubmitError('');
-			await loginUser({
+			const response = await loginUser({
 				email: values.email,
 				password: values.password
 			}).unwrap();
+
+			if (!response.accessToken) {
+				throw new Error('Missing access token in login response');
+			}
+
+			Cookie.setToken(response.accessToken);
+			if (response.refreshToken) {
+				Cookie.setRefreshToken(response.refreshToken);
+			}
+
+			// Clear stale session query error/data before next route bootstrap.
+			dispatch(sessionApi.util.resetApiState());
 			navigate('/');
 		} catch (err: unknown) {
 			setSubmitError(err instanceof Error ? err.message : 'An error occurred');
@@ -98,6 +115,7 @@ const AuthLogin = () => {
 
 	return (
 		<form noValidate onSubmit={handleSubmit(onSubmit)}>
+			<FullScreenFormSavingOverlay open={isSubmitting} message="Signing in…" />
 			<Stack spacing={3}>
 				{/* Email Field */}
 				<Box>
@@ -305,7 +323,7 @@ const AuthLogin = () => {
 				<Button
 					disableElevation
 					disabled={isSubmitting}
-					label={isSubmitting ? 'Signing in...' : 'Login'}
+					label="Login"
 					fullWidth
 					size="large"
 					type="submit"

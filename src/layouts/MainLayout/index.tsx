@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import { Box, useMediaQuery } from '@mui/material';
@@ -30,6 +30,13 @@ const MainLayout = () => {
 	const drawerOpen = manuallyToggled ? !shouldBeOpen : shouldBeOpen;
 
 	const token = Cookie.getToken();
+
+	useEffect(() => {
+		if (!token) {
+			window.location.href = '/';
+		}
+	}, [token]);
+
 	const { data, isLoading, isError, errorMessage } = useSessionContextQuery(token);
 
 	if (isLoading) return <BackdropLoader openStates={isLoading} />;

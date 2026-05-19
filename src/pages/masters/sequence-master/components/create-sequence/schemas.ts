@@ -1,5 +1,41 @@
 import * as yup from 'yup';
 
+// Table configuration schemas
+const tableRowConfigSchema = yup.object({
+	cells: yup.lazy(() =>
+		yup.object().test('valid-cells', 'Each cell must have value and readOnly fields', value => {
+			if (!value || typeof value !== 'object') return true;
+			return Object.values(value).every(
+				cell =>
+					cell !== null &&
+					typeof cell === 'object' &&
+					'readOnly' in (cell as Record<string, unknown>) &&
+					'value' in (cell as Record<string, unknown>)
+			);
+		})
+	)
+});
+
+const tableColumnSchema = yup.object({
+	name: yup
+		.string()
+		.required('Column name is required')
+		.min(1, 'Column name is required')
+		.max(100, 'Column name must be less than 100 characters'),
+	type: yup
+		.string()
+		.required('Column type is required')
+		.oneOf(['text', 'number', 'ok/not ok', 'datetime', 'shift'], 'Invalid column type')
+});
+
+const tableConfigSchema = yup
+	.object({
+		columns: yup.array(tableColumnSchema).min(1, 'At least one column is required'),
+		rows: yup.array(tableRowConfigSchema).min(1, 'At least one row is required')
+	})
+	.nullable()
+	.default(null);
+
 // Process Step validation schema
 export const processStepSchema = yup
 	.object({
@@ -13,10 +49,6 @@ export const processStepSchema = yup
 			.required('Step number is required')
 			.min(1, 'Step number must be at least 1')
 			.integer('Step number must be a whole number'),
-		stepType: yup
-			.string()
-			.required('Step type is required')
-			.oneOf(['Measurement', 'Check', 'Inspection', 'Operation'], 'Invalid step type'),
 		evaluationMethod: yup
 			.string()
 			.required('Evaluation method is required')
@@ -25,7 +57,7 @@ export const processStepSchema = yup
 		targetValueType: yup
 			.string()
 			.required('Target value type is required')
-			.oneOf(['range', 'exact value', 'ok/not ok'], 'Invalid target value type'),
+			.oneOf(['range', 'exact value', 'ok/not ok', 'table'], 'Invalid target value type'),
 		minimumAcceptanceValue: yup
 			.number()
 			.nullable()
@@ -38,8 +70,8 @@ export const processStepSchema = yup
 			.number()
 			.nullable()
 			.when('targetValueType', {
-				is: (val: string) => val === 'range' || val === 'exact value',
-				then: schema => schema.required('Maximum acceptance value is required for this target value type'),
+				is: 'range',
+				then: schema => schema.required('Maximum acceptance value is required for range target value type'),
 				otherwise: schema => schema.nullable()
 			}),
 		multipleMeasurements: yup.boolean(),
@@ -54,29 +86,35 @@ export const processStepSchema = yup
 						.min(1, 'Maximum count must be at least 1'),
 				otherwise: schema => schema.nullable()
 			}),
+		tableConfig: tableConfigSchema.when('targetValueType', {
+			is: 'table',
+			then: schema =>
+				schema
+					.nonNullable()
+					.required('Table configuration is required when target value type is Table')
+					.test('has-columns', 'At least one column is required', value => {
+						return value !== null && value !== undefined && Array.isArray(value.columns) && value.columns.length > 0;
+					})
+					.test('has-rows', 'At least one row is required', value => {
+						return value !== null && value !== undefined && Array.isArray(value.rows) && value.rows.length > 0;
+					}),
+			otherwise: schema => schema.nullable().default(null)
+		}),
 		uom: yup.string().optional().max(20, 'Unit of measurement must be less than 20 characters'),
 		ctq: yup.boolean(),
 		allowAttachments: yup.boolean(),
 		responsiblePerson: yup.boolean(),
+		getInstrumentId: yup.boolean(),
 		notes: yup.string().max(500, 'Notes must be less than 500 characters').optional()
 	})
 	.test('min-max-validation', 'Minimum value must be less than or equal to maximum value', function (value) {
 		const { minimumAcceptanceValue, maximumAcceptanceValue, targetValueType } = value;
 
-		if (targetValueType === 'range' && minimumAcceptanceValue && maximumAcceptanceValue) {
+		if (targetValueType === 'range' && minimumAcceptanceValue != null && maximumAcceptanceValue != null) {
 			if (minimumAcceptanceValue > maximumAcceptanceValue) {
 				return this.createError({
 					path: 'minimumAcceptanceValue',
 					message: 'Minimum value must be less than or equal to maximum value'
-				});
-			}
-		}
-
-		if (targetValueType === 'exact value' && minimumAcceptanceValue && maximumAcceptanceValue) {
-			if (minimumAcceptanceValue !== maximumAcceptanceValue) {
-				return this.createError({
-					path: 'minimumAcceptanceValue',
-					message: 'Minimum and maximum values must be equal for exact value type'
 				});
 			}
 		}
@@ -88,9 +126,9 @@ export const processStepSchema = yup
 export const processStepGroupSchema = yup.object({
 	processName: yup
 		.string()
-		.required('Process name is required')
-		.min(3, 'Process name must be at least 3 characters')
-		.max(1000, 'Process name must be less than 1000 characters'),
+		.required('Process ID is required')
+		.min(3, 'Process ID must be at least 3 characters')
+		.max(1000, 'Process ID must be less than 1000 characters'),
 	processDescription: yup
 		.string()
 		.required('Process description is required')
@@ -106,6 +144,8 @@ export const processStepGroupSchema = yup.object({
 			const totalMinutes = hours * 60 + minutes;
 			return totalMinutes >= 1;
 		}),
+	shift: yup.string().optional().nullable(),
+	pfdNumber: yup.string().optional().nullable().max(100, 'PFD number must be less than 100 characters'),
 	processSteps: yup
 		.array(processStepSchema)
 		.test('unique-step-numbers', 'Step numbers must be unique within each group', function (steps) {
@@ -154,17 +194,18 @@ export type SequenceFormData = yup.InferType<typeof sequenceFormSchema>;
 export const defaultProcessStep: ProcessStepFormData = {
 	parameterDescription: '',
 	stepNumber: 1,
-	stepType: 'Measurement',
 	evaluationMethod: '',
 	targetValueType: 'range',
 	minimumAcceptanceValue: null,
 	maximumAcceptanceValue: null,
 	multipleMeasurements: false,
 	multipleMeasurementMaxCount: null,
+	tableConfig: null,
 	uom: '',
 	ctq: false,
 	allowAttachments: false,
 	responsiblePerson: false,
+	getInstrumentId: false,
 	notes: ''
 };
 
@@ -172,6 +213,8 @@ export const defaultProcessStepGroup: ProcessStepGroupFormData = {
 	processName: '',
 	processDescription: '',
 	sequenceTiming: '00:01',
+	shift: '',
+	pfdNumber: '',
 	processSteps: []
 };
 

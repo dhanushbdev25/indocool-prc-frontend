@@ -1,5 +1,5 @@
 import { Control, FieldErrors, UseFormSetValue } from 'react-hook-form';
-import { PartMasterFormData } from './schemas';
+import { PartMasterFormData, PrcTemplateStepFormData } from './schemas';
 
 // Extended types for linked masters selection
 export interface SelectableCatalyst {
@@ -20,19 +20,83 @@ export interface SelectablePrcTemplate {
 	isLatest: boolean;
 }
 
-// Union type for selectable items
-export type SelectableItem = SelectableCatalyst | SelectablePrcTemplate;
+// Union type for linked master selectable items
+export type LinkedMasterSelectableItem = SelectableCatalyst | SelectablePrcTemplate;
 
-// Type guards
-export const isCatalystItem = (item: SelectableItem): item is SelectableCatalyst => {
+// Type guards for linked masters
+export const isCatalystItem = (item: LinkedMasterSelectableItem): item is SelectableCatalyst => {
 	return 'chartId' in item;
 };
 
-export const isPrcTemplateItem = (item: SelectableItem): item is SelectablePrcTemplate => {
+export const isPrcTemplateItem = (item: LinkedMasterSelectableItem): item is SelectablePrcTemplate => {
 	return 'templateId' in item;
 };
 
-// Extended types for form data with additional fields
+// --- Operation Groups (fetched from prcTemplate/operations/combo API) ---
+
+export interface OperationGroup {
+	id: string;
+	name: string;
+	label: string;
+}
+
+// --- PRC Template Step types (adapted from prc-template-master) ---
+
+export interface SequenceItem {
+	id: number;
+	sequenceId: string;
+	sequenceName: string;
+	status: string;
+	category: string;
+	type: string;
+	version: number;
+	isLatest: boolean;
+}
+
+export interface InspectionItem {
+	id: number;
+	inspectionId: string;
+	inspectionName: string;
+	status: string;
+	type: string;
+	version: number;
+	isLatest: boolean;
+}
+
+export type StepSelectableItem = SequenceItem | InspectionItem;
+
+export const isSequenceItem = (item: StepSelectableItem): item is SequenceItem => {
+	return 'sequenceId' in item && 'sequenceName' in item;
+};
+
+export const isInspectionItem = (item: StepSelectableItem): item is InspectionItem => {
+	return 'inspectionId' in item && 'inspectionName' in item;
+};
+
+export interface ExtendedPrcTemplateStep extends PrcTemplateStepFormData {
+	itemName: string;
+	itemId: string;
+	itemType: 'sequence' | 'inspection';
+	group: string;
+}
+
+export interface StepSelectionCardProps {
+	item: StepSelectableItem;
+	onClick: (item: StepSelectableItem) => void;
+	isSelected: boolean;
+}
+
+export interface SelectedStepItemProps {
+	step: ExtendedPrcTemplateStep;
+	index: number;
+	totalSteps: number;
+	onReorder: (fromIndex: number, toIndex: number) => void;
+	onRemove: (index: number) => void;
+	onUpdateStep: (index: number, updatedStep: Partial<ExtendedPrcTemplateStep>) => void;
+}
+
+// --- Part Master Form Props ---
+
 export interface ExtendedPartMasterFormData {
 	id?: number;
 	partNumber: string;
@@ -53,18 +117,25 @@ export interface ExtendedPartMasterFormData {
 	rawMaterials: RawMaterialFormData[];
 	drilling: DrillingFormData[];
 	cutting: CuttingFormData[];
+	moulds: MouldFormData[];
 	createdAt?: string;
 	updatedAt?: string;
-	// Additional fields for display
 	catalystName?: string;
 	prcTemplateName?: string;
 	customerName?: string;
+}
+
+export interface MouldFormData {
+	mouldCode: string;
+	reconciliationCount: number;
+	currentCount?: number;
 }
 
 export interface RawMaterialFormData {
 	id?: number;
 	materialName: string;
 	materialCode: string;
+	materialGroup?: string;
 	quantity: string;
 	uom: string;
 	batching: boolean;
@@ -97,13 +168,6 @@ export interface CuttingFormData {
 	isLatest: boolean;
 }
 
-// Props interfaces for components
-export interface StepSelectionCardProps {
-	item: SelectableItem;
-	onClick: (item: SelectableItem) => void;
-	isSelected: boolean;
-}
-
 export interface LinkedMastersTabProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
@@ -113,6 +177,9 @@ export interface LinkedMastersTabProps {
 export interface GeneralInfoProps {
 	control: Control<PartMasterFormData>;
 	errors: FieldErrors<PartMasterFormData>;
+	gallery: import('../../../../../hooks/useImageGallery').ImageItem[];
+	onAddImage: (file: File) => void;
+	onRemoveImage: (id: number | string) => void;
 }
 
 export interface RawMaterialsTabProps {
@@ -141,7 +208,6 @@ export interface InspectionDiagram {
 	}>;
 }
 
-// Extended types for image mapping
 export interface InspectionParameter {
 	id: number;
 	order: number;

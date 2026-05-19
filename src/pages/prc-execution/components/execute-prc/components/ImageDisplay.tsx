@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Stage, Layer, Image as KonvaImage, Circle, Line, Group, Text } from 'react-konva';
 import type Konva from 'konva';
 import {
@@ -13,8 +13,9 @@ import {
 	Button,
 	Chip
 } from '@mui/material';
-import { ZoomIn, ZoomOut, Fullscreen, Image as ImageIcon } from '@mui/icons-material';
+import { ZoomIn, ZoomOut, Fullscreen, Image as ImageIcon, PanTool } from '@mui/icons-material';
 import { type AnnotationRegion } from '../../../types/execution.types';
+import { getDefectStyle } from './defectAnnotationStyles';
 
 interface ImageDisplayProps {
 	imageUrl: string;
@@ -25,12 +26,15 @@ interface ImageDisplayProps {
 	showAnnotations?: boolean;
 }
 
+const SCALE_MIN = 0.25;
+const SCALE_MAX = 5;
+
 const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	imageUrl,
 	imageFileName: _imageFileName,
 	originalFileName,
 	annotations,
-	readOnly = true,
+	readOnly: _readOnly = true,
 	showAnnotations = true
 }) => {
 	const [imageLoaded, setImageLoaded] = useState(false);
@@ -39,17 +43,18 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	const [scale, setScale] = useState(1);
 	const [position, setPosition] = useState({ x: 0, y: 0 });
 	const [canvasSize, setCanvasSize] = useState({ width: 300, height: 200 });
+	const [fullscreenCanvasSize, setFullscreenCanvasSize] = useState({ width: 800, height: 600 });
 	const [isDragging, setIsDragging] = useState(false);
 	const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 	const [showFullscreen, setShowFullscreen] = useState(false);
 
-	const stageRef = useRef<Konva.Stage>(null);
-	const imageRef = useRef<Konva.Image>(null);
+	const stageInlineRef = useRef<Konva.Stage>(null);
+	const stageFullRef = useRef<Konva.Stage>(null);
+	const imageInlineRef = useRef<Konva.Image>(null);
+	const imageFullRef = useRef<Konva.Image>(null);
 
-	// Load image
 	useEffect(() => {
 		if (!imageUrl) {
-			// Use setTimeout to avoid synchronous setState in effect
 			const timeoutId = setTimeout(() => {
 				setImageError(true);
 				setImageLoaded(false);
@@ -58,7 +63,6 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 			return () => clearTimeout(timeoutId);
 		}
 
-		// Reset state when image URL changes
 		const resetTimeoutId = setTimeout(() => {
 			setImageLoaded(false);
 			setImageError(false);
@@ -66,126 +70,188 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 		}, 0);
 
 		const img = new Image();
-		img.crossOrigin = 'anonymous';
-
 		let isMounted = true;
 
 		img.onload = () => {
 			if (!isMounted) return;
-
 			setKonvaImage(img);
 			setImageLoaded(true);
 			setImageError(false);
 
-			// Calculate optimal canvas size
 			const maxWidth = 300;
 			const maxHeight = 200;
 			const aspectRatio = img.width / img.height;
-
 			let width = maxWidth;
 			let height = maxWidth / aspectRatio;
-
 			if (height > maxHeight) {
 				height = maxHeight;
 				width = maxHeight * aspectRatio;
 			}
-
 			setCanvasSize({ width, height });
+
+			const fsMaxW = typeof window !== 'undefined' ? Math.min(1200, window.innerWidth - 48) : 1200;
+			const fsMaxH = typeof window !== 'undefined' ? Math.min(900, window.innerHeight - 200) : 900;
+			let fw = fsMaxW;
+			let fh = fw / aspectRatio;
+			if (fh > fsMaxH) {
+				fh = fsMaxH;
+				fw = fh * aspectRatio;
+			}
+			setFullscreenCanvasSize({ width: Math.round(fw), height: Math.round(fh) });
 		};
 
 		img.onerror = () => {
 			if (!isMounted) return;
-
 			setImageError(true);
 			setImageLoaded(false);
 		};
 
 		img.src = imageUrl;
 
-		// Cleanup function
 		return () => {
 			clearTimeout(resetTimeoutId);
 			isMounted = false;
 		};
 	}, [imageUrl]);
 
-	// Handle zoom
-	const handleZoom = (direction: 'in' | 'out') => {
-		const newScale = direction === 'in' ? scale * 1.2 : scale / 1.2;
-		setScale(Math.max(0.1, Math.min(5, newScale)));
-	};
+	const isPanSurface = useCallback((target: Konva.Node, stage: Konva.Stage | null, imageRef: React.RefObject<Konva.Image | null>) => {
+		if (!stage) return false;
+		return target === stage || target === imageRef.current;
+	}, []);
 
-	// Handle drag
-	const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
-		if (!readOnly) {
-			setIsDragging(true);
-			setDragStart({ x: e.evt.clientX - position.x, y: e.evt.clientY - position.y });
+	const handleZoomIn = useCallback(() => {
+		const stage = showFullscreen ? stageFullRef.current : stageInlineRef.current;
+		if (!stage || !imageLoaded) {
+			setScale(prev => Math.min(prev * 1.2, SCALE_MAX));
+			return;
 		}
+		const pointer = stage.getPointerPosition();
+		if (!pointer) {
+			setScale(prev => Math.min(prev * 1.2, SCALE_MAX));
+			return;
+		}
+		const oldScale = stage.scaleX();
+		const newScale = Math.min(oldScale * 1.2, SCALE_MAX);
+		const mousePointTo = {
+			x: (pointer.x - stage.x()) / oldScale,
+			y: (pointer.y - stage.y()) / oldScale
+		};
+		setScale(newScale);
+		setPosition({
+			x: pointer.x - mousePointTo.x * newScale,
+			y: pointer.y - mousePointTo.y * newScale
+		});
+	}, [imageLoaded, showFullscreen]);
+
+	const handleZoomOut = useCallback(() => {
+		const stage = showFullscreen ? stageFullRef.current : stageInlineRef.current;
+		if (!stage || !imageLoaded) {
+			setScale(prev => Math.max(prev / 1.2, SCALE_MIN));
+			return;
+		}
+		const pointer = stage.getPointerPosition();
+		if (!pointer) {
+			setScale(prev => Math.max(prev / 1.2, SCALE_MIN));
+			return;
+		}
+		const oldScale = stage.scaleX();
+		const newScale = Math.max(oldScale / 1.2, SCALE_MIN);
+		const mousePointTo = {
+			x: (pointer.x - stage.x()) / oldScale,
+			y: (pointer.y - stage.y()) / oldScale
+		};
+		setScale(newScale);
+		setPosition({
+			x: pointer.x - mousePointTo.x * newScale,
+			y: pointer.y - mousePointTo.y * newScale
+		});
+	}, [imageLoaded, showFullscreen]);
+
+	const handleResetView = useCallback(() => {
+		setScale(1);
+		setPosition({ x: 0, y: 0 });
+	}, []);
+
+	const handleStageMouseDown = (
+		e: Konva.KonvaEventObject<MouseEvent>,
+		stage: Konva.Stage | null,
+		imageRef: React.RefObject<Konva.Image | null>
+	) => {
+		if (!stage) return;
+		if (!isPanSurface(e.target as Konva.Node, stage, imageRef)) return;
+		setIsDragging(true);
+		setDragStart({ x: e.evt.clientX - position.x, y: e.evt.clientY - position.y });
 	};
 
 	const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-		if (isDragging && !readOnly) {
-			const newPosition = {
-				x: e.evt.clientX - dragStart.x,
-				y: e.evt.clientY - dragStart.y
-			};
-			setPosition(newPosition);
-		}
+		if (!isDragging) return;
+		setPosition({
+			x: e.evt.clientX - dragStart.x,
+			y: e.evt.clientY - dragStart.y
+		});
 	};
 
 	const handleStageMouseUp = () => {
 		setIsDragging(false);
 	};
 
-	// Render annotation for a specific canvas size
+	const handleWheel = useCallback((e: Konva.KonvaEventObject<WheelEvent>) => {
+		e.evt.preventDefault();
+		const stage = e.target.getStage();
+		if (!stage) return;
+		const pointer = stage.getPointerPosition();
+		if (!pointer) return;
+		const oldScale = stage.scaleX();
+		const scaleBy = 1.08;
+		const direction = e.evt.deltaY > 0 ? -1 : 1;
+		const newScale =
+			direction < 0 ? Math.max(oldScale / scaleBy, SCALE_MIN) : Math.min(oldScale * scaleBy, SCALE_MAX);
+		const mousePointTo = {
+			x: (pointer.x - stage.x()) / oldScale,
+			y: (pointer.y - stage.y()) / oldScale
+		};
+		setScale(newScale);
+		setPosition({
+			x: pointer.x - mousePointTo.x * newScale,
+			y: pointer.y - mousePointTo.y * newScale
+		});
+	}, []);
+
 	const renderAnnotationForCanvas = (
 		annotation: AnnotationRegion,
 		index: number,
-		canvasSize: { width: number; height: number }
+		canvas: { width: number; height: number }
 	) => {
 		if (!showAnnotations) return null;
+		const style = getDefectStyle(annotation.category);
 
 		if (annotation.type === 'point') {
-			// Convert normalized coordinates to pixel coordinates
-			const x = annotation.x * canvasSize.width;
-			const y = annotation.y * canvasSize.height;
-
+			const x = annotation.x * canvas.width;
+			const y = annotation.y * canvas.height;
 			return (
-				<Group key={index}>
-					{/* Professional annotation marker */}
+				<Group key={`${annotation.id}-${index}`}>
 					<Group>
-						{/* Outer glow effect */}
-						<Circle
-							x={x}
-							y={y}
-							radius={10}
-							fill="rgba(244, 67, 54, 0.15)"
-							stroke="rgba(244, 67, 54, 0.3)"
-							strokeWidth={1}
-						/>
-						{/* Main badge circle */}
+						<Circle x={x} y={y} radius={10} fill={style.fillSoft} stroke={style.stroke} strokeWidth={1} />
 						<Circle
 							x={x}
 							y={y}
 							radius={9}
 							fill="white"
-							stroke="#f44336"
+							stroke={style.stroke}
 							strokeWidth={2}
 							shadowColor="rgba(0,0,0,0.25)"
 							shadowBlur={3}
 							shadowOffset={{ x: 0, y: 1 }}
 							shadowOpacity={0.4}
 						/>
-						{/* Inner highlight */}
 						<Circle x={x} y={y} radius={7} fill="rgba(255,255,255,0.8)" stroke="none" />
-						{/* Number text positioned slightly away from center */}
 						<Text
 							x={x + 12}
 							y={y - 8}
 							text={`${index + 1}`}
 							fontSize={12}
 							fontWeight="bold"
-							fill="#f44336"
+							fill={style.label}
 							align="center"
 							verticalAlign="middle"
 							width={18}
@@ -194,63 +260,42 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 					</Group>
 				</Group>
 			);
-		} else if (annotation.type === 'polygon' && annotation.points.length > 0) {
-			// Convert normalized coordinates to pixel coordinates
-			const points = annotation.points.flat().map((coord, coordIndex) => {
-				if (coordIndex % 2 === 0) {
-					// x coordinate
-					return coord * canvasSize.width;
-				} else {
-					// y coordinate
-					return coord * canvasSize.height;
-				}
-			});
+		}
 
-			// Calculate center point for numbering
-			const centerX = points.filter((_, i) => i % 2 === 0).reduce((sum, x) => sum + x, 0) / (points.length / 2);
-			const centerY = points.filter((_, i) => i % 2 === 1).reduce((sum, y) => sum + y, 0) / (points.length / 2);
+		if (annotation.type === 'polygon' && annotation.points.length > 0) {
+			const points = annotation.points.flatMap(([px, py]) => [px * canvas.width, py * canvas.height]);
+			const centerX = points.reduce((sum, pt, i) => (i % 2 === 0 ? sum + pt : sum), 0) / (points.length / 2);
+			const centerY = points.reduce((sum, pt, i) => (i % 2 === 1 ? sum + pt : sum), 0) / (points.length / 2);
 
 			return (
-				<Group key={index}>
-					{/* Polygon fill */}
+				<Group key={`${annotation.id}-${index}`}>
 					<Line
 						points={points}
-						stroke="#f44336"
+						stroke={style.stroke}
 						strokeWidth={2}
-						fill="rgba(244, 67, 54, 0.2)"
+						fill={style.fillSolid}
 						closed
-						opacity={0.8}
-						shadowColor="rgba(0, 0, 0, 0.2)"
-						shadowBlur={2}
+						opacity={0.9}
 					/>
-					{/* Polygon vertices */}
-					{annotation.points.map((point, pointIndex) => {
-						const x = point[0] * canvasSize.width;
-						const y = point[1] * canvasSize.height;
-
-						return (
-							<Circle
-								key={pointIndex}
-								x={x}
-								y={y}
-								radius={4}
-								fill="#f44336"
-								stroke="#ffffff"
-								strokeWidth={1}
-								opacity={0.9}
-								shadowColor="rgba(0, 0, 0, 0.2)"
-								shadowBlur={2}
-							/>
-						);
-					})}
-					{/* Number text positioned at polygon center */}
+					{annotation.points.map((point, pointIndex) => (
+						<Circle
+							key={pointIndex}
+							x={point[0] * canvas.width}
+							y={point[1] * canvas.height}
+							radius={4}
+							fill={style.stroke}
+							stroke="#ffffff"
+							strokeWidth={1}
+							opacity={0.9}
+						/>
+					))}
 					<Text
 						x={centerX + 12}
 						y={centerY - 8}
 						text={`${index + 1}`}
 						fontSize={12}
 						fontWeight="bold"
-						fill="#f44336"
+						fill={style.label}
 						align="center"
 						verticalAlign="middle"
 						width={18}
@@ -259,116 +304,108 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 				</Group>
 			);
 		}
+
+		if (annotation.type === 'circle') {
+			const cx = annotation.cx * canvas.width;
+			const cy = annotation.cy * canvas.height;
+			const r = annotation.radius * Math.min(canvas.width, canvas.height);
+			return (
+				<Group key={`${annotation.id}-${index}`}>
+					<Circle x={cx} y={cy} radius={r} stroke={style.stroke} strokeWidth={2} fill={style.fillSolid} />
+					<Text
+						x={cx + Math.min(r * 0.35, 28)}
+						y={cy - 10}
+						text={`${index + 1}`}
+						fontSize={12}
+						fontWeight="bold"
+						fill={style.label}
+					/>
+				</Group>
+			);
+		}
+
 		return null;
 	};
 
-	// Render annotation using current canvas size
-	const renderAnnotation = (annotation: AnnotationRegion, index: number) => {
-		return renderAnnotationForCanvas(annotation, index, canvasSize);
-	};
+	const zoomControls = (forFullscreen: boolean) => (
+		<Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: forFullscreen ? 2 : 1, alignItems: 'center' }}>
+			<IconButton onClick={handleZoomOut} size="small" disabled={scale <= SCALE_MIN}>
+				<ZoomOut fontSize={forFullscreen ? 'medium' : 'small'} />
+			</IconButton>
+			<Typography variant={forFullscreen ? 'body2' : 'caption'} sx={{ alignSelf: 'center', minWidth: 48, textAlign: 'center' }}>
+				{Math.round(scale * 100)}%
+			</Typography>
+			<IconButton onClick={handleZoomIn} size="small" disabled={scale >= SCALE_MAX}>
+				<ZoomIn fontSize={forFullscreen ? 'medium' : 'small'} />
+			</IconButton>
+			<IconButton onClick={handleResetView} size="small" title="Reset zoom & pan">
+				<PanTool fontSize={forFullscreen ? 'medium' : 'small'} />
+			</IconButton>
+		</Box>
+	);
 
-	// Fullscreen dialog content
+	const renderStage = (cw: number, ch: number, stageRef: React.RefObject<Konva.Stage | null>, imageRef: React.RefObject<Konva.Image | null>) => (
+		<Stage
+			ref={stageRef}
+			width={cw}
+			height={ch}
+			scaleX={scale}
+			scaleY={scale}
+			x={position.x}
+			y={position.y}
+			onMouseDown={e => handleStageMouseDown(e, stageRef.current, imageRef)}
+			onMouseMove={handleStageMouseMove}
+			onMouseUp={handleStageMouseUp}
+			onWheel={handleWheel}
+			draggable={false}
+		>
+			<Layer>
+				<KonvaImage ref={imageRef} image={konvaImage || undefined} width={cw} height={ch} />
+				{annotations.map((annotation, index) => renderAnnotationForCanvas(annotation, index, { width: cw, height: ch }))}
+			</Layer>
+		</Stage>
+	);
+
 	const renderFullscreenContent = () => (
 		<Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-			<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+			<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
 				<ImageIcon color="primary" />
 				<Typography variant="h6" sx={{ fontWeight: 600 }}>
 					{originalFileName}
 				</Typography>
 				<Chip
-					label={`${annotations.length} annotations`}
+					label={`${annotations.length} regions`}
 					size="small"
-					sx={{
-						backgroundColor: '#e3f2fd',
-						color: '#1976d2',
-						fontSize: '0.7rem'
-					}}
+					sx={{ backgroundColor: '#e3f2fd', color: '#1976d2', fontSize: '0.7rem' }}
 				/>
+				<Typography variant="caption" color="text.secondary" sx={{ width: '100%' }}>
+					Drag to pan · Wheel to zoom
+				</Typography>
 			</Box>
 
-			<Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+			<Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto' }}>
 				<Box
 					sx={{
 						border: '1px solid #e0e0e0',
 						borderRadius: 1,
 						overflow: 'hidden',
-						position: 'relative',
-						background: '#fafafa',
-						display: 'flex',
-						justifyContent: 'center',
-						alignItems: 'center',
-						width: '100%',
-						height: '100%',
-						maxWidth: '90vw',
-						maxHeight: '80vh'
+						background: '#fafafa'
 					}}
 				>
 					{!imageLoaded && !imageError && (
-						<Box
-							sx={{
-								width: 400,
-								height: 300,
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								bgcolor: 'grey.100'
-							}}
-						>
+						<Box sx={{ width: 400, height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
 							<Typography>Loading image...</Typography>
 						</Box>
 					)}
 					{imageError && (
-						<Box
-							sx={{
-								width: 400,
-								height: 300,
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-								bgcolor: 'grey.100'
-							}}
-						>
+						<Box sx={{ width: 400, height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'grey.100' }}>
 							<Typography color="error">Failed to load image</Typography>
 						</Box>
 					)}
-					{imageLoaded && (
-						<Stage
-							ref={stageRef}
-							width={800}
-							height={600}
-							scaleX={scale}
-							scaleY={scale}
-							x={position.x}
-							y={position.y}
-							onMouseDown={handleStageMouseDown}
-							onMouseMove={handleStageMouseMove}
-							onMouseUp={handleStageMouseUp}
-							draggable={!readOnly}
-						>
-							<Layer>
-								<KonvaImage ref={imageRef} image={konvaImage || undefined} width={800} height={600} />
-								{annotations.map((annotation, index) => {
-									// For fullscreen, we need to use the fullscreen canvas size
-									const fullscreenCanvasSize = { width: 800, height: 600 };
-									return renderAnnotationForCanvas(annotation, index, fullscreenCanvasSize);
-								})}
-							</Layer>
-						</Stage>
-					)}
+					{imageLoaded && renderStage(fullscreenCanvasSize.width, fullscreenCanvasSize.height, stageFullRef, imageFullRef)}
 				</Box>
 			</Box>
-
-			<Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mt: 2 }}>
-				<IconButton onClick={() => handleZoom('out')} size="small">
-					<ZoomOut />
-				</IconButton>
-				<Typography variant="body2" sx={{ alignSelf: 'center', mx: 1 }}>
-					{Math.round(scale * 100)}%
-				</Typography>
-				<IconButton onClick={() => handleZoom('in')} size="small">
-					<ZoomIn />
-				</IconButton>
-			</Box>
+			{zoomControls(true)}
 		</Box>
 	);
 
@@ -376,22 +413,15 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 		<Box>
 			<Paper
 				variant="outlined"
-				sx={{
-					p: 1,
-					display: 'flex',
-					flexDirection: 'column',
-					alignItems: 'center',
-					position: 'relative'
-				}}
+				sx={{ p: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}
 			>
-				{/* Image header */}
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, width: '100%' }}>
 					<ImageIcon color="primary" fontSize="small" />
 					<Typography variant="body2" sx={{ fontWeight: 500, color: '#333', flex: 1 }}>
 						{originalFileName}
 					</Typography>
 					<Chip
-						label={`${annotations.length} annotations`}
+						label={`${annotations.length} regions`}
 						size="small"
 						sx={{
 							backgroundColor: '#e3f2fd',
@@ -406,7 +436,6 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 					</IconButton>
 				</Box>
 
-				{/* Image display */}
 				<Box
 					sx={{
 						border: '1px solid #e0e0e0',
@@ -451,58 +480,18 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 							</Typography>
 						</Box>
 					)}
-					{imageLoaded && (
-						<Stage
-							ref={stageRef}
-							width={canvasSize.width}
-							height={canvasSize.height}
-							scaleX={scale}
-							scaleY={scale}
-							x={position.x}
-							y={position.y}
-							onMouseDown={handleStageMouseDown}
-							onMouseMove={handleStageMouseMove}
-							onMouseUp={handleStageMouseUp}
-							draggable={!readOnly}
-						>
-							<Layer>
-								<KonvaImage
-									ref={imageRef}
-									image={konvaImage || undefined}
-									width={canvasSize.width}
-									height={canvasSize.height}
-								/>
-								{annotations.map((annotation, index) => renderAnnotation(annotation, index))}
-							</Layer>
-						</Stage>
-					)}
+					{imageLoaded && renderStage(canvasSize.width, canvasSize.height, stageInlineRef, imageInlineRef)}
 				</Box>
 
-				{/* Zoom controls */}
-				<Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.5, mt: 1 }}>
-					<IconButton onClick={() => handleZoom('out')} size="small" sx={{ p: 0.5 }}>
-						<ZoomOut fontSize="small" />
-					</IconButton>
-					<Typography variant="caption" sx={{ alignSelf: 'center', mx: 0.5 }}>
-						{Math.round(scale * 100)}%
-					</Typography>
-					<IconButton onClick={() => handleZoom('in')} size="small" sx={{ p: 0.5 }}>
-						<ZoomIn fontSize="small" />
-					</IconButton>
-				</Box>
+				{zoomControls(false)}
+				<Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+					Drag to pan · Wheel to zoom
+				</Typography>
 			</Paper>
 
-			{/* Fullscreen Dialog */}
-			<Dialog open={showFullscreen} onClose={() => setShowFullscreen(false)} maxWidth="lg" fullWidth fullScreen>
-				<DialogTitle>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-						<ImageIcon color="primary" />
-						<Typography variant="h6" sx={{ fontWeight: 600 }}>
-							{originalFileName}
-						</Typography>
-					</Box>
-				</DialogTitle>
-				<DialogContent sx={{ p: 0 }}>{renderFullscreenContent()}</DialogContent>
+			<Dialog open={showFullscreen} onClose={() => setShowFullscreen(false)} fullScreen>
+				<DialogTitle>{originalFileName}</DialogTitle>
+				<DialogContent sx={{ p: 2 }}>{renderFullscreenContent()}</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setShowFullscreen(false)}>Close</Button>
 				</DialogActions>

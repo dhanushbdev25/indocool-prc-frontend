@@ -1,11 +1,9 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
-	sequenceListResponseSchema,
-	sequenceByIdResponseSchema,
-	createSequenceResponseSchema,
-	updateSequenceResponseSchema,
-	deleteSequenceTaskResponseSchema,
+	isSequenceListResponse,
+	isSequenceByIdResponse,
+	isSequenceMutationResponse,
 	type SequenceListResponse,
 	type SequenceByIdResponse,
 	type CreateSequenceRequest,
@@ -33,12 +31,10 @@ export const sequenceApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = sequenceListResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for process sequences response:', parsed.error);
-					throw new Error('Invalid process sequences response structure');
+				if (!isSequenceListResponse(response)) {
+					console.warn('Invalid process sequences response structure', response);
 				}
-				return parsed.data;
+				return response as SequenceListResponse;
 			},
 			providesTags: ['Sequence']
 		}),
@@ -49,12 +45,10 @@ export const sequenceApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = sequenceByIdResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for process sequence by ID response:', parsed.error);
-					throw new Error('Invalid process sequence by ID response structure');
+				if (!isSequenceByIdResponse(response)) {
+					console.warn('Invalid process sequence by ID response structure', response);
 				}
-				return parsed.data;
+				return response as SequenceByIdResponse;
 			},
 			providesTags: ['Sequence']
 		}),
@@ -66,12 +60,10 @@ export const sequenceApi = createApi({
 				body: data
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = createSequenceResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for create process sequence response:', parsed.error);
-					throw new Error('Invalid create process sequence response structure');
+				if (!isSequenceMutationResponse(response)) {
+					console.warn('Invalid create process sequence response structure', response);
 				}
-				return parsed.data;
+				return response as CreateSequenceResponse;
 			},
 			invalidatesTags: ['Sequence']
 		}),
@@ -83,12 +75,10 @@ export const sequenceApi = createApi({
 				body: { id, ...data }
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = updateSequenceResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for update process sequence response:', parsed.error);
-					throw new Error('Invalid update process sequence response structure');
+				if (!isSequenceMutationResponse(response)) {
+					console.warn('Invalid update process sequence response structure', response);
 				}
-				return parsed.data;
+				return response as UpdateSequenceResponse;
 			},
 			invalidatesTags: ['Sequence']
 		}),
@@ -110,12 +100,10 @@ export const sequenceApi = createApi({
 				}
 			}),
 			transformResponse: (response: unknown) => {
-				const parsed = deleteSequenceTaskResponseSchema.safeParse(response);
-				if (!parsed.success) {
-					console.error('Zod validation failed for delete sequence task response:', parsed.error);
-					throw new Error('Invalid delete sequence task response structure');
+				if (!isSequenceMutationResponse(response)) {
+					console.warn('Invalid delete sequence task response structure', response);
 				}
-				return parsed.data;
+				return response as DeleteSequenceTaskResponse;
 			},
 			invalidatesTags: ['Sequence']
 		})
