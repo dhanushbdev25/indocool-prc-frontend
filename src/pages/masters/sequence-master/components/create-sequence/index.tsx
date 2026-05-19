@@ -161,6 +161,8 @@ const CreateSequence = () => {
 				processName: group.processName,
 				processDescription: group.processDescription,
 				sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60),
+				shift: group.shift || '',
+				pfdNumber: group.pfdNumber || '',
 				processSteps: (group.steps ?? [])
 					.filter((step): step is NonNullable<typeof step> => step != null)
 					.map(step => {
@@ -301,6 +303,8 @@ const CreateSequence = () => {
 						processName: group.processName,
 						processDescription: group.processDescription,
 						sequenceTiming: convertTimeToSeconds(group.sequenceTiming),
+						shift: group.shift || null,
+						pfdNumber: group.pfdNumber || null,
 					processSteps: (group.processSteps || []).map((step, stepIndex) => {
 						const isExact = step.targetValueType === 'exact value';
 						const minVal = step.minimumAcceptanceValue ?? null;

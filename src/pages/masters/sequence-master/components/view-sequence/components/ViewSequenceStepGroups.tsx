@@ -362,6 +362,30 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									height: '24px'
 								}}
 							/>
+							{stepGroup.shift && (
+								<Chip
+									label={stepGroup.shift}
+									size="small"
+									sx={{
+										backgroundColor: '#fff3e0',
+										color: '#e65100',
+										fontSize: '0.75rem',
+										height: '24px'
+									}}
+								/>
+							)}
+							{stepGroup.pfdNumber && (
+								<Chip
+									label={`PFD: ${stepGroup.pfdNumber}`}
+									size="small"
+									sx={{
+										backgroundColor: '#f3e5f5',
+										color: '#6a1b9a',
+										fontSize: '0.75rem',
+										height: '24px'
+									}}
+								/>
+							)}
 							<Chip
 								label={`${stepGroup.steps?.length || 0} steps`}
 								size="small"

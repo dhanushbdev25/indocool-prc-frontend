@@ -25,7 +25,7 @@ const tableColumnSchema = yup.object({
 	type: yup
 		.string()
 		.required('Column type is required')
-		.oneOf(['text', 'number', 'ok/not ok', 'datetime'], 'Invalid column type')
+		.oneOf(['text', 'number', 'ok/not ok', 'datetime', 'shift'], 'Invalid column type')
 });
 
 const tableConfigSchema = yup
@@ -144,6 +144,8 @@ export const processStepGroupSchema = yup.object({
 			const totalMinutes = hours * 60 + minutes;
 			return totalMinutes >= 1;
 		}),
+	shift: yup.string().optional().nullable(),
+	pfdNumber: yup.string().optional().nullable().max(100, 'PFD number must be less than 100 characters'),
 	processSteps: yup
 		.array(processStepSchema)
 		.test('unique-step-numbers', 'Step numbers must be unique within each group', function (steps) {
@@ -211,6 +213,8 @@ export const defaultProcessStepGroup: ProcessStepGroupFormData = {
 	processName: '',
 	processDescription: '',
 	sequenceTiming: '00:01',
+	shift: '',
+	pfdNumber: '',
 	processSteps: []
 };
 

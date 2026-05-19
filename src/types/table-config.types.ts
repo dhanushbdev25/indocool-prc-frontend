@@ -1,6 +1,6 @@
 export interface TableColumn {
 	name: string;
-	type: 'text' | 'number' | 'ok/not ok' | 'datetime';
+	type: 'text' | 'number' | 'ok/not ok' | 'datetime' | 'shift';
 }
 
 export interface TableCellConfig {

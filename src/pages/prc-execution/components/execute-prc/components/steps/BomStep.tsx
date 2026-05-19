@@ -180,7 +180,7 @@ const BomStep = ({
 
 	// Process BOM items into catalyst mixing entries
 	const processedEntries = useMemo(() => {
-		if (!step.items || !executionData.catalystData?.catalystConfiguration) return [];
+		if (!step.items) return [];
 
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const grouped = groupAndSortBOMItems(step.items as any[]);
@@ -219,7 +219,7 @@ const BomStep = ({
 		});
 
 		return entries;
-	}, [step.items, executionData.catalystData?.catalystConfiguration]);
+	}, [step.items]);
 
 	// Initialize form data when processed entries change
 	useEffect(() => {

@@ -33,6 +33,8 @@ export interface ProcessStepGroup {
 	processName: string;
 	processDescription: string;
 	sequenceTiming: number;
+	shift?: string | null;
+	pfdNumber?: string | null;
 	createdAt: string;
 	updatedAt: string;
 	steps: ProcessStep[];
@@ -96,6 +98,8 @@ export interface ProcessStepGroupRequest {
 	processName: string;
 	processDescription: string;
 	sequenceTiming: number;
+	shift?: string | null;
+	pfdNumber?: string | null;
 	processSteps: ProcessStepRequest[];
 }
 

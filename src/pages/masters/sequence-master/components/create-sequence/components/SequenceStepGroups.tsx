@@ -189,6 +189,8 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 			processName: '',
 			processDescription: '',
 			sequenceTiming: '00:01',
+			shift: '',
+			pfdNumber: '',
 			processSteps: [
 				{
 					parameterDescription: '',
@@ -774,6 +776,59 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 									inputProps={{
 										step: 60 // 1 minute steps
 									}}
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: '8px',
+											backgroundColor: 'white'
+										}
+									}}
+								/>
+							)}
+						/>
+					</Grid>
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name={`processStepGroups.${groupIndex}.shift`}
+							control={control}
+							render={({ field }) => (
+								<FormControl
+									fullWidth
+									error={!!errors.processStepGroups?.[groupIndex]?.shift}
+									sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', backgroundColor: 'white' } }}
+								>
+									<InputLabel>Shift</InputLabel>
+									<Select {...field} value={field.value ?? ''} label="Shift">
+										<MenuItem value="">
+											<em>None</em>
+										</MenuItem>
+										{['Shift A', 'Shift B', 'Shift C', 'Shift G'].map(option => (
+											<MenuItem key={option} value={option}>
+												{option}
+											</MenuItem>
+										))}
+									</Select>
+									{errors.processStepGroups?.[groupIndex]?.shift && (
+										<Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
+											{errors.processStepGroups[groupIndex].shift.message}
+										</Typography>
+									)}
+								</FormControl>
+							)}
+						/>
+					</Grid>
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name={`processStepGroups.${groupIndex}.pfdNumber`}
+							control={control}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									value={field.value ?? ''}
+									fullWidth
+									label="PFD Number"
+									placeholder="e.g., PFD-001"
+									helperText={errors.processStepGroups?.[groupIndex]?.pfdNumber?.message}
+									error={!!errors.processStepGroups?.[groupIndex]?.pfdNumber}
 									sx={{
 										'& .MuiOutlinedInput-root': {
 											borderRadius: '8px',
