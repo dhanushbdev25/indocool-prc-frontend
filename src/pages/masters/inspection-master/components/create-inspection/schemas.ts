@@ -180,7 +180,8 @@ export const inspectionParameterSchema = yup.object({
 		.string()
 		.required('Role is required')
 		.oneOf(['QUALITY_ENGINEER', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'OPERATOR', 'MANAGER'], 'Invalid role'),
-	ctq: yup.boolean()
+	ctq: yup.boolean(),
+	getInstrumentId: yup.boolean()
 }).test('min-max-range', 'Minimum value cannot be greater than maximum value', value => {
 	if (!value || value.type !== 'number') return true;
 	if (value.minimumAcceptanceValue === undefined || value.maximumAcceptanceValue === undefined) return true;
@@ -255,7 +256,8 @@ export const defaultInspectionParameter: InspectionParameterFormData = {
 	columns: [],
 	tableConfig: undefined,
 	role: 'QUALITY_ENGINEER',
-	ctq: false
+	ctq: false,
+	getInstrumentId: false
 };
 
 export const defaultInspectionFormData: InspectionFormData = {

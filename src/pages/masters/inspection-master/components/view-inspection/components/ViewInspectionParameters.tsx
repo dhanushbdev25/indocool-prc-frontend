@@ -106,6 +106,9 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 										{parameter.ctq && (
 											<Chip icon={<Warning />} label="CTQ" size="small" color="warning" variant="outlined" />
 										)}
+										{parameter.getInstrumentId && (
+											<Chip label="Instrument ID" size="small" color="info" variant="outlined" />
+										)}
 										<Chip
 											label={getRoleLabel(parameter.role)}
 											size="small"
@@ -153,6 +156,21 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 												size="small"
 												sx={{
 													backgroundColor: parameter.ctq ? '#ff9800' : '#9e9e9e',
+													color: 'white',
+													fontWeight: 500,
+													mb: 2
+												}}
+											/>
+										</Grid>
+										<Grid size={{ xs: 12, md: 6 }}>
+											<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+												Get Instrument ID
+											</Typography>
+											<Chip
+												label={parameter.getInstrumentId ? 'YES' : 'NO'}
+												size="small"
+												sx={{
+													backgroundColor: parameter.getInstrumentId ? '#1976d2' : '#9e9e9e',
 													color: 'white',
 													fontWeight: 500,
 													mb: 2

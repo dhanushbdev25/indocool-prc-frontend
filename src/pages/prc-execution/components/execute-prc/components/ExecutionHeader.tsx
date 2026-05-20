@@ -299,6 +299,7 @@ const ExecutionHeader = ({
 						alignItems: 'flex-start'
 					}}
 				>
+					<MetaField label="Order ID" value={executionData.orderId != null && String(executionData.orderId).trim() ? String(executionData.orderId) : '—'} monospace />
 					<MetaField label="Customer" value={customerLabel} />
 					<MetaField label="Customer variant" value={customerVariant} />
 					<MetaField label="Reservation" value={reservation} monospace />

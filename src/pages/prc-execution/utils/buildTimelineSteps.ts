@@ -86,6 +86,7 @@ export function buildTimelineSteps(
 				actualUom: material.actualUom ?? material.uom,
 				actualQuantity: material.actualQuantity,
 				batchNumber: material.batchNumber,
+				expiryDate: material.expiryDate,
 				description: material.materialCode,
 				batching: material.batching
 			}))

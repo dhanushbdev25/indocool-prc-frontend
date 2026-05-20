@@ -231,6 +231,7 @@ export interface TimelineStep {
 		type: string;
 		ctq: boolean;
 		role: string;
+		getInstrumentId?: boolean;
 		columns: Array<{
 			name: string;
 			type: string;
@@ -337,6 +338,7 @@ export interface ExecutionData {
 	createdAt: string;
 	updatedAt: string;
 	// Additional fields from API response
+	orderId?: string | number | null;
 	customerVariantId?: number | null;
 	customerVariantName?: string | null;
 	reservation?: string | null;
@@ -376,6 +378,7 @@ export interface ExecutionData {
 		batching: boolean;
 		actualQuantity?: string | number;
 		batchNumber?: string;
+		expiryDate?: string | null;
 		/** Optional; when absent, UI uses `uom` for the actual UOM column */
 		actualUom?: string;
 	}>;

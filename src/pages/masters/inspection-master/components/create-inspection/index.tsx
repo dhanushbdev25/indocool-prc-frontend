@@ -116,7 +116,8 @@ const CreateInspection = () => {
 			})),
 			tableConfig: param.tableConfig || undefined,
 			role: param.role,
-			ctq: param.ctq
+			ctq: param.ctq,
+			getInstrumentId: param.getInstrumentId ?? false
 		}));
 
 		if (isEditMode) {
@@ -253,7 +254,8 @@ const CreateInspection = () => {
 			})),
 			tableConfig: param.tableConfig || undefined,
 			role: param.role,
-			ctq: param.ctq ?? false
+			ctq: param.ctq ?? false,
+			getInstrumentId: param.getInstrumentId ?? false
 		}));
 
 			console.log('Saving inspection data:', { inspectionRequestData, inspectionParameters });

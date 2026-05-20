@@ -45,6 +45,7 @@ export interface InspectionParameter {
 	tableConfig?: TableConfig | null;
 	role: string;
 	ctq: boolean;
+	getInstrumentId?: boolean | null;
 	createdAt?: string;
 	updatedAt?: string;
 	[key: string]: unknown;
@@ -112,6 +113,7 @@ export interface InspectionParameterRequest {
 	tableConfig?: TableConfig | null;
 	role: string;
 	ctq: boolean;
+	getInstrumentId?: boolean | null;
 }
 
 export interface InspectionRequest {

@@ -389,7 +389,7 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 							</Grid>
 
 							{/* CTQ Checkbox */}
-							<Grid size={{ xs: 12 }}>
+							<Grid size={{ xs: 12, sm: 6 }}>
 								<Controller
 									name={`inspectionParameters.${index}.ctq`}
 									control={control as Control<InspectionFormData>}
@@ -403,6 +403,29 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 													</Typography>
 													<Typography variant="caption" sx={{ color: '#666' }}>
 														Mark this parameter as critical for quality control
+													</Typography>
+												</Box>
+											}
+										/>
+									)}
+								/>
+							</Grid>
+
+							{/* Get Instrument ID Checkbox */}
+							<Grid size={{ xs: 12, sm: 6 }}>
+								<Controller
+									name={`inspectionParameters.${index}.getInstrumentId`}
+									control={control as Control<InspectionFormData>}
+									render={({ field }) => (
+										<FormControlLabel
+											control={<Checkbox checked={!!field.value} onChange={field.onChange} color="primary" />}
+											label={
+												<Box>
+													<Typography variant="body1" sx={{ fontWeight: 500 }}>
+														Get Instrument ID
+													</Typography>
+													<Typography variant="caption" sx={{ color: '#666' }}>
+														Require an instrument ID to be entered during execution
 													</Typography>
 												</Box>
 											}

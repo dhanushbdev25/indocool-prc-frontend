@@ -65,6 +65,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 	const getNotOkCommentKey = (key: string) => `${key}_notOkComment`;
 	const getFixedTableRowAnnotationsKey = (parameterId: number) => `${parameterId}_fixedTable_rowAnnotations`;
 	const getAckKey = (key: string) => `${key}_acknowledge`;
+	const getInstrumentIdKey = (paramId: number) => `${paramId}_instrumentId`;
 	const getRangeStatus = (
 		value: number,
 		min?: string | number,
@@ -934,6 +935,13 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 					}
 				}
 			}
+
+			if (param.getInstrumentId) {
+				const iidKey = getInstrumentIdKey(param.id);
+				if (!String(formData[iidKey] || '').trim()) {
+					newErrors[iidKey] = 'Instrument ID is required';
+				}
+			}
 		});
 
 		setErrors(newErrors);
@@ -1100,6 +1108,11 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 					}
 
 					console.log(`Single value parameter ${param.id}:`, paramData.value);
+				}
+
+				// Add instrument ID if required for this parameter
+				if (param.getInstrumentId) {
+					paramData.instrumentId = String(formData[getInstrumentIdKey(param.id)] || '').trim();
 				}
 
 				// Add annotations / defect counts if they exist for this parameter
@@ -2158,6 +2171,33 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 														</Grid>
 													</Box>
 												</Collapse>
+											</TableCell>
+										</TableRow>
+									)}
+
+									{/* Instrument ID Row */}
+									{param.getInstrumentId && (
+										<TableRow key={`${param.id}-instrumentId`}>
+											<TableCell colSpan={7} sx={{ py: 1.5, px: 2, backgroundColor: '#f0f7ff', borderTop: '1px solid #bbdefb' }}>
+												<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, flexWrap: 'wrap' }}>
+													<Typography variant="body2" sx={{ fontWeight: 600, color: '#1565c0', minWidth: 110, pt: 0.5 }}>
+														Instrument ID *
+													</Typography>
+													<TextField
+														size="small"
+														placeholder="Enter instrument ID"
+														value={String(formData[getInstrumentIdKey(param.id)] || '')}
+														onChange={e => {
+															const key = getInstrumentIdKey(param.id);
+															setFormData(prev => ({ ...prev, [key]: e.target.value }));
+															if (errors[key]) setErrors(prev => ({ ...prev, [key]: '' }));
+														}}
+														error={!!errors[getInstrumentIdKey(param.id)]}
+														helperText={errors[getInstrumentIdKey(param.id)]}
+														disabled={isReadOnly}
+														sx={{ flex: 1, maxWidth: 320 }}
+													/>
+												</Box>
 											</TableCell>
 										</TableRow>
 									)}

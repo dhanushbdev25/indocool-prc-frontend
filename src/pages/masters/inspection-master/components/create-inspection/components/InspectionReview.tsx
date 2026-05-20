@@ -234,6 +234,15 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 											sx={{ mr: 1, fontSize: '0.75rem' }}
 										/>
 									)}
+									{Boolean(parameter.getInstrumentId) && (
+										<Chip
+											label="Instrument ID"
+											size="small"
+											color="info"
+											variant="outlined"
+											sx={{ mr: 1, fontSize: '0.75rem' }}
+										/>
+									)}
 									<Chip
 										label={getRoleLabel(String(parameter.role))}
 										size="small"
@@ -267,6 +276,24 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 														parameter.maximumAcceptanceValue
 													)}
 												</Typography>
+											</Box>
+										</Grid>
+										<Grid size={{ xs: 12, md: 6 }}>
+											<Box>
+												<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
+													Get Instrument ID
+												</Typography>
+												<Chip
+													icon={Boolean(parameter.getInstrumentId) ? <CheckCircleIcon /> : <CancelIcon />}
+													label={Boolean(parameter.getInstrumentId) ? 'Yes' : 'No'}
+													size="small"
+													sx={{
+														backgroundColor: Boolean(parameter.getInstrumentId) ? '#4caf50' : '#9e9e9e',
+														color: 'white',
+														fontSize: '0.75rem',
+														'& .MuiChip-icon': { color: 'white' }
+													}}
+												/>
 											</Box>
 										</Grid>
 									{parameter.columns && (parameter.columns as Record<string, unknown>[]).length > 0 && parameter.type !== 'fixed-table' ? (
