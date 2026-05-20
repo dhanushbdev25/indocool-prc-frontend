@@ -175,6 +175,7 @@ export interface TimelineStep {
 	partialCtqApprove?: boolean;
 	// For raw materials/bom
 	items?: Array<{
+		expiryDate?: any;
 		id: number;
 		name: string;
 		quantity: string;

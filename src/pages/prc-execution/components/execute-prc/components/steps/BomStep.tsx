@@ -385,33 +385,33 @@ const BomStep = ({
 
 		formData.entries.forEach(entry => {
 			// Check if temperature and humidity are provided
-			if (!entry.temperature || entry.temperature.trim() === '') {
-				newErrors[`${entry.id}_temperature`] = 'Temperature is required';
-			} else {
-				const temp = parseFloat(entry.temperature);
-				if (isNaN(temp)) {
-					newErrors[`${entry.id}_temperature`] = 'Please enter a valid temperature';
-				}
-			}
+			// if (!entry.temperature || entry.temperature.trim() === '') {
+			// 	newErrors[`${entry.id}_temperature`] = 'Temperature is required';
+			// } else {
+			// 	const temp = parseFloat(entry.temperature);
+			// 	if (isNaN(temp)) {
+			// 		newErrors[`${entry.id}_temperature`] = 'Please enter a valid temperature';
+			// 	}
+			// }
 
-			if (!entry.humidity || entry.humidity.trim() === '') {
-				newErrors[`${entry.id}_humidity`] = 'Humidity is required';
-			} else {
-				const hum = parseFloat(entry.humidity);
-				if (isNaN(hum)) {
-					newErrors[`${entry.id}_humidity`] = 'Please enter a valid humidity';
-				}
-			}
+			// if (!entry.humidity || entry.humidity.trim() === '') {
+			// 	newErrors[`${entry.id}_humidity`] = 'Humidity is required';
+			// } else {
+			// 	const hum = parseFloat(entry.humidity);
+			// 	if (isNaN(hum)) {
+			// 		newErrors[`${entry.id}_humidity`] = 'Please enter a valid humidity';
+			// 	}
+			// }
 
-			// Check if catalyst quantity is provided
-			if (!entry.catalystQuantity || entry.catalystQuantity.trim() === '') {
-				newErrors[`${entry.id}_catalyst`] = 'Catalyst quantity is required';
-			} else {
-				const catQty = parseFloat(entry.catalystQuantity);
-				if (isNaN(catQty) || catQty < 0) {
-					newErrors[`${entry.id}_catalyst`] = 'Please enter a valid catalyst quantity';
-				}
-			}
+			// // Check if catalyst quantity is provided
+			// if (!entry.catalystQuantity || entry.catalystQuantity.trim() === '') {
+			// 	newErrors[`${entry.id}_catalyst`] = 'Catalyst quantity is required';
+			// } else {
+			// 	const catQty = parseFloat(entry.catalystQuantity);
+			// 	if (isNaN(catQty) || catQty < 0) {
+			// 		newErrors[`${entry.id}_catalyst`] = 'Please enter a valid catalyst quantity';
+			// 	}
+			// }
 
 			// Check if blocked
 			if (entry.blocked) {

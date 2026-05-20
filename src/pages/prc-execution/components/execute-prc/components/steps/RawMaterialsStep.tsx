@@ -58,6 +58,7 @@ const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride }: RawMateria
 							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Actual Quantity</TableCell>
 							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>UOM</TableCell>
 							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Batch No</TableCell>
+							<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Expiry Date</TableCell>
 						</TableRow>
 					</TableHead>
 					<TableBody>
@@ -93,11 +94,16 @@ const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride }: RawMateria
 										{displayCell(item.actualUom ?? item.uom)}
 									</Typography>
 								</TableCell>
-								<TableCell sx={{ py: 1 }}>
-									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-										{displayCell(item.batchNumber)}
-									</Typography>
-								</TableCell>
+									<TableCell sx={{ py: 1 }}>
+										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+											{displayCell(item.batchNumber)}
+										</Typography>
+									</TableCell>
+									<TableCell sx={{ py: 1 }}>
+										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+											{displayCell(item.expiryDate)}
+										</Typography>
+									</TableCell>
 							</TableRow>
 						))}
 					</TableBody>
