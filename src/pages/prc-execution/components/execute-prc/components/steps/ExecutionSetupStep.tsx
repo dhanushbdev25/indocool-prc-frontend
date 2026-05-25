@@ -7,21 +7,13 @@ import {
 	Card,
 	CardContent,
 	Grid,
-	FormControl,
-	InputLabel,
-	Select,
-	MenuItem,
 	Divider,
 	Avatar,
 	Autocomplete,
 	Alert,
 	CircularProgress
 } from '@mui/material';
-import { Engineering as EngineeringIcon, Schedule as ScheduleIcon, Person as PersonIcon } from '@mui/icons-material';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs, { type Dayjs } from 'dayjs';
+import { Engineering as EngineeringIcon, Person as PersonIcon } from '@mui/icons-material';
 import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
 import { useFetchMouldComboQuery } from '../../../../../../store/api/business/mould/mould.api';
 import { type MouldComboItem } from '../../../../../../store/api/business/mould/mould.validators';
@@ -36,16 +28,6 @@ import {
 	extractSequenceStepGroupsFromExecution,
 	mergeOperationWiseForRead
 } from '../../../../utils/operationWiseMerge';
-
-/** Matches inspection execution shift parameter options and inspection-master schemas. */
-const SETUP_SHIFT_VALUES = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
-
-const shiftOptions = SETUP_SHIFT_VALUES.map(value => ({ value, label: value }));
-
-const DEFAULT_SETUP_SHIFT = SETUP_SHIFT_VALUES[0];
-
-const coerceSetupShift = (raw: string | undefined): string =>
-	raw && (SETUP_SHIFT_VALUES as readonly string[]).includes(raw) ? raw : DEFAULT_SETUP_SHIFT;
 
 const getMouldCode = (item: MouldComboItem | null): string => {
 	if (!item) return '';
@@ -86,8 +68,6 @@ const ExecutionSetupStep = ({
 	const [productionSetId, setProductionSetId] = useState('');
 	const [selectedMould, setSelectedMould] = useState<MouldComboItem | null>(null);
 	const [fallbackMouldId, setFallbackMouldId] = useState('');
-	const [shift, setShift] = useState(DEFAULT_SETUP_SHIFT);
-	const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
 	const [errors, setErrors] = useState<Record<string, string>>({});
 
 	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
@@ -121,19 +101,11 @@ const ExecutionSetupStep = ({
 		if (hasSaved) {
 			setTimeout(() => {
 				if (typeof saved.productionSetId === 'string') setProductionSetId(saved.productionSetId);
-				if (typeof saved.shift === 'string') setShift(coerceSetupShift(saved.shift));
-				if (typeof saved.date === 'string' && saved.date) {
-					setSelectedDate(dayjs(saved.date));
-				}
 				if (mouldIdStr) setFallbackMouldId(mouldIdStr);
 			}, 0);
 		} else {
 			setTimeout(() => {
 				setProductionSetId(executionData.productionSetId || '');
-				setShift(coerceSetupShift(executionData.shift));
-				if (executionData.date) {
-					setSelectedDate(dayjs(executionData.date));
-				}
 				if (mouldIdStr) setFallbackMouldId(mouldIdStr);
 			}, 0);
 		}
@@ -155,28 +127,23 @@ const ExecutionSetupStep = ({
 		if (!partId) next.mouldId = 'Part is missing; cannot load moulds for this execution';
 		const mouldCode = getMouldCode(selectedMould);
 		if (partId && !mouldCode) next.mouldId = 'Mould is required';
-		if (!shift) next.shift = 'Shift is required';
 		setErrors(next);
 		return Object.keys(next).length === 0;
 	};
 
 	const handleSubmit = () => {
 		if (!validate()) return;
-		const dateStr = selectedDate.format('YYYY-MM-DD');
 		const mouldIdValue = getMouldCode(selectedMould);
 		onStepComplete({
 			productionSetId: productionSetId.trim(),
 			mouldId: mouldIdValue,
-			shift,
-			date: dateStr,
 			recordedByUserId: userInfo.id,
 			operationWiseData: applyCountDeviated(mergedOperationWise.map(r => ({ ...r })))
 		});
 	};
 
 	return (
-		<LocalizationProvider dateAdapter={AdapterDayjs}>
-			<Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
+		<Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
 				<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
 					<CardContent sx={{ p: 3 }}>
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
@@ -298,73 +265,6 @@ const ExecutionSetupStep = ({
 					</CardContent>
 				</Card>
 
-				<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-					<CardContent sx={{ p: 3 }}>
-						<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-							<ScheduleIcon sx={{ color: '#666', mr: 2, fontSize: '1.25rem' }} />
-							<Box>
-								<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
-									Schedule
-								</Typography>
-								<Typography variant="body2" sx={{ color: '#666' }}>
-									Date and shift
-								</Typography>
-							</Box>
-						</Box>
-						<Grid container spacing={3}>
-							<Grid size={{ xs: 12, md: 6 }}>
-								<DatePicker
-									label="Date"
-									value={selectedDate}
-									onChange={plainLocked ? () => {} : v => setSelectedDate(v || dayjs())}
-									readOnly={plainLocked}
-									disabled={greyDisabledReadOnly}
-									disableOpenPicker={plainLocked}
-									slotProps={{
-										textField: {
-											fullWidth: true,
-											sx: { '& .MuiOutlinedInput-root': { borderRadius: 2 } }
-										}
-									}}
-								/>
-							</Grid>
-							<Grid size={{ xs: 12, md: 6 }}>
-								{plainLocked ? (
-									<TextField
-										fullWidth
-										label="Shift"
-										value={shift}
-										InputProps={{ readOnly: true }}
-										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-									/>
-								) : (
-									<FormControl fullWidth error={!!errors.shift}>
-										<InputLabel>Shift</InputLabel>
-										<Select
-											value={shift}
-											label="Shift"
-											onChange={e => setShift(e.target.value)}
-											disabled={greyDisabledReadOnly}
-											sx={{ borderRadius: 2 }}
-										>
-											{shiftOptions.map(opt => (
-												<MenuItem key={opt.value} value={opt.value}>
-													{opt.label}
-												</MenuItem>
-											))}
-										</Select>
-										{errors.shift && (
-											<Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.75 }}>
-												{errors.shift}
-											</Typography>
-										)}
-									</FormControl>
-								)}
-							</Grid>
-						</Grid>
-					</CardContent>
-				</Card>
-
 				<Divider sx={{ my: 2 }} />
 
 				{!isReadOnly && (
@@ -374,8 +274,7 @@ const ExecutionSetupStep = ({
 						</Button>
 					</Box>
 				)}
-			</Box>
-		</LocalizationProvider>
+		</Box>
 	);
 };
 

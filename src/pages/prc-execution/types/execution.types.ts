@@ -505,6 +505,10 @@ export interface CatalystMixingEntry {
 	humidity: string;
 	/** Optional can / container identifier captured during mixing */
 	canNumber: string;
+	/** Optional Hygrometer instrument ID used for temperature/humidity reading */
+	hygrometerInstrumentId: string;
+	/** Optional Weighing Machine instrument ID used for actual/catalyst quantity */
+	weighingMachineInstrumentId: string;
 	actualQuantity: string;
 	catalystQuantity: string;
 	calculatedMin: number;
@@ -513,6 +517,10 @@ export interface CatalystMixingEntry {
 	acknowledged: boolean;
 	blocked: boolean;
 	requiresSupervisorApproval: boolean;
+	/** FOD checkpoint selection — '' means not yet answered */
+	fodCheckpoint: 'ok' | 'not ok' | '';
+	/** Required when fodCheckpoint === 'not ok' */
+	fodDeviationComment: string;
 }
 
 export interface CatalystMixingFormData {

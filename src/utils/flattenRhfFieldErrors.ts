@@ -68,6 +68,20 @@ const KEY_LABELS: Record<string, string> = {
 	tolerance: 'Tolerance',
 	inspectionDiagrams: 'Inspection diagrams',
 	files: 'Files',
+	processStepGroups: 'Step groups',
+	processSteps: 'Process steps',
+	processName: 'Process name',
+	processDescription: 'Process description',
+	sequenceTiming: 'Sequence timing',
+	pfdNumber: 'PFD number',
+	parameterDescription: 'Parameter description',
+	targetValueType: 'Target value type',
+	evaluationMethod: 'Evaluation method',
+	minimumAcceptanceValue: 'Minimum acceptance',
+	maximumAcceptanceValue: 'Maximum acceptance',
+	multipleMeasurementMaxCount: 'Max measurements',
+	tableConfig: 'Table configuration',
+	inspectionParameters: 'Inspection parameters',
 	root: '' // "root" bucket from Yup/object-level tests — fold into parent path
 };
 

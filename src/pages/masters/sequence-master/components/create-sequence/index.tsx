@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, type FieldErrors } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
 	Box,
@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
+import { flattenRhfFieldErrorsToHtml } from '../../../../../utils/flattenRhfFieldErrors';
 import SequenceBasicInfo from './components/SequenceBasicInfo';
 import SequenceStepGroups from './components/SequenceStepGroups';
 import SequenceReview from './components/SequenceReview';
@@ -144,12 +145,19 @@ const CreateSequence = () => {
 		return () => subscription.unsubscribe();
 	}, [methods, watch]);
 
-	// Debug: Log errors when they change
-	useEffect(() => {
-		if (Object.keys(errors).length > 0) {
-			console.log('Form errors (Yup):', errors);
-		}
-	}, [errors]);
+	const showValidationErrorPopup = (errs: FieldErrors<SequenceFormData>) => {
+		void Swal.fire({
+			icon: 'error',
+			title: 'Cannot save',
+			html: flattenRhfFieldErrorsToHtml(errs),
+			confirmButtonText: 'OK',
+			width: 560
+		});
+	};
+
+	const onInvalid = (errs: FieldErrors<SequenceFormData>) => {
+		showValidationErrorPopup(errs);
+	};
 
 	// Load data for edit or clone when API data is available
 	useEffect(() => {
@@ -248,8 +256,7 @@ const CreateSequence = () => {
 				if (isValid) {
 					setActiveStep(prevActiveStep => prevActiveStep + 1);
 				} else {
-					console.log('Validation failed for step:', activeStep, 'Errors (Yup):', errors);
-					// Scroll to first error field for better UX
+					showValidationErrorPopup(methods.formState.errors);
 					const firstErrorField = document.querySelector('.Mui-error');
 					if (firstErrorField) {
 						firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -279,8 +286,7 @@ const CreateSequence = () => {
 		try {
 			const isValid = await trigger();
 			if (!isValid) {
-				console.log('Form validation failed on submit:', errors);
-				setError('Please fix all validation errors before submitting');
+				showValidationErrorPopup(methods.formState.errors);
 				return;
 			}
 
@@ -476,7 +482,7 @@ const CreateSequence = () => {
 									variant="contained"
 									startIcon={<Save />}
 									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-									onClick={handleSubmit(onSubmit as any)}
+									onClick={handleSubmit(onSubmit as any, onInvalid)}
 									disabled={isCreating || isUpdating}
 									sx={{
 										textTransform: 'none',

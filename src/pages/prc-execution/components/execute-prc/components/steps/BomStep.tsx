@@ -15,7 +15,11 @@ import {
 	AccordionSummary,
 	AccordionDetails,
 	Paper,
-	Avatar
+	Avatar,
+	FormControl,
+	FormLabel,
+	Radio,
+	RadioGroup
 } from '@mui/material';
 import {
 	CheckCircle as CheckCircleIcon,
@@ -35,6 +39,7 @@ import {
 	type CatalystMixingEntry,
 	type CatalystMixingFormData
 } from '../../../../types/execution.types';
+import { OK_NOT_OK_NEGATIVE_LABEL, OK_NOT_OK_POSITIVE_LABEL } from '../../../../../../utils/okNotOkLabels';
 
 interface BomStepProps {
 	step: TimelineStep;
@@ -206,6 +211,8 @@ const BomStep = ({
 					temperature: '',
 					humidity: '',
 					canNumber: '',
+					hygrometerInstrumentId: '',
+					weighingMachineInstrumentId: '',
 					actualQuantity: '',
 					catalystQuantity: '',
 					calculatedMin: 0,
@@ -213,7 +220,9 @@ const BomStep = ({
 					validationStatus: 'Accepted',
 					acknowledged: false,
 					blocked: false,
-					requiresSupervisorApproval: false
+					requiresSupervisorApproval: false,
+					fodCheckpoint: '',
+					fodDeviationComment: ''
 				});
 			});
 		});
@@ -252,8 +261,21 @@ const BomStep = ({
 								savedEntry.canNumber == null || savedEntry.canNumber === ''
 									? ''
 									: String(savedEntry.canNumber),
+							hygrometerInstrumentId:
+								savedEntry.hygrometerInstrumentId == null
+									? ''
+									: String(savedEntry.hygrometerInstrumentId),
+							weighingMachineInstrumentId:
+								savedEntry.weighingMachineInstrumentId == null
+									? ''
+									: String(savedEntry.weighingMachineInstrumentId),
 							actualQuantity: savedEntry.actualQuantity || 0,
-							temperature: savedEntry.temperature || ''
+							temperature: savedEntry.temperature || '',
+							fodCheckpoint:
+								savedEntry.fodCheckpoint === 'ok' || savedEntry.fodCheckpoint === 'not ok'
+									? savedEntry.fodCheckpoint
+									: '',
+							fodDeviationComment: savedEntry.fodDeviationComment || ''
 						};
 					}
 					return entry;
@@ -371,6 +393,12 @@ const BomStep = ({
 				[entryId]: ''
 			}));
 		}
+		if (field === 'fodCheckpoint' && errors[`${entryId}_fod`]) {
+			setErrors(prev => ({ ...prev, [`${entryId}_fod`]: '' }));
+		}
+		if (field === 'fodDeviationComment' && errors[`${entryId}_fodComment`]) {
+			setErrors(prev => ({ ...prev, [`${entryId}_fodComment`]: '' }));
+		}
 	};
 
 	const handleAcknowledgmentChange = (entryId: string, acknowledged: boolean) => {
@@ -421,6 +449,15 @@ const BomStep = ({
 			// Check if out of range and not acknowledged
 			if ((entry.validationStatus === 'Lesser' || entry.validationStatus === 'Greater') && !acknowledgments[entry.id]) {
 				newErrors[`${entry.id}_acknowledge`] = 'Please acknowledge the out-of-range value';
+			}
+
+			// FOD checkpoint is mandatory unless the entry is blocked
+			if (!entry.blocked) {
+				if (entry.fodCheckpoint !== 'ok' && entry.fodCheckpoint !== 'not ok') {
+					newErrors[`${entry.id}_fod`] = 'FOD checkpoint is required';
+				} else if (entry.fodCheckpoint === 'not ok' && !entry.fodDeviationComment.trim()) {
+					newErrors[`${entry.id}_fodComment`] = `Comments are required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
+				}
 			}
 		});
 
@@ -752,7 +789,90 @@ const BomStep = ({
 													disabled={isReadOnly || entry.blocked}
 												/>
 											</Grid>
+
+											<Grid size={{ xs: 12, md: 3 }}>
+												<TextField
+													fullWidth
+													label="Hygrometer ID"
+													value={entry.hygrometerInstrumentId}
+													onChange={e =>
+														handleInputChange(entry.id, 'hygrometerInstrumentId', e.target.value)
+													}
+													helperText="Optional"
+													disabled={isReadOnly || entry.blocked}
+												/>
+											</Grid>
+
+											<Grid size={{ xs: 12, md: 3 }}>
+												<TextField
+													fullWidth
+													label="Weighing Machine ID"
+													value={entry.weighingMachineInstrumentId}
+													onChange={e =>
+														handleInputChange(entry.id, 'weighingMachineInstrumentId', e.target.value)
+													}
+													helperText="Optional"
+													disabled={isReadOnly || entry.blocked}
+												/>
+											</Grid>
 										</Grid>
+
+										{/* FOD Checkpoint */}
+										<Box sx={{ mt: 3 }}>
+											<FormControl
+												component="fieldset"
+												disabled={isReadOnly || entry.blocked}
+												fullWidth
+												error={!!errors[`${entry.id}_fod`]}
+											>
+												<FormLabel component="legend" sx={{ mb: 1, fontWeight: 500 }} required>
+													Mixing Material is free from Foreign Object Debris (FOD) and stirred as per Work
+													Instruction
+												</FormLabel>
+												<RadioGroup
+													row
+													value={entry.fodCheckpoint}
+													onChange={e => handleInputChange(entry.id, 'fodCheckpoint', e.target.value)}
+												>
+													<FormControlLabel
+														value="ok"
+														control={<Radio size="small" color="success" />}
+														label={OK_NOT_OK_POSITIVE_LABEL}
+													/>
+													<FormControlLabel
+														value="not ok"
+														control={<Radio size="small" color="warning" />}
+														label={OK_NOT_OK_NEGATIVE_LABEL}
+													/>
+												</RadioGroup>
+												{errors[`${entry.id}_fod`] && (
+													<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+														{errors[`${entry.id}_fod`]}
+													</Typography>
+												)}
+												{entry.fodCheckpoint === 'not ok' && (
+													<TextField
+														fullWidth
+														multiline
+														rows={2}
+														label="Deviation comments"
+														placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+														value={entry.fodDeviationComment}
+														onChange={e =>
+															handleInputChange(entry.id, 'fodDeviationComment', e.target.value)
+														}
+														error={!!errors[`${entry.id}_fodComment`]}
+														helperText={
+															errors[`${entry.id}_fodComment`] ||
+															`Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+														}
+														disabled={isReadOnly || entry.blocked}
+														required
+														sx={{ mt: 1.5 }}
+													/>
+												)}
+											</FormControl>
+										</Box>
 
 										{/* Range Display and Validation */}
 										{entry.calculatedMin > 0 && entry.calculatedMax > 0 && (

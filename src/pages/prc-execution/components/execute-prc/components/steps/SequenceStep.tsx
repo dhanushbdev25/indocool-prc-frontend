@@ -20,10 +20,16 @@ import {
 	Paper
 } from '@mui/material';
 import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import dayjs from 'dayjs';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
 import {
 	OK_NOT_OK_NEGATIVE_LABEL
 } from '../../../../../../utils/okNotOkLabels';
+
+const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
 
 interface SequenceStepProps {
 	step: TimelineStep;
@@ -840,6 +846,55 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 															{errors[`table_${rowIdx}_${col.name}`]}
 														</Typography>
 													)}
+												</td>
+											);
+										}
+
+										if (col.type === 'datetime') {
+											return (
+												<td key={col.name}>
+													<LocalizationProvider dateAdapter={AdapterDayjs}>
+														<DateTimePicker
+															value={cellValue ? dayjs(cellValue) : null}
+															onChange={newValue => {
+																const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																handleTableCellChange(rowIdx, col.name, formatted);
+															}}
+															slotProps={{
+																textField: {
+																	size: 'small',
+																	fullWidth: true,
+																	variant: 'outlined',
+																	error: !!errors[`table_${rowIdx}_${col.name}`],
+																	helperText: errors[`table_${rowIdx}_${col.name}`],
+																	sx: { '& .MuiOutlinedInput-root': { borderRadius: '4px' } }
+																}
+															}}
+														/>
+													</LocalizationProvider>
+												</td>
+											);
+										}
+
+										if (col.type === 'shift') {
+											return (
+												<td key={col.name}>
+													<TextField
+														select
+														size="small"
+														fullWidth
+														value={cellValue}
+														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
+														error={!!errors[`table_${rowIdx}_${col.name}`]}
+														helperText={errors[`table_${rowIdx}_${col.name}`]}
+														sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px' } }}
+													>
+														{SHIFT_OPTIONS.map(option => (
+															<MenuItem key={option} value={option}>
+																{option}
+															</MenuItem>
+														))}
+													</TextField>
 												</td>
 											);
 										}

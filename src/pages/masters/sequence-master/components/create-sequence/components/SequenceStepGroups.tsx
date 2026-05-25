@@ -19,6 +19,7 @@ import {
 	Card,
 	CardContent,
 	Chip,
+	Alert,
 	Table,
 	TableHead,
 	TableBody,
@@ -301,12 +302,23 @@ interface TableConfigEditorProps {
 }
 
 const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditorProps) => {
-	const { setValue } = useFormContext<SequenceFormData>();
+	const {
+		setValue,
+		formState: { errors }
+	} = useFormContext<SequenceFormData>();
 	const basePath = `processStepGroups.${groupIndex}.processSteps.${stepIndex}` as const;
 	const targetValueType = useWatch({ control, name: `${basePath}.targetValueType` });
 	const tableConfig = useWatch({ control, name: `${basePath}.tableConfig` as `processStepGroups.${number}.processSteps.${number}.tableConfig` });
 
 	if (targetValueType !== 'table') return null;
+
+	const tableConfigError = errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]?.tableConfig;
+	const tableConfigErrorMessage =
+		typeof tableConfigError?.message === 'string'
+			? tableConfigError.message
+			: typeof tableConfigError?.rows?.message === 'string'
+				? tableConfigError.rows.message
+				: undefined;
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const columns: Array<{ name: string; type: string }> = (tableConfig as any)?.columns || [];
@@ -457,7 +469,19 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 
 	return (
 		<Grid size={{ xs: 12 }}>
-			<Paper sx={{ p: 2.5, backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0', borderRadius: '12px' }}>
+			<Paper
+				sx={{
+					p: 2.5,
+					backgroundColor: '#f8f9fa',
+					border: tableConfigErrorMessage ? '1px solid #f44336' : '1px solid #e0e0e0',
+					borderRadius: '12px'
+				}}
+			>
+				{tableConfigErrorMessage && (
+					<Alert severity="error" sx={{ mb: 2 }}>
+						{tableConfigErrorMessage}
+					</Alert>
+				)}
 				<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
 					<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333' }}>
 						Table Configuration
