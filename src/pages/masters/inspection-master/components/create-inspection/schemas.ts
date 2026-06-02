@@ -4,11 +4,7 @@ import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/o
 // Column validation schema
 export const columnSchema = yup
 	.object({
-	name: yup
-		.string()
-		.required('Column name is required')
-		.min(2, 'Column name must be at least 2 characters')
-		.max(50, 'Column name must be less than 50 characters'),
+	name: yup.string().required('Column name is required'),
 	type: yup
 		.string()
 		.required('Column type is required')
@@ -26,7 +22,7 @@ export const columnSchema = yup
 					return value === undefined || typeof value === 'number';
 				});
 		},
-		otherwise: () => yup.string().max(100, 'Default value must be less than 100 characters').optional()
+		otherwise: () => yup.string().optional()
 	}),
 	minimumAcceptanceValue: yup.mixed().when('type', {
 		is: 'number',
@@ -57,11 +53,7 @@ export const columnSchema = yup
 
 // Part image validation schema
 export const partImageSchema = yup.object({
-	name: yup
-		.string()
-		.required('Image name is required')
-		.min(2, 'Image name must be at least 2 characters')
-		.max(1000, 'Image name must be less than 1000 characters'),
+	name: yup.string().required('Image name is required'),
 	url: yup.string().required('Image URL is required').url('Must be a valid URL')
 });
 
@@ -86,12 +78,8 @@ export const inspectionParameterSchema = yup.object({
 		.required('Order is required')
 		.min(1, 'Order must be at least 1')
 		.integer('Order must be a whole number'),
-	parameterName: yup
-		.string()
-		.required('Parameter name is required')
-		.min(3, 'Parameter name must be at least 3 characters')
-		.max(1000, 'Parameter name must be less than 1000 characters'),
-	specification: yup.string().optional().max(500, 'Specification must be less than 500 characters'),
+	parameterName: yup.string().required('Parameter name is required'),
+	specification: yup.string().optional(),
 	minimumAcceptanceValue: yup.mixed().when('type', {
 		is: 'number',
 		then: schema =>
@@ -126,7 +114,7 @@ export const inspectionParameterSchema = yup.object({
 			columns: yup
 				.array(
 					yup.object({
-						name: yup.string().required('Column name is required').min(1).max(100),
+						name: yup.string().required('Column name is required'),
 						type: yup
 							.string()
 							.required('Column type is required')
@@ -191,17 +179,11 @@ export const inspectionParameterSchema = yup.object({
 // Main form validation schema
 export const inspectionFormSchema = yup.object({
 	id: yup.number().optional(),
-	inspectionName: yup
-		.string()
-		.required('Inspection name is required')
-		.min(3, 'Inspection name must be at least 3 characters')
-		.max(1000, 'Inspection name must be less than 1000 characters'),
+	inspectionName: yup.string().required('Inspection name is required'),
 	status: yup.boolean(),
 	inspectionId: yup
 		.string()
 		.required('Inspection ID is required')
-		.min(3, 'Inspection ID must be at least 3 characters')
-		.max(50, 'Inspection ID must be less than 50 characters')
 		.matches(/^[A-Z0-9-]+$/, 'Inspection ID must contain only uppercase letters, numbers, and hyphens'),
 	type: yup.string().optional(),
 	version: yup.number().optional(),
@@ -216,7 +198,7 @@ export const inspectionFormSchema = yup.object({
 	approveByProduction: yup.boolean().optional(),
 	approveByQuality: yup.boolean().optional(),
 	inspectionParameters: yup.array(inspectionParameterSchema).min(1, 'At least one inspection parameter is required'),
-	notes: yup.string().max(1000, 'Notes must be less than 1000 characters').optional(),
+	notes: yup.string().optional(),
 	createdAt: yup.string().optional(),
 	updatedAt: yup.string().optional()
 });
@@ -277,17 +259,11 @@ export const defaultInspectionFormData: InspectionFormData = {
 
 // Section-specific validation schemas
 export const basicInfoSchema = yup.object({
-	inspectionName: yup
-		.string()
-		.required('Inspection name is required')
-		.min(3, 'Inspection name must be at least 3 characters')
-		.max(1000, 'Inspection name must be less than 1000 characters'),
+	inspectionName: yup.string().required('Inspection name is required'),
 	status: yup.boolean(),
 	inspectionId: yup
 		.string()
 		.required('Inspection ID is required')
-		.min(3, 'Inspection ID must be at least 3 characters')
-		.max(50, 'Inspection ID must be less than 50 characters')
 		.matches(/^[A-Z0-9-]+$/, 'Inspection ID must contain only uppercase letters, numbers, and hyphens'),
 	showPartImages: yup.boolean(),
 	partImages: yup.array().when('showPartImages', {
@@ -298,7 +274,7 @@ export const basicInfoSchema = yup.object({
 	}),
 	approveByProduction: yup.boolean().optional(),
 	approveByQuality: yup.boolean().optional(),
-	notes: yup.string().max(1000, 'Notes must be less than 1000 characters').optional()
+	notes: yup.string().optional()
 });
 
 export const parametersSchema = yup.object({

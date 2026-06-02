@@ -30,37 +30,37 @@ export const catalystConfigurationSchema = yup
 			const num = Number(value);
 			return !isNaN(num) && num <= 100;
 		}),
-		minGelcoat: yup.string().test('is-valid-number', 'Minimum gelcoat must be a valid number > 0', value => {
+		minGelcoat: yup.string().test('is-valid-number', 'Minimum gelcoat must be a valid number >= 0', value => {
 			if (!isFilled(value)) return true;
 			const num = Number(value);
-			return !isNaN(num) && num > 0;
+			return !isNaN(num) && num >= 0;
 		}),
-		maxGelcoat: yup.string().test('is-valid-number', 'Maximum gelcoat must be a valid number > 0', value => {
+		maxGelcoat: yup.string().test('is-valid-number', 'Maximum gelcoat must be a valid number >= 0', value => {
 			if (!isFilled(value)) return true;
 			const num = Number(value);
-			return !isNaN(num) && num > 0;
+			return !isNaN(num) && num >= 0;
 		}),
 		gelcoatLabel: yup.string().optional().max(100, 'Gelcoat label must be less than 100 characters'),
-		minResinDosage: yup.string().test('is-valid-number', 'Minimum resin dosage must be a valid number > 0', value => {
+		minResinDosage: yup.string().test('is-valid-number', 'Minimum resin dosage must be a valid number >= 0', value => {
 			if (!isFilled(value)) return true;
 			const num = Number(value);
-			return !isNaN(num) && num > 0;
+			return !isNaN(num) && num >= 0;
 		}),
-		maxResinDosage: yup.string().test('is-valid-number', 'Maximum resin dosage must be a valid number > 0', value => {
+		maxResinDosage: yup.string().test('is-valid-number', 'Maximum resin dosage must be a valid number >= 0', value => {
 			if (!isFilled(value)) return true;
 			const num = Number(value);
-			return !isNaN(num) && num > 0;
+			return !isNaN(num) && num >= 0;
 		}),
 		resinLabel: yup.string().optional().max(100, 'Resin label must be less than 100 characters'),
-		minTopCoat: yup.string().test('is-valid-number', 'Minimum top coat must be a valid number > 0', value => {
+		minTopCoat: yup.string().test('is-valid-number', 'Minimum top coat must be a valid number >= 0', value => {
 			if (!isFilled(value)) return true;
 			const num = Number(value);
-			return !isNaN(num) && num > 0;
+			return !isNaN(num) && num >= 0;
 		}),
-		maxTopCoat: yup.string().test('is-valid-number', 'Maximum top coat must be a valid number > 0', value => {
+		maxTopCoat: yup.string().test('is-valid-number', 'Maximum top coat must be a valid number >= 0', value => {
 			if (!isFilled(value)) return true;
 			const num = Number(value);
-			return !isNaN(num) && num > 0;
+			return !isNaN(num) && num >= 0;
 		}),
 		topCoatLabel: yup.string().optional().max(100, 'Top coat label must be less than 100 characters'),
 		blockCatalystMixing: yup.boolean(),

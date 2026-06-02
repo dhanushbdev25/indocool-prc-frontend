@@ -17,11 +17,7 @@ const tableRowConfigSchema = yup.object({
 });
 
 const tableColumnSchema = yup.object({
-	name: yup
-		.string()
-		.required('Column name is required')
-		.min(1, 'Column name is required')
-		.max(100, 'Column name must be less than 100 characters'),
+	name: yup.string().required('Column name is required'),
 	type: yup
 		.string()
 		.required('Column type is required')
@@ -39,21 +35,13 @@ const tableConfigSchema = yup
 // Process Step validation schema
 export const processStepSchema = yup
 	.object({
-		parameterDescription: yup
-			.string()
-			.required('Parameter description is required')
-			.min(3, 'Parameter description must be at least 3 characters')
-			.max(200, 'Parameter description must be less than 200 characters'),
+		parameterDescription: yup.string().required('Parameter description is required'),
 		stepNumber: yup
 			.number()
 			.required('Step number is required')
 			.min(1, 'Step number must be at least 1')
 			.integer('Step number must be a whole number'),
-		evaluationMethod: yup
-			.string()
-			.required('Evaluation method is required')
-			.min(2, 'Evaluation method must be at least 2 characters')
-			.max(100, 'Evaluation method must be less than 100 characters'),
+		evaluationMethod: yup.string().required('Evaluation method is required'),
 		targetValueType: yup
 			.string()
 			.required('Target value type is required')
@@ -100,12 +88,12 @@ export const processStepSchema = yup
 					}),
 			otherwise: schema => schema.nullable().default(null)
 		}),
-		uom: yup.string().optional().max(20, 'Unit of measurement must be less than 20 characters'),
+		uom: yup.string().optional(),
 		ctq: yup.boolean(),
 		allowAttachments: yup.boolean(),
 		responsiblePerson: yup.boolean(),
 		getInstrumentId: yup.boolean(),
-		notes: yup.string().max(500, 'Notes must be less than 500 characters').optional()
+		notes: yup.string().optional()
 	})
 	.test('min-max-validation', 'Minimum value must be less than or equal to maximum value', function (value) {
 		const { minimumAcceptanceValue, maximumAcceptanceValue, targetValueType } = value;
@@ -124,16 +112,8 @@ export const processStepSchema = yup
 
 // Process Step Group validation schema
 export const processStepGroupSchema = yup.object({
-	processName: yup
-		.string()
-		.required('Process ID is required')
-		.min(3, 'Process ID must be at least 3 characters')
-		.max(1000, 'Process ID must be less than 1000 characters'),
-	processDescription: yup
-		.string()
-		.required('Process description is required')
-		.min(10, 'Process description must be at least 10 characters')
-		.max(1000, 'Process description must be less than 1000 characters'),
+	processName: yup.string().required('Process ID is required'),
+	processDescription: yup.string().required('Process description is required'),
 	sequenceTiming: yup
 		.string()
 		.required('Expected duration is required')
@@ -145,7 +125,7 @@ export const processStepGroupSchema = yup.object({
 			return totalMinutes >= 1;
 		}),
 	shift: yup.string().optional().nullable(),
-	pfdNumber: yup.string().optional().nullable().max(100, 'PFD number must be less than 100 characters'),
+	pfdNumber: yup.string().optional().nullable(),
 	processSteps: yup
 		.array(processStepSchema)
 		.test('unique-step-numbers', 'Step numbers must be unique within each group', function (steps) {
@@ -162,22 +142,12 @@ export const sequenceFormSchema = yup.object({
 	sequenceId: yup
 		.string()
 		.required('Sequence ID is required')
-		.min(3, 'Sequence ID must be at least 3 characters')
-		.max(50, 'Sequence ID must be less than 50 characters')
 		.matches(/^[A-Z0-9-]+$/, 'Sequence ID must contain only uppercase letters, numbers, and hyphens'),
-	sequenceName: yup
-		.string()
-		.required('Sequence name is required')
-		.min(3, 'Sequence name must be at least 3 characters')
-		.max(100, 'Sequence name must be less than 100 characters'),
-	category: yup
-		.string()
-		.required('Category is required')
-		.min(2, 'Category must be at least 2 characters')
-		.max(50, 'Category must be less than 50 characters'),
+	sequenceName: yup.string().required('Sequence name is required'),
+	category: yup.string().required('Category is required'),
 	type: yup.string().required('Type is required').oneOf(['Layout', 'ISP'], 'Type must be either Layout or ISP'),
 	status: yup.boolean(),
-	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
+	notes: yup.string().optional(),
 	processStepGroups: yup.array(processStepGroupSchema),
 	totalSteps: yup.number().optional(),
 	ctqSteps: yup.number().optional(),
@@ -233,22 +203,12 @@ export const basicInfoSchema = yup.object({
 	sequenceId: yup
 		.string()
 		.required('Sequence ID is required')
-		.min(3, 'Sequence ID must be at least 3 characters')
-		.max(50, 'Sequence ID must be less than 50 characters')
 		.matches(/^[A-Z0-9-]+$/, 'Sequence ID must contain only uppercase letters, numbers, and hyphens'),
-	sequenceName: yup
-		.string()
-		.required('Sequence name is required')
-		.min(3, 'Sequence name must be at least 3 characters')
-		.max(100, 'Sequence name must be less than 100 characters'),
-	category: yup
-		.string()
-		.required('Category is required')
-		.min(2, 'Category must be at least 2 characters')
-		.max(50, 'Category must be less than 50 characters'),
+	sequenceName: yup.string().required('Sequence name is required'),
+	category: yup.string().required('Category is required'),
 	type: yup.string().required('Type is required').oneOf(['Layout', 'ISP'], 'Type must be either Layout or ISP'),
 	status: yup.boolean(),
-	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional()
+	notes: yup.string().optional()
 });
 
 export const stepGroupsSchema = yup.object({
