@@ -474,6 +474,7 @@ const CreatePart = () => {
 	const [error, setError] = useState<string | null>(null);
 	const [showExitDialog, setShowExitDialog] = useState(false);
 	const [isUploadingImages, setIsUploadingImages] = useState(false);
+	const [selectedPlant, setSelectedPlant] = useState<string>('');
 
 	const {
 		data: partData,
@@ -523,8 +524,8 @@ const CreatePart = () => {
 	const watchedHeadcountGroupIds = useWatch({ control, name: 'operationGroupIdsForHeadcount' });
 	const operationsQueryPartId = formPartId ?? (id ? Number(id) : undefined);
 	const { data: operationsData } = useFetchOperationsComboQuery(
-		{ partId: operationsQueryPartId! },
-		{ skip: !operationsQueryPartId }
+		{ partId: operationsQueryPartId!, plant: selectedPlant || undefined },
+		{ skip: !operationsQueryPartId || !selectedPlant }
 	);
 
 	// API-driven tab enablement: tabs 1-3 disabled until PartMaster exists on the backend
@@ -1058,7 +1059,13 @@ const CreatePart = () => {
 							<RawMaterialsTab control={control} />
 						</TabPanel>
 						<TabPanel value={activeTab} index={2}>
-							<LinkedMastersTab control={control} setValue={setValue} operationsPartId={operationsQueryPartId} />
+							<LinkedMastersTab
+								control={control}
+								setValue={setValue}
+								operationsPartId={operationsQueryPartId}
+								selectedPlant={selectedPlant}
+								onPlantChange={setSelectedPlant}
+							/>
 						</TabPanel>
 						<TabPanel value={activeTab} index={3}>
 							<InspectionImageMappingTab

@@ -49,7 +49,10 @@ import type { OperationWisePartRow } from '../../../../../../store/api/business/
 import { useFetchCatalystChartsQuery } from '../../../../../../store/api/business/catalyst-master/catalyst.api';
 import { useFetchProcessSequencesQuery } from '../../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../../store/api/business/inspection-master/inspection.api';
-import { useFetchOperationsComboQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
+import {
+	useFetchOperationsComboQuery,
+	useFetchPlantComboQuery
+} from '../../../../../../store/api/business/prc-template/prc-template.api';
 import { useFetchPrcTemplatesQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import LinkedMasterCard from './LinkedMasterCard';
 import DefaultStepItem from './DefaultStepItem';
@@ -70,9 +73,18 @@ interface LinkedMastersTabProps {
 	setValue: UseFormSetValue<PartMasterFormData>;
 	/** Same part id used for operations combo as CreatePart submit (`formPartId ?? route id`). */
 	operationsPartId?: number;
+	/** Plant id used to filter operations combo. Lifted to CreatePart so submit-time query stays in sync. */
+	selectedPlant: string;
+	onPlantChange: (plant: string) => void;
 }
 
-const LinkedMastersTab = ({ control, setValue, operationsPartId }: LinkedMastersTabProps) => {
+const LinkedMastersTab = ({
+	control,
+	setValue,
+	operationsPartId,
+	selectedPlant,
+	onPlantChange
+}: LinkedMastersTabProps) => {
 	const { getValues } = useFormContext<PartMasterFormData>();
 	const [catalystModalOpen, setCatalystModalOpen] = useState(false);
 	const [catalystPickerSearch, setCatalystPickerSearch] = useState('');
@@ -84,9 +96,13 @@ const LinkedMastersTab = ({ control, setValue, operationsPartId }: LinkedMasters
 	const { data: sequencesData, isLoading: isSequencesLoading } = useFetchProcessSequencesQuery();
 	const { data: inspectionsData, isLoading: isInspectionsLoading } = useFetchInspectionsQuery();
 
-	const { data: operationsData, isLoading: isOperationsLoading } = useFetchOperationsComboQuery(
+	const { data: plantData, isLoading: isPlantLoading } = useFetchPlantComboQuery(
 		{ partId: operationsPartId! },
 		{ skip: !operationsPartId }
+	);
+	const { data: operationsData, isLoading: isOperationsLoading } = useFetchOperationsComboQuery(
+		{ partId: operationsPartId!, plant: selectedPlant || undefined },
+		{ skip: !operationsPartId || !selectedPlant }
 	);
 	const { data: prcTemplatesData } = useFetchPrcTemplatesQuery();
 
@@ -671,20 +687,54 @@ const LinkedMastersTab = ({ control, setValue, operationsPartId }: LinkedMasters
 
 				<Divider sx={{ my: 3 }} />
 
-				{isOperationsLoading ? (
+				{!operationsPartId ? (
+					<Alert severity="info" sx={{ mb: 3 }}>
+						Save the part first to load available plants and operations.
+					</Alert>
+				) : (
+					<Box sx={{ mb: 3 }}>
+						{isPlantLoading ? (
+							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+								<CircularProgress size={16} />
+								<Typography variant="body2" color="text.secondary">
+									Loading plants...
+								</Typography>
+							</Box>
+						) : (
+							<FormControl size="small" sx={{ minWidth: 280 }}>
+								<InputLabel>Select Plant</InputLabel>
+								<Select
+									value={selectedPlant}
+									onChange={e => onPlantChange(e.target.value)}
+									label="Select Plant"
+									sx={{ borderRadius: '8px' }}
+									disabled={!plantData?.data || plantData.data.length === 0}
+								>
+									{(plantData?.data ?? []).map(plant => (
+										<MenuItem key={plant.value} value={plant.value}>
+											{plant.label}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
+						)}
+					</Box>
+				)}
+
+				{operationsPartId && !selectedPlant ? (
+					<Alert severity="info" sx={{ mb: 3 }}>
+						Select a plant to load available operations.
+					</Alert>
+				) : isOperationsLoading ? (
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
 						<CircularProgress size={16} />
 						<Typography variant="body2" color="text.secondary">
 							Loading operations...
 						</Typography>
 					</Box>
-				) : !operationsPartId ? (
-					<Alert severity="info" sx={{ mb: 3 }}>
-						Save the part first to load available operations.
-					</Alert>
-				) : operationGroups.length === 0 ? (
+				) : !operationsPartId ? null : operationGroups.length === 0 ? (
 					<Alert severity="warning" sx={{ mb: 3 }}>
-						No operations available for this part.
+						No operations available for this part and plant.
 					</Alert>
 				) : (
 					<>
@@ -839,7 +889,7 @@ const LinkedMastersTab = ({ control, setValue, operationsPartId }: LinkedMasters
 					);
 				})}
 
-				{addedGroups.length === 0 && !isOperationsLoading && operationsPartId && operationGroups.length > 0 && (
+				{addedGroups.length === 0 && !isOperationsLoading && operationsPartId && selectedPlant && operationGroups.length > 0 && (
 					<Alert severity="info" sx={{ mt: 1 }}>
 						No operation groups added yet. Select an operation from the dropdown above and click "Add Operation".
 					</Alert>

@@ -7,6 +7,7 @@ import {
 	isPrcTemplateMutationResponse,
 	isResolvePrcTemplateResponse,
 	isOperationsComboResponse,
+	isPlantComboResponse,
 	type PrcTemplateListResponse,
 	type PrcTemplateByIdResponse,
 	type PrcTemplateInspectionsResponse,
@@ -17,6 +18,7 @@ import {
 	type DeletePrcTemplateTaskRequest,
 	type DeletePrcTemplateTaskResponse,
 	type OperationsComboResponse,
+	type PlantComboResponse,
 	type ResolvePrcTemplateResponse
 } from './prc-template.validators';
 
@@ -30,6 +32,11 @@ export interface FetchPrcTemplateInspectionsParams {
 }
 
 export interface FetchOperationsComboParams {
+	partId?: number;
+	plant?: string | number;
+}
+
+export interface FetchPlantComboParams {
 	partId?: number;
 }
 
@@ -131,18 +138,37 @@ export const prcTemplateApi = createApi({
 				'PrcTemplate'
 			]
 		}),
-		// Fetch operations combo for a part
+		// Fetch operations combo for a part (optionally filtered by plant)
 		fetchOperationsCombo: builder.query<OperationsComboResponse, FetchOperationsComboParams>({
-			query: ({ partId }) => ({
-				url: 'prcTemplate/operations/combo',
-				method: 'GET',
-				params: partId ? { partId } : undefined
-			}),
+			query: ({ partId, plant }) => {
+				const params: Record<string, string | number> = {};
+				if (partId !== undefined && partId !== null) params.partId = partId;
+				if (plant !== undefined && plant !== null && plant !== '') params.plant = plant;
+				return {
+					url: 'prcTemplate/operations/combo',
+					method: 'GET',
+					params: Object.keys(params).length > 0 ? params : undefined
+				};
+			},
 			transformResponse: (response: unknown) => {
 				if (!isOperationsComboResponse(response)) {
 					console.warn('Invalid operations combo response structure', response);
 				}
 				return response as OperationsComboResponse;
+			}
+		}),
+		// Fetch plant combo for a part
+		fetchPlantCombo: builder.query<PlantComboResponse, FetchPlantComboParams>({
+			query: ({ partId }) => ({
+				url: 'prcTemplate/plant/combo',
+				method: 'GET',
+				params: partId ? { partId } : undefined
+			}),
+			transformResponse: (response: unknown) => {
+				if (!isPlantComboResponse(response)) {
+					console.warn('Invalid plant combo response structure', response);
+				}
+				return response as PlantComboResponse;
 			}
 		}),
 		// Delete PRC template task (set status to INACTIVE)
@@ -172,6 +198,7 @@ export const {
 	useFetchPrcTemplateByIdQuery,
 	useFetchPrcTemplateInspectionsQuery,
 	useFetchOperationsComboQuery,
+	useFetchPlantComboQuery,
 	useResolvePrcTemplateMutation,
 	useCreatePrcTemplateMutation,
 	useUpdatePrcTemplateMutation,

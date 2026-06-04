@@ -138,6 +138,17 @@ export interface OperationsComboResponse {
 	data: OperationsComboItem[];
 }
 
+export interface PlantComboItem {
+	label: string;
+	value: string;
+	data?: Record<string, unknown>;
+	[key: string]: unknown;
+}
+
+export interface PlantComboResponse {
+	data: PlantComboItem[];
+}
+
 function isPrcTemplate(value: unknown): value is PrcTemplate {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
 		return false;
@@ -268,5 +279,22 @@ export function isOperationsComboResponse(value: unknown): value is OperationsCo
 		}
 		const d = data as Record<string, unknown>;
 		return typeof d.operation === 'string' && typeof d.operationText === 'string';
+	});
+}
+
+export function isPlantComboResponse(value: unknown): value is PlantComboResponse {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	if (!Array.isArray(o.data)) {
+		return false;
+	}
+	return o.data.every(item => {
+		if (item === null || typeof item !== 'object' || Array.isArray(item)) {
+			return false;
+		}
+		const row = item as Record<string, unknown>;
+		return typeof row.label === 'string' && typeof row.value === 'string';
 	});
 }
