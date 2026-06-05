@@ -3,7 +3,6 @@ import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typogra
 import { useNavigate } from 'react-router-dom';
 import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
 import PartHeader from './components/PartHeader';
-import SummaryCards from './components/SummaryCards';
 import PartManagement, { PART_ALL_CUSTOMERS } from './components/PartManagement';
 import PartTable, { PartData } from './components/PartTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
@@ -284,7 +283,7 @@ const ListPart = () => {
 		<>
 			<MasterListLandingPage
 				header={<PartHeader />}
-				metrics={partData ? <SummaryCards headerData={partData.header} /> : null}
+				metrics={null}
 				toolbar={
 					<PartManagement
 						appliedSearchTerm={searchTerm}

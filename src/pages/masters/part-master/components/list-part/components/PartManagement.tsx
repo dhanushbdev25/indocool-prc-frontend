@@ -93,6 +93,7 @@ const PartManagement = ({
 				onSearchChange={onSearchChange}
 				filterDirty={filterDirty}
 				onReset={handleReset}
+				filtersDefaultExpanded
 			>
 				<FormControl size="small" sx={selectSx}>
 					<InputLabel shrink>Status</InputLabel>

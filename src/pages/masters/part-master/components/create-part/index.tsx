@@ -848,8 +848,6 @@ const CreatePart = () => {
 					showConfirmButton: false
 				});
 			}
-
-			navigate('/part-master');
 		} catch (err: unknown) {
 			console.error('API Error:', err);
 			const errorMessage =
