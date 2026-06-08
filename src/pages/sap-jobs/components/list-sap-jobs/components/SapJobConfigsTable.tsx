@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Box, Button, Typography } from '@mui/material';
 import { CloudSync as SapIcon } from '@mui/icons-material';
-import { type MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import TableComponent from '../../../../../components/table/TableComponent';
 import type { SapJobConfigItem } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
 
@@ -16,9 +16,11 @@ const formatDt = (iso: string): string => {
 interface SapJobConfigsTableProps {
 	data: SapJobConfigItem[];
 	onViewHistory: (row: SapJobConfigItem) => void;
+	pagination?: MRT_PaginationState;
+	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const SapJobConfigsTable = memo(({ data, onViewHistory }: SapJobConfigsTableProps) => {
+const SapJobConfigsTable = memo(({ data, onViewHistory, pagination, onPaginationChange }: SapJobConfigsTableProps) => {
 	const columns = useMemo<MRT_ColumnDef<SapJobConfigItem>[]>(
 		() => [
 			{
@@ -83,7 +85,14 @@ const SapJobConfigsTable = memo(({ data, onViewHistory }: SapJobConfigsTableProp
 		);
 	}
 
-	return <TableComponent tableColumns={columns} data={data} />;
+	return (
+		<TableComponent
+			tableColumns={columns}
+			data={data}
+			pagination={pagination}
+			onPaginationChange={onPaginationChange}
+		/>
+	);
 });
 
 SapJobConfigsTable.displayName = 'SapJobConfigsTable';

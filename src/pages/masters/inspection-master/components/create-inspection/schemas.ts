@@ -179,12 +179,9 @@ export const inspectionParameterSchema = yup.object({
 // Main form validation schema
 export const inspectionFormSchema = yup.object({
 	id: yup.number().optional(),
-	inspectionName: yup.string().required('Inspection name is required'),
+	inspectionName: yup.string().trim().required('Inspection name is required'),
 	status: yup.boolean(),
-	inspectionId: yup
-		.string()
-		.required('Inspection ID is required')
-		.matches(/^[A-Z0-9-]+$/, 'Inspection ID must contain only uppercase letters, numbers, and hyphens'),
+	inspectionId: yup.string().trim().required('Inspection ID is required'),
 	type: yup.string().optional(),
 	version: yup.number().optional(),
 	isLatest: yup.boolean().optional(),
@@ -259,12 +256,9 @@ export const defaultInspectionFormData: InspectionFormData = {
 
 // Section-specific validation schemas
 export const basicInfoSchema = yup.object({
-	inspectionName: yup.string().required('Inspection name is required'),
+	inspectionName: yup.string().trim().required('Inspection name is required'),
 	status: yup.boolean(),
-	inspectionId: yup
-		.string()
-		.required('Inspection ID is required')
-		.matches(/^[A-Z0-9-]+$/, 'Inspection ID must contain only uppercase letters, numbers, and hyphens'),
+	inspectionId: yup.string().trim().required('Inspection ID is required'),
 	showPartImages: yup.boolean(),
 	partImages: yup.array().when('showPartImages', {
 		is: true,

@@ -16,3 +16,28 @@ export {
 	masterListTableFrame,
 	masterListCardInset
 } from './masterListTokens';
+export {
+	FilterDrawer,
+	FilterAutocomplete,
+	FilterDateRange,
+	FilterTriggerButton,
+	ActiveFilterChips,
+	MasterFilterToolbar,
+	ToolbarAddButton,
+	EMPTY_DATE_RANGE,
+	isDateRangeValue,
+	isStringArrayValue,
+	isFilterValueEmpty,
+	deriveOptions,
+	matchesText,
+	matchesMulti,
+	matchesDateRange,
+	countActiveFilters
+} from './filters';
+export type {
+	FilterFieldConfig,
+	AutocompleteFieldConfig,
+	DateRangeFieldConfig,
+	FilterValue,
+	DateRangeFilterValue
+} from './filters';

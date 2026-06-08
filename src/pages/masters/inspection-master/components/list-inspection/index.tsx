@@ -1,13 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
+import {
+	deriveOptions,
+	MasterFilterToolbar,
+	MasterListLandingPage,
+	masterListTableFrame,
+	matchesMulti,
+	ToolbarAddButton,
+	type FilterFieldConfig,
+	type FilterValue
+} from '../../../../../components/masters';
+import { useListView } from '../../../../../hooks/useListView';
 import InspectionHeader from './components/InspectionHeader';
-import SummaryCards from './components/SummaryCards';
-import InspectionManagement, {
-	INSPECTION_ALL_APPROVE,
-	INSPECTION_ALL_TYPES
-} from './components/InspectionManagement';
 import InspectionTable, { InspectionData } from './components/InspectionTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import {
@@ -17,26 +22,22 @@ import {
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteInspectionTaskRequest } from '../../../../../store/api/business/inspection-master/inspection.validators';
 
+const SEARCH_PLACEHOLDER = 'Inspection ID, name, or type';
+
 const ListInspection = () => {
 	const navigate = useNavigate();
-	const [searchTerm, setSearchTerm] = useState('');
-	const [activeFilter, setActiveFilter] = useState('All Inspections');
-	const [activeTypeFilter, setActiveTypeFilter] = useState(INSPECTION_ALL_TYPES);
-	const [activeApproveByProductionFilter, setActiveApproveByProductionFilter] = useState(INSPECTION_ALL_APPROVE);
+	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('inspection');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [inspectionToDelete, setInspectionToDelete] = useState<InspectionData | null>(null);
 
-	// Fetch all inspections using the API with Zod validation
 	const {
 		data: inspectionData,
 		isLoading: isInspectionDataLoading,
 		refetch: refetchInspections
 	} = useFetchInspectionsQuery();
 
-	// Delete task mutation
 	const [deleteInspectionTask, { isLoading: isDeleting }] = useDeleteInspectionTaskMutation();
 
-	// Extract inspection data for table
 	const allInspectionData: InspectionData[] = useMemo(() => {
 		if (!inspectionData) return [];
 		return inspectionData.detail.map((item: Record<string, unknown>) => {
@@ -51,67 +52,79 @@ const ListInspection = () => {
 		});
 	}, [inspectionData]);
 
-	const typeOptions = useMemo(() => {
-		const s = new Set<string>();
-		for (const i of allInspectionData) {
-			const t = (i.type ?? '').trim();
-			if (t) s.add(t);
-		}
-		return [...s].sort((a, b) => a.localeCompare(b));
-	}, [allInspectionData]);
-
-	// Filter and search logic
-	const filteredData = useMemo(() => {
-		let filtered = allInspectionData;
-
-		// Apply status filter
-		if (activeFilter !== 'All Inspections') {
-			filtered = filtered.filter(inspection => inspection.status === activeFilter);
-		}
-
-		if (activeTypeFilter !== INSPECTION_ALL_TYPES) {
-			filtered = filtered.filter(inspection => (inspection.type ?? '').trim() === activeTypeFilter);
-		}
-
-		if (activeApproveByProductionFilter === 'Yes') {
-			filtered = filtered.filter(inspection => inspection.approveByProduction === true);
-		} else if (activeApproveByProductionFilter === 'No') {
-			filtered = filtered.filter(inspection => inspection.approveByProduction !== true);
-		}
-
-		// Apply search filter
-		if (searchTerm) {
-			filtered = filtered.filter(
-				inspection =>
-					inspection.inspectionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					inspection.inspectionName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					inspection.type.toLowerCase().includes(searchTerm.toLowerCase())
-			);
-		}
-
-		return filtered;
-	}, [allInspectionData, activeFilter, activeTypeFilter, activeApproveByProductionFilter, searchTerm]);
-
-	const listSummary = useMemo(
-		() => formatFilteredListSummary(filteredData.length, allInspectionData.length, 'inspections'),
-		[filteredData.length, allInspectionData.length]
+	const fields = useMemo<FilterFieldConfig[]>(
+		() => [
+			{
+				kind: 'autocomplete',
+				key: 'inspectionId',
+				label: 'Inspection ID',
+				options: deriveOptions(allInspectionData, r => r.inspectionId)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'inspectionName',
+				label: 'Inspection Name',
+				options: deriveOptions(allInspectionData, r => r.inspectionName)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'type',
+				label: 'Type',
+				options: deriveOptions(allInspectionData, r => r.type)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'approveByProduction',
+				label: 'Approve By Production',
+				options: ['Yes', 'No']
+			},
+			{
+				kind: 'dateRange',
+				key: 'createdAt',
+				label: 'Created On'
+			},
+			{
+				kind: 'autocomplete',
+				key: 'status',
+				label: 'Status',
+				options: ['ACTIVE', 'INACTIVE']
+			}
+		],
+		[allInspectionData]
 	);
 
-	const handleSearchChange = (searchValue: string) => {
-		setSearchTerm(searchValue);
-	};
+	const filteredData = useMemo(() => {
+		const term = searchTerm.trim().toLowerCase();
+		return allInspectionData.filter(i => {
+			if (!matchesMulti(i.inspectionId, filters.inspectionId)) return false;
+			if (!matchesMulti(i.inspectionName, filters.inspectionName)) return false;
+			if (!matchesMulti(i.type, filters.type)) return false;
+			if (!matchesMulti(i.status, filters.status)) return false;
+			if (!matchesMulti(i.approveByProduction ? 'Yes' : 'No', filters.approveByProduction)) return false;
+			if (!term) return true;
+			return (
+				i.inspectionId.toLowerCase().includes(term) ||
+				i.inspectionName.toLowerCase().includes(term) ||
+				i.type.toLowerCase().includes(term)
+			);
+		});
+	}, [allInspectionData, filters, searchTerm]);
 
-	const handleFilterChange = (filter: string) => {
-		setActiveFilter(filter);
-	};
+	const handleFiltersChange = useCallback(
+		(next: Record<string, FilterValue>) => {
+			setFilters(next);
+			setPagination(prev => ({ ...prev, pageIndex: 0 }));
+		},
+		[setFilters, setPagination]
+	);
 
-	const handleTypeFilterChange = (typeFilter: string) => {
-		setActiveTypeFilter(typeFilter);
-	};
-
-	const handleApproveByProductionFilterChange = (value: string) => {
-		setActiveApproveByProductionFilter(value);
-	};
+	const handleSearchChange = useCallback(
+		(term: string) => {
+			setSearchTerm(term);
+			setPagination(prev => ({ ...prev, pageIndex: 0 }));
+		},
+		[setSearchTerm, setPagination]
+	);
 
 	const handleActionClick = (inspectionId: string, action: string) => {
 		if (action === 'delete') {
@@ -127,7 +140,6 @@ const ListInspection = () => {
 		if (!inspectionToDelete) return;
 
 		try {
-			// Find the full inspection data from the existing data
 			const fullInspectionDetail = inspectionData?.detail.find(item => item.inspection.id === inspectionToDelete.id);
 
 			if (fullInspectionDetail) {
@@ -135,7 +147,7 @@ const ListInspection = () => {
 					inspection: {
 						id: inspectionToDelete.id,
 						version: fullInspectionDetail.inspection.version,
-						status: 'INACTIVE', // This will be overridden by the API
+						status: 'INACTIVE',
 						inspectionName: fullInspectionDetail.inspection.inspectionName,
 						inspectionId: fullInspectionDetail.inspection.inspectionId,
 						type: fullInspectionDetail.inspection.type,
@@ -166,8 +178,6 @@ const ListInspection = () => {
 				};
 
 				await deleteInspectionTask(deleteRequest).unwrap();
-
-				// Manually refetch the data to ensure it's updated
 				await refetchInspections();
 
 				setDeleteDialogOpen(false);
@@ -195,7 +205,6 @@ const ListInspection = () => {
 		navigate(`/inspection-master/clone-inspection/${inspectionId}`);
 	};
 
-	// Show loading state with skeleton
 	if (isInspectionDataLoading) {
 		return (
 			<Box sx={{ minWidth: 0 }}>
@@ -209,17 +218,21 @@ const ListInspection = () => {
 		<>
 			<MasterListLandingPage
 				header={<InspectionHeader />}
-				metrics={inspectionData ? <SummaryCards headerData={inspectionData.header} /> : null}
 				toolbar={
-					<InspectionManagement
-						appliedSearchTerm={searchTerm}
-						searchAriaLabel="Search inspections"
-						listSummary={listSummary}
+					<MasterFilterToolbar
+						title="Filter"
+						searchPlaceholder={SEARCH_PLACEHOLDER}
+						searchTerm={searchTerm}
+						fields={fields}
+						values={filters}
 						onSearchChange={handleSearchChange}
-						onFilterChange={handleFilterChange}
-						onTypeFilterChange={handleTypeFilterChange}
-						onApproveByProductionFilterChange={handleApproveByProductionFilterChange}
-						typeOptions={typeOptions}
+						onFiltersChange={handleFiltersChange}
+						actions={
+							<ToolbarAddButton
+								label="Add Inspection"
+								onClick={() => navigate('/inspection-master/create-inspection')}
+							/>
+						}
 					/>
 				}
 				table={
@@ -230,6 +243,8 @@ const ListInspection = () => {
 							onEdit={handleEdit}
 							onView={handleView}
 							onClone={handleClone}
+							pagination={pagination}
+							onPaginationChange={setPagination}
 						/>
 					</Box>
 				}

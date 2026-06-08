@@ -1,6 +1,6 @@
 import { useMemo, memo } from 'react';
 import { Box, Chip, Button, Typography, LinearProgress, Tooltip, Stack, IconButton } from '@mui/material';
-import { type MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import {
 	PlayArrow as PlayArrowIcon,
 	CheckCircle as CheckCircleIcon,
@@ -16,9 +16,11 @@ interface PrcExecutionTableProps {
 	onExecute: (id: number) => void;
 	/** Opens consolidated report for print / Save as PDF */
 	onOpenReport: (id: number) => void;
+	pagination?: MRT_PaginationState;
+	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const PrcExecutionTable = memo(({ data, onExecute, onOpenReport }: PrcExecutionTableProps) => {
+const PrcExecutionTable = memo(({ data, onExecute, onOpenReport, pagination, onPaginationChange }: PrcExecutionTableProps) => {
 	// Safety check for data
 	const safeData = data || [];
 
@@ -305,7 +307,14 @@ const PrcExecutionTable = memo(({ data, onExecute, onOpenReport }: PrcExecutionT
 		);
 	}
 
-	return <TableComponent tableColumns={columns} data={safeData} />;
+	return (
+		<TableComponent
+			tableColumns={columns}
+			data={safeData}
+			pagination={pagination}
+			onPaginationChange={onPaginationChange}
+		/>
+	);
 });
 
 PrcExecutionTable.displayName = 'PrcExecutionTable';

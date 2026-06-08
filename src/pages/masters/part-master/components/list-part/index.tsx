@@ -1,9 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
+import {
+	deriveOptions,
+	MasterFilterToolbar,
+	MasterListLandingPage,
+	masterListTableFrame,
+	matchesMulti,
+	ToolbarAddButton,
+	type FilterFieldConfig,
+	type FilterValue
+} from '../../../../../components/masters';
+import { isStringArrayValue, isFilterValueEmpty } from '../../../../../components/masters/filters/types';
+import { useListView } from '../../../../../hooks/useListView';
 import PartHeader from './components/PartHeader';
-import PartManagement, { PART_ALL_CUSTOMERS } from './components/PartManagement';
 import PartTable, { PartData } from './components/PartTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import { useFetchPartsQuery, useDeletePartTaskMutation } from '../../../../../store/api/business/part-master/part.api';
@@ -17,6 +27,13 @@ import {
 	type Mould
 } from '../../../../../store/api/business/part-master/part.validators';
 
+const SEARCH_PLACEHOLDER = 'Part number, SAP, drawing, description, or customer';
+
+interface PartRow extends PartData {
+	mouldCodes: string[];
+	variantId: string;
+}
+
 function getMouldSummaryFromDetails(mouldDetails: Mould[] | undefined) {
 	const list = mouldDetails ?? [];
 	const totalMoulds = list.length;
@@ -28,7 +45,7 @@ function getMouldSummaryFromDetails(mouldDetails: Mould[] | undefined) {
 	return { totalMoulds, dueMoulds };
 }
 
-function partCustomerLabel(p: PartData): string {
+function partCustomerLabel(p: PartRow): string {
 	const name = (p.customerName ?? '').trim();
 	if (name) return name;
 	return (p.customer ?? '').trim();
@@ -36,144 +53,152 @@ function partCustomerLabel(p: PartData): string {
 
 const ListPart = () => {
 	const navigate = useNavigate();
-	const [searchTerm, setSearchTerm] = useState('');
-	const [activeFilter, setActiveFilter] = useState('All Parts');
-	const [activeLayupFilter, setActiveLayupFilter] = useState('All layup types');
-	const [activeModelFilter, setActiveModelFilter] = useState('All models');
-	const [activeCustomerFilter, setActiveCustomerFilter] = useState(PART_ALL_CUSTOMERS);
+	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('part');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-	const [partToDelete, setPartToDelete] = useState<PartData | null>(null);
+	const [partToDelete, setPartToDelete] = useState<PartRow | null>(null);
 
-	// Fetch all parts using the API
 	const { data: partData, isLoading: isPartDataLoading, refetch: refetchParts } = useFetchPartsQuery();
 
-	// Delete task mutation
 	const [deletePartTask, { isLoading: isDeleting }] = useDeletePartTaskMutation();
 
-	// Extract part data for table
-	const allPartData: PartData[] = useMemo(() => {
+	const allPartData: PartRow[] = useMemo(() => {
 		if (!partData) return [];
 		return partData.detail
 			.filter((item: { partMaster: PartMaster }) => item.partMaster.id !== undefined)
-			.map((item: { partMaster: PartMaster; rawMaterials: RawMaterial[]; drilling: Drilling[]; cutting: Cutting[] }) => {
-				const mouldSummary = getMouldSummaryFromDetails(item.partMaster.mouldDetails);
-				return {
-					id: item.partMaster.id!,
-					partNumber: item.partMaster.partNumber,
-					drawingNumber: item.partMaster.drawingNumber,
-					status: item.partMaster.status ?? 'NEW',
-					customer: item.partMaster.customer,
-					customerName: item.partMaster.customerName || '',
-					description: item.partMaster.description,
-					sapReferenceNumber: item.partMaster.sapReferenceNumber ?? undefined,
-					layupType: item.partMaster.layupType ?? '',
-					model: item.partMaster.model ?? '',
-					version: item.partMaster.version ?? 1,
-					totalRawMaterials: item.rawMaterials.length,
-					totalDrilling: item.drilling.length,
-					totalCutting: item.cutting.length,
-					totalMoulds: mouldSummary.totalMoulds,
-					dueMoulds: mouldSummary.dueMoulds,
-					createdAt: item.partMaster.createdAt || '',
-					updatedAt: item.partMaster.updatedAt || ''
-				};
-			});
+			.map(
+				(item: {
+					partMaster: PartMaster;
+					rawMaterials: RawMaterial[];
+					drilling: Drilling[];
+					cutting: Cutting[];
+				}) => {
+					const mouldSummary = getMouldSummaryFromDetails(item.partMaster.mouldDetails);
+					const mouldCodes = (item.partMaster.mouldDetails ?? [])
+						.map(m => (m.mouldCode ?? '').trim())
+						.filter(c => c.length > 0);
+					return {
+						id: item.partMaster.id!,
+						partNumber: item.partMaster.partNumber,
+						drawingNumber: item.partMaster.drawingNumber,
+						status: item.partMaster.status ?? 'NEW',
+						customer: item.partMaster.customer,
+						customerName: item.partMaster.customerName || '',
+						description: item.partMaster.description,
+						sapReferenceNumber: item.partMaster.sapReferenceNumber ?? undefined,
+						layupType: item.partMaster.layupType ?? '',
+						model: item.partMaster.model ?? '',
+						version: item.partMaster.version ?? 1,
+						totalRawMaterials: item.rawMaterials.length,
+						totalDrilling: item.drilling.length,
+						totalCutting: item.cutting.length,
+						totalMoulds: mouldSummary.totalMoulds,
+						dueMoulds: mouldSummary.dueMoulds,
+						createdAt: item.partMaster.createdAt || '',
+						updatedAt: item.partMaster.updatedAt || '',
+						mouldCodes,
+						variantId: item.partMaster.customerVariantId != null ? String(item.partMaster.customerVariantId) : ''
+					};
+				}
+			);
 	}, [partData]);
 
-	const layupOptions = useMemo(() => {
-		const s = new Set<string>();
-		for (const p of allPartData) {
-			const v = (p.layupType ?? '').trim();
-			if (v) s.add(v);
-		}
-		return [...s].sort((a, b) => a.localeCompare(b));
-	}, [allPartData]);
-
-	const modelOptions = useMemo(() => {
-		const s = new Set<string>();
-		for (const p of allPartData) {
-			const v = (p.model ?? '').trim();
-			if (v) s.add(v);
-		}
-		return [...s].sort((a, b) => a.localeCompare(b));
-	}, [allPartData]);
-
-	const customerOptions = useMemo(() => {
-		const s = new Set<string>();
-		for (const p of allPartData) {
-			const label = partCustomerLabel(p);
-			if (label) s.add(label);
-		}
-		return [...s].sort((a, b) => a.localeCompare(b));
-	}, [allPartData]);
-
-	// Filter and search logic
-	const filteredData = useMemo(() => {
-		let filtered = allPartData;
-
-		if (activeLayupFilter !== 'All layup types') {
-			filtered = filtered.filter(p => (p.layupType ?? '').trim() === activeLayupFilter);
-		}
-		if (activeModelFilter !== 'All models') {
-			filtered = filtered.filter(p => (p.model ?? '').trim() === activeModelFilter);
-		}
-
-		if (activeCustomerFilter !== PART_ALL_CUSTOMERS) {
-			filtered = filtered.filter(p => partCustomerLabel(p) === activeCustomerFilter);
-		}
-
-		// Apply status filter
-		if (activeFilter !== 'All Parts') {
-			filtered = filtered.filter(part => part.status === activeFilter);
-		}
-
-		// Apply search filter
-		if (searchTerm) {
-			const t = searchTerm.toLowerCase();
-			filtered = filtered.filter(part => {
-				const sap = (part.sapReferenceNumber ?? '').toLowerCase();
-				const layup = (part.layupType ?? '').toLowerCase();
-				const model = (part.model ?? '').toLowerCase();
-				return (
-					part.partNumber.toLowerCase().includes(t) ||
-					part.drawingNumber.toLowerCase().includes(t) ||
-					part.description.toLowerCase().includes(t) ||
-					part.customerName.toLowerCase().includes(t) ||
-					part.customer.toLowerCase().includes(t) ||
-					sap.includes(t) ||
-					layup.includes(t) ||
-					model.includes(t)
-				);
-			});
-		}
-
-		return filtered;
-	}, [allPartData, activeFilter, searchTerm, activeLayupFilter, activeModelFilter, activeCustomerFilter]);
-
-	const listSummary = useMemo(
-		() => formatFilteredListSummary(filteredData.length, allPartData.length, 'parts'),
-		[filteredData.length, allPartData.length]
+	const fields = useMemo<FilterFieldConfig[]>(
+		() => [
+			{
+				kind: 'autocomplete',
+				key: 'sapReferenceNumber',
+				label: 'SAP Number',
+				options: deriveOptions(allPartData, r => r.sapReferenceNumber)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'partNumber',
+				label: 'Part Number',
+				options: deriveOptions(allPartData, r => r.partNumber)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'description',
+				label: 'Part Description',
+				options: deriveOptions(allPartData, r => r.description)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'customerName',
+				label: 'Customer Name',
+				options: deriveOptions(allPartData, partCustomerLabel)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'variantId',
+				label: 'Variant',
+				options: deriveOptions(allPartData, r => r.variantId)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'mouldCodes',
+				label: 'Moulds',
+				options: deriveOptions(
+					allPartData.flatMap(r => r.mouldCodes.map(code => ({ code }))),
+					r => r.code
+				)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'status',
+				label: 'Status',
+				options: ['ACTIVE', 'NEW', 'INACTIVE']
+			}
+		],
+		[allPartData]
 	);
 
-	const handleSearchChange = (searchValue: string) => {
-		setSearchTerm(searchValue);
-	};
+	const filteredData = useMemo(() => {
+		const term = searchTerm.trim().toLowerCase();
+		const mouldFilter = filters.mouldCodes;
+		return allPartData.filter(p => {
+			if (!matchesMulti(p.sapReferenceNumber, filters.sapReferenceNumber)) return false;
+			if (!matchesMulti(p.partNumber, filters.partNumber)) return false;
+			if (!matchesMulti(p.description, filters.description)) return false;
+			if (!matchesMulti(partCustomerLabel(p), filters.customerName)) return false;
+			if (!matchesMulti(p.variantId, filters.variantId)) return false;
+			if (!matchesMulti(p.status, filters.status)) return false;
+			if (!isFilterValueEmpty(mouldFilter)) {
+				const selected = isStringArrayValue(mouldFilter) ? mouldFilter : [];
+				if (selected.length > 0 && !p.mouldCodes.some(c => selected.includes(c))) return false;
+			}
+			if (!term) return true;
+			const sap = (p.sapReferenceNumber ?? '').toLowerCase();
+			const layup = (p.layupType ?? '').toLowerCase();
+			const model = (p.model ?? '').toLowerCase();
+			return (
+				p.partNumber.toLowerCase().includes(term) ||
+				p.drawingNumber.toLowerCase().includes(term) ||
+				p.description.toLowerCase().includes(term) ||
+				p.customerName.toLowerCase().includes(term) ||
+				p.customer.toLowerCase().includes(term) ||
+				sap.includes(term) ||
+				layup.includes(term) ||
+				model.includes(term)
+			);
+		});
+	}, [allPartData, filters, searchTerm]);
 
-	const handleFilterChange = (filter: string) => {
-		setActiveFilter(filter);
-	};
+	const handleFiltersChange = useCallback(
+		(next: Record<string, FilterValue>) => {
+			setFilters(next);
+			setPagination(prev => ({ ...prev, pageIndex: 0 }));
+		},
+		[setFilters, setPagination]
+	);
 
-	const handleLayupFilterChange = (value: string) => {
-		setActiveLayupFilter(value);
-	};
-
-	const handleModelFilterChange = (value: string) => {
-		setActiveModelFilter(value);
-	};
-
-	const handleCustomerFilterChange = (value: string) => {
-		setActiveCustomerFilter(value);
-	};
+	const handleSearchChange = useCallback(
+		(term: string) => {
+			setSearchTerm(term);
+			setPagination(prev => ({ ...prev, pageIndex: 0 }));
+		},
+		[setSearchTerm, setPagination]
+	);
 
 	const handleActionClick = (partId: string, action: string) => {
 		if (action === 'delete') {
@@ -189,7 +214,6 @@ const ListPart = () => {
 		if (!partToDelete) return;
 
 		try {
-			// Find the full part data from the existing data
 			const fullPartDetail = partData?.detail.find(item => item.partMaster.id === partToDelete.id);
 
 			if (fullPartDetail) {
@@ -244,8 +268,6 @@ const ListPart = () => {
 				};
 
 				await deletePartTask(deleteRequest).unwrap();
-
-				// Manually refetch the data to ensure it's updated
 				await refetchParts();
 
 				setDeleteDialogOpen(false);
@@ -269,7 +291,6 @@ const ListPart = () => {
 		navigate(`/part-master/view-part/${partId}`);
 	};
 
-	// Show loading state with skeleton
 	if (isPartDataLoading) {
 		return (
 			<Box sx={{ minWidth: 0 }}>
@@ -283,25 +304,28 @@ const ListPart = () => {
 		<>
 			<MasterListLandingPage
 				header={<PartHeader />}
-				metrics={null}
 				toolbar={
-					<PartManagement
-						appliedSearchTerm={searchTerm}
-						searchAriaLabel="Search parts"
-						listSummary={listSummary}
+					<MasterFilterToolbar
+						title="Filter"
+						searchPlaceholder={SEARCH_PLACEHOLDER}
+						searchTerm={searchTerm}
+						fields={fields}
+						values={filters}
 						onSearchChange={handleSearchChange}
-						onFilterChange={handleFilterChange}
-						onLayupFilterChange={handleLayupFilterChange}
-						onModelFilterChange={handleModelFilterChange}
-						onCustomerFilterChange={handleCustomerFilterChange}
-						layupOptions={layupOptions}
-						modelOptions={modelOptions}
-						customerOptions={customerOptions}
+						onFiltersChange={handleFiltersChange}
+						actions={<ToolbarAddButton label="Add Part" onClick={() => navigate('/part-master/create-part')} />}
 					/>
 				}
 				table={
 					<Box sx={masterListTableFrame}>
-						<PartTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
+						<PartTable
+							data={filteredData}
+							onActionClick={handleActionClick}
+							onEdit={handleEdit}
+							onView={handleView}
+							pagination={pagination}
+							onPaginationChange={setPagination}
+						/>
 					</Box>
 				}
 			/>

@@ -1,10 +1,19 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
+import {
+	deriveOptions,
+	MasterFilterToolbar,
+	MasterListLandingPage,
+	masterListTableFrame,
+	matchesDateRange,
+	matchesMulti,
+	ToolbarAddButton,
+	type FilterFieldConfig,
+	type FilterValue
+} from '../../../../../components/masters';
+import { useListView } from '../../../../../hooks/useListView';
 import CatalystHeader from './components/CatalystHeader';
-import SummaryCards from './components/SummaryCards';
-import ChartManagement, { CHART_ALL_SUPPLIERS } from './components/ChartManagement';
 import CatalystTable, { CatalystData } from './components/CatalystTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import {
@@ -14,83 +23,87 @@ import {
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteCatalystTaskRequest } from '../../../../../store/api/business/catalyst-master/catalyst.validators';
 
+const SEARCH_PLACEHOLDER = 'Chart ID, supplier, or notes';
+
 const ListCatalyst = () => {
 	const navigate = useNavigate();
-	const [searchTerm, setSearchTerm] = useState('');
-	const [activeFilter, setActiveFilter] = useState('All Charts');
-	const [activeSupplierFilter, setActiveSupplierFilter] = useState(CHART_ALL_SUPPLIERS);
+	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('catalyst');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [catalystToDelete, setCatalystToDelete] = useState<CatalystData | null>(null);
 
-	// Fetch all catalyst charts using the API with Zod validation
 	const {
 		data: catalystChartData,
 		isLoading: isCatalystDataLoading,
 		refetch: refetchCatalystCharts
 	} = useFetchCatalystChartsQuery();
 
-	// Delete task mutation
 	const [deleteCatalystTask, { isLoading: isDeleting }] = useDeleteCatalystTaskMutation();
 
-	// Extract catalyst data for table
 	const allCatalystData: CatalystData[] = useMemo(() => {
 		if (!catalystChartData) return [];
 		return catalystChartData.detail.map((item: { catalyst: CatalystData }) => item.catalyst);
 	}, [catalystChartData]);
 
-	const supplierOptions = useMemo(() => {
-		const s = new Set<string>();
-		for (const c of allCatalystData) {
-			const v = (c.chartSupplier ?? '').trim();
-			if (v) s.add(v);
-		}
-		return [...s].sort((a, b) => a.localeCompare(b));
-	}, [allCatalystData]);
-
-	// Filter and search logic
-	const filteredData = useMemo(() => {
-		let filtered = allCatalystData;
-
-		// Apply status filter
-		if (activeFilter !== 'All Charts') {
-			filtered = filtered.filter(catalyst => catalyst.status === activeFilter);
-		}
-
-		if (activeSupplierFilter !== CHART_ALL_SUPPLIERS) {
-			filtered = filtered.filter(
-				c => (c.chartSupplier ?? '').trim() === activeSupplierFilter
-			);
-		}
-
-		// Apply search filter
-		if (searchTerm) {
-			filtered = filtered.filter(
-				catalyst =>
-					catalyst.chartId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					catalyst.chartSupplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					catalyst.notes.toLowerCase().includes(searchTerm.toLowerCase())
-			);
-		}
-
-		return filtered;
-	}, [allCatalystData, activeFilter, activeSupplierFilter, searchTerm]);
-
-	const listSummary = useMemo(
-		() => formatFilteredListSummary(filteredData.length, allCatalystData.length, 'charts'),
-		[filteredData.length, allCatalystData.length]
+	const fields = useMemo<FilterFieldConfig[]>(
+		() => [
+			{
+				kind: 'autocomplete',
+				key: 'chartId',
+				label: 'Chart ID',
+				options: deriveOptions(allCatalystData, r => r.chartId)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'customerName',
+				label: 'Customer Name',
+				options: deriveOptions(allCatalystData, r => r.chartSupplier)
+			},
+			{
+				kind: 'dateRange',
+				key: 'createdAt',
+				label: 'Created On'
+			},
+			{
+				kind: 'autocomplete',
+				key: 'status',
+				label: 'Status',
+				options: ['ACTIVE', 'NEW', 'INACTIVE']
+			}
+		],
+		[allCatalystData]
 	);
 
-	const handleSearchChange = (searchValue: string) => {
-		setSearchTerm(searchValue);
-	};
+	const filteredData = useMemo(() => {
+		const term = searchTerm.trim().toLowerCase();
+		return allCatalystData.filter(c => {
+			if (!matchesMulti(c.chartId, filters.chartId)) return false;
+			if (!matchesMulti(c.chartSupplier, filters.customerName)) return false;
+			if (!matchesDateRange(c.createdAt, filters.createdAt)) return false;
+			if (!matchesMulti(c.status, filters.status)) return false;
+			if (!term) return true;
+			return (
+				c.chartId.toLowerCase().includes(term) ||
+				c.chartSupplier.toLowerCase().includes(term) ||
+				c.notes.toLowerCase().includes(term)
+			);
+		});
+	}, [allCatalystData, filters, searchTerm]);
 
-	const handleFilterChange = (filter: string) => {
-		setActiveFilter(filter);
-	};
+	const handleFiltersChange = useCallback(
+		(next: Record<string, FilterValue>) => {
+			setFilters(next);
+			setPagination(prev => ({ ...prev, pageIndex: 0 }));
+		},
+		[setFilters, setPagination]
+	);
 
-	const handleSupplierFilterChange = (supplier: string) => {
-		setActiveSupplierFilter(supplier);
-	};
+	const handleSearchChange = useCallback(
+		(term: string) => {
+			setSearchTerm(term);
+			setPagination(prev => ({ ...prev, pageIndex: 0 }));
+		},
+		[setSearchTerm, setPagination]
+	);
 
 	const handleActionClick = (chartId: string, action: string) => {
 		if (action === 'delete') {
@@ -106,7 +119,6 @@ const ListCatalyst = () => {
 		if (!catalystToDelete) return;
 
 		try {
-			// Find the full catalyst data from the existing data
 			const fullCatalystDetail = catalystChartData?.detail.find(item => item.catalyst.id === catalystToDelete.id);
 
 			if (fullCatalystDetail) {
@@ -114,7 +126,7 @@ const ListCatalyst = () => {
 					catalyst: {
 						id: catalystToDelete.id,
 						version: fullCatalystDetail.catalyst.version,
-						status: 'INACTIVE', // This will be overridden by the API
+						status: 'INACTIVE',
 						chartId: fullCatalystDetail.catalyst.chartId,
 						chartSupplier: fullCatalystDetail.catalyst.chartSupplier,
 						notes: fullCatalystDetail.catalyst.notes,
@@ -140,8 +152,6 @@ const ListCatalyst = () => {
 				};
 
 				await deleteCatalystTask(deleteRequest).unwrap();
-
-				// Manually refetch the data to ensure it's updated
 				await refetchCatalystCharts();
 
 				setDeleteDialogOpen(false);
@@ -165,7 +175,6 @@ const ListCatalyst = () => {
 		navigate(`/catalyst-master/view-catalyst/${catalystId}`);
 	};
 
-	// Show loading state with skeleton
 	if (isCatalystDataLoading) {
 		return (
 			<Box sx={{ minWidth: 0 }}>
@@ -179,21 +188,30 @@ const ListCatalyst = () => {
 		<>
 			<MasterListLandingPage
 				header={<CatalystHeader />}
-				metrics={catalystChartData ? <SummaryCards headerData={catalystChartData.header} /> : null}
 				toolbar={
-					<ChartManagement
-						appliedSearchTerm={searchTerm}
-						searchAriaLabel="Search catalyst charts"
-						listSummary={listSummary}
+					<MasterFilterToolbar
+						title="Filter"
+						searchPlaceholder={SEARCH_PLACEHOLDER}
+						searchTerm={searchTerm}
+						fields={fields}
+						values={filters}
 						onSearchChange={handleSearchChange}
-						onFilterChange={handleFilterChange}
-						onSupplierFilterChange={handleSupplierFilterChange}
-						supplierOptions={supplierOptions}
+						onFiltersChange={handleFiltersChange}
+						actions={
+							<ToolbarAddButton label="Add Chart" onClick={() => navigate('/catalyst-master/create-catalyst')} />
+						}
 					/>
 				}
 				table={
 					<Box sx={masterListTableFrame}>
-						<CatalystTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
+						<CatalystTable
+							data={filteredData}
+							onActionClick={handleActionClick}
+							onEdit={handleEdit}
+							onView={handleView}
+							pagination={pagination}
+							onPaginationChange={setPagination}
+						/>
 					</Box>
 				}
 			/>

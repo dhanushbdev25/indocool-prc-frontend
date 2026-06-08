@@ -4,6 +4,7 @@ import {
 	type MRT_ColumnDef,
 	type MRT_RowData,
 	type MRT_FilterFn,
+	type MRT_PaginationState,
 	type MRT_Updater
 } from 'material-react-table';
 import { Badge, Box, Button, Pagination, PaginationItem, Tooltip } from '@mui/material';
@@ -27,6 +28,9 @@ interface TableProps<T extends MRT_RowData> {
 	tableColumns: MRT_ColumnDef<T>[];
 	/** Merged onto the scroll container (defaults include a viewport-aware max-height). */
 	muiTableContainerSx?: Record<string, unknown>;
+	/** When provided, pagination becomes controlled; pair with `onPaginationChange`. */
+	pagination?: MRT_PaginationState;
+	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
 const defaultTableContainerSx = {
@@ -34,11 +38,18 @@ const defaultTableContainerSx = {
 	overflowX: 'auto'
 } as const;
 
-const TableComponent = <T extends MRT_RowData>({ data, tableColumns, muiTableContainerSx }: TableProps<T>) => {
+const TableComponent = <T extends MRT_RowData>({
+	data,
+	tableColumns,
+	muiTableContainerSx,
+	pagination,
+	onPaginationChange
+}: TableProps<T>) => {
 	const columns = useMemo(() => tableColumns, [tableColumns]);
 	const memoData = useMemo(() => data, [data]);
 
 	const [showColumnFilters, setShowColumnFilters] = useState(false);
+	const isControlledPagination = pagination !== undefined && onPaginationChange !== undefined;
 	const table = useMaterialReactTable<T>({
 		columns,
 		data: memoData,
@@ -50,8 +61,10 @@ const TableComponent = <T extends MRT_RowData>({ data, tableColumns, muiTableCon
 			showColumnFilters: false
 		},
 		state: {
-			showColumnFilters
+			showColumnFilters,
+			...(isControlledPagination ? { pagination } : {})
 		},
+		...(isControlledPagination ? { onPaginationChange } : {}),
 		onShowColumnFiltersChange: (updater: MRT_Updater<boolean>) => {
 			setShowColumnFilters(prev =>
 				typeof updater === 'function' ? (updater as (old: boolean) => boolean)(prev) : updater

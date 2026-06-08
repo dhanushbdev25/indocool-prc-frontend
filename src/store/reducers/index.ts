@@ -11,6 +11,8 @@ import { mouldApi } from '../api/business/mould/mould.api';
 import Cookie from '../../utils/Cookie';
 import { prcExecutionApi } from '../api/business/prc-execution/prc-execution.api';
 import { sapJobRunsApi } from '../api/business/sap-job-runs/sap-job-runs.api';
+import listViewReducer from '../slices/listView';
+import { clearPersistedListView } from '../persistListView';
 
 const rootReducer = combineReducers({
 	[authApi.reducerPath]: authApi.reducer,
@@ -22,13 +24,15 @@ const rootReducer = combineReducers({
 	[prcExecutionApi.reducerPath]: prcExecutionApi.reducer,
 	[partApi.reducerPath]: partApi.reducer,
 	[mouldApi.reducerPath]: mouldApi.reducer,
-	[sapJobRunsApi.reducerPath]: sapJobRunsApi.reducer
+	[sapJobRunsApi.reducerPath]: sapJobRunsApi.reducer,
+	listView: listViewReducer
 });
 
 // Handle the LOGOUT action
 const appReducer = (state: ReturnType<typeof rootReducer> | undefined, action: AnyAction) => {
 	if (action.type === LOGOUT) {
 		Cookie.removeToken();
+		clearPersistedListView();
 		state = undefined;
 	}
 	return rootReducer(state, action as AuthActionTypes);

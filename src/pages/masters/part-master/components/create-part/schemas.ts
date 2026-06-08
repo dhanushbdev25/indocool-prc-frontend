@@ -138,17 +138,8 @@ export const operationWiseRowFormSchema = yup
 // Main form validation schema
 export const partMasterFormSchema = yup.object({
 	id: yup.number().optional(),
-	partNumber: yup
-		.string()
-		.required('Part number is required')
-		.min(3, 'Part number must be at least 3 characters')
-		.max(50, 'Part number must be less than 50 characters')
-		.matches(/^[A-Z0-9-]+$/, 'Part number must contain only uppercase letters, numbers, and hyphens'),
-	drawingNumber: yup
-		.string()
-		.required('Drawing number is required')
-		.min(3, 'Drawing number must be at least 3 characters')
-		.max(50, 'Drawing number must be less than 50 characters'),
+	partNumber: yup.string().trim().required('Part number is required'),
+	drawingNumber: yup.string().trim().required('Drawing number is required'),
 	drawingRevision: yup.number().default(1),
 	partRevision: yup.number().default(1),
 	isActive: yup.boolean().default(true),
@@ -168,14 +159,8 @@ export const partMasterFormSchema = yup.object({
 	catalyst: yup.number().optional(),
 	prcTemplate: yup.number().optional(),
 	// Inline PRC template fields
-	templateId: yup
-		.string()
-		.optional()
-		.max(50, 'Template ID must be less than 50 characters'),
-	templateName: yup
-		.string()
-		.optional()
-		.max(100, 'Template name must be less than 100 characters'),
+	templateId: yup.string().trim().optional(),
+	templateName: yup.string().trim().optional(),
 	templateNotes: yup.string().max(500, 'Template notes must be less than 500 characters').optional(),
 	isTemplateActive: yup.boolean().default(true),
 	templateVersion: yup.number().default(1),
@@ -282,17 +267,8 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 
 // Section-specific validation schemas
 export const generalInfoSchema = yup.object({
-	partNumber: yup
-		.string()
-		.required('Part number is required')
-		.min(3, 'Part number must be at least 3 characters')
-		.max(50, 'Part number must be less than 50 characters')
-		.matches(/^[A-Z0-9-]+$/, 'Part number must contain only uppercase letters, numbers, and hyphens'),
-	drawingNumber: yup
-		.string()
-		.required('Drawing number is required')
-		.min(3, 'Drawing number must be at least 3 characters')
-		.max(50, 'Drawing number must be less than 50 characters'),
+	partNumber: yup.string().trim().required('Part number is required'),
+	drawingNumber: yup.string().trim().required('Drawing number is required'),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),
 	customerVariantId: yup.number().nullable().optional(),

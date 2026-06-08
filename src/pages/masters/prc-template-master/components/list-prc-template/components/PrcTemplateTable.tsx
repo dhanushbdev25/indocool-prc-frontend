@@ -1,6 +1,6 @@
 import { useMemo, memo } from 'react';
 import { Box, Chip, IconButton, Typography, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { type MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	Assignment as AssignmentIcon,
@@ -31,9 +31,11 @@ interface PrcTemplateTableProps {
 	onActionClick: (templateId: string, action: string) => void;
 	onEdit: (templateId: number) => void;
 	onView: (templateId: number) => void;
+	pagination?: MRT_PaginationState;
+	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView }: PrcTemplateTableProps) => {
+const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPaginationChange }: PrcTemplateTableProps) => {
 	// Safety check for data
 	const safeData = data || [];
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -264,7 +266,12 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView }: PrcTempl
 
 	return (
 		<>
-			<TableComponent tableColumns={columns} data={safeData} />
+			<TableComponent
+				tableColumns={columns}
+				data={safeData}
+				pagination={pagination}
+				onPaginationChange={onPaginationChange}
+			/>
 
 			{/* Action Menu */}
 			<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>

@@ -139,11 +139,8 @@ export const processStepGroupSchema = yup.object({
 // Main form validation schema
 export const sequenceFormSchema = yup.object({
 	id: yup.number().optional(),
-	sequenceId: yup
-		.string()
-		.required('Sequence ID is required')
-		.matches(/^[A-Z0-9-]+$/, 'Sequence ID must contain only uppercase letters, numbers, and hyphens'),
-	sequenceName: yup.string().required('Sequence name is required'),
+	sequenceId: yup.string().trim().required('Sequence ID is required'),
+	sequenceName: yup.string().trim().required('Sequence name is required'),
 	category: yup.string().required('Category is required'),
 	type: yup.string().required('Type is required').oneOf(['Layout', 'ISP'], 'Type must be either Layout or ISP'),
 	status: yup.boolean(),
@@ -200,11 +197,8 @@ export const defaultSequenceFormData: SequenceFormData = {
 
 // Section-specific validation schemas
 export const basicInfoSchema = yup.object({
-	sequenceId: yup
-		.string()
-		.required('Sequence ID is required')
-		.matches(/^[A-Z0-9-]+$/, 'Sequence ID must contain only uppercase letters, numbers, and hyphens'),
-	sequenceName: yup.string().required('Sequence name is required'),
+	sequenceId: yup.string().trim().required('Sequence ID is required'),
+	sequenceName: yup.string().trim().required('Sequence name is required'),
 	category: yup.string().required('Category is required'),
 	type: yup.string().required('Type is required').oneOf(['Layout', 'ISP'], 'Type must be either Layout or ISP'),
 	status: yup.boolean(),

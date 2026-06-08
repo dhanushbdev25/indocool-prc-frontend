@@ -119,12 +119,7 @@ export const catalystConfigurationSchema = yup
 // Main form validation schema
 export const catalystFormSchema = yup.object({
 	id: yup.number().optional(),
-	chartId: yup
-		.string()
-		.required('Chart ID is required')
-		.min(3, 'Chart ID must be at least 3 characters')
-		.max(50, 'Chart ID must be less than 50 characters')
-		.matches(/^[A-Z0-9-]+$/, 'Chart ID must contain only uppercase letters, numbers, and hyphens'),
+	chartId: yup.string().trim().required('Chart ID is required'),
 	chartSupplier: yup
 		.string()
 		.required('Chart supplier is required')
@@ -170,12 +165,7 @@ export const defaultCatalystFormData: CatalystFormData = {
 
 // Section-specific validation schemas
 export const basicInfoSchema = yup.object({
-	chartId: yup
-		.string()
-		.required('Chart ID is required')
-		.min(3, 'Chart ID must be at least 3 characters')
-		.max(50, 'Chart ID must be less than 50 characters')
-		.matches(/^[A-Z0-9-]+$/, 'Chart ID must contain only uppercase letters, numbers, and hyphens'),
+	chartId: yup.string().trim().required('Chart ID is required'),
 	chartSupplier: yup
 		.string()
 		.required('Chart supplier is required')

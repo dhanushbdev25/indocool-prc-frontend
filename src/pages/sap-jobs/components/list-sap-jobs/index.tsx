@@ -1,9 +1,10 @@
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Alert, Box } from '@mui/material';
 import CatalystTableSkeleton from '../../../../components/common/skeleton/CatalystTableSkeleton';
 import { useFetchSapJobConfigsQuery } from '../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import type { SapJobConfigItem } from '../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
+import { useListView } from '../../../../hooks/useListView';
 import SapJobsHeader from './components/SapJobsHeader';
 import SapJobsManagement, {
 	SAP_JOBS_ALL_ENABLED,
@@ -13,9 +14,9 @@ import SapJobConfigsTable from './components/SapJobConfigsTable';
 
 const ListSapJobs = () => {
 	const navigate = useNavigate();
-	const [searchTerm, setSearchTerm] = useState('');
-	const [jobKeyFilter, setJobKeyFilter] = useState(SAP_JOBS_ALL_KEYS);
-	const [enabledFilter, setEnabledFilter] = useState(SAP_JOBS_ALL_ENABLED);
+	const { searchTerm, filters, pagination, setSearchTerm, setFilter, setPagination } = useListView('sapJobs');
+	const jobKeyFilter = typeof filters.jobKey === 'string' ? filters.jobKey : SAP_JOBS_ALL_KEYS;
+	const enabledFilter = typeof filters.enabled === 'string' ? filters.enabled : SAP_JOBS_ALL_ENABLED;
 
 	const { data: configs = [], isLoading, isFetching, isError, error, refetch } = useFetchSapJobConfigsQuery();
 
@@ -80,9 +81,9 @@ const ListSapJobs = () => {
 				searchTerm={searchTerm}
 				onSearchChange={setSearchTerm}
 				jobKeyFilter={jobKeyFilter}
-				onJobKeyFilterChange={setJobKeyFilter}
+				onJobKeyFilterChange={value => setFilter('jobKey', value)}
 				enabledFilter={enabledFilter}
-				onEnabledFilterChange={setEnabledFilter}
+				onEnabledFilterChange={value => setFilter('enabled', value)}
 				jobKeyOptions={jobKeyOptions}
 			/>
 
@@ -100,7 +101,12 @@ const ListSapJobs = () => {
 					overflow: 'hidden'
 				}}
 			>
-				<SapJobConfigsTable data={filteredData} onViewHistory={handleViewHistory} />
+				<SapJobConfigsTable
+					data={filteredData}
+					onViewHistory={handleViewHistory}
+					pagination={pagination}
+					onPaginationChange={setPagination}
+				/>
 			</Box>
 		</Box>
 	);

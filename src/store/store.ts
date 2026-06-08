@@ -17,6 +17,8 @@ import { mouldApi } from './api/business/mould/mould.api';
 import { prcExecutionApi } from './api/business/prc-execution/prc-execution.api';
 import { dashboardApi } from './api/business/dashboard/dashboard.api';
 import { sapJobRunsApi } from './api/business/sap-job-runs/sap-job-runs.api';
+import { attachListViewPersistence, loadPersistedListView } from './persistListView';
+import { hydrateListView } from './slices/listView';
 
 // ==============================|| REDUX TOOLKIT - MAIN STORE ||============================== //
 
@@ -61,6 +63,12 @@ export const store = configureStore({
 			rtkQueryErrorLogger
 		] as Middleware[])
 });
+
+const persistedListView = loadPersistedListView();
+if (persistedListView) {
+	store.dispatch(hydrateListView(persistedListView));
+}
+attachListViewPersistence(store);
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;

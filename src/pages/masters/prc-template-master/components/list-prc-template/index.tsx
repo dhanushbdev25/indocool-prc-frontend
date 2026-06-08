@@ -1,10 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { formatFilteredListSummary, MasterListLandingPage, masterListTableFrame } from '../../../../../components/masters';
+import {
+	deriveOptions,
+	MasterFilterToolbar,
+	MasterListLandingPage,
+	masterListTableFrame,
+	matchesMulti,
+	ToolbarAddButton,
+	type FilterFieldConfig,
+	type FilterValue
+} from '../../../../../components/masters';
+import { useListView } from '../../../../../hooks/useListView';
 import PrcTemplateHeader from './components/PrcTemplateHeader';
-import SummaryCards from './components/SummaryCards';
-import PrcTemplateManagement, { PRC_TEMPLATE_ALL_CATALOGUE } from './components/PrcTemplateManagement';
 import PrcTemplateTable, { PrcTemplateData } from './components/PrcTemplateTable';
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import {
@@ -18,25 +26,22 @@ import {
 	type PrcTemplateStep
 } from '../../../../../store/api/business/prc-template/prc-template.validators';
 
+const SEARCH_PLACEHOLDER = 'Template ID or name';
+
 const ListPrcTemplate = () => {
 	const navigate = useNavigate();
-	const [searchTerm, setSearchTerm] = useState('');
-	const [activeFilter, setActiveFilter] = useState('All Templates');
-	const [catalogueFilter, setCatalogueFilter] = useState(PRC_TEMPLATE_ALL_CATALOGUE);
+	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('prcTemplate');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [templateToDelete, setTemplateToDelete] = useState<PrcTemplateData | null>(null);
 
-	// Fetch all PRC templates using the API
 	const {
 		data: prcTemplateData,
 		isLoading: isPrcTemplateDataLoading,
 		refetch: refetchPrcTemplates
 	} = useFetchPrcTemplatesQuery();
 
-	// Delete task mutation
 	const [deletePrcTemplateTask, { isLoading: isDeleting }] = useDeletePrcTemplateTaskMutation();
 
-	// Extract template data for table
 	const allTemplateData: PrcTemplateData[] = useMemo(() => {
 		if (!prcTemplateData) return [];
 		return prcTemplateData.detail
@@ -57,49 +62,68 @@ const ListPrcTemplate = () => {
 			}));
 	}, [prcTemplateData]);
 
-	// Filter and search logic
-	const filteredData = useMemo(() => {
-		let filtered = allTemplateData;
-
-		// Apply status filter
-		if (activeFilter !== 'All Templates') {
-			filtered = filtered.filter(template => template.status === activeFilter);
-		}
-
-		if (catalogueFilter === 'In catalogue') {
-			filtered = filtered.filter(t => t.isActive);
-		} else if (catalogueFilter === 'Out of catalogue') {
-			filtered = filtered.filter(t => !t.isActive);
-		}
-
-		// Apply search filter
-		if (searchTerm) {
-			filtered = filtered.filter(
-				template =>
-					template.templateId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-					template.templateName.toLowerCase().includes(searchTerm.toLowerCase())
-			);
-		}
-
-		return filtered;
-	}, [allTemplateData, activeFilter, catalogueFilter, searchTerm]);
-
-	const listSummary = useMemo(
-		() => formatFilteredListSummary(filteredData.length, allTemplateData.length, 'templates'),
-		[filteredData.length, allTemplateData.length]
+	const fields = useMemo<FilterFieldConfig[]>(
+		() => [
+			{
+				kind: 'autocomplete',
+				key: 'templateId',
+				label: 'Template ID',
+				options: deriveOptions(allTemplateData, r => r.templateId)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'templateName',
+				label: 'Template Name',
+				options: deriveOptions(allTemplateData, r => r.templateName)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'catalogue',
+				label: 'Catalogue',
+				options: ['In catalogue', 'Out of catalogue']
+			},
+			{
+				kind: 'dateRange',
+				key: 'createdAt',
+				label: 'Created On'
+			},
+			{
+				kind: 'autocomplete',
+				key: 'status',
+				label: 'Status',
+				options: ['ACTIVE', 'NEW', 'INACTIVE']
+			}
+		],
+		[allTemplateData]
 	);
 
-	const handleSearchChange = (searchValue: string) => {
-		setSearchTerm(searchValue);
-	};
+	const filteredData = useMemo(() => {
+		const term = searchTerm.trim().toLowerCase();
+		return allTemplateData.filter(t => {
+			if (!matchesMulti(t.templateId, filters.templateId)) return false;
+			if (!matchesMulti(t.templateName, filters.templateName)) return false;
+			if (!matchesMulti(t.status, filters.status)) return false;
+			if (!matchesMulti(t.isActive ? 'In catalogue' : 'Out of catalogue', filters.catalogue)) return false;
+			if (!term) return true;
+			return t.templateId.toLowerCase().includes(term) || t.templateName.toLowerCase().includes(term);
+		});
+	}, [allTemplateData, filters, searchTerm]);
 
-	const handleFilterChange = (filter: string) => {
-		setActiveFilter(filter);
-	};
+	const handleFiltersChange = useCallback(
+		(next: Record<string, FilterValue>) => {
+			setFilters(next);
+			setPagination(prev => ({ ...prev, pageIndex: 0 }));
+		},
+		[setFilters, setPagination]
+	);
 
-	const handleCatalogueFilterChange = (value: string) => {
-		setCatalogueFilter(value);
-	};
+	const handleSearchChange = useCallback(
+		(term: string) => {
+			setSearchTerm(term);
+			setPagination(prev => ({ ...prev, pageIndex: 0 }));
+		},
+		[setSearchTerm, setPagination]
+	);
 
 	const handleActionClick = (templateId: string, action: string) => {
 		if (action === 'delete') {
@@ -115,7 +139,6 @@ const ListPrcTemplate = () => {
 		if (!templateToDelete) return;
 
 		try {
-			// Find the full template data from the existing data
 			const fullTemplateDetail = prcTemplateData?.detail.find(item => item.prcTemplate.id === templateToDelete.id);
 
 			if (fullTemplateDetail) {
@@ -142,8 +165,6 @@ const ListPrcTemplate = () => {
 				};
 
 				await deletePrcTemplateTask(deleteRequest).unwrap();
-
-				// Manually refetch the data to ensure it's updated
 				await refetchPrcTemplates();
 
 				setDeleteDialogOpen(false);
@@ -167,7 +188,6 @@ const ListPrcTemplate = () => {
 		navigate(`/prc-template-master/view-prc-template/${templateId}`);
 	};
 
-	// Show loading state with skeleton
 	if (isPrcTemplateDataLoading) {
 		return (
 			<Box sx={{ minWidth: 0 }}>
@@ -181,20 +201,33 @@ const ListPrcTemplate = () => {
 		<>
 			<MasterListLandingPage
 				header={<PrcTemplateHeader />}
-				metrics={prcTemplateData ? <SummaryCards headerData={prcTemplateData.header} /> : null}
 				toolbar={
-					<PrcTemplateManagement
-						appliedSearchTerm={searchTerm}
-						searchAriaLabel="Search templates"
-						listSummary={listSummary}
+					<MasterFilterToolbar
+						title="Filter"
+						searchPlaceholder={SEARCH_PLACEHOLDER}
+						searchTerm={searchTerm}
+						fields={fields}
+						values={filters}
 						onSearchChange={handleSearchChange}
-						onFilterChange={handleFilterChange}
-						onCatalogueActiveFilterChange={handleCatalogueFilterChange}
+						onFiltersChange={handleFiltersChange}
+						actions={
+							<ToolbarAddButton
+								label="Add Template"
+								onClick={() => navigate('/prc-template-master/create-prc-template')}
+							/>
+						}
 					/>
 				}
 				table={
 					<Box sx={masterListTableFrame}>
-						<PrcTemplateTable data={filteredData} onActionClick={handleActionClick} onEdit={handleEdit} onView={handleView} />
+						<PrcTemplateTable
+							data={filteredData}
+							onActionClick={handleActionClick}
+							onEdit={handleEdit}
+							onView={handleView}
+							pagination={pagination}
+							onPaginationChange={setPagination}
+						/>
 					</Box>
 				}
 			/>

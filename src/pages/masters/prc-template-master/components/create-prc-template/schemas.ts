@@ -20,17 +20,8 @@ export const prcTemplateStepSchema = yup.object({
 // Main form validation schema
 export const prcTemplateFormSchema = yup.object({
 	id: yup.number().optional(),
-	templateId: yup
-		.string()
-		.required('Template ID is required')
-		.min(3, 'Template ID must be at least 3 characters')
-		.max(50, 'Template ID must be less than 50 characters')
-		.matches(/^[A-Z0-9-]+$/, 'Template ID must contain only uppercase letters, numbers, and hyphens'),
-	templateName: yup
-		.string()
-		.required('Template name is required')
-		.min(3, 'Template name must be at least 3 characters')
-		.max(100, 'Template name must be less than 100 characters'),
+	templateId: yup.string().trim().required('Template ID is required'),
+	templateName: yup.string().trim().required('Template name is required'),
 	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
 	version: yup.number().required('Version is required').min(1, 'Version must be at least 1'),
 	isLatest: yup.boolean().default(true),
@@ -73,17 +64,8 @@ export const defaultPrcTemplateFormData: PrcTemplateFormData = {
 
 // Section-specific validation schemas
 export const basicInfoSchema = yup.object({
-	templateId: yup
-		.string()
-		.required('Template ID is required')
-		.min(3, 'Template ID must be at least 3 characters')
-		.max(50, 'Template ID must be less than 50 characters')
-		.matches(/^[A-Z0-9-]+$/, 'Template ID must contain only uppercase letters, numbers, and hyphens'),
-	templateName: yup
-		.string()
-		.required('Template name is required')
-		.min(3, 'Template name must be at least 3 characters')
-		.max(100, 'Template name must be less than 100 characters'),
+	templateId: yup.string().trim().required('Template ID is required'),
+	templateName: yup.string().trim().required('Template name is required'),
 	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
 	isActive: yup.boolean()
 });

@@ -1,6 +1,6 @@
 import { useMemo, memo } from 'react';
 import { Box, Chip, IconButton, Typography, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { type MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	CheckCircle as CheckCircleIcon,
@@ -36,9 +36,11 @@ interface InspectionTableProps {
 	onEdit?: (inspectionId: number) => void;
 	onView?: (inspectionId: number) => void;
 	onClone?: (inspectionId: number) => void;
+	pagination?: MRT_PaginationState;
+	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: InspectionTableProps) => {
+const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagination, onPaginationChange }: InspectionTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<InspectionData | null>(null);
 
@@ -292,7 +294,12 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone }: 
 
 	return (
 		<Box sx={{ mt: 0 }}>
-			<TableComponent data={data} tableColumns={columns} />
+			<TableComponent
+				data={data}
+				tableColumns={columns}
+				pagination={pagination}
+				onPaginationChange={onPaginationChange}
+			/>
 
 			{/* Action Menu */}
 			<Menu

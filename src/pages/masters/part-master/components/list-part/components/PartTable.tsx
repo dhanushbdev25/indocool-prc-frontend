@@ -1,6 +1,6 @@
 import { useMemo, memo, useState, useCallback } from 'react';
 import { Box, Chip, IconButton, Typography, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { type MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	Visibility as ViewIcon,
@@ -37,9 +37,11 @@ interface PartTableProps {
 	onActionClick: (partId: string, action: string) => void;
 	onEdit: (partId: number) => void;
 	onView: (partId: number) => void;
+	pagination?: MRT_PaginationState;
+	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps) => {
+const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPaginationChange }: PartTableProps) => {
 	const safeData = data || [];
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<PartData | null>(null);
@@ -311,7 +313,12 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView }: PartTableProps)
 
 	return (
 		<>
-			<TableComponent tableColumns={columns} data={safeData} />
+			<TableComponent
+				tableColumns={columns}
+				data={safeData}
+				pagination={pagination}
+				onPaginationChange={onPaginationChange}
+			/>
 
 			<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
 				<MenuItem onClick={handleView}>

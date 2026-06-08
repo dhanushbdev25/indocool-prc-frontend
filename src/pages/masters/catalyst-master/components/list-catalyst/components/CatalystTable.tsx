@@ -1,6 +1,6 @@
 import { useMemo, memo } from 'react';
 import { Box, Chip, IconButton, Typography, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { type MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
 	CheckCircle as CheckCircleIcon,
@@ -21,9 +21,11 @@ interface CatalystTableProps {
 	onActionClick?: (chartId: string, action: string) => void;
 	onEdit?: (catalystId: number) => void;
 	onView?: (catalystId: number) => void;
+	pagination?: MRT_PaginationState;
+	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const CatalystTable = memo(({ data, onActionClick, onEdit, onView }: CatalystTableProps) => {
+const CatalystTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPaginationChange }: CatalystTableProps) => {
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<CatalystData | null>(null);
 	const getStatusColor = (status: string) => {
@@ -200,7 +202,12 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView }: CatalystTab
 
 	return (
 		<Box sx={{ mt: 0 }}>
-			<TableComponent data={data} tableColumns={columns} />
+			<TableComponent
+				data={data}
+				tableColumns={columns}
+				pagination={pagination}
+				onPaginationChange={onPaginationChange}
+			/>
 
 			{/* Action Menu */}
 			<Menu

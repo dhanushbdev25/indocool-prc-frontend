@@ -1,7 +1,7 @@
 import { memo, useMemo } from 'react';
 import { Box, Button, Chip, Typography } from '@mui/material';
 import { Build as MouldIcon } from '@mui/icons-material';
-import { type MRT_ColumnDef } from 'material-react-table';
+import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import TableComponent from '../../../../../../components/table/TableComponent';
 import {
 	type MouldReconciliationRow,
@@ -12,11 +12,13 @@ interface MouldReconciliationTableProps {
 	data: MouldReconciliationRow[];
 	reconcilingKey: string | null;
 	onReconcile: (row: MouldReconciliationRow) => void;
+	pagination?: MRT_PaginationState;
+	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
 const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
-const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile }: MouldReconciliationTableProps) => {
+const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagination, onPaginationChange }: MouldReconciliationTableProps) => {
 	const columns = useMemo<MRT_ColumnDef<MouldReconciliationRow>[]>(
 		() => [
 			{
@@ -132,7 +134,14 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile }: Mo
 		);
 	}
 
-	return <TableComponent tableColumns={columns} data={data} />;
+	return (
+		<TableComponent
+			tableColumns={columns}
+			data={data}
+			pagination={pagination}
+			onPaginationChange={onPaginationChange}
+		/>
+	);
 });
 
 MouldReconciliationTable.displayName = 'MouldReconciliationTable';
