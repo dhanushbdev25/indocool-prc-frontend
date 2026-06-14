@@ -12,6 +12,7 @@ import {
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
 import { type Catalyst } from '../../../../../../store/api/business/catalyst-master/catalyst.validators';
+import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
 
 // Use the Zod-validated type from the API
 export type CatalystData = Catalyst;
@@ -26,6 +27,8 @@ interface CatalystTableProps {
 }
 
 const CatalystTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPaginationChange }: CatalystTableProps) => {
+	const { hasPermission } = useCurrentRole();
+	const canEdit = hasPermission('CATALYST_MASTER_EDIT');
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<CatalystData | null>(null);
 	const getStatusColor = (status: string) => {
@@ -230,19 +233,23 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView, pagination, o
 						</ListItemIcon>
 						<ListItemText>View</ListItemText>
 					</MenuItem>,
-					<MenuItem key="edit" onClick={handleEdit}>
-						<ListItemIcon>
-							<EditIcon fontSize="small" />
-						</ListItemIcon>
-						<ListItemText>Edit</ListItemText>
-					</MenuItem>,
-					<MenuItem key="delete" onClick={handleDelete} sx={{ color: 'error.main' }}>
-						<ListItemIcon>
-							<DeleteIcon fontSize="small" color="error" />
-						</ListItemIcon>
-						<ListItemText>Delete</ListItemText>
-					</MenuItem>
-				]}
+					canEdit && (
+						<MenuItem key="edit" onClick={handleEdit}>
+							<ListItemIcon>
+								<EditIcon fontSize="small" />
+							</ListItemIcon>
+							<ListItemText>Edit</ListItemText>
+						</MenuItem>
+					),
+					canEdit && (
+						<MenuItem key="delete" onClick={handleDelete} sx={{ color: 'error.main' }}>
+							<ListItemIcon>
+								<DeleteIcon fontSize="small" color="error" />
+							</ListItemIcon>
+							<ListItemText>Delete</ListItemText>
+						</MenuItem>
+					)
+				].filter(Boolean)}
 			</Menu>
 		</Box>
 	);

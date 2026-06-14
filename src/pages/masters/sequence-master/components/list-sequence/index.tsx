@@ -22,11 +22,14 @@ import {
 } from '../../../../../store/api/business/sequence-master/sequence.api';
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteSequenceTaskRequest } from '../../../../../store/api/business/sequence-master/sequence.validators';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 
 const SEARCH_PLACEHOLDER = 'Sequence ID, name, category, item, type, or notes';
 
 const ListSequence = () => {
 	const navigate = useNavigate();
+	const { hasPermission } = useCurrentRole();
+	const canCreate = hasPermission('SEQUENCE_MASTER_CREATE');
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('sequence');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [sequenceToDelete, setSequenceToDelete] = useState<SequenceData | null>(null);
@@ -220,10 +223,12 @@ const ListSequence = () => {
 						onSearchChange={handleSearchChange}
 						onFiltersChange={handleFiltersChange}
 						actions={
-							<ToolbarAddButton
-								label="Add Sequence"
-								onClick={() => navigate('/sequence-master/create-sequence')}
-							/>
+							canCreate ? (
+								<ToolbarAddButton
+									label="Add Sequence"
+									onClick={() => navigate('/sequence-master/create-sequence')}
+								/>
+							) : null
 						}
 					/>
 				}

@@ -1,102 +1,99 @@
-import { Box, Card, CardContent, Skeleton, Grid } from '@mui/material';
+import { Box, Grid, Skeleton, Stack } from '@mui/material';
+import {
+	analyticsMetricGrid,
+	analyticsPanel,
+	analyticsPanelBody,
+	analyticsPanelHeader,
+	analyticsPageGap
+} from '../constants/dashboardTokens';
 
-const SummaryCardSkeleton = () => (
-	<Card
+const KpiCardSkeleton = () => (
+	<Box
 		sx={{
-			flex: { xs: '1 1 100%', sm: '1 1 calc(50% - 12px)', lg: '1 1 calc(25% - 18px)' },
-			minWidth: { xs: '100%', sm: '200px' },
-			borderRadius: '12px',
-			boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-			backgroundColor: 'white'
+			border: 1,
+			borderColor: 'divider',
+			borderRadius: '10px',
+			backgroundColor: 'background.paper',
+			p: 1.5,
+			minHeight: 168,
+			display: 'flex',
+			flexDirection: 'column',
+			alignItems: 'center',
+			gap: 1
 		}}
 	>
-		<CardContent sx={{ p: 3 }}>
-			<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-				<Box sx={{ flex: 1 }}>
-					<Skeleton variant="text" width="60%" height={20} sx={{ mb: 1 }} />
-					<Skeleton variant="text" width="40%" height={40} sx={{ mb: 0.5 }} />
-					<Skeleton variant="text" width="80%" height={16} />
-				</Box>
-				<Skeleton variant="circular" width={24} height={24} />
-			</Box>
-		</CardContent>
-	</Card>
+		<Skeleton variant="text" width="80%" height={14} />
+		<Skeleton variant="circular" width={72} height={72} />
+		<Skeleton variant="text" width="50%" height={12} />
+	</Box>
 );
 
-const ChartSkeleton = ({ height = 400 }: { height?: number }) => (
-	<Card
-		sx={{
-			borderRadius: '12px',
-			boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-			backgroundColor: 'white',
-			overflow: 'hidden'
-		}}
-	>
-		<CardContent sx={{ p: 3 }}>
-			<Box sx={{ mb: 2 }}>
-				<Skeleton variant="text" width="40%" height={24} sx={{ mb: 0.5 }} />
-				<Skeleton variant="text" width="60%" height={16} />
-			</Box>
-			<Box sx={{ height: height }}>
-				<Skeleton variant="rectangular" width="100%" height="100%" />
-			</Box>
-		</CardContent>
-	</Card>
-);
-
-const HeaderSkeleton = () => (
-	<Box sx={{ mb: 4 }}>
-		<Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-			<Box>
-				<Skeleton variant="text" width="300px" height={40} sx={{ mb: 1 }} />
-				<Skeleton variant="text" width="500px" height={24} />
+const KpiPanelSkeleton = () => (
+	<Box sx={analyticsPanel}>
+		<Box sx={analyticsPanelHeader}>
+			<Box sx={{ width: '100%' }}>
+				<Skeleton variant="text" width={180} height={22} />
+				<Skeleton variant="text" width="60%" height={16} sx={{ mt: 0.75 }} />
 			</Box>
 		</Box>
-
-		<Box
-			sx={{
-				backgroundColor: 'white',
-				borderRadius: '12px',
-				boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-				p: 3
-			}}
-		>
-			<Skeleton variant="text" width="80px" height={24} sx={{ mb: 2 }} />
-			<Grid container spacing={3}>
-				<Grid size={{ xs: 12, md: 6 }}>
-					<Skeleton variant="rectangular" width="100%" height={56} sx={{ borderRadius: '8px' }} />
-				</Grid>
-				<Grid size={{ xs: 12, md: 6 }}>
-					<Skeleton variant="rectangular" width="100%" height={56} sx={{ borderRadius: '8px' }} />
-				</Grid>
-			</Grid>
+		<Box sx={analyticsPanelBody}>
+			<Box sx={analyticsMetricGrid}>
+				{Array.from({ length: 8 }).map((_, i) => (
+					<KpiCardSkeleton key={i} />
+				))}
+			</Box>
 		</Box>
 	</Box>
 );
 
-export const DashboardSkeleton = () => {
-	return (
-		<Box sx={{ p: 3, backgroundColor: '#fafafa', minHeight: '100vh' }}>
-			<HeaderSkeleton />
-			
-			<Box sx={{ display: 'flex', gap: 3, mb: 4, flexWrap: 'wrap' }}>
-				<SummaryCardSkeleton />
-				<SummaryCardSkeleton />
-				<SummaryCardSkeleton />
-				<SummaryCardSkeleton />
+const ChartCardSkeleton = () => (
+	<Box sx={analyticsPanel}>
+		<Box sx={[analyticsPanelBody, { height: 360 }]}>
+			<Skeleton variant="text" width="55%" height={20} sx={{ mb: 2 }} />
+			<Skeleton variant="rectangular" width="100%" height={300} sx={{ borderRadius: 1.5 }} />
+		</Box>
+	</Box>
+);
+
+export const DashboardSkeleton = () => (
+	<Box component="article" sx={{ minWidth: 0, pb: { xs: 2, sm: 3 } }}>
+		<Box sx={{ pb: 2.5, mb: 0.5, borderBottom: 1, borderColor: 'divider' }}>
+			<Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
+				<Box sx={{ flex: 1, minWidth: 240 }}>
+					<Skeleton variant="text" width={260} height={36} />
+					<Skeleton variant="text" width={420} height={20} sx={{ mt: 1 }} />
+				</Box>
+				<Skeleton variant="rounded" width={220} height={36} sx={{ borderRadius: '8px' }} />
+			</Box>
+		</Box>
+
+		<Stack spacing={analyticsPageGap}>
+			<KpiPanelSkeleton />
+			<KpiPanelSkeleton />
+
+			<Box>
+				<Skeleton variant="text" width={160} height={22} sx={{ mb: 0.75 }} />
+				<Skeleton variant="text" width={320} height={16} sx={{ mb: 2 }} />
+				<Grid container spacing={2}>
+					{Array.from({ length: 3 }).map((_, i) => (
+						<Grid key={i} size={{ xs: 12, lg: 4 }}>
+							<ChartCardSkeleton />
+						</Grid>
+					))}
+				</Grid>
 			</Box>
 
-			<Grid container spacing={3}>
-				<Grid size={{ xs: 12, lg: 6 }}>
-					<ChartSkeleton height={400} />
+			<Box>
+				<Skeleton variant="text" width={180} height={22} sx={{ mb: 0.75 }} />
+				<Skeleton variant="text" width={360} height={16} sx={{ mb: 2 }} />
+				<Grid container spacing={2}>
+					{Array.from({ length: 6 }).map((_, i) => (
+						<Grid key={i} size={{ xs: 12, md: 6, xl: 4 }}>
+							<ChartCardSkeleton />
+						</Grid>
+					))}
 				</Grid>
-				<Grid size={{ xs: 12, lg: 6 }}>
-					<ChartSkeleton height={400} />
-				</Grid>
-				<Grid size={{ xs: 12 }}>
-					<ChartSkeleton height={600} />
-				</Grid>
-			</Grid>
-		</Box>
-	);
-};
+			</Box>
+		</Stack>
+	</Box>
+);

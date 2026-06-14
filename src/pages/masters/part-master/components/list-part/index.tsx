@@ -26,6 +26,7 @@ import {
 	type Cutting,
 	type Mould
 } from '../../../../../store/api/business/part-master/part.validators';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 
 const SEARCH_PLACEHOLDER = 'Part number, SAP, drawing, description, or customer';
 
@@ -53,6 +54,8 @@ function partCustomerLabel(p: PartRow): string {
 
 const ListPart = () => {
 	const navigate = useNavigate();
+	const { hasPermission } = useCurrentRole();
+	const canCreate = hasPermission('PART_MASTER_CREATE');
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('part');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [partToDelete, setPartToDelete] = useState<PartRow | null>(null);
@@ -313,7 +316,11 @@ const ListPart = () => {
 						values={filters}
 						onSearchChange={handleSearchChange}
 						onFiltersChange={handleFiltersChange}
-						actions={<ToolbarAddButton label="Add Part" onClick={() => navigate('/part-master/create-part')} />}
+						actions={
+							canCreate ? (
+								<ToolbarAddButton label="Add Part" onClick={() => navigate('/part-master/create-part')} />
+							) : null
+						}
 					/>
 				}
 				table={

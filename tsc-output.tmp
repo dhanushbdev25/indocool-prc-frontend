@@ -1,0 +1,134 @@
+src/components/masters/MasterListToolbar.tsx(173,6): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & TypographyOwnProps & CommonProps & Omit<any, "zIndex" | ... 112 more ... | "variantMapping">): Element | null', gave the following error.
+    Type 'SxProps<Theme> | undefined' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'undefined' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+  Overload 2 of 2, '(props: DefaultComponentProps<TypographyTypeMap<{}, "span">>): Element | null', gave the following error.
+    Type 'SxProps<Theme> | undefined' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'undefined' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+src/components/masters/MasterSummaryStrip.tsx(31,6): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & BoxOwnProps<Theme> & Omit<any, keyof BoxOwnProps<Theme>>): Element | null', gave the following error.
+    Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+        Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+          Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+  Overload 2 of 2, '(props: DefaultComponentProps<BoxTypeMap<{}, "div", Theme>>): Element | null', gave the following error.
+    Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+        Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+          Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+src/pages/dashboard/components/DashboardSection.tsx(22,66): error TS2322: Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+  Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+    Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+      Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+src/pages/dashboard/components/DashboardSection.tsx(36,12): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & BoxOwnProps<Theme> & Omit<any, keyof BoxOwnProps<Theme>>): Element | null', gave the following error.
+    Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+        Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+          Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+  Overload 2 of 2, '(props: DefaultComponentProps<BoxTypeMap<{}, "div", Theme>>): Element | null', gave the following error.
+    Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+        Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+          Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+src/pages/dashboard/components/DashboardSection.tsx(37,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & BoxOwnProps<Theme> & Omit<any, keyof BoxOwnProps<Theme>>): Element | null', gave the following error.
+    Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+        Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+          Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+  Overload 2 of 2, '(props: DefaultComponentProps<BoxTypeMap<{}, "div", Theme>>): Element | null', gave the following error.
+    Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+        Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+          Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+src/pages/dashboard/components/DashboardSkeleton.tsx(51,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & BoxOwnProps<Theme> & Omit<any, keyof BoxOwnProps<Theme>>): Element | null', gave the following error.
+    Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+        Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+          Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+  Overload 2 of 2, '(props: DefaultComponentProps<BoxTypeMap<{}, "div", Theme>>): Element | null', gave the following error.
+    Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+      Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+        Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+          Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+src/pages/dashboard/components/kpi/MetricsKpiGrid.tsx(31,66): error TS2322: Type 'SxProps<Theme>' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+  Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'SystemStyleObject<Theme> | CssVariableType | ((theme: Theme) => string | number | SystemStyleObject<Theme>)'.
+    Type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]' is not assignable to type 'CSSSelectorObjectOrCssVariables<Theme>'.
+      Index signature for type 'string' is missing in type 'readonly (boolean | SystemStyleObject<Theme> | ((theme: Theme) => SystemStyleObject<Theme>))[]'.
+src/pages/masters/inspection-master/components/create-inspection/index.tsx(136,5): error TS2322: Type '{ order: number; parameterName: string; specification: string | undefined; minimumAcceptanceValue: string | number | undefined; maximumAcceptanceValue: string | number | undefined; ... 6 more ...; getInstrumentId: boolean; }[]' is not assignable to type '{ columns?: { defaultValue?: AnyPresentValue | undefined; minimumAcceptanceValue?: AnyPresentValue | undefined; maximumAcceptanceValue?: AnyPresentValue | undefined; type: string; name: string; }[] | undefined; ... 10 more ...; parameterName: string; }[]'.
+  Type '{ order: number; parameterName: string; specification: string | undefined; minimumAcceptanceValue: string | number | undefined; maximumAcceptanceValue: string | number | undefined; ... 6 more ...; getInstrumentId: boolean; }' is not assignable to type '{ columns?: { defaultValue?: AnyPresentValue | undefined; minimumAcceptanceValue?: AnyPresentValue | undefined; maximumAcceptanceValue?: AnyPresentValue | undefined; type: string; name: string; }[] | undefined; ... 10 more ...; parameterName: string; }'.
+    Types of property 'tableConfig' are incompatible.
+      Type 'TableConfig | undefined' is not assignable to type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; } | null'.
+        Type 'undefined' is not assignable to type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; } | null'.
+src/pages/masters/inspection-master/components/create-inspection/index.tsx(153,5): error TS2322: Type '{ order: number; parameterName: string; specification: string | undefined; minimumAcceptanceValue: string | number | undefined; maximumAcceptanceValue: string | number | undefined; ... 6 more ...; getInstrumentId: boolean; }[]' is not assignable to type '{ columns?: { defaultValue?: AnyPresentValue | undefined; minimumAcceptanceValue?: AnyPresentValue | undefined; maximumAcceptanceValue?: AnyPresentValue | undefined; type: string; name: string; }[] | undefined; ... 10 more ...; parameterName: string; }[]'.
+  Type '{ order: number; parameterName: string; specification: string | undefined; minimumAcceptanceValue: string | number | undefined; maximumAcceptanceValue: string | number | undefined; ... 6 more ...; getInstrumentId: boolean; }' is not assignable to type '{ columns?: { defaultValue?: AnyPresentValue | undefined; minimumAcceptanceValue?: AnyPresentValue | undefined; maximumAcceptanceValue?: AnyPresentValue | undefined; type: string; name: string; }[] | undefined; ... 10 more ...; parameterName: string; }'.
+    Types of property 'tableConfig' are incompatible.
+      Type 'TableConfig | undefined' is not assignable to type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; } | null'.
+        Type 'undefined' is not assignable to type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; } | null'.
+src/pages/masters/inspection-master/components/create-inspection/index.tsx(273,28): error TS2345: Argument of type '{ id: number; inspection: { inspectionName: string; status: string; inspectionId: string; type: string; version: number; isLatest: boolean; showPartImages: boolean; partImages: any[]; approveByProduction: boolean; approveByQuality: boolean; id: number; }; inspectionParameters: { ...; }[]; }' is not assignable to parameter of type 'UpdateInspectionRequest'.
+  Types of property 'inspectionParameters' are incompatible.
+    Type '{ order: number; parameterName: string; specification: string | undefined; minimumAcceptanceValue: string | undefined; maximumAcceptanceValue: string | undefined; type: string; files: {}; ... 4 more ...; getInstrumentId: boolean; }[]' is not assignable to type 'InspectionParameterRequest[]'.
+      Type '{ order: number; parameterName: string; specification: string | undefined; minimumAcceptanceValue: string | undefined; maximumAcceptanceValue: string | undefined; type: string; files: {}; ... 4 more ...; getInstrumentId: boolean; }' is not assignable to type 'InspectionParameterRequest'.
+        Types of property 'tableConfig' are incompatible.
+          Type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; } | undefined' is not assignable to type 'TableConfig | null | undefined'.
+            Type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; }' is not assignable to type 'TableConfig'.
+              Types of property 'columns' are incompatible.
+                Type '{ type: string; name: string; }[] | undefined' is not assignable to type 'TableColumn[]'.
+                  Type 'undefined' is not assignable to type 'TableColumn[]'.
+src/pages/masters/inspection-master/components/create-inspection/index.tsx(289,28): error TS2345: Argument of type '{ inspection: { inspectionName: string; status: string; inspectionId: string; type: string; version: number; isLatest: boolean; showPartImages: boolean; partImages: any[]; approveByProduction: boolean; approveByQuality: boolean; }; inspectionParameters: { ...; }[]; }' is not assignable to parameter of type 'CreateInspectionRequest'.
+  Types of property 'inspectionParameters' are incompatible.
+    Type '{ order: number; parameterName: string; specification: string | undefined; minimumAcceptanceValue: string | undefined; maximumAcceptanceValue: string | undefined; type: string; files: {}; ... 4 more ...; getInstrumentId: boolean; }[]' is not assignable to type 'InspectionParameterRequest[]'.
+      Type '{ order: number; parameterName: string; specification: string | undefined; minimumAcceptanceValue: string | undefined; maximumAcceptanceValue: string | undefined; type: string; files: {}; ... 4 more ...; getInstrumentId: boolean; }' is not assignable to type 'InspectionParameterRequest'.
+        Types of property 'tableConfig' are incompatible.
+          Type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; } | undefined' is not assignable to type 'TableConfig | null | undefined'.
+            Type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; }' is not assignable to type 'TableConfig'.
+              Types of property 'columns' are incompatible.
+                Type '{ type: string; name: string; }[] | undefined' is not assignable to type 'TableColumn[]'.
+                  Type 'undefined' is not assignable to type 'TableColumn[]'.
+src/pages/masters/inspection-master/components/create-inspection/schemas.ts(236,2): error TS2322: Type 'undefined' is not assignable to type '{ columns?: { type: string; name: string; }[] | undefined; rows?: { cells: {}; }[] | undefined; } | null'.
+src/pages/masters/part-master/utils/buildExecutionPreviewStub.ts(127,3): error TS2322: Type '{ inspectionParameterId: number; fileName: { fileName?: string | undefined; filePath?: string | undefined; originalFileName?: string | undefined; }[]; rowMappings: { rowIndex: number; fileName: { ...; }[]; }[]; }[]' is not assignable to type '{ inspectionParameterId?: number | undefined; fileName?: { fileName: string; filePath: string; originalFileName: string; }[] | undefined; rowMappings?: { rowIndex: number; fileName: { fileName: string; filePath: string; originalFileName: string; }[]; }[] | undefined; }[]'.
+  Type '{ inspectionParameterId: number; fileName: { fileName?: string; filePath?: string; originalFileName?: string; }[]; rowMappings: { rowIndex: number; fileName: { fileName?: string; filePath?: string; originalFileName?: string; }[]; }[]; }' is not assignable to type '{ inspectionParameterId?: number | undefined; fileName?: { fileName: string; filePath: string; originalFileName: string; }[] | undefined; rowMappings?: { rowIndex: number; fileName: { fileName: string; filePath: string; originalFileName: string; }[]; }[] | undefined; }'.
+    Types of property 'fileName' are incompatible.
+      Type '{ fileName?: string | undefined; filePath?: string | undefined; originalFileName?: string | undefined; }[]' is not assignable to type '{ fileName: string; filePath: string; originalFileName: string; }[]'.
+        Type '{ fileName?: string | undefined; filePath?: string | undefined; originalFileName?: string | undefined; }' is not assignable to type '{ fileName: string; filePath: string; originalFileName: string; }'.
+          Types of property 'fileName' are incompatible.
+            Type 'string | undefined' is not assignable to type 'string'.
+              Type 'undefined' is not assignable to type 'string'.
+src/pages/masters/sequence-master/components/create-sequence/components/SequenceStepGroups.tsx(176,9): error TS6133: 'moveStepGroup' is declared but its value is never read.
+src/pages/masters/sequence-master/components/create-sequence/components/SequenceStepGroups.tsx(184,8): error TS6133: 'normalizeExpandedGroups' is declared but its value is never read.
+src/pages/masters/sequence-master/components/view-sequence/components/ViewSequenceStepGroups.tsx(110,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: { component: ElementType<any, keyof IntrinsicElements>; } & GridBaseProps & { sx?: SxProps<Theme> | undefined; } & SystemProps<...> & Omit<...>): Element | null', gave the following error.
+    Type 'unknown' is not assignable to type 'ReactNode'.
+  Overload 2 of 2, '(props: DefaultComponentProps<GridTypeMap<{}, "div">>): Element | null', gave the following error.
+    Type 'unknown' is not assignable to type 'ReactNode'.
+src/pages/prc-execution/components/execute-prc/components/ExecutionQuickStats.tsx(92,4): error TS2352: Conversion of type 'ExecutionData' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'ExecutionData'.
+src/pages/prc-execution/components/execute-prc/components/ExecutionQuickStats.tsx(93,5): error TS2352: Conversion of type 'ExecutionData' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'ExecutionData'.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1024,8): error TS7006: Parameter 'ra' implicitly has an 'any' type.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1042,9): error TS2769: No overload matches this call.
+  Overload 2 of 2, '(props: DefaultComponentProps<BoxTypeMap<{}, "div", Theme>>): Element | null', gave the following error.
+    Type 'unknown' is not assignable to type 'ReactNode'.
+  Overload 2 of 2, '(props: DefaultComponentProps<BoxTypeMap<{}, "div", Theme>>): Element | null', gave the following error.
+    Type 'unknown' is not assignable to type 'ReactNode'.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1626,32): error TS2322: Type 'unknown[]' is not assignable to type 'AnnotationRegion[]'.
+  Type 'unknown' is not assignable to type 'AnnotationRegion'.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1896,20): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1897,20): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1898,20): error TS2322: Type 'unknown[]' is not assignable to type 'AnnotationRegion[]'.
+  Type 'unknown' is not assignable to type 'AnnotationRegion'.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1934,25): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1935,25): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/prc-execution/components/execute-prc/components/StepPreview.tsx(1936,25): error TS2322: Type 'unknown[]' is not assignable to type 'AnnotationRegion[]'.
+  Type 'unknown' is not assignable to type 'AnnotationRegion'.
+src/pages/prc-execution/utils/buildTimelineSteps.ts(175,9): error TS2322: Type '{ minValue: string | undefined; maxValue: string | undefined; minimumAcceptanceValue: string | undefined; maximumAcceptanceValue: string | undefined; stepNumber: number; version: number; ... 15 more ...; allowAttachments: boolean; }[]' is not assignable to type '{ id: number; ctq: boolean; targetValueType: string; uom: string; minValue?: string | undefined; maxValue?: string | undefined; minimumAcceptanceValue?: string | undefined; maximumAcceptanceValue?: string | undefined; ... 14 more ...; getInstrumentId?: boolean | undefined; }[]'.
+  Type '{ minValue: string | undefined; maxValue: string | undefined; minimumAcceptanceValue: string | undefined; maximumAcceptanceValue: string | undefined; stepNumber: number; version: number; ... 15 more ...; allowAttachments: boolean; }' is not assignable to type '{ id: number; ctq: boolean; targetValueType: string; uom: string; minValue?: string | undefined; maxValue?: string | undefined; minimumAcceptanceValue?: string | undefined; maximumAcceptanceValue?: string | undefined; ... 14 more ...; getInstrumentId?: boolean | undefined; }'.
+    Types of property 'tableConfig' are incompatible.
+      Type 'Record<string, unknown> | null | undefined' is not assignable to type 'TableConfig | null | undefined'.
+        Type 'Record<string, unknown>' is missing the following properties from type 'TableConfig': columns, rows

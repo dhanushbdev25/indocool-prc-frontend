@@ -40,7 +40,8 @@ const ExecutePrc = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const executionId = id ? parseInt(id, 10) : 0;
-	const { userInfo } = useCurrentRole();
+	const { userInfo, hasPermission } = useCurrentRole();
+	const canKit = hasPermission('KITTING_UPDATE');
 
 	// State management
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -1424,7 +1425,7 @@ const ExecutePrc = () => {
 				{/* Header */}
 				<ExecutionHeader
 					executionData={actualExecutionData}
-					onCatalystMixingClick={catalystMixingStep ? handleOpenCatalystMixing : undefined}
+					onCatalystMixingClick={catalystMixingStep && canKit ? handleOpenCatalystMixing : undefined}
 					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
 				/>
 
@@ -1507,7 +1508,7 @@ const ExecutePrc = () => {
 					)}
 				</DialogContent>
 				<DialogActions>
-					{catalystMixingStep && !isCatalystMixingReadOnly && (
+					{catalystMixingStep && !isCatalystMixingReadOnly && canKit && (
 						<Button
 							variant="contained"
 							onClick={() => catalystMixingSubmitRef.current?.()}

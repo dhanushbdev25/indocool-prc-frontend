@@ -22,11 +22,14 @@ import {
 } from '../../../../../store/api/business/catalyst-master/catalyst.api';
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteCatalystTaskRequest } from '../../../../../store/api/business/catalyst-master/catalyst.validators';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 
 const SEARCH_PLACEHOLDER = 'Chart ID, supplier, or notes';
 
 const ListCatalyst = () => {
 	const navigate = useNavigate();
+	const { hasPermission } = useCurrentRole();
+	const canCreate = hasPermission('CATALYST_MASTER_CREATE');
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('catalyst');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [catalystToDelete, setCatalystToDelete] = useState<CatalystData | null>(null);
@@ -198,7 +201,9 @@ const ListCatalyst = () => {
 						onSearchChange={handleSearchChange}
 						onFiltersChange={handleFiltersChange}
 						actions={
-							<ToolbarAddButton label="Add Chart" onClick={() => navigate('/catalyst-master/create-catalyst')} />
+							canCreate ? (
+								<ToolbarAddButton label="Add Chart" onClick={() => navigate('/catalyst-master/create-catalyst')} />
+							) : null
 						}
 					/>
 				}

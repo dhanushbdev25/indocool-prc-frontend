@@ -22,6 +22,7 @@ import {
 	useRetriggerSapConfirmationsMutation
 } from '../../../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import { type ExecutionData, type FormData } from '../../../../types/execution.types';
+import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
 
 interface SapConfirmationStepProps {
 	executionData: ExecutionData;
@@ -153,6 +154,8 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 	const prcExecutionId = executionData.id;
 	const [expandedId, setExpandedId] = useState<number | null>(null);
 	const [completeLoading, setCompleteLoading] = useState(false);
+	const { hasPermission } = useCurrentRole();
+	const canRetrySap = hasPermission('SAP_INTEGRATION_JOBS_EDIT');
 
 	const { data: logs = [], isLoading, isError, error, refetch } = useFetchSapConfirmationLogsQuery(
 		{ prcExecutionId },
@@ -198,15 +201,17 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 
 			{!archivePresentation && (
 				<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2, alignItems: 'center' }}>
-					<Button
-						variant="outlined"
-						color="primary"
-						startIcon={<Refresh />}
-						disabled={!prcExecutionId || isRetriggering}
-						onClick={() => void handleRetrigger()}
-					>
-						Retry failed confirmations
-					</Button>
+					{canRetrySap && (
+						<Button
+							variant="outlined"
+							color="primary"
+							startIcon={<Refresh />}
+							disabled={!prcExecutionId || isRetriggering}
+							onClick={() => void handleRetrigger()}
+						>
+							Retry failed confirmations
+						</Button>
+					)}
 					<Button
 						variant="contained"
 						color="primary"

@@ -10,6 +10,8 @@ import { useListView } from '../../../../hooks/useListView';
 import {
 	deriveOptions,
 	MasterFilterToolbar,
+	MasterListLandingPage,
+	masterListTableFrame,
 	matchesMulti,
 	type FilterFieldConfig,
 	type FilterValue
@@ -189,7 +191,7 @@ const ListPrcExecution = () => {
 
 	if (isPrcExecutionDataLoading || isPrcExecutionDataFetching) {
 		return (
-			<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+			<Box sx={{ minWidth: 0 }}>
 				<PrcExecutionHeader />
 				<CatalystTableSkeleton />
 			</Box>
@@ -197,25 +199,31 @@ const ListPrcExecution = () => {
 	}
 
 	return (
-		<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-			<PrcExecutionHeader />
-			<Box sx={{ mb: 2 }}>
-				<MasterFilterToolbar
-					title="Filters"
-					searchPlaceholder={SEARCH_PLACEHOLDER}
-					searchTerm={searchTerm}
-					fields={fields}
-					values={filters}
-					onSearchChange={handleSearchChange}
-					onFiltersChange={handleFiltersChange}
-				/>
-			</Box>
-			<PrcExecutionTable
-				data={filteredData}
-				onExecute={handleExecute}
-				onOpenReport={handleOpenReport}
-				pagination={pagination}
-				onPaginationChange={setPagination}
+		<>
+			<MasterListLandingPage
+				header={<PrcExecutionHeader />}
+				toolbar={
+					<MasterFilterToolbar
+						title="Filter"
+						searchPlaceholder={SEARCH_PLACEHOLDER}
+						searchTerm={searchTerm}
+						fields={fields}
+						values={filters}
+						onSearchChange={handleSearchChange}
+						onFiltersChange={handleFiltersChange}
+					/>
+				}
+				table={
+					<Box sx={masterListTableFrame}>
+						<PrcExecutionTable
+							data={filteredData}
+							onExecute={handleExecute}
+							onOpenReport={handleOpenReport}
+							pagination={pagination}
+							onPaginationChange={setPagination}
+						/>
+					</Box>
+				}
 			/>
 
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
@@ -233,7 +241,7 @@ const ListPrcExecution = () => {
 					</Button>
 				</DialogActions>
 			</Dialog>
-		</Box>
+		</>
 	);
 };
 

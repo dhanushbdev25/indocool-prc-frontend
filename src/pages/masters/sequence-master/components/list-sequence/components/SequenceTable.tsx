@@ -12,6 +12,7 @@ import {
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
 import { type ProcessSequence } from '../../../../../../store/api/business/sequence-master/sequence.validators';
+import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
 
 // Use the Zod-validated type from the API
 export type SequenceData = ProcessSequence;
@@ -27,6 +28,9 @@ interface SequenceTableProps {
 }
 
 const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagination, onPaginationChange }: SequenceTableProps) => {
+	const { hasPermission } = useCurrentRole();
+	const canEdit = hasPermission('SEQUENCE_MASTER_EDIT');
+	const canCreate = hasPermission('SEQUENCE_MASTER_CREATE');
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<SequenceData | null>(null);
 
@@ -304,25 +308,31 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagi
 						</ListItemIcon>
 						<ListItemText>View</ListItemText>
 					</MenuItem>,
-					<MenuItem key="edit" onClick={handleEdit}>
-						<ListItemIcon>
-							<EditIcon fontSize="small" />
-						</ListItemIcon>
-						<ListItemText>Edit</ListItemText>
-					</MenuItem>,
-					<MenuItem key="clone" onClick={handleClone}>
-						<ListItemIcon>
-							<ContentCopyIcon fontSize="small" />
-						</ListItemIcon>
-						<ListItemText>Clone</ListItemText>
-					</MenuItem>,
-					<MenuItem key="delete" onClick={handleDelete} sx={{ color: 'error.main' }}>
-						<ListItemIcon>
-							<DeleteIcon fontSize="small" color="error" />
-						</ListItemIcon>
-						<ListItemText>Delete</ListItemText>
-					</MenuItem>
-				]}
+					canEdit && (
+						<MenuItem key="edit" onClick={handleEdit}>
+							<ListItemIcon>
+								<EditIcon fontSize="small" />
+							</ListItemIcon>
+							<ListItemText>Edit</ListItemText>
+						</MenuItem>
+					),
+					canCreate && (
+						<MenuItem key="clone" onClick={handleClone}>
+							<ListItemIcon>
+								<ContentCopyIcon fontSize="small" />
+							</ListItemIcon>
+							<ListItemText>Clone</ListItemText>
+						</MenuItem>
+					),
+					canEdit && (
+						<MenuItem key="delete" onClick={handleDelete} sx={{ color: 'error.main' }}>
+							<ListItemIcon>
+								<DeleteIcon fontSize="small" color="error" />
+							</ListItemIcon>
+							<ListItemText>Delete</ListItemText>
+						</MenuItem>
+					)
+				].filter(Boolean)}
 			</Menu>
 		</Box>
 	);

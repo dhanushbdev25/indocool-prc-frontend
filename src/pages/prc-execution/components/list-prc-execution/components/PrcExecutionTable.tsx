@@ -8,6 +8,7 @@ import {
 } from '@mui/icons-material';
 import TableComponent from '../../../../../components/table/TableComponent';
 import { type PrcExecution } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 
 export type PrcExecutionData = PrcExecution;
 
@@ -21,6 +22,8 @@ interface PrcExecutionTableProps {
 }
 
 const PrcExecutionTable = memo(({ data, onExecute, onOpenReport, pagination, onPaginationChange }: PrcExecutionTableProps) => {
+	const { hasPermission } = useCurrentRole();
+	const canExecute = hasPermission('PRC_EXECUTION_EDIT');
 	// Safety check for data
 	const safeData = data || [];
 
@@ -260,22 +263,24 @@ const PrcExecutionTable = memo(({ data, onExecute, onOpenReport, pagination, onP
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Stack direction="row" spacing={0.5} alignItems="center" flexWrap="nowrap">
-						<Button
-							variant="contained"
-							startIcon={<PlayArrowIcon />}
-							onClick={() => onExecute(row.original.id)}
-							size="small"
-							sx={{
-								backgroundColor: '#1976d2',
-								minWidth: 0,
-								px: 1,
-								'&:hover': {
-									backgroundColor: '#1565c0'
-								}
-							}}
-						>
-							Execute
-						</Button>
+						{canExecute && (
+							<Button
+								variant="contained"
+								startIcon={<PlayArrowIcon />}
+								onClick={() => onExecute(row.original.id)}
+								size="small"
+								sx={{
+									backgroundColor: '#1976d2',
+									minWidth: 0,
+									px: 1,
+									'&:hover': {
+										backgroundColor: '#1565c0'
+									}
+								}}
+							>
+								Execute
+							</Button>
+						)}
 						<Tooltip title="Consolidated report — print or save as PDF">
 							<IconButton
 								size="small"
@@ -290,7 +295,7 @@ const PrcExecutionTable = memo(({ data, onExecute, onOpenReport, pagination, onP
 				)
 			}
 		],
-		[onExecute, onOpenReport]
+		[onExecute, onOpenReport, canExecute]
 	);
 
 	if (safeData.length === 0) {

@@ -3,7 +3,7 @@ import { PlayArrow as ExecutionIcon } from '@mui/icons-material';
 
 const ViewPrcExecution = () => {
 	return (
-		<Box sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+		<Box sx={{ minWidth: 0 }}>
 			<Paper sx={{ p: 4, textAlign: 'center', borderRadius: 2 }}>
 				<ExecutionIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
 				<Typography variant="h4" sx={{ color: '#666', mb: 2 }}>

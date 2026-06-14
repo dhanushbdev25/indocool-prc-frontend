@@ -76,7 +76,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Analytics Dashboard',
 				path: 'dashboard',
 				element: imports.dashboard,
-				permission: 'LISTCATALYST', // Reuse existing permission for now
+				permission: 'PRODUCTION_DASHBOARD_VIEW',
 				isInitial: true,
 				order: 1,
 				showInSidebar: true
@@ -93,7 +93,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Catalyst Master',
 				path: 'catalyst-master',
 				element: imports.catalystMaster,
-				permission: 'LISTCATALYST',
+				permission: 'CATALYST_MASTER_VIEW',
 				order: 1,
 				showInSidebar: true
 			},
@@ -101,21 +101,21 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Create Catalyst',
 				path: 'catalyst-master/create-catalyst',
 				element: imports.createCatalyst,
-				permission: 'CREATECATALYST',
+				permission: 'CATALYST_MASTER_CREATE',
 				showInSidebar: false
 			},
 			{
 				text: 'View Catalyst',
 				path: 'catalyst-master/view-catalyst/:id',
 				element: imports.viewCatalyst,
-				permission: 'EDITCATALYST',
+				permission: 'CATALYST_MASTER_VIEW',
 				showInSidebar: false
 			},
 			{
 				text: 'Edit Catalyst',
 				path: 'catalyst-master/edit-catalyst/:id',
 				element: imports.createCatalyst,
-				permission: 'EDITCATALYST',
+				permission: 'CATALYST_MASTER_EDIT',
 				showInSidebar: false
 			},
 			{
@@ -123,7 +123,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Sequence Master',
 				path: 'sequence-master',
 				element: imports.sequenceMaster,
-				permission: 'LISTPROCESSSEQUENCE',
+				permission: 'SEQUENCE_MASTER_VIEW',
 				order: 2,
 				showInSidebar: true
 			},
@@ -131,28 +131,28 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Create Sequence',
 				path: 'sequence-master/create-sequence',
 				element: imports.createSequence,
-				permission: 'CREATEPROCESSSEQUENCE',
+				permission: 'SEQUENCE_MASTER_CREATE',
 				showInSidebar: false
 			},
 			{
 				text: 'View Sequence',
 				path: 'sequence-master/view-sequence/:id',
 				element: imports.viewSequence,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'SEQUENCE_MASTER_VIEW',
 				showInSidebar: false
 			},
 			{
 				text: 'Edit Sequence',
 				path: 'sequence-master/edit-sequence/:id',
 				element: imports.createSequence,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'SEQUENCE_MASTER_EDIT',
 				showInSidebar: false
 			},
 			{
 				text: 'Clone Sequence',
 				path: 'sequence-master/clone-sequence/:id',
 				element: imports.createSequence,
-				permission: 'CREATEPROCESSSEQUENCE',
+				permission: 'SEQUENCE_MASTER_CREATE',
 				showInSidebar: false
 			},
 			{
@@ -160,7 +160,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Inspection Master',
 				path: 'inspection-master',
 				element: imports.inspectionMaster,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'INSPECTION_MASTER_VIEW',
 				order: 3,
 				showInSidebar: true
 			},
@@ -168,28 +168,28 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Create Inspection',
 				path: 'inspection-master/create-inspection',
 				element: imports.createInspection,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'INSPECTION_MASTER_CREATE',
 				showInSidebar: false
 			},
 			{
 				text: 'View Inspection',
 				path: 'inspection-master/view-inspection/:id',
 				element: imports.viewInspection,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'INSPECTION_MASTER_VIEW',
 				showInSidebar: false
 			},
 			{
 				text: 'Edit Inspection',
 				path: 'inspection-master/edit-inspection/:id',
 				element: imports.createInspection,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'INSPECTION_MASTER_EDIT',
 				showInSidebar: false
 			},
 			{
 				text: 'Clone Inspection',
 				path: 'inspection-master/clone-inspection/:id',
 				element: imports.createInspection,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'INSPECTION_MASTER_CREATE',
 				showInSidebar: false
 			},
 			{
@@ -197,7 +197,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Part Master',
 				path: 'part-master',
 				element: imports.partMaster,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'PART_MASTER_VIEW',
 				order: 5,
 				showInSidebar: true
 			},
@@ -205,21 +205,21 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Create Part',
 				path: 'part-master/create-part',
 				element: imports.createPart,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'PART_MASTER_CREATE',
 				showInSidebar: false
 			},
 			{
 				text: 'View Part',
 				path: 'part-master/view-part/:id',
 				element: imports.viewPart,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'PART_MASTER_VIEW',
 				showInSidebar: false
 			},
 			{
 				text: 'Edit Part',
 				path: 'part-master/edit-part/:id',
 				element: imports.createPart,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'PART_MASTER_EDIT',
 				showInSidebar: false
 			},
 			{
@@ -227,7 +227,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Mould Reconciliation',
 				path: 'mould-reconciliation',
 				element: imports.mouldReconciliation,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'MOULD_RECONCILIATION_VIEW',
 				order: 6,
 				showInSidebar: true
 			}
@@ -243,7 +243,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'SAP integration jobs',
 				path: 'sap-jobs',
 				element: imports.sapJobs,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'SAP_INTEGRATION_JOBS_VIEW',
 				order: 1,
 				showInSidebar: true
 			},
@@ -251,7 +251,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'SAP job run history',
 				path: 'sap-jobs/history/:jobKey',
 				element: imports.sapJobRunHistory,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'SAP_INTEGRATION_JOBS_VIEW',
 				showInSidebar: false
 			}
 		]
@@ -266,7 +266,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'Execute PRC',
 				path: 'prc-execution',
 				element: imports.prcExecution,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'PRC_EXECUTION_VIEW',
 				order: 1,
 				showInSidebar: true
 			},
@@ -274,21 +274,21 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				text: 'View PRC Execution',
 				path: 'prc-execution/view/:id',
 				element: imports.viewPrcExecution,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'PRC_EXECUTION_VIEW',
 				showInSidebar: false
 			},
 			{
 				text: 'Consolidated report',
 				path: 'prc-execution/report/:id',
 				element: imports.prcExecutionReport,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'PRC_EXECUTION_VIEW',
 				showInSidebar: false
 			},
 			{
 				text: 'Execute PRC',
 				path: 'prc-execution/execute/:id',
 				element: imports.executePrc,
-				permission: 'EDITPROCESSSEQUENCE',
+				permission: 'PRC_EXECUTION_EDIT',
 				showInSidebar: false
 			}
 		]

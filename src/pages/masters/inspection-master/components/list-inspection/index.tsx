@@ -21,11 +21,14 @@ import {
 } from '../../../../../store/api/business/inspection-master/inspection.api';
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteInspectionTaskRequest } from '../../../../../store/api/business/inspection-master/inspection.validators';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 
 const SEARCH_PLACEHOLDER = 'Inspection ID, name, or type';
 
 const ListInspection = () => {
 	const navigate = useNavigate();
+	const { hasPermission } = useCurrentRole();
+	const canCreate = hasPermission('INSPECTION_MASTER_CREATE');
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('inspection');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [inspectionToDelete, setInspectionToDelete] = useState<InspectionData | null>(null);
@@ -228,10 +231,12 @@ const ListInspection = () => {
 						onSearchChange={handleSearchChange}
 						onFiltersChange={handleFiltersChange}
 						actions={
-							<ToolbarAddButton
-								label="Add Inspection"
-								onClick={() => navigate('/inspection-master/create-inspection')}
-							/>
+							canCreate ? (
+								<ToolbarAddButton
+									label="Add Inspection"
+									onClick={() => navigate('/inspection-master/create-inspection')}
+								/>
+							) : null
 						}
 					/>
 				}

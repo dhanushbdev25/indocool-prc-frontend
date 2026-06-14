@@ -7,6 +7,7 @@ import {
 	type MouldReconciliationRow,
 	isMouldDueForReconciliation
 } from '../../../../../../store/api/business/mould/mould.validators';
+import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
 
 interface MouldReconciliationTableProps {
 	data: MouldReconciliationRow[];
@@ -19,6 +20,8 @@ interface MouldReconciliationTableProps {
 const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
 const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagination, onPaginationChange }: MouldReconciliationTableProps) => {
+	const { hasPermission } = useCurrentRole();
+	const canReconcileAction = hasPermission('MOULD_RECONCILIATION_EDIT');
 	const columns = useMemo<MRT_ColumnDef<MouldReconciliationRow>[]>(
 		() => [
 			{
@@ -103,6 +106,9 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 					const rowKey = getRowKey(row.original);
 					const isLoading = reconcilingKey === rowKey;
 					const canReconcile = isMouldDueForReconciliation(row.original);
+					if (!canReconcileAction) {
+						return null;
+					}
 					return (
 						<Button
 							variant="contained"
@@ -117,7 +123,7 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 				}
 			}
 		],
-		[onReconcile, reconcilingKey]
+		[onReconcile, reconcilingKey, canReconcileAction]
 	);
 
 	if (!data.length) {

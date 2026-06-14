@@ -10,6 +10,7 @@ import {
 	CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import TableComponent from '../../../../../../components/table/TableComponent';
+import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
 
 export interface PartData {
 	id: number;
@@ -42,6 +43,8 @@ interface PartTableProps {
 }
 
 const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPaginationChange }: PartTableProps) => {
+	const { hasPermission } = useCurrentRole();
+	const canEdit = hasPermission('PART_MASTER_EDIT');
 	const safeData = data || [];
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 	const [selectedRow, setSelectedRow] = useState<PartData | null>(null);
@@ -327,18 +330,22 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPag
 					</ListItemIcon>
 					<ListItemText>View</ListItemText>
 				</MenuItem>
-				<MenuItem onClick={handleEdit}>
-					<ListItemIcon>
-						<EditIcon fontSize="small" />
-					</ListItemIcon>
-					<ListItemText>Edit</ListItemText>
-				</MenuItem>
-				<MenuItem onClick={handleDelete} sx={{ color: '#f44336' }}>
-					<ListItemIcon>
-						<DeleteIcon fontSize="small" sx={{ color: '#f44336' }} />
-					</ListItemIcon>
-					<ListItemText>Delete</ListItemText>
-				</MenuItem>
+				{canEdit && (
+					<MenuItem onClick={handleEdit}>
+						<ListItemIcon>
+							<EditIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>Edit</ListItemText>
+					</MenuItem>
+				)}
+				{canEdit && (
+					<MenuItem onClick={handleDelete} sx={{ color: '#f44336' }}>
+						<ListItemIcon>
+							<DeleteIcon fontSize="small" sx={{ color: '#f44336' }} />
+						</ListItemIcon>
+						<ListItemText>Delete</ListItemText>
+					</MenuItem>
+				)}
 			</Menu>
 		</>
 	);
