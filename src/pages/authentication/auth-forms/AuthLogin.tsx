@@ -117,7 +117,7 @@ const AuthLogin = () => {
 		<form noValidate onSubmit={handleSubmit(onSubmit)}>
 			<FullScreenFormSavingOverlay open={isSubmitting} message="Signing in…" />
 			<Stack spacing={3}>
-				{/* Email Field */}
+				{/* Employee ID Field */}
 				<Box>
 					<InputLabel
 						htmlFor="email-login"
@@ -129,13 +129,13 @@ const AuthLogin = () => {
 							mb: 1
 						}}
 					>
-						Email Address
+						Emp ID
 					</InputLabel>
 					<OutlinedInput
 						id="email-login"
 						type="text"
 						autoComplete="username"
-						placeholder="info@example.com"
+						placeholder="Enter employee ID"
 						fullWidth
 						error={Boolean(errors.employeeId)}
 						{...register('employeeId')}

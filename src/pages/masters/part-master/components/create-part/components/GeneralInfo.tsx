@@ -482,6 +482,35 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 						/>
 					</Grid>
 
+					{/* SQM */}
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name="sqM"
+							control={control}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									value={field.value ?? ''}
+									onChange={event => {
+										const value = event.target.value;
+										field.onChange(value === '' ? undefined : Number(value));
+									}}
+									fullWidth
+									type="number"
+									label="SQM"
+									placeholder="e.g., 12.5"
+									helperText="Square meter value"
+									inputProps={{ min: 0, step: 'any' }}
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: '8px'
+										}
+									}}
+								/>
+							)}
+						/>
+					</Grid>
+
 					{/* Notes */}
 					<Grid size={{ xs: 12 }}>
 						<Divider sx={{ my: 2 }} />

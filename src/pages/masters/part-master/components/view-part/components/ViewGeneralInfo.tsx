@@ -169,6 +169,19 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 					</Grid>
 				)}
 
+				{partMaster.sqM != null && (
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Box sx={{ mb: 2 }}>
+							<Typography variant="body2" sx={{ color: '#666', fontWeight: 500, mb: 0.5 }}>
+								SQM
+							</Typography>
+							<Typography variant="body1" sx={{ color: '#333' }}>
+								{partMaster.sqM}
+							</Typography>
+						</Box>
+					</Grid>
+				)}
+
 				<Grid size={{ xs: 12, md: 6 }}>
 					<Box sx={{ mb: 2 }}>
 						<Typography variant="body2" sx={{ color: '#666', fontWeight: 500, mb: 0.5 }}>

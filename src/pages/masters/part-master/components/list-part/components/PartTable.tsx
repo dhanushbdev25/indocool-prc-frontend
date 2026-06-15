@@ -21,6 +21,7 @@ export interface PartData {
 	customerName: string;
 	description: string;
 	sapReferenceNumber?: string;
+	sqM?: number | null;
 	layupType?: string | null;
 	model?: string | null;
 	version: number;
@@ -207,6 +208,16 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPag
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
 						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'sqM',
+				header: 'SQM',
+				size: 90,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+						{row.original.sqM ?? '—'}
 					</Typography>
 				)
 			},

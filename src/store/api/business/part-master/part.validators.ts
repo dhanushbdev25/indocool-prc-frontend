@@ -98,6 +98,7 @@ export interface PartMaster {
 	drawingNumber: string;
 	drawingRevision?: number;
 	partRevision?: number;
+	sqM?: number | null;
 	status?: PartStatus;
 	customer: string;
 	description: string;

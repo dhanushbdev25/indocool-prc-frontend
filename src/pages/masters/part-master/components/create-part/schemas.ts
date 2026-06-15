@@ -142,6 +142,12 @@ export const partMasterFormSchema = yup.object({
 	drawingNumber: yup.string().trim().required('Drawing number is required'),
 	drawingRevision: yup.number().default(1),
 	partRevision: yup.number().default(1),
+	sqM: yup
+		.number()
+		.transform((value, originalValue) => (originalValue === '' || originalValue == null ? undefined : value))
+		.typeError('SQM must be a number')
+		.min(0, 'SQM cannot be negative')
+		.optional(),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),
 	customerVariantId: yup.number().nullable().optional(),
@@ -236,6 +242,7 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 	drawingNumber: '',
 	drawingRevision: 1,
 	partRevision: 1,
+	sqM: undefined,
 	isActive: true,
 	customer: '',
 	customerVariantId: undefined,
@@ -269,6 +276,12 @@ export const defaultPartMasterFormData: PartMasterFormData = {
 export const generalInfoSchema = yup.object({
 	partNumber: yup.string().trim().required('Part number is required'),
 	drawingNumber: yup.string().trim().required('Drawing number is required'),
+	sqM: yup
+		.number()
+		.transform((value, originalValue) => (originalValue === '' || originalValue == null ? undefined : value))
+		.typeError('SQM must be a number')
+		.min(0, 'SQM cannot be negative')
+		.optional(),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),
 	customerVariantId: yup.number().nullable().optional(),
