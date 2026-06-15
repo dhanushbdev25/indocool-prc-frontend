@@ -12,47 +12,35 @@ import {
 	XAxis,
 	YAxis
 } from 'recharts';
+import { analyticsChartHeight } from '../../constants/dashboardTokens';
+import { hasChartData } from '../../utils/chartHelpers';
+import { DashboardChartEmptyState } from './DashboardChartEmptyState';
+import type { DashboardChartType, ChartDataPoint } from './chartTypes';
 
-export interface ChartDataPoint {
-	name: string;
-	value: number;
-}
-
-export type DashboardChartType = 'bar' | 'line';
+export type { DashboardChartType, ChartDataPoint } from './chartTypes';
 
 interface DashboardChartProps {
 	type: DashboardChartType;
 	data: ChartDataPoint[];
+	height?: number;
 	valueFormatter?: (value: number) => string;
 	xAxisAngle?: number;
 }
 
-const defaultMargin = { top: 28, right: 8, left: -8, bottom: 0 };
+const defaultMargin = { top: 28, right: 8, left: 0, bottom: 0 };
 
 export const DashboardChart = ({
 	type,
 	data,
+	height = analyticsChartHeight,
 	valueFormatter = v => v.toFixed(2),
 	xAxisAngle = -40
 }: DashboardChartProps) => {
 	const theme = useTheme();
 	const chartColor = theme.palette.primary.main;
 
-	if (data.length === 0) {
-		return (
-			<Box
-				sx={{
-					height: '100%',
-					display: 'flex',
-					alignItems: 'center',
-					justifyContent: 'center',
-					color: 'text.secondary',
-					fontSize: '0.875rem'
-				}}
-			>
-				No data for this period
-			</Box>
-		);
+	if (!hasChartData(data)) {
+		return <DashboardChartEmptyState chartType={type} height={height} />;
 	}
 
 	const xAxisProps = {
@@ -71,7 +59,7 @@ export const DashboardChart = ({
 		tick: { fontSize: 11, fill: theme.palette.text.secondary },
 		axisLine: false,
 		tickLine: false,
-		width: 36,
+		width: 40,
 		domain: [0, 'auto'] as [number, 'auto']
 	};
 
@@ -97,40 +85,40 @@ export const DashboardChart = ({
 
 	const gridStroke = alpha(theme.palette.divider, 0.8);
 
-	if (type === 'bar') {
-		return (
-			<ResponsiveContainer width="100%" height="100%">
-				<BarChart data={data} margin={defaultMargin} barCategoryGap="18%">
-					<CartesianGrid strokeDasharray="4 4" stroke={gridStroke} vertical={false} />
-					<XAxis {...xAxisProps} />
-					<YAxis {...yAxisProps} />
-					<Tooltip {...tooltipStyle} formatter={(v: number) => [valueFormatter(v), 'Value']} cursor={{ fill: alpha(chartColor, 0.06) }} />
-					<Bar dataKey="value" fill={chartColor} radius={[6, 6, 0, 0]} maxBarSize={40}>
-						<LabelList dataKey="value" {...labelProps} />
-					</Bar>
-				</BarChart>
-			</ResponsiveContainer>
-		);
-	}
+	const chart = type === 'bar' ? (
+		<BarChart data={data} margin={defaultMargin} barCategoryGap="18%">
+			<CartesianGrid strokeDasharray="4 4" stroke={gridStroke} vertical={false} />
+			<XAxis {...xAxisProps} />
+			<YAxis {...yAxisProps} />
+			<Tooltip {...tooltipStyle} formatter={(v: number) => [valueFormatter(v), 'Value']} cursor={{ fill: alpha(chartColor, 0.06) }} />
+			<Bar dataKey="value" fill={chartColor} radius={[6, 6, 0, 0]} maxBarSize={40}>
+				<LabelList dataKey="value" {...labelProps} />
+			</Bar>
+		</BarChart>
+	) : (
+		<LineChart data={data} margin={defaultMargin}>
+			<CartesianGrid strokeDasharray="4 4" stroke={gridStroke} vertical={false} />
+			<XAxis {...xAxisProps} />
+			<YAxis {...yAxisProps} />
+			<Tooltip {...tooltipStyle} formatter={(v: number) => [valueFormatter(v), 'Value']} />
+			<Line
+				type="monotone"
+				dataKey="value"
+				stroke={chartColor}
+				strokeWidth={2.5}
+				dot={{ fill: chartColor, r: 3.5, strokeWidth: 2, stroke: theme.palette.background.paper }}
+				activeDot={{ r: 5, strokeWidth: 0 }}
+			>
+				<LabelList dataKey="value" {...labelProps} />
+			</Line>
+		</LineChart>
+	);
 
 	return (
-		<ResponsiveContainer width="100%" height="100%">
-			<LineChart data={data} margin={defaultMargin}>
-				<CartesianGrid strokeDasharray="4 4" stroke={gridStroke} vertical={false} />
-				<XAxis {...xAxisProps} />
-				<YAxis {...yAxisProps} />
-				<Tooltip {...tooltipStyle} formatter={(v: number) => [valueFormatter(v), 'Value']} />
-				<Line
-					type="monotone"
-					dataKey="value"
-					stroke={chartColor}
-					strokeWidth={2.5}
-					dot={{ fill: chartColor, r: 3.5, strokeWidth: 2, stroke: theme.palette.background.paper }}
-					activeDot={{ r: 5, strokeWidth: 0 }}
-				>
-					<LabelList dataKey="value" {...labelProps} />
-				</Line>
-			</LineChart>
-		</ResponsiveContainer>
+		<Box sx={{ width: '100%', height, minHeight: height }}>
+			<ResponsiveContainer width="100%" height={height}>
+				{chart}
+			</ResponsiveContainer>
+		</Box>
 	);
 };

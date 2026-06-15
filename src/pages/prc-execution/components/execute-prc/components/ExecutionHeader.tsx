@@ -22,6 +22,8 @@ interface ExecutionHeaderProps {
 	onBackOverride?: () => void;
 	/** Hide Pause / Escalate (not applicable outside live execution). */
 	hideExecutionActions?: boolean;
+	/** Browse-only execution (PRC_EXECUTION_VIEW): adjust title and hide live actions. */
+	viewOnlyMode?: boolean;
 	onCatalystMixingClick?: () => void;
 	catalystMixingDisabled?: boolean;
 }
@@ -35,15 +37,10 @@ function formatCustomerContext(execution: ExecutionData): {
 		typeof execution.customer === 'string' && execution.customer.trim()
 			? execution.customer.trim()
 			: '—';
-	const variantName =
+	const customerVariant =
 		typeof execution.customerVariantName === 'string' && execution.customerVariantName.trim()
 			? execution.customerVariantName.trim()
-			: null;
-	const variantId = execution.customerVariantId;
-	const customerVariant =
-		variantName && variantId != null
-			? `${variantName} (id: ${variantId})`
-			: variantName ?? (variantId != null ? `id: ${variantId}` : '—');
+			: '—';
 	const reservation =
 		execution.reservation != null && String(execution.reservation).trim()
 			? String(execution.reservation).trim()
@@ -100,6 +97,7 @@ const ExecutionHeader = ({
 	executionData,
 	onBackOverride,
 	hideExecutionActions = false,
+	viewOnlyMode = false,
 	onCatalystMixingClick,
 	catalystMixingDisabled = false
 }: ExecutionHeaderProps) => {
@@ -168,7 +166,7 @@ const ExecutionHeader = ({
 					<Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', sm: 'block' } }} />
 					<Box sx={{ minWidth: 0 }}>
 						<Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary', lineHeight: 1.25 }}>
-							{isPreview ? 'PRC preview' : `PRC #${executionData.id}`}
+							{isPreview ? 'PRC preview' : viewOnlyMode ? `View PRC #${executionData.id}` : `PRC #${executionData.id}`}
 						</Typography>
 						<Typography variant="body2" color="text.secondary" noWrap title={executionData.partNumber}>
 							{executionData.partNumber}
@@ -241,7 +239,7 @@ const ExecutionHeader = ({
 						<Chip label={durationLabel} size="small" variant="outlined" color="info" />
 					</Stack>
 
-					{!hideExecutionActions && onCatalystMixingClick && (
+					{!hideExecutionActions && !viewOnlyMode && onCatalystMixingClick && (
 						<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
 							<Button
 								startIcon={<Science />}

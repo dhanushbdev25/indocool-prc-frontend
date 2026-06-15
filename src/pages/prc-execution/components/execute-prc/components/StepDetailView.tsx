@@ -262,6 +262,7 @@ const StepDetailView = ({
 						aggregatedStepsSnapshot={aggregatedStepsSnapshot}
 						onStepComplete={handleSubStepComplete}
 						readOnlyOverride={readOnly}
+						plainReadOnlyFields={readOnly}
 					/>
 				);
 			case 'rawMaterials':

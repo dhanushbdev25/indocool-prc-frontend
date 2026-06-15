@@ -1,10 +1,11 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
+	buildDashboardQueryParams,
 	parseMetricsResponse,
 	parseMouldingAnalysisResponse,
 	parseDatewiseMetricsResponse,
-	type DashboardDateRangeParams,
+	type DashboardQueryParams,
 	type MetricsData,
 	type MouldingAnalysisData,
 	type DatewiseMetricsItem
@@ -15,29 +16,29 @@ export const dashboardApi = createApi({
 	baseQuery,
 	tagTypes: ['DashboardMetrics', 'DashboardDatewise', 'DashboardMouldingAnalysis'],
 	endpoints: builder => ({
-		fetchMetrics: builder.query<MetricsData, DashboardDateRangeParams>({
-			query: ({ from, to }) => ({
+		fetchMetrics: builder.query<MetricsData, DashboardQueryParams>({
+			query: args => ({
 				url: 'dashboardPre/metrics',
 				method: 'GET',
-				params: { from, to }
+				params: buildDashboardQueryParams(args)
 			}),
 			transformResponse: (response: unknown) => parseMetricsResponse(response),
 			providesTags: ['DashboardMetrics']
 		}),
-		fetchDatewiseMetrics: builder.query<DatewiseMetricsItem[], DashboardDateRangeParams>({
-			query: ({ from, to }) => ({
+		fetchDatewiseMetrics: builder.query<DatewiseMetricsItem[], DashboardQueryParams>({
+			query: args => ({
 				url: 'dashboardPre/metrics/datewise',
 				method: 'GET',
-				params: { from, to }
+				params: buildDashboardQueryParams(args)
 			}),
 			transformResponse: (response: unknown) => parseDatewiseMetricsResponse(response),
 			providesTags: ['DashboardDatewise']
 		}),
-		fetchMouldingAnalysis: builder.query<MouldingAnalysisData, DashboardDateRangeParams>({
-			query: ({ from, to }) => ({
+		fetchMouldingAnalysis: builder.query<MouldingAnalysisData, DashboardQueryParams>({
+			query: args => ({
 				url: 'dashboardPre/metrics/moulding-analysis',
 				method: 'GET',
-				params: { from, to }
+				params: buildDashboardQueryParams(args)
 			}),
 			transformResponse: (response: unknown) => parseMouldingAnalysisResponse(response),
 			providesTags: ['DashboardMouldingAnalysis']

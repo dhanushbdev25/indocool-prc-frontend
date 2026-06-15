@@ -83,7 +83,7 @@ export function coerceMouldApiItem(raw: unknown, fallbackIndex: number): MouldAp
 		o.lastReconciled === null || typeof o.lastReconciled === 'string'
 			? (o.lastReconciled as string | null)
 			: undefined;
-	const reconcileNowFlag = o.reconcileNowFlag === true;
+	const reconcileNowFlag = parseReconcileNowFlag(o);
 	return {
 		id,
 		partId,
@@ -99,8 +99,28 @@ export function coerceMouldApiItem(raw: unknown, fallbackIndex: number): MouldAp
 	};
 }
 
+function parseReconcileNowFlag(o: Record<string, unknown>): boolean {
+	const raw = o.reconcileNowFlag ?? o.reconcile_now_flag ?? o.reconcileNow;
+	if (raw === true || raw === 1) return true;
+	if (typeof raw === 'string') {
+		const normalized = raw.trim().toLowerCase();
+		return normalized === 'true' || normalized === 'y' || normalized === 'yes' || normalized === '1';
+	}
+	return false;
+}
+
 export const isMouldDueForReconciliation = (row: MouldReconciliationRow): boolean =>
 	row.reconcileNowFlag || row.currentCount >= row.reconciliationCount;
+
+/** Whether the reconcile action should be shown for the current user. */
+export const canReconcileMouldRow = (
+	row: MouldReconciliationRow,
+	permissions: { canCreate: boolean; canEdit: boolean }
+): { showAction: boolean; isDue: boolean } => {
+	const isDue = isMouldDueForReconciliation(row);
+	const showAction = permissions.canCreate || permissions.canEdit;
+	return { showAction, isDue };
+};
 
 /** GET /mould/combo?partId= — comboFormatter formatComboData */
 export interface MouldComboData {

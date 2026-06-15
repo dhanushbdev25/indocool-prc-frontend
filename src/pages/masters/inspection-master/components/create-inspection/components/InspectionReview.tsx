@@ -29,6 +29,7 @@ import {
 import { useWatch } from 'react-hook-form';
 import { InspectionReviewProps } from '../types';
 import { roleOptions } from '../schemas';
+import { GATE_POSITIVE_LABEL } from '../../../../../../utils/gateLabels';
 
 const InspectionReview = ({ control }: InspectionReviewProps) => {
 	const watchedData = useWatch({ control });
@@ -227,7 +228,7 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 									/>
 									{Boolean(parameter.ctq) && (
 										<Chip
-											label="CTQ"
+											label={GATE_POSITIVE_LABEL}
 											size="small"
 											color="warning"
 											variant="outlined"
@@ -457,7 +458,7 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 						<Card sx={{ p: 2, textAlign: 'center', backgroundColor: '#f8f9fa', border: '1px solid #e9ecef' }}>
 							<CardContent sx={{ p: 1 }}>
 								<Typography variant="body2" sx={{ color: '#666', mb: 1 }}>
-									CTQ Parameters
+									Gate Parameters
 								</Typography>
 								<Typography variant="h4" sx={{ fontWeight: 600, color: '#ff9800' }}>
 									{watchedData.inspectionParameters?.filter((p: Record<string, unknown>) => p.ctq).length || 0}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
 import { FullScreenFormSavingOverlay } from '../../../../components/common/FullScreenFormSavingOverlay';
 import { useCurrentRole } from '../../../../hooks/useCurrentRole';
@@ -39,9 +39,11 @@ type ViewState = 'list' | 'detail' | 'preview';
 const ExecutePrc = () => {
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
+	const location = useLocation();
 	const executionId = id ? parseInt(id, 10) : 0;
+	const isViewOnlyMode = location.pathname.includes('/prc-execution/view/');
 	const { userInfo, hasPermission } = useCurrentRole();
-	const canKit = hasPermission('KITTING_UPDATE');
+	const canKit = hasPermission('KITTING_UPDATE') && !isViewOnlyMode;
 
 	// State management
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -321,7 +323,7 @@ const ExecutePrc = () => {
 
 	// Handle step completion - save data and determine next action
 	const handleStepComplete = async (stepFormData: FormData): Promise<void> => {
-		if (!currentStep || !executionData) return;
+		if (isViewOnlyMode || !currentStep || !executionData) return;
 
 		try {
 			// For sequence steps, we need to create a proper step object with stepData
@@ -559,7 +561,7 @@ const ExecutePrc = () => {
 	};
 
 	const handleCatalystMixingSave = async (stepFormData: FormData): Promise<void> => {
-		if (!executionData) return;
+		if (isViewOnlyMode || !executionData) return;
 
 		const actualData = (executionData as { data: ExecutionData }).data;
 		const catalystStep = buildCatalystMixingTimelineStep(actualData, { status: 'pending' });
@@ -618,7 +620,7 @@ const ExecutePrc = () => {
 
 	// Handle approval actions
 	const handleApproveProduction = async () => {
-		if (!currentStep || !executionData || !previewData) return;
+		if (isViewOnlyMode || !currentStep || !executionData || !previewData) return;
 
 		try {
 			// Record the timestamp when approve production button was clicked
@@ -729,7 +731,7 @@ const ExecutePrc = () => {
 	};
 
 	const handleApproveCTQ = async () => {
-		if (!currentStep || !executionData || !previewData) return;
+		if (isViewOnlyMode || !currentStep || !executionData || !previewData) return;
 
 		try {
 			// Record the timestamp when approve CTQ button was clicked
@@ -840,7 +842,7 @@ const ExecutePrc = () => {
 	};
 
 	const handlePartialApproveCTQ = async () => {
-		if (!currentStep || !executionData || !previewData) return;
+		if (isViewOnlyMode || !currentStep || !executionData || !previewData) return;
 
 		try {
 			// Record the timestamp when partial approve CTQ button was clicked
@@ -952,7 +954,7 @@ const ExecutePrc = () => {
 
 	// Handle proceeding to next step after approvals
 	const handleProceedToNext = async (payload?: ProceedFromPreviewPayload) => {
-		if (!currentStep || !executionData) return;
+		if (isViewOnlyMode || !currentStep || !executionData) return;
 
 		try {
 			const endTime = new Date().toISOString();
@@ -1114,7 +1116,7 @@ const ExecutePrc = () => {
 		if (!targetStep) return;
 
 		// Check if user is trying to skip ahead without completing current step
-		if (stepIndex > currentStepIndex) {
+		if (!isViewOnlyMode && stepIndex > currentStepIndex) {
 			// Check if current step is properly completed
 			const currentStepCompleted = isStepProperlyCompleted(timelineSteps[currentStepIndex]);
 			if (!currentStepCompleted) {
@@ -1128,7 +1130,9 @@ const ExecutePrc = () => {
 		// For sequence step groups, check if all steps are filled
 		if (targetStep.type === 'sequence' && targetStep.stepGroup) {
 			// Initialize start time when clicking on sequence step group
-			initializeStepStartTime();
+			if (!isViewOnlyMode) {
+				initializeStepStartTime();
+			}
 
 			const allStepsFilled = areAllStepsInGroupFilled(targetStep);
 
@@ -1219,6 +1223,11 @@ const ExecutePrc = () => {
 				return;
 			} else {
 				// Not all steps completed, go to detail view
+				if (isViewOnlyMode) {
+					setCurrentStepIndex(stepIndex);
+					setCurrentView('detail');
+					return;
+				}
 				const lastCompletedStepIndex = findLastCompletedStepInGroup(targetStep);
 				if (lastCompletedStepIndex !== -1) {
 					setCurrentStepIndex(stepIndex);
@@ -1267,7 +1276,12 @@ const ExecutePrc = () => {
 		}
 
 		// For other step types, allow navigation to completed steps or current step
-		if (targetStep.status === 'completed' || targetStep.status === 'in-progress' || stepIndex === currentStepIndex) {
+		if (
+			isViewOnlyMode ||
+			targetStep.status === 'completed' ||
+			targetStep.status === 'in-progress' ||
+			stepIndex === currentStepIndex
+		) {
 			setCurrentStepIndex(stepIndex);
 			setCurrentView('detail');
 		}
@@ -1408,7 +1422,7 @@ const ExecutePrc = () => {
 	return (
 		<>
 			<FullScreenFormSavingOverlay
-				open={isExecutionDataFetching || isUpdateProgressLoading}
+				open={!isViewOnlyMode && (isExecutionDataFetching || isUpdateProgressLoading)}
 				message={isUpdateProgressLoading ? 'Saving…' : 'Refreshing…'}
 			/>
 			<Box
@@ -1425,6 +1439,8 @@ const ExecutePrc = () => {
 				{/* Header */}
 				<ExecutionHeader
 					executionData={actualExecutionData}
+					viewOnlyMode={isViewOnlyMode}
+					hideExecutionActions={isViewOnlyMode}
 					onCatalystMixingClick={catalystMixingStep && canKit ? handleOpenCatalystMixing : undefined}
 					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
 				/>
@@ -1439,6 +1455,7 @@ const ExecutePrc = () => {
 									steps={timelineSteps}
 									currentStepIndex={currentStepIndex}
 									onStepClick={handleStepNavigation}
+									previewMode={isViewOnlyMode}
 									stepStartEndTime={actualExecutionData.stepStartEndTime ?? {}}
 									executionId={actualExecutionData.id}
 								/>
@@ -1455,6 +1472,7 @@ const ExecutePrc = () => {
 							step={currentStep}
 							executionData={actualExecutionData}
 							aggregatedStepsSnapshot={getCurrentAggregatedData()}
+							readOnly={isViewOnlyMode}
 							onBackToList={handleBackToList}
 							onPreviousStep={() => {
 								if (currentStepIndex > 0) {
@@ -1477,6 +1495,7 @@ const ExecutePrc = () => {
 							<StepPreview
 								key={`preview-${currentStepIndex}-${previewData.stepNumber}-${previewData.type}`}
 								previewData={previewData}
+								readOnlyMode={isViewOnlyMode}
 								onBackToStep={handleBackToStep}
 								onApproveProduction={handleApproveProduction}
 								onApproveCTQ={handleApproveCTQ}

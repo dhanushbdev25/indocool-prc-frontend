@@ -23,6 +23,7 @@ import { Control, UseFormSetValue, useWatch } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import { useFetchPrcTemplateInspectionsQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import { ImageItem } from '../../../../../../hooks/useImageGallery';
+import { GATE_POSITIVE_LABEL } from '../../../../../../utils/gateLabels';
 
 interface InspectionParameter {
 	id: number;
@@ -328,7 +329,9 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 												<Typography variant="subtitle1" sx={{ fontWeight: 600, mr: 2 }}>
 													{parameter.parameterName}
 												</Typography>
-												{parameter.ctq && <Chip label="CTQ" size="small" color="error" variant="outlined" />}
+												{parameter.ctq && (
+													<Chip label={GATE_POSITIVE_LABEL} size="small" color="error" variant="outlined" />
+												)}
 												<Chip label={parameter.role} size="small" color="primary" variant="outlined" sx={{ ml: 1 }} />
 											</Box>
 

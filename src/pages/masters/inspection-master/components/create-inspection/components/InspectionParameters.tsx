@@ -45,10 +45,19 @@ import {
 	Lock as LockIcon,
 	LockOpen as LockOpenIcon
 } from '@mui/icons-material';
-import { Controller, useFieldArray, Control, useWatch, useFormContext } from 'react-hook-form';
+import {
+	Controller,
+	useFieldArray,
+	Control,
+	useWatch,
+	useFormContext,
+	UseFormGetValues,
+	UseFormSetValue
+} from 'react-hook-form';
 import { InspectionParametersProps } from '../types';
 import { InspectionFormData } from '../schemas';
 import { OK_NOT_OK_NEGATIVE_LABEL, OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../../utils/okNotOkLabels';
+import { GATE_FIELD_LABEL, GATE_NEGATIVE_LABEL, GATE_POSITIVE_LABEL } from '../../../../../../utils/gateLabels';
 import {
 	defaultInspectionParameter,
 	defaultColumn,
@@ -57,7 +66,30 @@ import {
 	columnTypeOptions
 } from '../schemas';
 
+function isEmptyNumericField(value: unknown): boolean {
+	return value === '' || value === undefined || value === null;
+}
+
+function applyNumberDefaults(
+	setValue: UseFormSetValue<InspectionFormData>,
+	getValues: UseFormGetValues<InspectionFormData>,
+	basePath: string
+) {
+	const fields = basePath.includes('.columns.')
+		? (['defaultValue', 'minimumAcceptanceValue', 'maximumAcceptanceValue'] as const)
+		: (['minimumAcceptanceValue', 'maximumAcceptanceValue'] as const);
+
+	for (const field of fields) {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const formPath = `${basePath}.${field}` as any;
+		if (isEmptyNumericField(getValues(formPath))) {
+			setValue(formPath, 0, { shouldDirty: true });
+		}
+	}
+}
+
 const InspectionParameters = ({ control, errors }: InspectionParametersProps) => {
+	const { setValue, getValues } = useFormContext<InspectionFormData>();
 	const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set([0]));
 	const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<number>>(new Set());
 
@@ -256,7 +288,21 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 									render={({ field }) => (
 										<FormControl fullWidth error={!!fieldErrors?.type}>
 											<InputLabel>Parameter Type</InputLabel>
-											<Select {...field} label="Parameter Type">
+											<Select
+												{...field}
+												label="Parameter Type"
+												onChange={e => {
+													const newType = e.target.value;
+													field.onChange(newType);
+													if (newType === 'number') {
+														applyNumberDefaults(
+															setValue,
+															getValues,
+															`inspectionParameters.${index}`
+														);
+													}
+												}}
+											>
 												{parameterTypeOptions.map(option => (
 													<MenuItem key={option.value} value={option.value}>
 														{option.label}
@@ -388,25 +434,26 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 								/>
 							</Grid>
 
-							{/* CTQ Checkbox */}
+							{/* Gate / Not Gate */}
 							<Grid size={{ xs: 12, sm: 6 }}>
 								<Controller
 									name={`inspectionParameters.${index}.ctq`}
 									control={control as Control<InspectionFormData>}
 									render={({ field }) => (
-										<FormControlLabel
-											control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
-											label={
-												<Box>
-													<Typography variant="body1" sx={{ fontWeight: 500 }}>
-														Critical to Quality (CTQ)
-													</Typography>
-													<Typography variant="caption" sx={{ color: '#666' }}>
-														Mark this parameter as critical for quality control
-													</Typography>
-												</Box>
-											}
-										/>
+										<FormControl fullWidth>
+											<InputLabel>{GATE_FIELD_LABEL}</InputLabel>
+											<Select
+												label={GATE_FIELD_LABEL}
+												value={field.value ? 'gate' : 'not_gate'}
+												onChange={e => field.onChange(e.target.value === 'gate')}
+											>
+												<MenuItem value="gate">{GATE_POSITIVE_LABEL}</MenuItem>
+												<MenuItem value="not_gate">{GATE_NEGATIVE_LABEL}</MenuItem>
+											</Select>
+											<Typography variant="caption" sx={{ color: '#666', mt: 0.5, ml: 1.5 }}>
+												Select whether this parameter is a quality gate
+											</Typography>
+										</FormControl>
 									)}
 								/>
 							</Grid>
@@ -890,6 +937,7 @@ const ParameterColumns = memo(
 		control: unknown;
 		errors: Record<string, unknown>;
 	}) => {
+		const { setValue, getValues } = useFormContext<InspectionFormData>();
 		const {
 			fields: columnFields,
 			append: appendColumn,
@@ -1019,7 +1067,21 @@ const ParameterColumns = memo(
 												}
 											>
 												<InputLabel>Data Type</InputLabel>
-												<Select {...field} label="Data Type">
+												<Select
+													{...field}
+													label="Data Type"
+													onChange={e => {
+														const newType = e.target.value;
+														field.onChange(newType);
+														if (newType === 'number') {
+															applyNumberDefaults(
+																setValue,
+																getValues,
+																`inspectionParameters.${parameterIndex}.columns.${columnIndex}`
+															);
+														}
+													}}
+												>
 													{columnTypeOptions.map(option => (
 														<MenuItem key={option.value} value={option.value}>
 															{option.label}

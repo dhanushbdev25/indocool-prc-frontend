@@ -5,6 +5,7 @@ import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from '
 import TableComponent from '../../../../../../components/table/TableComponent';
 import {
 	type MouldReconciliationRow,
+	canReconcileMouldRow,
 	isMouldDueForReconciliation
 } from '../../../../../../store/api/business/mould/mould.validators';
 import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
@@ -21,7 +22,10 @@ const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
 const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagination, onPaginationChange }: MouldReconciliationTableProps) => {
 	const { hasPermission } = useCurrentRole();
-	const canReconcileAction = hasPermission('MOULD_RECONCILIATION_EDIT');
+	const reconcilePermissions = {
+		canCreate: hasPermission('MOULD_RECONCILIATION_CREATE'),
+		canEdit: hasPermission('MOULD_RECONCILIATION_EDIT')
+	};
 	const columns = useMemo<MRT_ColumnDef<MouldReconciliationRow>[]>(
 		() => [
 			{
@@ -105,8 +109,8 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 				Cell: ({ row }) => {
 					const rowKey = getRowKey(row.original);
 					const isLoading = reconcilingKey === rowKey;
-					const canReconcile = isMouldDueForReconciliation(row.original);
-					if (!canReconcileAction) {
+					const { showAction, isDue } = canReconcileMouldRow(row.original, reconcilePermissions);
+					if (!showAction) {
 						return null;
 					}
 					return (
@@ -114,8 +118,8 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 							variant="contained"
 							size="small"
 							onClick={() => onReconcile(row.original)}
-							disabled={isLoading || !canReconcile}
-							title={!canReconcile ? 'Not due for reconciliation yet' : undefined}
+							disabled={isLoading}
+							title={!isDue ? 'Reconcile mould (not yet due by count)' : undefined}
 						>
 							Reconcile
 						</Button>
@@ -123,7 +127,7 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 				}
 			}
 		],
-		[onReconcile, reconcilingKey, canReconcileAction]
+		[onReconcile, reconcilingKey, reconcilePermissions.canCreate, reconcilePermissions.canEdit]
 	);
 
 	if (!data.length) {

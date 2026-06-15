@@ -5,6 +5,7 @@ import CatalystTableSkeleton from '../../../../components/common/skeleton/Cataly
 import { useFetchSapJobConfigsQuery } from '../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import type { SapJobConfigItem } from '../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
 import { useListView } from '../../../../hooks/useListView';
+import { useCurrentRole } from '../../../../hooks/useCurrentRole';
 import SapJobsHeader from './components/SapJobsHeader';
 import SapJobsManagement, {
 	SAP_JOBS_ALL_ENABLED,
@@ -14,6 +15,8 @@ import SapJobConfigsTable from './components/SapJobConfigsTable';
 
 const ListSapJobs = () => {
 	const navigate = useNavigate();
+	const { hasPermission } = useCurrentRole();
+	const canCreate = hasPermission('SAP_INTEGRATION_JOBS_CREATE');
 	const { searchTerm, filters, pagination, setSearchTerm, setFilter, setPagination } = useListView('sapJobs');
 	const jobKeyFilter = typeof filters.jobKey === 'string' ? filters.jobKey : SAP_JOBS_ALL_KEYS;
 	const enabledFilter = typeof filters.enabled === 'string' ? filters.enabled : SAP_JOBS_ALL_ENABLED;
@@ -52,9 +55,10 @@ const ListSapJobs = () => {
 
 	const handleViewHistory = useCallback(
 		(row: SapJobConfigItem) => {
+			if (!canCreate) return;
 			navigate(`/sap-jobs/history/${encodeURIComponent(row.jobKey)}`);
 		},
-		[navigate]
+		[navigate, canCreate]
 	);
 
 	const listErrorMessage =

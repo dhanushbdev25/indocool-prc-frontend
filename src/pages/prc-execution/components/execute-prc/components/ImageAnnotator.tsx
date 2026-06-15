@@ -43,6 +43,7 @@ import {
 	getDefectStyle,
 	countAnnotationsByCategory
 } from './defectAnnotationStyles';
+import { GATE_FIELD_LABEL, formatGateValueForDisplay } from '../../../../../utils/gateLabels';
 
 export interface ImageAnnotatorParameterContext {
 	parameterName: string;
@@ -702,9 +703,11 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 						{parameterContext.ctq !== undefined && (
 							<Grid size={{ xs: 6, sm: 3 }}>
 								<Typography variant="caption" color="text.secondary">
-									CTQ
+									{GATE_FIELD_LABEL}
 								</Typography>
-								<Typography variant="body2">{parameterContext.ctq ? 'Yes' : 'No'}</Typography>
+								<Typography variant="body2">
+									{formatGateValueForDisplay(!!parameterContext.ctq)}
+								</Typography>
 							</Grid>
 						)}
 						{parameterContext.specification ? (

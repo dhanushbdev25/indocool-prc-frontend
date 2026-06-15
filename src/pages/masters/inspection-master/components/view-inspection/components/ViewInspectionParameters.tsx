@@ -21,6 +21,7 @@ import { ExpandMore, Warning, Link, Lock as LockIcon } from '@mui/icons-material
 import { InspectionParameter } from '../../../../../../store/api/business/inspection-master/inspection.validators';
 import { roleOptions } from '../../create-inspection/schemas';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
+import { GATE_FIELD_LABEL, GATE_POSITIVE_LABEL, formatGateValueForDisplay } from '../../../../../../utils/gateLabels';
 
 interface ViewInspectionParametersProps {
 	parameters: InspectionParameter[];
@@ -104,7 +105,13 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 											}}
 										/>
 										{parameter.ctq && (
-											<Chip icon={<Warning />} label="CTQ" size="small" color="warning" variant="outlined" />
+											<Chip
+												icon={<Warning />}
+												label={GATE_POSITIVE_LABEL}
+												size="small"
+												color="warning"
+												variant="outlined"
+											/>
 										)}
 										{parameter.getInstrumentId && (
 											<Chip label="Instrument ID" size="small" color="info" variant="outlined" />
@@ -148,11 +155,11 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 										</Grid>
 										<Grid size={{ xs: 12, md: 6 }}>
 											<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-												Critical to Quality
+												{GATE_FIELD_LABEL}
 											</Typography>
 											<Chip
 												icon={parameter.ctq ? <Warning /> : undefined}
-												label={parameter.ctq ? 'YES' : 'NO'}
+												label={formatGateValueForDisplay(parameter.ctq)}
 												size="small"
 												sx={{
 													backgroundColor: parameter.ctq ? '#ff9800' : '#9e9e9e',

@@ -31,6 +31,7 @@ import {
 	type FilterValue
 } from '../../../../../components/masters';
 import { useListView } from '../../../../../hooks/useListView';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import MouldHeader from './components/MouldHeader';
 import MouldReconciliationTable from './components/MouldReconciliationTable';
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
@@ -40,6 +41,9 @@ const SEARCH_PLACEHOLDER = 'Part number, mould code, SAP reference';
 const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
 const ListMouldReconciliation = () => {
+	const { hasPermission } = useCurrentRole();
+	const canReconcileAction =
+		hasPermission('MOULD_RECONCILIATION_CREATE') || hasPermission('MOULD_RECONCILIATION_EDIT');
 	const { data: rows = [], isLoading, isFetching, isError, error, refetch } = useFetchMouldsQuery();
 	const [reconcileMould, { isLoading: isReconciling }] = useReconcileMouldMutation();
 
@@ -108,6 +112,7 @@ const ListMouldReconciliation = () => {
 	);
 
 	const handleRequestReconcile = (row: MouldReconciliationRow) => {
+		if (!canReconcileAction) return;
 		setSelectedRow(row);
 		setConfirmOpen(true);
 		setActionError(null);
@@ -119,7 +124,7 @@ const ListMouldReconciliation = () => {
 	};
 
 	const handleConfirmReconcile = async () => {
-		if (!selectedRow) return;
+		if (!selectedRow || !canReconcileAction) return;
 		const rowKey = getRowKey(selectedRow);
 		setReconcilingKey(rowKey);
 		setActionError(null);

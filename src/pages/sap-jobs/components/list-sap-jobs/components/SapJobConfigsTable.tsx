@@ -4,6 +4,7 @@ import { CloudSync as SapIcon } from '@mui/icons-material';
 import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import TableComponent from '../../../../../components/table/TableComponent';
 import type { SapJobConfigItem } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 
 const formatDt = (iso: string): string => {
 	try {
@@ -21,6 +22,8 @@ interface SapJobConfigsTableProps {
 }
 
 const SapJobConfigsTable = memo(({ data, onViewHistory, pagination, onPaginationChange }: SapJobConfigsTableProps) => {
+	const { hasPermission } = useCurrentRole();
+	const canCreate = hasPermission('SAP_INTEGRATION_JOBS_CREATE');
 	const columns = useMemo<MRT_ColumnDef<SapJobConfigItem>[]>(
 		() => [
 			{
@@ -55,20 +58,24 @@ const SapJobConfigsTable = memo(({ data, onViewHistory, pagination, onPagination
 				sortingFn: (rowA, rowB) =>
 					new Date(rowA.original.updatedAt).getTime() - new Date(rowB.original.updatedAt).getTime()
 			},
-			{
-				id: 'actions',
-				header: 'Actions',
-				size: 160,
-				enableSorting: false,
-				enableColumnFilter: false,
-				Cell: ({ row }) => (
-					<Button variant="contained" size="small" onClick={() => onViewHistory(row.original)}>
-						View run history
-					</Button>
-				)
-			}
+			...(canCreate
+				? [
+						{
+							id: 'actions',
+							header: 'Actions',
+							size: 160,
+							enableSorting: false,
+							enableColumnFilter: false,
+							Cell: ({ row }: { row: { original: SapJobConfigItem } }) => (
+								<Button variant="contained" size="small" onClick={() => onViewHistory(row.original)}>
+									View run history
+								</Button>
+							)
+						} satisfies MRT_ColumnDef<SapJobConfigItem>
+					]
+				: [])
 		],
-		[onViewHistory]
+		[onViewHistory, canCreate]
 	);
 
 	if (!data.length) {

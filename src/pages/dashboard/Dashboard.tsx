@@ -7,6 +7,8 @@ import {
 import { analyticsPageGap } from './constants/dashboardTokens';
 import { DATEWISE_STAGE_CONFIG } from './constants/stageConfig';
 import { useDashboardDateRange } from './hooks/useDashboardDateRange';
+import { useDashboardEntityFilters } from './hooks/useDashboardEntityFilters';
+import { useDashboardFilterOptions } from './hooks/useDashboardFilterOptions';
 import { DashboardPageHeader } from './components/DashboardPageHeader';
 import { DashboardSection } from './components/DashboardSection';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
@@ -31,7 +33,21 @@ const Dashboard = () => {
 		customTo
 	} = useDashboardDateRange();
 
-	const queryArgs = { from, to };
+	const { filters, setFilter, clearAll, hasActiveFilters } = useDashboardEntityFilters();
+	const { unitOptions, workstationOptions, shiftOptions, projectOptions } = useDashboardFilterOptions({
+		from,
+		to,
+		isReady
+	});
+
+	const queryArgs = {
+		from,
+		to,
+		units: filters.units,
+		workstation: filters.workstation,
+		shift: filters.shift,
+		projects: filters.projects
+	};
 	const skip = !isReady;
 
 	const metricsQuery = useFetchMetricsQuery(queryArgs, { skip });
@@ -64,6 +80,15 @@ const Dashboard = () => {
 				onCustomRangeChange={setCustomRange}
 				customFrom={customFrom}
 				customTo={customTo}
+				filters={filters}
+				onFilterChange={setFilter}
+				onClearFilters={clearAll}
+				hasActiveFilters={hasActiveFilters}
+				unitOptions={unitOptions}
+				workstationOptions={workstationOptions}
+				shiftOptions={shiftOptions}
+				projectOptions={projectOptions}
+				filtersDisabled={!isReady}
 			/>
 
 			<Stack spacing={analyticsPageGap}>
@@ -71,44 +96,40 @@ const Dashboard = () => {
 
 				{metricsQuery.data ? <MetricsKpiGrid data={metricsQuery.data} /> : null}
 
-				{mouldingQuery.data ? (
-					<DashboardSection
-						title="Moulding analysis"
-						subtitle="Project output, loss minutes, and workstation performance"
-					>
-						<Grid container spacing={2}>
-							<Grid size={{ xs: 12, lg: 4 }}>
-								<ProjectOutputChart data={mouldingQuery.data.projectWise} />
-							</Grid>
-							<Grid size={{ xs: 12, lg: 4 }}>
-								<ProjectLossChart data={mouldingQuery.data.projectLoss} />
-							</Grid>
-							<Grid size={{ xs: 12, lg: 4 }}>
-								<WorkstationOutputChart data={mouldingQuery.data.workstationWise} />
-							</Grid>
+				<DashboardSection
+					title="Moulding analysis"
+					subtitle="Project output, loss minutes, and workstation performance"
+				>
+					<Grid container spacing={2}>
+						<Grid size={{ xs: 12, lg: 4 }}>
+							<ProjectOutputChart data={mouldingQuery.data?.projectWise ?? []} />
 						</Grid>
-					</DashboardSection>
-				) : null}
+						<Grid size={{ xs: 12, lg: 4 }}>
+							<ProjectLossChart data={mouldingQuery.data?.projectLoss ?? []} />
+						</Grid>
+						<Grid size={{ xs: 12, lg: 4 }}>
+							<WorkstationOutputChart data={mouldingQuery.data?.workstationWise ?? []} />
+						</Grid>
+					</Grid>
+				</DashboardSection>
 
-				{datewiseData ? (
-					<DashboardSection
-						title="Daily output trends"
-						subtitle="Stage-wise output percentage across the selected date range"
-					>
-						<Grid container spacing={2}>
-							{DATEWISE_STAGE_CONFIG.map(stage => (
-								<Grid key={stage.key} size={{ xs: 12, md: 6, xl: 4 }}>
-									<DatewiseOutputChart
-										title={`${stage.label} output (%)`}
-										data={datewiseData}
-										stageKey={stage.key}
-										chartType={stage.datewiseChartType!}
-									/>
-								</Grid>
-							))}
-						</Grid>
-					</DashboardSection>
-				) : null}
+				<DashboardSection
+					title="Daily output trends"
+					subtitle="Stage-wise output percentage across the selected date range"
+				>
+					<Grid container spacing={2}>
+						{DATEWISE_STAGE_CONFIG.map(stage => (
+							<Grid key={stage.key} size={{ xs: 12, md: 6, xl: 4 }}>
+								<DatewiseOutputChart
+									title={`${stage.label} output (%)`}
+									data={datewiseData ?? []}
+									stageKey={stage.key}
+									chartType={stage.datewiseChartType!}
+								/>
+							</Grid>
+						))}
+					</Grid>
+				</DashboardSection>
 			</Stack>
 		</Box>
 	);

@@ -44,6 +44,10 @@ import {
 	OK_NOT_OK_NEGATIVE_LABEL,
 	OK_NOT_OK_POSITIVE_LABEL
 } from '../../../../../../utils/okNotOkLabels';
+import {
+	GATE_FIELD_LABEL,
+	formatGateValueForDisplay
+} from '../../../../../../utils/gateLabels';
 
 interface InspectionStepProps {
 	step: TimelineStep;
@@ -1217,7 +1221,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 						<TableRow>
 							<TableCell sx={{ fontWeight: 600, backgroundColor: '#f5f5f5' }}>#</TableCell>
 							<TableCell sx={{ fontWeight: 600, backgroundColor: '#f5f5f5' }}>Parameter Name</TableCell>
-							<TableCell sx={{ fontWeight: 600, backgroundColor: '#f5f5f5' }}>CTQ</TableCell>
+							<TableCell sx={{ fontWeight: 600, backgroundColor: '#f5f5f5' }}>{GATE_FIELD_LABEL}</TableCell>
 							<TableCell sx={{ fontWeight: 600, backgroundColor: '#f5f5f5' }}>Value</TableCell>
 							<TableCell sx={{ fontWeight: 600, backgroundColor: '#f5f5f5' }}>Images</TableCell>
 							<TableCell sx={{ fontWeight: 600, backgroundColor: '#f5f5f5' }}>Specification</TableCell>
@@ -1256,7 +1260,13 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 											</Typography>
 										</TableCell>
 										<TableCell>
-											{param.ctq && <Chip label="CTQ" size="small" color="warning" sx={{ fontSize: '0.75rem' }} />}
+											<Chip
+												label={formatGateValueForDisplay(!!param.ctq)}
+												size="small"
+												color={param.ctq ? 'warning' : 'default'}
+												variant={param.ctq ? 'filled' : 'outlined'}
+												sx={{ fontSize: '0.75rem' }}
+											/>
 										</TableCell>
 										<TableCell>
 											{isFixedTableType ? (

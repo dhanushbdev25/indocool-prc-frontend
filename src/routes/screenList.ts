@@ -273,7 +273,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 			{
 				text: 'View PRC Execution',
 				path: 'prc-execution/view/:id',
-				element: imports.viewPrcExecution,
+				element: imports.executePrc,
 				permission: 'PRC_EXECUTION_VIEW',
 				showInSidebar: false
 			},

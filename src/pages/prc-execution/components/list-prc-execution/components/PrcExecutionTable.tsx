@@ -3,6 +3,7 @@ import { Box, Chip, Button, Typography, LinearProgress, Tooltip, Stack, IconButt
 import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import {
 	PlayArrow as PlayArrowIcon,
+	Visibility as VisibilityIcon,
 	CheckCircle as CheckCircleIcon,
 	PictureAsPdf as PictureAsPdfIcon
 } from '@mui/icons-material';
@@ -15,15 +16,17 @@ export type PrcExecutionData = PrcExecution;
 interface PrcExecutionTableProps {
 	data: PrcExecutionData[];
 	onExecute: (id: number) => void;
+	onView: (id: number) => void;
 	/** Opens consolidated report for print / Save as PDF */
 	onOpenReport: (id: number) => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const PrcExecutionTable = memo(({ data, onExecute, onOpenReport, pagination, onPaginationChange }: PrcExecutionTableProps) => {
+const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, pagination, onPaginationChange }: PrcExecutionTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canExecute = hasPermission('PRC_EXECUTION_EDIT');
+	const canView = hasPermission('PRC_EXECUTION_VIEW');
 	// Safety check for data
 	const safeData = data || [];
 
@@ -281,6 +284,17 @@ const PrcExecutionTable = memo(({ data, onExecute, onOpenReport, pagination, onP
 								Execute
 							</Button>
 						)}
+						{canView && !canExecute && (
+							<Button
+								variant="outlined"
+								startIcon={<VisibilityIcon />}
+								onClick={() => onView(row.original.id)}
+								size="small"
+								sx={{ minWidth: 0, px: 1 }}
+							>
+								View
+							</Button>
+						)}
 						<Tooltip title="Consolidated report — print or save as PDF">
 							<IconButton
 								size="small"
@@ -295,7 +309,7 @@ const PrcExecutionTable = memo(({ data, onExecute, onOpenReport, pagination, onP
 				)
 			}
 		],
-		[onExecute, onOpenReport, canExecute]
+		[onExecute, onView, onOpenReport, canExecute, canView]
 	);
 
 	if (safeData.length === 0) {

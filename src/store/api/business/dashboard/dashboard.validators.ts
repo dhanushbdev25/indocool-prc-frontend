@@ -5,6 +5,41 @@ export interface DashboardDateRangeParams {
 	to: string;
 }
 
+export interface DashboardEntityFilterParams {
+	units?: string[];
+	workstation?: string[];
+	shift?: string[];
+	projects?: string[];
+}
+
+export interface DashboardQueryParams extends DashboardDateRangeParams, DashboardEntityFilterParams {}
+
+export interface DashboardQueryWireParams extends DashboardDateRangeParams {
+	units?: string;
+	workstation?: string;
+	shift?: string;
+	projects?: string;
+}
+
+const joinFilterValues = (values: string[] | undefined): string | undefined => {
+	if (!values?.length) return undefined;
+	const joined = values.map(v => v.trim()).filter(Boolean).join(',');
+	return joined || undefined;
+};
+
+export const buildDashboardQueryParams = (args: DashboardQueryParams): DashboardQueryWireParams => {
+	const params: DashboardQueryWireParams = { from: args.from, to: args.to };
+	const units = joinFilterValues(args.units);
+	const workstation = joinFilterValues(args.workstation);
+	const shift = joinFilterValues(args.shift);
+	const projects = joinFilterValues(args.projects);
+	if (units) params.units = units;
+	if (workstation) params.workstation = workstation;
+	if (shift) params.shift = shift;
+	if (projects) params.projects = projects;
+	return params;
+};
+
 export interface MetricBlock {
 	total: number;
 	completed: number;

@@ -175,6 +175,10 @@ const ListPrcExecution = () => {
 		navigate(`/prc-execution/execute/${executionId}`);
 	};
 
+	const handleView = (executionId: number) => {
+		navigate(`/prc-execution/view/${executionId}`);
+	};
+
 	const handleOpenReport = (executionId: number) => {
 		navigate(`/prc-execution/report/${executionId}`);
 	};
@@ -218,6 +222,7 @@ const ListPrcExecution = () => {
 						<PrcExecutionTable
 							data={filteredData}
 							onExecute={handleExecute}
+							onView={handleView}
 							onOpenReport={handleOpenReport}
 							pagination={pagination}
 							onPaginationChange={setPagination}

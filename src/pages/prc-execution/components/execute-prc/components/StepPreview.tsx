@@ -52,6 +52,7 @@ import {
 	formatOkNotOkValueForDisplay,
 	isNegativeOkNotOk
 } from '../../../../../utils/okNotOkLabels';
+import { GATE_FIELD_LABEL, formatGateValueForDisplay } from '../../../../../utils/gateLabels';
 
 import {
 	findMatchingPreviewFile,
@@ -155,6 +156,8 @@ interface StepPreviewProps {
 	onBackToStepGroup?: () => void;
 	/** Read-only embed (e.g. consolidated PDF/report): no approvals, no delay inputs, full-height tables. */
 	embeddedReportMode?: boolean;
+	/** Browse-only execution viewer: show data and navigation without edit/approve actions. */
+	readOnlyMode?: boolean;
 }
 
 const StepPreview = ({
@@ -165,8 +168,10 @@ const StepPreview = ({
 	onPartialApproveCTQ,
 	onProceedToNext,
 	onBackToStepGroup,
-	embeddedReportMode = false
+	embeddedReportMode = false,
+	readOnlyMode = false
 }: StepPreviewProps) => {
+	const browseOnly = embeddedReportMode || readOnlyMode;
 	const { hasPermission } = useCurrentRole();
 	const canApproveProduction =
 		hasPermission('PRC_APPROVE_PRODUCTION') &&
@@ -262,7 +267,7 @@ const StepPreview = ({
 		isLoading: isDelayReasonLoading,
 		isFetching: isDelayReasonFetching
 	} = useFetchOperationDelayReasonComboQuery(undefined, {
-		skip: embeddedReportMode || previewData.type !== 'sequence' || !previewData.timingExceeded
+		skip: browseOnly || previewData.type !== 'sequence' || !previewData.timingExceeded
 	});
 
 	const delayReasonComboBusy = isDelayReasonLoading || isDelayReasonFetching;
@@ -271,7 +276,7 @@ const StepPreview = ({
 	// combo list loading would otherwise wipe the user's selection before submit.
 	/* eslint-disable react-hooks/set-state-in-effect -- sync selected combo row when options load / step changes */
 	useEffect(() => {
-		if (embeddedReportMode) {
+		if (browseOnly) {
 			return;
 		}
 		if (previewData.type !== 'sequence' || !previewData.timingExceeded) {
@@ -296,7 +301,7 @@ const StepPreview = ({
 			setSelectedDelayReason({ label: String(code), value: String(code) });
 		}
 	}, [
-		embeddedReportMode,
+		browseOnly,
 		previewData.type,
 		previewData.timingExceeded,
 		previewData.timingExceededReasonCode,
@@ -316,6 +321,7 @@ const StepPreview = ({
 	})();
 	const reasonSatisfied = selectedDelayReason !== null || persistedReasonOk;
 	const delayDocumentationSatisfied =
+		browseOnly ||
 		embeddedReportMode ||
 		!previewData.timingExceeded ||
 		previewData.stepCompleted ||
@@ -462,7 +468,7 @@ const StepPreview = ({
 									<strong>{formatExecutionDuration(previewData.expectedDuration || 0)}</strong> expected
 								</Typography>
 							</Alert>
-							{embeddedReportMode ? (
+							{browseOnly ? (
 								<Box sx={{ mt: 2, pl: 0.5 }}>
 									{(previewData.timingExceededReasonLabel != null ||
 										previewData.timingExceededReasonCode !== undefined) && (
@@ -1168,7 +1174,7 @@ const StepPreview = ({
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Parameter</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Type</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Value</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>CTQ</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>{GATE_FIELD_LABEL}</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Specification</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
 								</TableRow>
@@ -1432,18 +1438,16 @@ const StepPreview = ({
 														)}
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-														{ctqStatus && (
-															<Chip
-																label="CTQ"
-																size="small"
-																sx={{
-																	backgroundColor: '#fff3e0',
-																	color: '#f57c00',
-																	fontSize: '0.7rem',
-																	height: 20
-																}}
-															/>
-														)}
+														<Chip
+															label={formatGateValueForDisplay(ctqStatus)}
+															size="small"
+															sx={{
+																backgroundColor: ctqStatus ? '#fff3e0' : '#f5f5f5',
+																color: ctqStatus ? '#f57c00' : '#666',
+																fontSize: '0.7rem',
+																height: 20
+															}}
+														/>
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666', maxWidth: 150 }}>
 														<Typography
@@ -1972,7 +1976,7 @@ const StepPreview = ({
 							</Grid>
 							<Grid size={{ xs: 6, sm: 3 }}>
 								<Typography variant="caption" sx={{ fontWeight: 500, color: '#666', fontSize: '0.75rem' }}>
-									CTQ Parameters
+									Gate Parameters
 								</Typography>
 								<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
 									{inspectionParams.filter(p => p.ctq).length}
@@ -2076,6 +2080,7 @@ const StepPreview = ({
 				</Box>
 
 				{/* Approval Buttons in Header */}
+				{!readOnlyMode && (
 				<Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
 					<Button
 						variant={productionApproved ? 'outlined' : 'contained'}
@@ -2202,6 +2207,40 @@ const StepPreview = ({
 						/>
 					</Box>
 				</Box>
+				)}
+				{readOnlyMode && (
+					<Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+						<Chip
+							label={
+								productionApproved
+									? previewData.type === 'inspection'
+										? 'Inspection approved'
+										: 'Production approved'
+									: 'Production pending'
+							}
+							size="small"
+							color={productionApproved ? 'success' : 'default'}
+							variant="outlined"
+						/>
+						{previewData.ctq && (
+							<Chip
+								label={
+									ctqApproved
+										? 'CTQ approved'
+										: partialCtqApproved
+											? 'Partially CTQ approved'
+											: 'CTQ pending'
+								}
+								size="small"
+								color={ctqApproved || partialCtqApproved ? 'success' : 'warning'}
+								variant="outlined"
+							/>
+						)}
+						{previewData.stepCompleted && (
+							<Chip label="Step completed" size="small" color="success" variant="outlined" />
+						)}
+					</Box>
+				)}
 			</Box>
 
 			{/* Report Data */}
@@ -2210,7 +2249,7 @@ const StepPreview = ({
 			</Card>
 
 			{/* CTQ Warning */}
-			{previewData.ctq && !ctqApproved && !partialCtqApproved && (
+			{!readOnlyMode && previewData.ctq && !ctqApproved && !partialCtqApproved && (
 				<Alert severity="warning" sx={{ mb: 2 }}>
 					This is a Critical to Quality (CTQ) step. Both Production and CTQ approvals are required to proceed.
 				</Alert>

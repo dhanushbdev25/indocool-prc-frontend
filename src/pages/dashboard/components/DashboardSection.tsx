@@ -30,17 +30,45 @@ interface DashboardChartCardProps {
 	title: string;
 	children: React.ReactNode;
 	height?: number;
+	/** Inner chart height when content scrolls inside a fixed viewport */
+	scrollContentHeight?: number;
 }
 
-export const DashboardChartCard = ({ title, children, height = analyticsChartHeight }: DashboardChartCardProps) => (
-	<Box sx={[analyticsPanel, { height: '100%' }]}>
-		<Box sx={[analyticsPanelBody, { height: '100%', display: 'flex', flexDirection: 'column', minWidth: 0 }]}>
+export const DashboardChartCard = ({
+	title,
+	children,
+	height = analyticsChartHeight,
+	scrollContentHeight
+}: DashboardChartCardProps) => (
+	<Box sx={analyticsPanel}>
+		<Box sx={[analyticsPanelBody, { display: 'flex', flexDirection: 'column' }]}>
 			<TruncatedTextWithTooltip
 				text={title}
 				variant="body2"
 				sx={{ fontWeight: 600, color: 'text.primary', mb: 2, letterSpacing: '-0.01em', width: '100%' }}
 			/>
-			<Box sx={{ width: '100%', height, flex: 1, minHeight: 0 }}>{children}</Box>
+			<Box
+				sx={{
+					width: '100%',
+					height,
+					minHeight: height,
+					maxHeight: height,
+					position: 'relative',
+					overflowY: scrollContentHeight != null ? 'auto' : 'hidden',
+					overflowX: 'hidden',
+					'&::-webkit-scrollbar': { width: 6 },
+					'&::-webkit-scrollbar-thumb': {
+						backgroundColor: 'action.disabled',
+						borderRadius: 3
+					}
+				}}
+			>
+				{scrollContentHeight != null ? (
+					<Box sx={{ width: '100%', height: scrollContentHeight, minHeight: scrollContentHeight }}>{children}</Box>
+				) : (
+					children
+				)}
+			</Box>
 		</Box>
 	</Box>
 );

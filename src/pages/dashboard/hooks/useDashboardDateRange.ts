@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import dayjs, { type Dayjs } from 'dayjs';
 
-export type DateRangePreset = 'last7' | 'last30' | 'last90' | 'custom';
+export type DateRangePreset = 'today' | 'yesterday' | 'thisMonth' | 'last7' | 'last30' | 'last90' | 'custom';
 
 export interface DashboardDateRange {
 	from: string;
@@ -11,16 +11,34 @@ export interface DashboardDateRange {
 const toIsoDate = (d: Dayjs): string => d.format('YYYY-MM-DD');
 
 const rangeForPreset = (preset: Exclude<DateRangePreset, 'custom'>): DashboardDateRange => {
-	const to = dayjs().endOf('day');
-	const days = preset === 'last7' ? 6 : preset === 'last30' ? 29 : 89;
-	const from = dayjs().subtract(days, 'day').startOf('day');
-	return { from: toIsoDate(from), to: toIsoDate(to) };
+	const today = dayjs().startOf('day');
+	const endToday = dayjs().endOf('day');
+
+	switch (preset) {
+		case 'today':
+			return { from: toIsoDate(today), to: toIsoDate(endToday) };
+		case 'yesterday': {
+			const day = today.subtract(1, 'day');
+			return { from: toIsoDate(day), to: toIsoDate(day.endOf('day')) };
+		}
+		case 'thisMonth':
+			return { from: toIsoDate(today.startOf('month')), to: toIsoDate(endToday) };
+		case 'last7':
+			return { from: toIsoDate(today.subtract(6, 'day')), to: toIsoDate(endToday) };
+		case 'last30':
+			return { from: toIsoDate(today.subtract(29, 'day')), to: toIsoDate(endToday) };
+		case 'last90':
+			return { from: toIsoDate(today.subtract(89, 'day')), to: toIsoDate(endToday) };
+	}
 };
 
 export const PRESET_OPTIONS: { id: DateRangePreset; label: string; description: string }[] = [
-	{ id: 'last7', label: 'Last 7 days', description: 'Compare to previous 7 days' },
-	{ id: 'last30', label: 'Last 30 days', description: 'Compare to previous 30 days' },
-	{ id: 'last90', label: 'Last 90 days', description: 'Compare to previous 90 days' },
+	{ id: 'today', label: 'Today', description: 'Metrics for the current day' },
+	{ id: 'yesterday', label: 'Yesterday', description: 'Metrics for the previous day' },
+	{ id: 'thisMonth', label: 'This month', description: 'From the 1st of the month through today' },
+	{ id: 'last7', label: 'Last 7 days', description: 'Rolling 7-day window including today' },
+	{ id: 'last30', label: 'Last 30 days', description: 'Rolling 30-day window including today' },
+	{ id: 'last90', label: 'Last 90 days', description: 'Rolling 90-day window including today' },
 	{ id: 'custom', label: 'Custom range', description: 'Pick specific start and end dates' }
 ];
 
@@ -57,6 +75,7 @@ export const useDashboardDateRange = () => {
 	const displayLabel = useMemo(() => {
 		if (!range) return 'Select dates';
 		const fromLabel = dayjs(range.from).format('MMM D, YYYY');
+		if (range.from === range.to) return fromLabel;
 		const toLabel = dayjs(range.to).format('MMM D, YYYY');
 		return `${fromLabel} – ${toLabel}`;
 	}, [range]);

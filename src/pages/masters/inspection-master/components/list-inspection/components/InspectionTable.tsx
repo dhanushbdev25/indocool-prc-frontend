@@ -200,7 +200,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pa
 			},
 			{
 				accessorKey: 'ctqParameters',
-				header: 'CTQ Parameters',
+				header: 'Gate Parameters',
 				size: 120,
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
