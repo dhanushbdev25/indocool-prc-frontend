@@ -26,13 +26,13 @@ import { useAppDispatch } from '../../../store/store';
 import { sessionApi } from '../../../store/api/auth/session.api';
 
 interface FormValues {
-	email: string;
+	employeeId: string;
 	password: string;
 }
 
 // Validation schema
 const validationSchema = Yup.object().shape({
-	email: Yup.string().email('Must be a valid email').max(255).required('Email is required'),
+	employeeId: Yup.string().max(255).required('Employee Id is required'),
 	password: Yup.string().max(255).required('Password is required')
 });
 
@@ -52,7 +52,7 @@ const AuthLogin = () => {
 	} = useForm<FormValues>({
 		resolver: yupResolver(validationSchema),
 		defaultValues: {
-			email: '',
+			employeeId: '',
 			password: ''
 		}
 	});
@@ -69,7 +69,7 @@ const AuthLogin = () => {
 		try {
 			setSubmitError('');
 			const response = await loginUser({
-				email: values.email,
+				employeeId: values.employeeId,
 				password: values.password
 			}).unwrap();
 
@@ -133,12 +133,12 @@ const AuthLogin = () => {
 					</InputLabel>
 					<OutlinedInput
 						id="email-login"
-						type="email"
+						type="text"
 						autoComplete="username"
 						placeholder="info@example.com"
 						fullWidth
-						error={Boolean(errors.email)}
-						{...register('email')}
+						error={Boolean(errors.employeeId)}
+						{...register('employeeId')}
 						sx={{
 							'& .MuiOutlinedInput-root': {
 								borderRadius: 1,
@@ -166,7 +166,7 @@ const AuthLogin = () => {
 							}
 						}}
 					/>
-					{errors.email && (
+					{errors.employeeId && (
 						<FormHelperText
 							error
 							sx={{
@@ -175,7 +175,7 @@ const AuthLogin = () => {
 								fontWeight: 500
 							}}
 						>
-							{errors.email.message}
+							{errors.employeeId.message}
 						</FormHelperText>
 					)}
 				</Box>
