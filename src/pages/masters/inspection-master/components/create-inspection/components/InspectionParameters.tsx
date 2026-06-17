@@ -31,6 +31,7 @@ import {
 import Grid from '@mui/material/Grid';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import {
@@ -725,6 +726,7 @@ const FixedTableConfigEditor = ({
 		{ value: 'text', label: 'Text' },
 		{ value: 'number', label: 'Number' },
 		{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
+		{ value: 'date', label: 'Date' },
 		{ value: 'datetime', label: 'Date & Time' },
 		{ value: 'shift', label: 'Shift' }
 	];
@@ -1095,6 +1097,40 @@ const ParameterColumns = memo(
 								<Grid size={{ xs: 12, sm: 2 }}>
 									{(() => {
 										const columnType = memoizedColumnTypes?.[columnIndex]?.type || 'text';
+
+										if (columnType === 'date') {
+											return (
+												<Controller
+													name={`inspectionParameters.${parameterIndex}.columns.${columnIndex}.defaultValue`}
+													control={control as Control<InspectionFormData>}
+													render={({ field }) => (
+														<LocalizationProvider dateAdapter={AdapterDayjs}>
+															<DatePicker
+																label="Default Value"
+																value={field.value ? dayjs(field.value as string) : null}
+																onChange={newValue => {
+																	const formattedValue = newValue ? newValue.format('YYYY-MM-DD') : '';
+																	field.onChange(formattedValue);
+																}}
+																slotProps={{
+																	textField: {
+																		fullWidth: true,
+																		size: 'small',
+																		helperText: 'Default date value',
+																		sx: {
+																			'& .MuiOutlinedInput-root': {
+																				borderRadius: '6px',
+																				backgroundColor: 'white'
+																			}
+																		}
+																	}
+																}}
+															/>
+														</LocalizationProvider>
+													)}
+												/>
+											);
+										}
 
 										if (columnType === 'datetime') {
 											return (

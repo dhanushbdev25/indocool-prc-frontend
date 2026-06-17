@@ -45,6 +45,10 @@ function formatWhenKnown(iso?: string | null): string {
 	}
 }
 
+function formatOrderId(orderId?: string | number | null): string {
+	return orderId != null && String(orderId).trim() ? String(orderId) : '—';
+}
+
 function ReportSummaryField({ label, children }: { label: string; children: React.ReactNode }) {
 	return (
 		<Box sx={{ minWidth: 0 }}>
@@ -88,6 +92,7 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 
 	return (
 		<Box className="prc-report-header-summary-grid" sx={summaryGridSx}>
+			<ReportSummaryField label="Order no.">{formatOrderId(execution.orderId)}</ReportSummaryField>
 			<ReportSummaryField label="Part description">{execution.partDescription || '—'}</ReportSummaryField>
 			<ReportSummaryField label="Drawing">{execution.drawingNumber || '—'}</ReportSummaryField>
 			<ReportSummaryField label="Variant">{execution.customerVariantName || '—'}</ReportSummaryField>
@@ -455,7 +460,8 @@ const PrcExecutionReport = () => {
 					</Typography>
 				)}
 				<Typography variant="body2" color="text.secondary">
-					Date {execution.date ?? '—'} · Shift {execution.shift ?? '—'} · Production set {execution.productionSetId ?? '—'}
+					Date {execution.date ?? '—'} · Shift {execution.shift ?? '—'} · Order {formatOrderId(execution.orderId)} ·
+					Production set {execution.productionSetId ?? '—'}
 				</Typography>
 				{execution.sapReferenceNumber && (
 					<Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 0.5 }}>

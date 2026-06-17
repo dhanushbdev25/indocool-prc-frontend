@@ -8,7 +8,7 @@ export const columnSchema = yup
 	type: yup
 		.string()
 		.required('Column type is required')
-		.oneOf(['text', 'number', 'boolean', 'ok/not ok', 'datetime', 'shift'], 'Invalid column type'),
+		.oneOf(['text', 'number', 'boolean', 'ok/not ok', 'date', 'datetime', 'shift'], 'Invalid column type'),
 	defaultValue: yup.mixed().when('type', {
 		is: (val: string) => val === 'number' || val === 'datetime',
 		then: (schema: yup.MixedSchema) => {
@@ -118,7 +118,7 @@ export const inspectionParameterSchema = yup.object({
 						type: yup
 							.string()
 							.required('Column type is required')
-							.oneOf(['text', 'number', 'ok/not ok', 'datetime', 'shift'])
+							.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift'])
 					})
 				)
 				.min(1, 'At least one column is required'),
@@ -302,6 +302,7 @@ export const columnTypeOptions = [
 	{ value: 'number', label: 'Number' },
 	{ value: 'boolean', label: 'Boolean' },
 	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
+	{ value: 'date', label: 'Date' },
 	{ value: 'datetime', label: 'Date & Time' },
 	{ value: 'shift', label: 'Shift' }
 ];

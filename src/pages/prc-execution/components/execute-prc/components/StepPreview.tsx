@@ -53,6 +53,7 @@ import {
 	isNegativeOkNotOk
 } from '../../../../../utils/okNotOkLabels';
 import { GATE_FIELD_LABEL, formatGateValueForDisplay } from '../../../../../utils/gateLabels';
+import { formatTableCellDisplay } from '../../../../../utils/formatTableCellDisplay';
 
 import {
 	findMatchingPreviewFile,
@@ -650,7 +651,7 @@ const StepPreview = ({
 														>
 															<thead>
 																<tr>
-																	{measurement.tableConfig.columns?.map((col: { name: string }) => (
+																	{measurement.tableConfig.columns?.map((col: { name: string; type?: string }) => (
 																		<th key={col.name}>{col.name}</th>
 																	))}
 																</tr>
@@ -658,14 +659,15 @@ const StepPreview = ({
 															<tbody>
 																{measurement.value.map((row: Record<string, string>, rIdx: number) => (
 																	<tr key={rIdx}>
-																		{measurement.tableConfig.columns?.map((col: { name: string }) => {
+																		{measurement.tableConfig.columns?.map((col: { name: string; type?: string }) => {
 																			const cellConfig = measurement.tableConfig.rows?.[rIdx]?.cells?.[col.name];
+																			const displayValue = formatTableCellDisplay(col.type, row[col.name]);
 																			return (
 																				<td
 																					key={col.name}
 																					style={cellConfig?.readOnly ? { backgroundColor: '#f9f9f9', fontStyle: 'italic' } : undefined}
 																				>
-																					{row[col.name] || '-'}
+																					{displayValue}
 																				</td>
 																			);
 																		})}
@@ -1574,6 +1576,7 @@ const StepPreview = ({
 																							{tc.columns!.map(col => {
 																								const cellConfig = tc.rows?.[rIdx]?.cells?.[col.name];
 																								const cellValue = row[col.name] || '';
+																								const displayValue = formatTableCellDisplay(col.type, cellValue);
 																								return (
 																									<TableCell
 																										key={col.name}
@@ -1586,8 +1589,8 @@ const StepPreview = ({
 																											...(cellConfig?.readOnly ? { backgroundColor: '#f5f5f5', fontStyle: 'italic' } : {})
 																										}}
 																									>
-																										<Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cellValue}>
-																											{cellValue || '-'}
+																										<Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={displayValue}>
+																											{displayValue}
 																										</Typography>
 																									</TableCell>
 																								);
@@ -1710,7 +1713,7 @@ const StepPreview = ({
 																								const formattedValue =
 																									column.type === 'ok/not ok'
 																										? formatOkNotOkValueForDisplay(parsedValue.value)
-																										: String(value || '');
+																										: formatTableCellDisplay(column.type, value);
 
 																								return (
 																									<TableCell
@@ -1761,7 +1764,7 @@ const StepPreview = ({
 																							const formattedValue =
 																								column.type === 'ok/not ok'
 																									? formatOkNotOkValueForDisplay(parsedValue.value)
-																									: String(value);
+																									: formatTableCellDisplay(column.type, value);
 
 																							return (
 																								<TableCell

@@ -9,6 +9,7 @@ import {
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
 import { calculateSequenceStepGroupTiming } from '../../utils/timelineCardTiming';
 import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
+import { canEditStepForRole, getExecutionRoleKind } from '../../utils/roleStepAccess';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
 	buildAggregatedData,
@@ -42,8 +43,9 @@ const ExecutePrc = () => {
 	const location = useLocation();
 	const executionId = id ? parseInt(id, 10) : 0;
 	const isViewOnlyMode = location.pathname.includes('/prc-execution/view/');
-	const { userInfo, hasPermission } = useCurrentRole();
-	const canKit = hasPermission('KITTING_UPDATE') && !isViewOnlyMode;
+	const { userInfo, hasPermission, currentRole } = useCurrentRole();
+	const canKit =
+		hasPermission('KITTING_UPDATE') && !isViewOnlyMode && getExecutionRoleKind(currentRole?.name) === 'other';
 
 	// State management
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -96,6 +98,10 @@ const ExecutePrc = () => {
 
 	// Current step
 	const currentStep = timelineSteps[currentStepIndex];
+
+	// Role-based read-only: Production cannot edit quality-approved inspections;
+	// Quality can edit only quality-approved inspections. Other roles unrestricted.
+	const roleReadOnly = currentStep ? !canEditStepForRole(currentStep, currentRole?.name) : false;
 
 	// Helper function to get the most current aggregated data
 	const getCurrentAggregatedData = useCallback((): Record<string, unknown> => {
@@ -1472,7 +1478,7 @@ const ExecutePrc = () => {
 							step={currentStep}
 							executionData={actualExecutionData}
 							aggregatedStepsSnapshot={getCurrentAggregatedData()}
-							readOnly={isViewOnlyMode}
+							readOnly={isViewOnlyMode || roleReadOnly}
 							onBackToList={handleBackToList}
 							onPreviousStep={() => {
 								if (currentStepIndex > 0) {

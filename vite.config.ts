@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react-swc';
 import EnvironmentPlugin from 'vite-plugin-environment';
 
@@ -18,5 +18,11 @@ export default defineConfig({
 			// REDIRECT_URI: 'http://43.205.188.89:5173/auth/login',
 			AUTH_MODE: 'localStorage'
 		})
-	]
+	],
+	test: {
+		environment: 'happy-dom',
+		setupFiles: ['./src/test/setup.ts'],
+		globals: true,
+		include: ['src/**/*.{test,spec}.{ts,tsx}']
+	}
 });

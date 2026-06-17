@@ -22,12 +22,12 @@ import {
 import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
-import {
-	OK_NOT_OK_NEGATIVE_LABEL
-} from '../../../../../../utils/okNotOkLabels';
+import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
+import { OK_NOT_OK_NEGATIVE_LABEL } from '../../../../../../utils/okNotOkLabels';
 
 const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
 
@@ -846,6 +846,32 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 															{errors[`table_${rowIdx}_${col.name}`]}
 														</Typography>
 													)}
+												</td>
+											);
+										}
+
+										if (col.type === 'date') {
+											return (
+												<td key={col.name}>
+													<LocalizationProvider dateAdapter={AdapterDayjs}>
+														<DatePicker
+															value={cellValue ? dayjs(cellValue) : null}
+															onChange={newValue => {
+																const formatted = formatDateColumnStorageValue(newValue);
+																handleTableCellChange(rowIdx, col.name, formatted);
+															}}
+															slotProps={{
+																textField: {
+																	size: 'small',
+																	fullWidth: true,
+																	variant: 'outlined',
+																	error: !!errors[`table_${rowIdx}_${col.name}`],
+																	helperText: errors[`table_${rowIdx}_${col.name}`],
+																	sx: { '& .MuiOutlinedInput-root': { borderRadius: '4px' } }
+																}
+															}}
+														/>
+													</LocalizationProvider>
 												</td>
 											);
 										}

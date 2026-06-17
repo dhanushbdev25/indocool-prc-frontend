@@ -27,6 +27,7 @@ import {
 } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { Image, ExpandMore, ExpandLess, CameraAlt, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
@@ -48,6 +49,7 @@ import {
 	GATE_FIELD_LABEL,
 	formatGateValueForDisplay
 } from '../../../../../../utils/gateLabels';
+import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 
 interface InspectionStepProps {
 	step: TimelineStep;
@@ -834,7 +836,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 									newErrors[commentKey] = `Row ${rowIndex + 1}, ${column.name} comment is required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
 								}
 							}
-						} else if (column.type === 'datetime') {
+						} else if (column.type === 'date' || column.type === 'datetime') {
 							if (!value || !String(value).trim()) {
 								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} is required`;
 							}
@@ -876,7 +878,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 								newErrors[commentKey] = `${column.name} comment is required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
 							}
 						}
-					} else if (column.type === 'datetime') {
+					} else if (column.type === 'date' || column.type === 'datetime') {
 						if (!value || !String(value).trim()) {
 							newErrors[key] = `${column.name} is required`;
 						}
@@ -1621,6 +1623,32 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																					);
 																				}
 
+																				if (col.type === 'date') {
+																					return (
+																						<TableCell key={col.name}>
+																							<LocalizationProvider dateAdapter={AdapterDayjs}>
+																								<DatePicker
+																									value={cellValue ? dayjs(cellValue) : null}
+																									onChange={newValue => {
+																										const formatted = formatDateColumnStorageValue(newValue);
+																										handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
+																									}}
+																									disabled={isReadOnly}
+																									slotProps={{
+																										textField: {
+																											size: 'small',
+																											error: !!errors[errKey],
+																											helperText: errors[errKey],
+																											variant: 'outlined',
+																											fullWidth: true
+																										}
+																									}}
+																								/>
+																							</LocalizationProvider>
+																						</TableCell>
+																					);
+																				}
+
 																				if (col.type === 'datetime') {
 																					return (
 																						<TableCell key={col.name}>
@@ -1887,6 +1915,31 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																										/>
 																									)}
 																								</FormControl>
+																							) : column.type === 'date' ? (
+																								<LocalizationProvider dateAdapter={AdapterDayjs}>
+																									<DatePicker
+																										value={currentValue ? dayjs(currentValue) : null}
+																										onChange={newValue => {
+																											const formattedValue = formatDateColumnStorageValue(newValue);
+																											handleTableRowChange(
+																												param.id,
+																												rowIndex,
+																												column.name,
+																												formattedValue
+																											);
+																										}}
+																										disabled={isReadOnly}
+																										slotProps={{
+																											textField: {
+																												size: 'small',
+																												error: !!errors[key],
+																												helperText: errors[key],
+																												variant: 'outlined',
+																												fullWidth: true
+																											}
+																										}}
+																									/>
+																								</LocalizationProvider>
 																							) : column.type === 'datetime' ? (
 																								<LocalizationProvider dateAdapter={AdapterDayjs}>
 																									<DateTimePicker
@@ -2079,6 +2132,26 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																					);
 																				})()}
 																			</Box>
+																		) : column.type === 'date' ? (
+																			<LocalizationProvider dateAdapter={AdapterDayjs}>
+																				<DatePicker
+																					label={column.name}
+																					value={currentValue ? dayjs(currentValue) : null}
+																					onChange={newValue => {
+																						const formattedValue = formatDateColumnStorageValue(newValue);
+																						handleParameterChange(param.id, column.name, formattedValue);
+																					}}
+																					disabled={isReadOnly}
+																					slotProps={{
+																						textField: {
+																							fullWidth: true,
+																							error: !!errors[key],
+																							helperText: errors[key],
+																							variant: 'outlined'
+																						}
+																					}}
+																				/>
+																			</LocalizationProvider>
 																		) : column.type === 'datetime' ? (
 																			<LocalizationProvider dateAdapter={AdapterDayjs}>
 																				<DateTimePicker

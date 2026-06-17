@@ -13,10 +13,12 @@
     "lint-fix": "eslint --fix src/**/*.{ts,tsx}",
     "pretty": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md,html}\"",
     "pretty:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,md,html}\"",
-    "pre-push": "npx tsc --noEmit && npm run lint && npm run pretty:check && npm run build",
+    "pre-push": "npx tsc --noEmit && npm run lint && npm run pretty:check && npm run test && npm run build",
     "check-deps": "npm outdated",
     "check-security": "npm audit --audit-level=moderate",
     "check-all": "npm run lint && npm run pretty:check && npx tsc --noEmit && npm run build && npm run check-deps && npm run check-security",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "deploy": "npm run build && gh-pages -d dist"
   },
   "dependencies": {
@@ -47,7 +49,9 @@
     "yup": "^1.3.2"
   },
   "devDependencies": {
-    "@types/node": "^24.7.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
     "@typescript-eslint/eslint-plugin": "^8.46.0",
@@ -65,7 +69,8 @@
     "rollup-plugin-visualizer": "^6.0.4",
     "terser": "^5.44.0",
     "typescript": "^5.9.2",
-    "vite": "^7.1.9"
+    "vite": "^7.1.9",
+    "vitest": "^3.2.4"
   },
   "overrides": {
     "happy-dom": "^20.0.0",

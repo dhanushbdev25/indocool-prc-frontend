@@ -53,6 +53,7 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 				return '#7b1fa2';
 			case 'ok/not ok':
 				return '#ff9800';
+			case 'date':
 			case 'datetime':
 				return '#795548';
 			case 'shift':

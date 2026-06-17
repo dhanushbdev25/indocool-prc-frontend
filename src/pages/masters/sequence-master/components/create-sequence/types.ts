@@ -30,6 +30,7 @@ export const tableColumnTypeOptions = [
 	{ value: 'text', label: 'Text' },
 	{ value: 'number', label: 'Number' },
 	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
+	{ value: 'date', label: 'Date' },
 	{ value: 'datetime', label: 'Date & Time' },
 	{ value: 'shift', label: 'Shift' }
 ];
