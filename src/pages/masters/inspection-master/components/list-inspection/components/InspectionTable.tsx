@@ -7,7 +7,6 @@ import {
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
-	Warning as WarningIcon,
 	ContentCopy as ContentCopyIcon
 } from '@mui/icons-material';
 import { useState } from 'react';
@@ -114,33 +113,14 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pa
 				header: 'Inspection ID',
 				size: 200,
 				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								fontWeight: 500,
-								color: '#333',
-								fontSize: '0.875rem'
-							}}
-						>
-							{row.original.inspectionId}
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#999',
-								fontSize: '0.75rem',
-								display: 'block'
-							}}
-						>
-							{row.original.updatedAt ? `Updated: ${formatDate(row.original.updatedAt)}` : ''}
-						</Typography>
-					</Box>
+					<Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.875rem' }}>
+						{row.original.inspectionId}
+					</Typography>
 				)
 			},
 			{
 				accessorKey: 'inspectionName',
-				header: 'Inspection name',
+				header: 'Inspection Name',
 				size: 220,
 				Cell: ({ row }) => (
 					<Typography
@@ -168,7 +148,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pa
 			{
 				id: 'approveByProduction',
 				accessorFn: row => approveLabel(row.approveByProduction),
-				header: 'Approve by production',
+				header: 'Approve By Production',
 				size: 170,
 				filterVariant: 'select',
 				filterSelectOptions: ['Yes', 'No'],
@@ -182,78 +162,13 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pa
 				)
 			},
 			{
-				accessorKey: 'version',
-				header: 'Version',
-				size: 100,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem',
-							fontWeight: 500
-						}}
-					>
-						v{row.original.version}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'ctqParameters',
-				header: 'Gate Parameters',
-				size: 120,
-				enableColumnFilter: false,
-				Cell: ({ row }) => (
-					<Box sx={{ display: 'flex', alignItems: 'center' }}>
-						<Chip
-							icon={<WarningIcon sx={{ fontSize: '0.75rem' }} />}
-							label={row.original.ctqParameters}
-							size="small"
-							sx={{
-								backgroundColor: '#fff3e0',
-								color: '#f57c00',
-								fontSize: '0.625rem',
-								height: '20px',
-								'& .MuiChip-icon': {
-									color: '#f57c00'
-								}
-							}}
-						/>
-					</Box>
-				)
-			},
-			{
-				accessorKey: 'totalParameters',
-				header: 'Total Parameters',
-				size: 120,
-				enableColumnFilter: false,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem',
-							fontWeight: 500
-						}}
-					>
-						{row.original.totalParameters}
-					</Typography>
-				)
-			},
-			{
 				accessorKey: 'createdAt',
-				header: 'Created',
+				header: 'Created On',
 				size: 120,
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem'
-						}}
-					>
-						{row.original.createdAt ? formatDate(row.original.createdAt) : '-'}
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.createdAt ? formatDate(row.original.createdAt) : '—'}
 					</Typography>
 				)
 			},

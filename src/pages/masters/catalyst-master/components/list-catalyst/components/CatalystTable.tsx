@@ -4,7 +4,6 @@ import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from '
 import {
 	MoreVert as MoreVertIcon,
 	CheckCircle as CheckCircleIcon,
-	Business as BusinessIcon,
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon
@@ -90,76 +89,28 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView, pagination, o
 				header: 'Chart ID',
 				size: 200,
 				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								fontWeight: 500,
-								color: '#333',
-								fontSize: '0.875rem'
-							}}
-						>
-							{row.original.chartId}
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#999',
-								fontSize: '0.75rem',
-								display: 'block'
-							}}
-						>
-							Updated: {formatDate(row.original.updatedAt)}
-						</Typography>
-						<Chip
-							label={row.original.chartSupplier}
-							size="small"
-							icon={<BusinessIcon sx={{ fontSize: '0.75rem' }} />}
-							sx={{
-								backgroundColor: '#e3f2fd',
-								color: '#1976d2',
-								fontSize: '0.625rem',
-								height: '20px',
-								mt: 0.5
-							}}
-						/>
-					</Box>
+					<Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.875rem' }}>
+						{row.original.chartId}
+					</Typography>
 				)
 			},
 			{
-				accessorKey: 'notes',
-				header: 'Notes',
-				size: 250,
+				accessorKey: 'chartSupplier',
+				header: 'Customer Name',
+				size: 220,
 				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem',
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							display: '-webkit-box',
-							WebkitLineClamp: 2,
-							WebkitBoxOrient: 'vertical'
-						}}
-					>
-						{row.original.notes}
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.chartSupplier?.trim() ? row.original.chartSupplier : '—'}
 					</Typography>
 				)
 			},
 			{
 				accessorKey: 'createdAt',
-				header: 'Created',
+				header: 'Created On',
 				size: 120,
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem'
-						}}
-					>
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
 						{formatDate(row.original.createdAt)}
 					</Typography>
 				)

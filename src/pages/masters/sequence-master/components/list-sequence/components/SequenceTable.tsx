@@ -98,28 +98,9 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagi
 				header: 'Sequence ID',
 				size: 180,
 				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								fontWeight: 500,
-								color: '#333',
-								fontSize: '0.875rem'
-							}}
-						>
-							{row.original.sequenceId}
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#999',
-								fontSize: '0.75rem',
-								display: 'block'
-							}}
-						>
-							Updated: {formatDate(row.original.updatedAt)}
-						</Typography>
-					</Box>
+					<Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.875rem' }}>
+						{row.original.sequenceId}
+					</Typography>
 				)
 			},
 			{
@@ -127,47 +108,8 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagi
 				header: 'Sequence Name',
 				size: 220,
 				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							fontWeight: 500,
-							color: '#333',
-							fontSize: '0.875rem'
-						}}
-					>
+					<Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.875rem' }}>
 						{row.original.sequenceName}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'category',
-				header: 'Category',
-				size: 140,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.category}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'item',
-				header: 'Item',
-				size: 160,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-						{row.original.item?.trim() ? row.original.item : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'type',
-				header: 'Type',
-				size: 120,
-				filterVariant: 'select',
-				filterSelectOptions: ['Layout', 'ISP'],
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.type}
 					</Typography>
 				)
 			},
@@ -177,64 +119,18 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagi
 				size: 120,
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								color: '#333',
-								fontSize: '0.875rem',
-								fontWeight: 500
-							}}
-						>
-							{row.original.totalSteps} Total
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#f44336',
-								fontSize: '0.75rem',
-								fontWeight: 500
-							}}
-						>
-							{row.original.ctqSteps} CTQ
-						</Typography>
-					</Box>
-				)
-			},
-			{
-				accessorKey: 'notes',
-				header: 'Notes',
-				size: 220,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem',
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							display: '-webkit-box',
-							WebkitLineClamp: 2,
-							WebkitBoxOrient: 'vertical'
-						}}
-					>
-						{row.original.notes || '—'}
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
+						{row.original.totalSteps}
 					</Typography>
 				)
 			},
 			{
 				accessorKey: 'createdAt',
-				header: 'Created',
+				header: 'Created On',
 				size: 120,
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem'
-						}}
-					>
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
 						{formatDate(row.original.createdAt)}
 					</Typography>
 				)

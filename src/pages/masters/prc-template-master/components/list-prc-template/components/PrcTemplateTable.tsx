@@ -3,7 +3,6 @@ import { Box, Chip, IconButton, Typography, Menu, MenuItem, ListItemIcon, ListIt
 import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import {
 	MoreVert as MoreVertIcon,
-	Assignment as AssignmentIcon,
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
@@ -100,40 +99,9 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView, pagination
 				header: 'Template ID',
 				size: 200,
 				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								fontWeight: 500,
-								color: '#333',
-								fontSize: '0.875rem'
-							}}
-						>
-							{row.original.templateId}
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#999',
-								fontSize: '0.75rem',
-								display: 'block'
-							}}
-						>
-							{row.original.updatedAt ? `Updated: ${formatDate(row.original.updatedAt)}` : ''}
-						</Typography>
-						<Chip
-							label={`v${row.original.version}`}
-							size="small"
-							icon={<AssignmentIcon sx={{ fontSize: '0.75rem' }} />}
-							sx={{
-								backgroundColor: '#e3f2fd',
-								color: '#1976d2',
-								fontSize: '0.625rem',
-								height: '20px',
-								mt: 0.5
-							}}
-						/>
-					</Box>
+					<Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.875rem' }}>
+						{row.original.templateId}
+					</Typography>
 				)
 			},
 			{
@@ -141,57 +109,34 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView, pagination
 				header: 'Template Name',
 				size: 250,
 				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								color: '#333',
-								fontSize: '0.875rem',
-								fontWeight: 500
-							}}
-						>
-							{row.original.templateName}
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#999',
-								fontSize: '0.75rem',
-								display: 'block',
-								mt: 0.5
-							}}
-						>
-							{row.original.notes || 'No description available'}
-						</Typography>
-					</Box>
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
+						{row.original.templateName}
+					</Typography>
 				)
 			},
 			{
-				accessorKey: 'totalSteps',
-				header: 'Steps',
-				size: 100,
+				id: 'catalogue',
+				header: 'Catalogue',
+				size: 150,
+				accessorFn: row => (row.isActive ? 'In catalogue' : 'Out of catalogue'),
 				Cell: ({ row }) => (
-					<Box sx={{ textAlign: 'center' }}>
-						<Typography
-							variant="h6"
-							sx={{
-								color: '#333',
-								fontSize: '1.25rem',
-								fontWeight: 600
-							}}
-						>
-							{row.original.totalSteps}
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#999',
-								fontSize: '0.75rem'
-							}}
-						>
-							steps
-						</Typography>
-					</Box>
+					<Chip
+						label={row.original.isActive ? 'In catalogue' : 'Out of catalogue'}
+						size="small"
+						color={row.original.isActive ? 'success' : 'default'}
+						variant={row.original.isActive ? 'filled' : 'outlined'}
+					/>
+				)
+			},
+			{
+				accessorKey: 'createdAt',
+				header: 'Created On',
+				size: 150,
+				enableColumnFilter: false,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+						{row.original.createdAt ? formatDate(row.original.createdAt) : '—'}
+					</Typography>
 				)
 			},
 			{
@@ -214,23 +159,6 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView, pagination
 							}
 						}}
 					/>
-				)
-			},
-			{
-				accessorKey: 'createdAt',
-				header: 'Created',
-				size: 150,
-				enableColumnFilter: false,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#666',
-							fontSize: '0.875rem'
-						}}
-					>
-						{row.original.createdAt ? formatDate(row.original.createdAt) : 'N/A'}
-					</Typography>
 				)
 			},
 			{

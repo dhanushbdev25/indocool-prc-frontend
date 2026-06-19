@@ -16,7 +16,12 @@ export const useDashboardEntityFilters = () => {
 	const [filters, setFilters] = useState<DashboardEntityFilters>(EMPTY_FILTERS);
 
 	const setFilter = useCallback((key: DashboardEntityFilterKey, value: string[]) => {
-		setFilters(prev => ({ ...prev, [key]: value }));
+		setFilters(prev => {
+			if (key === 'units') {
+				return { ...prev, units: value, workstation: [] };
+			}
+			return { ...prev, [key]: value };
+		});
 	}, []);
 
 	const clearAll = useCallback(() => {

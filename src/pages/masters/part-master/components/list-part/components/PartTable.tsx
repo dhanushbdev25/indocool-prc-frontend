@@ -32,6 +32,8 @@ export interface PartData {
 	dueMoulds?: number;
 	createdAt: string;
 	updatedAt: string;
+	mouldCodes?: string[];
+	variantId?: string;
 }
 
 interface PartTableProps {
@@ -94,73 +96,94 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPag
 		}
 	};
 
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
+	const customerLabel = (row: PartData) => {
+		const name = (row.customerName ?? '').trim();
+		if (name) return name;
+		return (row.customer ?? '').trim();
 	};
 
 	const columns = useMemo<MRT_ColumnDef<PartData>[]>(
 		() => [
 			{
+				accessorKey: 'sapReferenceNumber',
+				header: 'SAP Number',
+				size: 150,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
+					</Typography>
+				)
+			},
+			{
 				accessorKey: 'partNumber',
 				header: 'Part Number',
 				size: 200,
 				Cell: ({ row }) => (
-					<Box>
-						<Typography
-							variant="body2"
-							sx={{
-								fontWeight: 500,
-								color: '#333',
-								fontSize: '0.875rem'
-							}}
-						>
-							{row.original.partNumber}
-						</Typography>
-						<Typography
-							variant="caption"
-							sx={{
-								color: '#999',
-								fontSize: '0.75rem',
-								display: 'block'
-							}}
-						>
-							{row.original.updatedAt ? `Updated: ${formatDate(row.original.updatedAt)}` : ''}
-						</Typography>
-						<Chip
-							label={`v${row.original.version}`}
-							size="small"
-							icon={<PartIcon sx={{ fontSize: '0.75rem' }} />}
-							sx={{
-								backgroundColor: '#e3f2fd',
-								color: '#1976d2',
-								fontSize: '0.625rem',
-								height: '20px',
-								mt: 0.5
-							}}
-						/>
-					</Box>
+					<Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.875rem' }}>
+						{row.original.partNumber}
+					</Typography>
 				)
 			},
 			{
-				accessorKey: 'drawingNumber',
-				header: 'Drawing Number',
-				size: 150,
+				accessorKey: 'description',
+				header: 'Part Description',
+				size: 220,
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
 						sx={{
 							color: '#333',
 							fontSize: '0.875rem',
-							fontWeight: 500
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap'
 						}}
 					>
-						{row.original.drawingNumber}
+						{row.original.description?.trim() ? row.original.description : '—'}
 					</Typography>
 				)
+			},
+			{
+				id: 'customerName',
+				header: 'Customer Name',
+				size: 200,
+				accessorFn: row => customerLabel(row),
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{customerLabel(row.original) || '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'variantId',
+				header: 'Variant',
+				size: 130,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.variantId?.trim() ? row.original.variantId : '—'}
+					</Typography>
+				)
+			},
+			{
+				id: 'mouldCodes',
+				header: 'Moulds',
+				size: 180,
+				accessorFn: row => (row.mouldCodes ?? []).join(', '),
+				Cell: ({ row }) => {
+					const codes = row.original.mouldCodes ?? [];
+					if (codes.length === 0) {
+						return (
+							<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+								—
+							</Typography>
+						);
+					}
+					return (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{codes.join(', ')}
+						</Typography>
+					);
+				}
 			},
 			{
 				accessorKey: 'status',
@@ -182,117 +205,6 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPag
 							}
 						}}
 					/>
-				)
-			},
-			{
-				id: 'customerDisplay',
-				accessorFn: row => row.customerName || row.customer,
-				header: 'Customer',
-				size: 200,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#666',
-							fontSize: '0.875rem'
-						}}
-					>
-						{row.original.customerName || row.original.customer}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'sapReferenceNumber',
-				header: 'SAP reference',
-				size: 150,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'sqM',
-				header: 'sq.m',
-				size: 90,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-						{row.original.sqM ?? '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'layupType',
-				header: 'Layup type',
-				size: 130,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-						{row.original.layupType?.trim() ? row.original.layupType : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'model',
-				header: 'Model',
-				size: 130,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-						{row.original.model?.trim() ? row.original.model : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'description',
-				header: 'Description',
-				size: 220,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#666',
-							fontSize: '0.875rem',
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap'
-						}}
-					>
-						{row.original.description}
-					</Typography>
-				)
-			},
-			{
-				id: 'componentsSummary',
-				accessorFn: row =>
-					`RM ${row.totalRawMaterials} Drill ${row.totalDrilling} Cut ${row.totalCutting}`,
-				header: 'Components',
-				size: 180,
-				enableColumnFilter: false,
-				Cell: ({ row }) => (
-					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-							RM: {row.original.totalRawMaterials}
-						</Typography>
-						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-							Drill: {row.original.totalDrilling} | Cut: {row.original.totalCutting}
-						</Typography>
-					</Box>
-				)
-			},
-			{
-				id: 'mouldsSummary',
-				accessorFn: row => `Total ${row.totalMoulds ?? 0} Due ${row.dueMoulds ?? 0}`,
-				header: 'Moulds',
-				size: 140,
-				enableColumnFilter: false,
-				Cell: ({ row }) => (
-					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-							Total: {row.original.totalMoulds || 0}
-						</Typography>
-						<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 600 }}>
-							Due: {row.original.dueMoulds || 0}
-						</Typography>
-					</Box>
 				)
 			},
 			{

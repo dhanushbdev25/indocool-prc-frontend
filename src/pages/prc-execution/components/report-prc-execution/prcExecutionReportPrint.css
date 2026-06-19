@@ -109,6 +109,29 @@
 		font-weight: 600 !important;
 	}
 
+	.prc-report-step-meta {
+		padding: 4px 10px !important;
+		background: #f8f8f8 !important;
+	}
+
+	.prc-report-step-meta-grid {
+		display: grid !important;
+		grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+		gap: 4px 10px !important;
+	}
+
+	.prc-report-step-meta .MuiTypography-caption {
+		font-size: 7pt !important;
+		line-height: 1.1 !important;
+		margin-bottom: 0 !important;
+	}
+
+	.prc-report-step-meta .MuiTypography-body2 {
+		font-size: 8.5pt !important;
+		line-height: 1.25 !important;
+		font-weight: 600 !important;
+	}
+
 	/* MUI Collapse: always render expanded height in PDF (pairs with unmountOnExit=false / expanded rows). */
 	.prc-execution-report-root .MuiCollapse-root {
 		height: auto !important;

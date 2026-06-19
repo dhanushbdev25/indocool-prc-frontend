@@ -1,202 +1,78 @@
-import {
-	Box,
-	Typography,
-	Chip,
-	Card,
-	CardContent,
-	Avatar,
-	IconButton,
-	useTheme,
-	Stack,
-	Tooltip
-} from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import {
-	CheckCircle,
-	RadioButtonUnchecked,
-	PlayArrow,
-	ArrowForward,
-	WarningAmberRounded,
-	PictureAsPdf,
-	TimerOutlined,
-	PersonOutline
-} from '@mui/icons-material';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { Box, Typography, IconButton, Stack, Tooltip } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
+import { ArrowForward, PictureAsPdf } from '@mui/icons-material';
+import { useEffect, useRef } from 'react';
 import { type TimelineStep } from '../../../types/execution.types';
-import {
-	type ApproverInfo,
-	type TimelineCardTiming,
-	type TimelineStepApprovalMeta,
-	formatApproverDisplay,
-	formatExecutionDuration,
-	formatStepTimestampParts,
-	getTimelineStepApprovalMeta,
-	getTimelineStepPlannedVsActual
-} from '../../../utils/timelineCardTiming';
+import StepExecutionMetaSummary from '../../StepExecutionMetaSummary';
 
 interface StepListProps {
 	steps: TimelineStep[];
 	currentStepIndex: number;
 	onStepClick: (stepIndex: number) => void;
-	/** When true, all steps are navigable (e.g. unsaved template preview). */
 	previewMode?: boolean;
-	/** From GET /prcExecution/:id — keyed timing snapshot for planned vs actual on cards. */
 	stepStartEndTime?: Record<string, unknown>;
-	/** When set (live execution only), completed steps show a PDF affordance scoped to this execution. */
 	executionId?: number;
 }
 
-const timingFontSx = {
-	fontFamily: '"SF Mono", "Roboto Mono", ui-monospace, monospace',
-	fontVariantNumeric: 'tabular-nums' as const,
-	letterSpacing: '0.01em',
-	fontSize: '0.625rem'
-} as const;
+type StepVisualStatus = 'completed' | 'active' | 'pending';
 
-const metaLabelSx = { fontSize: '0.6rem', lineHeight: 1.2, color: 'text.secondary', flexShrink: 0 } as const;
-const metaValueSx = { fontSize: '0.625rem', lineHeight: 1.2, fontWeight: 600, color: 'text.primary' } as const;
-
-function formatCompactTimestamp(iso: string): string {
-	const parts = formatStepTimestampParts(iso);
-	if (!parts) return '';
-	return `${parts.date} ${parts.time}`;
+interface StepVisualConfig {
+	status: StepVisualStatus;
+	label: string | null;
+	color: string;
 }
 
-function MetaInlineItem({ label, children }: { label: string; children: ReactNode }) {
-	return (
-		<Box sx={{ display: 'inline-flex', alignItems: 'baseline', gap: 0.35, minWidth: 0 }}>
-			<Typography component="span" variant="caption" sx={metaLabelSx}>
-				{label}
-			</Typography>
-			<Typography component="span" variant="caption" sx={metaValueSx}>
-				{children}
-			</Typography>
-		</Box>
-	);
-}
-
-function StepCardMetaPanel({
-	timing,
-	approvalMeta,
-	timingOverPlanned,
-	dimTiming
-}: {
-	timing: TimelineCardTiming;
-	approvalMeta: TimelineStepApprovalMeta;
-	timingOverPlanned: boolean;
-	dimTiming: boolean;
-}) {
-	const { plannedSec, actualSec } = timing;
-	const showTiming = plannedSec !== null || actualSec !== null;
-	const startLabel = approvalMeta.startTime ? formatCompactTimestamp(approvalMeta.startTime) : '';
-	const endLabel = approvalMeta.endTime ? formatCompactTimestamp(approvalMeta.endTime) : '';
-	const showTimes = Boolean(startLabel) || Boolean(endLabel);
-
-	const approverRows: Array<{ shortLabel: string; approver: ApproverInfo }> = [];
-	if (approvalMeta.productionApprovedBy) {
-		approverRows.push({ shortLabel: 'Prod', approver: approvalMeta.productionApprovedBy });
+const getStepTypeLabel = (step: TimelineStep) => {
+	switch (step.type) {
+		case 'setup':
+			return 'Setup';
+		case 'rawMaterials':
+			return 'Bill of Material';
+		case 'bom':
+			return 'BOM';
+		case 'sequence':
+			return 'Sequence';
+		case 'inspection':
+			return 'Inspection';
+		case 'sapConfirmations':
+			return 'SAP';
+		default:
+			return step.type;
 	}
-	if (approvalMeta.qualityApprovedBy) {
-		approverRows.push({ shortLabel: 'Quality', approver: approvalMeta.qualityApprovedBy });
-	}
-	if (approvalMeta.dataEnteredBy && !approvalMeta.productionApprovedBy) {
-		approverRows.push({ shortLabel: 'Recorded', approver: approvalMeta.dataEnteredBy });
-	}
+};
 
-	if (!showTimes && !showTiming && approverRows.length === 0) return null;
+const getStepVisualConfig = (
+	step: TimelineStep,
+	index: number,
+	currentStepIndex: number,
+	theme: ReturnType<typeof useTheme>
+): StepVisualConfig => {
+	if (step.status === 'completed') {
+		return { status: 'completed', label: 'Completed', color: theme.palette.success.main };
+	}
+	if (step.status === 'in-progress' || index === currentStepIndex) {
+		return { status: 'active', label: 'In progress', color: theme.palette.primary.main };
+	}
+	return { status: 'pending', label: null, color: theme.palette.grey[400] };
+};
 
+function StatusPill({ label, color }: { label: string; color: string }) {
 	return (
 		<Box
 			sx={{
-				mt: 0.75,
-				pt: 0.75,
-				borderTop: '1px solid',
-				borderColor: 'divider',
-				display: 'flex',
-				flexDirection: 'column',
-				gap: 0.4
+				display: 'inline-flex',
+				alignItems: 'center',
+				gap: 0.625,
+				px: 1,
+				py: 0.25,
+				borderRadius: 10,
+				bgcolor: alpha(color, 0.08),
+				border: '1px solid',
+				borderColor: alpha(color, 0.16)
 			}}
 		>
-			{(showTimes || showTiming) && (
-				<Box
-					sx={{
-						display: 'flex',
-						flexWrap: 'wrap',
-						alignItems: 'center',
-						gap: 0.75,
-						rowGap: 0.35
-					}}
-				>
-					{startLabel && <MetaInlineItem label="Start">{startLabel}</MetaInlineItem>}
-					{endLabel && <MetaInlineItem label="End">{endLabel}</MetaInlineItem>}
-					{showTiming && (
-						<Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.35, ml: showTimes ? 0 : undefined }}>
-							<TimerOutlined sx={{ fontSize: 11, color: 'text.disabled' }} />
-							{actualSec !== null && (
-								<Typography
-									component="span"
-									variant="caption"
-									sx={{
-										...timingFontSx,
-										fontWeight: 700,
-										color: timingOverPlanned ? 'warning.main' : dimTiming ? 'text.secondary' : 'text.primary'
-									}}
-								>
-									Act {formatExecutionDuration(actualSec)}
-								</Typography>
-							)}
-							{actualSec !== null && plannedSec !== null && (
-								<Typography component="span" variant="caption" sx={{ ...metaLabelSx, mx: -0.15 }}>
-									/
-								</Typography>
-							)}
-							{plannedSec !== null && (
-								<Typography
-									component="span"
-									variant="caption"
-									sx={{
-										...timingFontSx,
-										fontWeight: 600,
-										color: dimTiming ? 'text.secondary' : 'text.primary'
-									}}
-								>
-									Plan {formatExecutionDuration(plannedSec)}
-								</Typography>
-							)}
-							{timingOverPlanned && (
-								<WarningAmberRounded titleAccess="Actual time exceeds planned" sx={{ fontSize: 12, color: 'warning.main' }} />
-							)}
-						</Box>
-					)}
-				</Box>
-			)}
-
-			{approverRows.length > 0 && (
-				<Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 0.75, rowGap: 0.25 }}>
-					{approverRows.map(row => (
-						<Box key={row.shortLabel} sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.3, minWidth: 0 }}>
-							<PersonOutline sx={{ fontSize: 11, color: 'primary.main', flexShrink: 0 }} />
-							<Typography component="span" variant="caption" sx={metaLabelSx}>
-								{row.shortLabel}:
-							</Typography>
-							<Typography
-								component="span"
-								variant="caption"
-								sx={{
-									...metaValueSx,
-									overflow: 'hidden',
-									textOverflow: 'ellipsis',
-									whiteSpace: 'nowrap',
-									maxWidth: 140
-								}}
-								title={formatApproverDisplay(row.approver)}
-							>
-								{formatApproverDisplay(row.approver)}
-							</Typography>
-						</Box>
-					))}
-				</Box>
-			)}
+			<Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+			<Typography sx={{ fontSize: '0.6875rem', fontWeight: 500, color, lineHeight: 1.2 }}>{label}</Typography>
 		</Box>
 	);
 }
@@ -213,216 +89,150 @@ const StepList = ({
 	const currentStepRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		if (currentStepRef.current) {
-			currentStepRef.current.scrollIntoView({
-				behavior: 'smooth',
-				block: 'center'
-			});
-		}
+		currentStepRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 	}, [currentStepIndex]);
-
-	const getStepIcon = (step: TimelineStep, index: number) => {
-		if (step.status === 'completed') {
-			return <CheckCircle sx={{ color: '#4caf50' }} />;
-		}
-		if (step.status === 'in-progress' || index === currentStepIndex) {
-			return <PlayArrow sx={{ color: '#2196f3' }} />;
-		}
-		return <RadioButtonUnchecked sx={{ color: '#ccc' }} />;
-	};
-
-	const getStepColor = (step: TimelineStep, index: number) => {
-		if (step.status === 'completed') return '#4caf50';
-		if (step.status === 'in-progress' || index === currentStepIndex) return '#2196f3';
-		return '#ccc';
-	};
 
 	const isStepClickable = (step: TimelineStep, index: number) => {
 		if (previewMode) return true;
 		return step.status === 'completed' || step.status === 'in-progress' || index === currentStepIndex;
 	};
 
-	const getStepTypeLabel = (step: TimelineStep) => {
-		switch (step.type) {
-			case 'setup':
-				return 'Setup';
-			case 'rawMaterials':
-				return 'Bill of Material';
-			case 'bom':
-				return 'BOM';
-			case 'sequence':
-				return 'Sequence';
-			case 'inspection':
-				return 'Inspection';
-			case 'sapConfirmations':
-				return 'SAP';
-			default:
-				return step.type;
-		}
-	};
-
 	return (
-		<Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-			<Typography variant="h6" sx={{ px: 1.5, pt: 1.5, pb: 0.5, fontWeight: 600, color: '#333', fontSize: '1rem' }}>
-				Execution Steps
-			</Typography>
-
-			<Box sx={{ flex: 1, overflowY: 'auto', p: 1.5, pt: 0.75 }}>
-				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+		<Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: alpha(theme.palette.grey[500], 0.04) }}>
+			<Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, py: 2.5 }}>
+				<Stack spacing={1.25}>
 					{steps.map((step, index) => {
-						const timing = getTimelineStepPlannedVsActual(step, stepStartEndTime);
-						const approvalMeta = getTimelineStepApprovalMeta(step, stepStartEndTime);
-						const timingOverPlanned =
-							timing.plannedSec !== null &&
-							timing.actualSec !== null &&
-							timing.actualSec > timing.plannedSec;
-						const dimTiming = !isStepClickable(step, index);
 						const clickable = isStepClickable(step, index);
 						const isActive = index === currentStepIndex;
+						const dimTiming = !clickable;
+						const visual = getStepVisualConfig(step, index, currentStepIndex, theme);
+						const stepNo = String(step.stepNumber).padStart(2, '0');
 
 						return (
-							<Card
+							<Box
 								key={index}
 								ref={isActive ? currentStepRef : null}
+								onClick={() => clickable && onStepClick(index)}
 								sx={{
+									position: 'relative',
+									display: 'flex',
+									gap: 1.5,
+									p: 1.75,
+									borderRadius: 2.5,
 									cursor: clickable ? 'pointer' : 'default',
-									opacity: clickable ? 1 : 0.6,
-									border: isActive ? '2px solid #2196f3' : '1px solid #e0e0e0',
-									borderRadius: 2,
-									overflow: 'hidden',
-									transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+									opacity: clickable ? 1 : 0.45,
+									bgcolor: 'background.paper',
+									border: '1px solid',
+									borderColor: isActive ? alpha(theme.palette.primary.main, 0.28) : alpha(theme.palette.divider, 0.9),
+									boxShadow: isActive
+										? `0 0 0 1px ${alpha(theme.palette.primary.main, 0.06)}, 0 8px 24px ${alpha(theme.palette.primary.main, 0.1)}`
+										: `0 1px 2px ${alpha(theme.palette.common.black, 0.04)}`,
+									transition: 'box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease',
 									'&:hover': clickable
 										? {
-												boxShadow: 2,
-												transform: 'translateY(-1px)'
+												borderColor: isActive
+													? alpha(theme.palette.primary.main, 0.35)
+													: alpha(theme.palette.grey[500], 0.25),
+												boxShadow: isActive
+													? `0 0 0 1px ${alpha(theme.palette.primary.main, 0.08)}, 0 12px 28px ${alpha(theme.palette.primary.main, 0.12)}`
+													: `0 4px 16px ${alpha(theme.palette.common.black, 0.06)}`,
+												'& .step-card-actions': { opacity: 1 }
 											}
 										: {}
 								}}
-								onClick={() => clickable && onStepClick(index)}
 							>
-								<CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
-									<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-										<Avatar
-											sx={{
-												width: 30,
-												height: 30,
-												backgroundColor: 'white',
-												border: `2px solid ${getStepColor(step, index)}`,
-												flexShrink: 0,
-												'& svg': { fontSize: 18 }
-											}}
-										>
-											{getStepIcon(step, index)}
-										</Avatar>
+								<Typography
+									sx={{
+										fontSize: '1.375rem',
+										fontWeight: 300,
+										lineHeight: 1,
+										letterSpacing: '-0.03em',
+										color: isActive ? 'primary.main' : alpha(theme.palette.text.primary, 0.18),
+										fontVariantNumeric: 'tabular-nums',
+										pt: 0.125,
+										flexShrink: 0,
+										width: 28,
+										textAlign: 'center'
+									}}
+								>
+									{stepNo}
+								</Typography>
 
+								<Box sx={{ flex: 1, minWidth: 0 }}>
+									<Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 1 }}>
 										<Box sx={{ flex: 1, minWidth: 0 }}>
-											<Box
-												sx={{
-													display: 'flex',
-													alignItems: 'center',
-													flexWrap: 'wrap',
-													gap: 0.5,
-													mb: 0.25
-												}}
-											>
-												<Typography
-													variant="caption"
-													sx={{ fontWeight: 700, color: clickable ? 'text.primary' : 'text.disabled' }}
-												>
-													Step {step.stepNumber}
-												</Typography>
-												{step.ctq && (
-													<Chip
-														label="CTQ"
-														size="small"
-														sx={{
-															backgroundColor: '#fff3e0',
-															color: '#f57c00',
-															fontSize: '0.5625rem',
-															height: 16,
-															fontWeight: 600,
-															'& .MuiChip-label': { px: 0.6 }
-														}}
-													/>
-												)}
-												{step.partialCtqApprove && (
-													<Chip
-														label="Partial CTQ"
-														size="small"
-														sx={{
-															backgroundColor: '#fff8e1',
-															color: '#f9a825',
-															fontSize: '0.5625rem',
-															height: 16,
-															fontWeight: 700,
-															'& .MuiChip-label': { px: 0.6 }
-														}}
-													/>
-												)}
-												<Chip
-													label={getStepTypeLabel(step)}
-													size="small"
-													variant="outlined"
-													sx={{
-														fontSize: '0.5625rem',
-														height: 16,
-														color: 'text.secondary',
-														'& .MuiChip-label': { px: 0.6 }
-													}}
-												/>
-												{step.status === 'completed' && (
-													<Chip
-														label="Done"
-														size="small"
-														sx={{
-															backgroundColor: '#e8f5e8',
-															color: '#4caf50',
-															fontSize: '0.5625rem',
-															height: 16,
-															fontWeight: 600,
-															'& .MuiChip-label': { px: 0.6 }
-														}}
-													/>
-												)}
-												{step.status === 'in-progress' && (
-													<Chip
-														label="Active"
-														size="small"
-														sx={{
-															backgroundColor: '#e3f2fd',
-															color: '#2196f3',
-															fontSize: '0.5625rem',
-															height: 16,
-															fontWeight: 600,
-															'& .MuiChip-label': { px: 0.6 }
-														}}
-													/>
-												)}
-											</Box>
-
 											<Typography
-												variant="body2"
 												sx={{
+													fontSize: '0.9375rem',
 													fontWeight: 600,
-													fontSize: '0.8125rem',
+													lineHeight: 1.35,
+													letterSpacing: '-0.01em',
 													color: clickable ? 'text.primary' : 'text.disabled',
-													lineHeight: 1.25,
+													display: '-webkit-box',
+													WebkitLineClamp: 2,
+													WebkitBoxOrient: 'vertical',
 													overflow: 'hidden',
-													textOverflow: 'ellipsis',
-													whiteSpace: 'nowrap'
+													mb: 0.75
 												}}
 												title={step.title}
 											>
 												{step.title}
 											</Typography>
+
+											<Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.75 }}>
+												<Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 500 }}>
+													{getStepTypeLabel(step)}
+												</Typography>
+												{step.ctq && (
+													<Typography
+														sx={{
+															fontSize: '0.6875rem',
+															fontWeight: 600,
+															color: 'warning.dark',
+															px: 0.75,
+															py: 0.125,
+															borderRadius: 1,
+															bgcolor: alpha(theme.palette.warning.main, 0.1)
+														}}
+													>
+														CTQ
+													</Typography>
+												)}
+												{step.partialCtqApprove && (
+													<Typography
+														sx={{
+															fontSize: '0.6875rem',
+															fontWeight: 600,
+															color: 'warning.main',
+															px: 0.75,
+															py: 0.125,
+															borderRadius: 1,
+															bgcolor: alpha(theme.palette.warning.main, 0.06)
+														}}
+													>
+														Partial CTQ
+													</Typography>
+												)}
+												{visual.label && <StatusPill label={visual.label} color={visual.color} />}
+											</Box>
 										</Box>
 
-										<Stack direction="row" spacing={0} alignItems="flex-start" sx={{ flexShrink: 0, mt: -0.25 }}>
+										<Stack
+											className="step-card-actions"
+											direction="row"
+											spacing={0}
+											alignItems="center"
+											sx={{
+												flexShrink: 0,
+												opacity: isActive ? 1 : 0,
+												transition: 'opacity 0.15s ease'
+											}}
+										>
 											{executionId != null &&
 												!previewMode &&
 												step.status === 'completed' &&
 												step.type !== 'sapConfirmations' && (
-													<Tooltip title="Step report — print or save as PDF">
+													<Tooltip title="Step report">
 														<IconButton
 															size="small"
 															aria-label={`Step report PDF for step ${step.stepNumber}`}
@@ -437,13 +247,10 @@ const StepList = ({
 															}}
 															sx={{
 																color: 'text.secondary',
-																'&:hover': {
-																	color: 'primary.main',
-																	backgroundColor: alpha(theme.palette.primary.main, 0.06)
-																}
+																'&:hover': { color: 'text.primary', bgcolor: alpha(theme.palette.grey[500], 0.08) }
 															}}
 														>
-															<PictureAsPdf fontSize="small" />
+															<PictureAsPdf sx={{ fontSize: 17 }} />
 														</IconButton>
 													</Tooltip>
 												)}
@@ -452,30 +259,27 @@ const StepList = ({
 													size="small"
 													aria-label="Open step"
 													sx={{
-														color: 'text.secondary',
-														'&:hover': {
-															color: 'primary.main',
-															backgroundColor: alpha(theme.palette.primary.main, 0.06)
-														}
+														color: isActive ? 'primary.main' : 'text.secondary',
+														'&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.08) }
 													}}
 												>
-													<ArrowForward fontSize="small" />
+													<ArrowForward sx={{ fontSize: 15 }} />
 												</IconButton>
 											)}
 										</Stack>
 									</Box>
 
-									<StepCardMetaPanel
-										timing={timing}
-										approvalMeta={approvalMeta}
-										timingOverPlanned={timingOverPlanned}
+									<StepExecutionMetaSummary
+										step={step}
+										stepStartEndTime={stepStartEndTime}
+										variant="sidebar"
 										dimTiming={dimTiming}
 									/>
-								</CardContent>
-							</Card>
+								</Box>
+							</Box>
 						);
 					})}
-				</Box>
+				</Stack>
 			</Box>
 		</Box>
 	);

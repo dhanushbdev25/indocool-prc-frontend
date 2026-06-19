@@ -1,5 +1,5 @@
 import { useMemo, memo } from 'react';
-import { Box, Chip, Button, Typography, LinearProgress, Tooltip, Stack, IconButton } from '@mui/material';
+import { Box, Chip, Button, Typography, Tooltip, Stack, IconButton } from '@mui/material';
 import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
 import {
 	PlayArrow as PlayArrowIcon,
@@ -23,11 +23,15 @@ interface PrcExecutionTableProps {
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
+const getDescription = (row: PrcExecutionData): string => {
+	const desc = (row as unknown as Record<string, unknown>).description;
+	return typeof desc === 'string' ? desc : '';
+};
+
 const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, pagination, onPaginationChange }: PrcExecutionTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canExecute = hasPermission('PRC_EXECUTION_EDIT');
 	const canView = hasPermission('PRC_EXECUTION_VIEW');
-	// Safety check for data
 	const safeData = data || [];
 
 	const getStatusColor = (status: string) => {
@@ -45,29 +49,6 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 		}
 	};
 
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
-	};
-
-	const getProgressColor = (progressValue: number) => {
-		if (progressValue >= 100) return '#4caf50';
-		if (progressValue >= 50) return '#ff9800';
-		return '#2196f3';
-	};
-
-	const calculateProgress = (execution: PrcExecutionData) => {
-		// Use the progress value directly from API response
-		const progressValue =
-			typeof execution.progress === 'string' ? parseInt(execution.progress) || 0 : execution.progress;
-
-		// Ensure progress is within valid range (0-100)
-		return Math.min(100, Math.max(0, progressValue));
-	};
-
 	const opChipColors = (prcStatus: boolean, sapStatus: boolean) => {
 		if (prcStatus && sapStatus) return '#2e7d32';
 		if (!prcStatus && !sapStatus) return '#9e9e9e';
@@ -77,32 +58,15 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 	const columns = useMemo<MRT_ColumnDef<PrcExecutionData>[]>(
 		() => [
 			{
-				accessorKey: 'id',
-				header: 'ID',
-				size: 80,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							fontWeight: 600,
-							color: '#1976d2',
-							fontSize: '0.875rem'
-						}}
-					>
-						#{row.original.id}
-					</Typography>
-				)
-			},
-			{
 				id: 'orderId',
-				header: 'Order ID',
+				header: 'Order No',
 				size: 140,
 				accessorFn: row => {
-					const v = (row as { orderId?: string | number | null }).orderId;
+					const v = row.orderId;
 					return v != null && String(v).trim() ? String(v) : '';
 				},
 				Cell: ({ row }) => {
-					const orderId = (row.original as { orderId?: string | number | null }).orderId;
+					const orderId = row.original.orderId;
 					return (
 						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
 							{orderId != null && String(orderId).trim() ? String(orderId) : '—'}
@@ -111,37 +75,58 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 				}
 			},
 			{
-				id: 'partNumberDisplay',
-				header: 'Part Number',
-				size: 170,
-				accessorFn: row =>
-					row.sapReferenceNumber?.trim() ? row.sapReferenceNumber : row.partNumber,
+				accessorKey: 'sapReferenceNumber',
+				header: 'SAP Number',
+				size: 150,
 				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
-						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : row.original.partNumber}
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
 					</Typography>
 				)
 			},
 			{
-				accessorKey: 'date',
-				header: 'Date',
-				size: 120,
-				enableColumnFilter: false,
+				accessorKey: 'partNumber',
+				header: 'Part Number',
+				size: 170,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
+						{row.original.partNumber?.trim() ? row.original.partNumber : '—'}
+					</Typography>
+				)
+			},
+			{
+				id: 'description',
+				header: 'Part Description',
+				size: 220,
+				accessorFn: row => getDescription(row),
 				Cell: ({ row }) => (
 					<Typography
 						variant="body2"
 						sx={{
 							color: '#333',
-							fontSize: '0.875rem'
+							fontSize: '0.875rem',
+							overflow: 'hidden',
+							textOverflow: 'ellipsis',
+							whiteSpace: 'nowrap'
 						}}
 					>
-						{formatDate(row.original.date)}
+						{getDescription(row.original) || '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'productionSetId',
+				header: 'Serial Number',
+				size: 150,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.productionSetId?.trim() ? row.original.productionSetId : '—'}
 					</Typography>
 				)
 			},
 			{
 				accessorKey: 'customerName',
-				header: 'Customer name',
+				header: 'Customer Name',
 				size: 200,
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
@@ -150,8 +135,18 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 				)
 			},
 			{
-				id: 'operationStatus',
-				header: 'Operation status',
+				accessorKey: 'customerVariantName',
+				header: 'Variant',
+				size: 160,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.customerVariantName?.trim() ? row.original.customerVariantName : '—'}
+					</Typography>
+				)
+			},
+			{
+				id: 'operation',
+				header: 'Operation',
 				size: 300,
 				enableColumnFilter: false,
 				accessorFn: row =>
@@ -195,50 +190,8 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 				}
 			},
 			{
-				accessorKey: 'progress',
-				header: 'Progress',
-				size: 150,
-				enableColumnFilter: false,
-				Cell: ({ row }) => {
-					const progressValue = calculateProgress(row.original);
-					return (
-						<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-							<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-								<LinearProgress
-									variant="determinate"
-									value={progressValue}
-									sx={{
-										flex: 1,
-										height: 8,
-										borderRadius: 4,
-										backgroundColor: '#e0e0e0',
-										'& .MuiLinearProgress-bar': {
-											backgroundColor: getProgressColor(progressValue),
-											borderRadius: 4
-										}
-									}}
-								/>
-								<Typography
-									variant="caption"
-									sx={{
-										fontSize: '0.75rem',
-										fontWeight: 500,
-										color: getProgressColor(progressValue)
-									}}
-								>
-									{progressValue}%
-								</Typography>
-							</Box>
-							<Typography variant="caption" sx={{ fontSize: '0.75rem', color: '#666' }}>
-								{row.original.stepsCompleted || 0} of {row.original.totalSteps || 0} steps
-							</Typography>
-						</Box>
-					);
-				}
-			},
-			{
 				accessorKey: 'status',
-				header: 'Execution status',
+				header: 'Status',
 				size: 140,
 				filterVariant: 'select',
 				filterSelectOptions: ['ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'INACTIVE'],

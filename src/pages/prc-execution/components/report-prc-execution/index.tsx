@@ -26,6 +26,7 @@ import RawMaterialsStep from '../execute-prc/components/steps/RawMaterialsStep';
 import BomStep from '../execute-prc/components/steps/BomStep';
 import SapConfirmationStep from '../execute-prc/components/steps/SapConfirmationStep';
 import StepPreview from '../execute-prc/components/StepPreview';
+import StepExecutionMetaSummary from '../StepExecutionMetaSummary';
 import './prcExecutionReportPrint.css';
 
 const noopForm = (_fd: FormData) => {
@@ -143,7 +144,15 @@ function stepStatusChipColor(
 	return 'default';
 }
 
-function ReportSectionShell({ step, children }: { step: TimelineStep; children: React.ReactNode }) {
+function ReportSectionShell({
+	step,
+	stepTimingRoot,
+	children
+}: {
+	step: TimelineStep;
+	stepTimingRoot: Record<string, unknown>;
+	children: React.ReactNode;
+}) {
 	return (
 		<Paper
 			variant="outlined"
@@ -186,11 +195,21 @@ function ReportSectionShell({ step, children }: { step: TimelineStep; children: 
 						{step.ctq && (
 							<Chip label="CTQ" size="small" color="warning" variant="outlined" sx={{ fontWeight: 600 }} />
 						)}
+						{step.partialCtqApprove && (
+							<Chip
+								label="Partial CTQ"
+								size="small"
+								color="warning"
+								variant="filled"
+								sx={{ fontWeight: 600 }}
+							/>
+						)}
 						<Chip label={step.type} size="small" variant="outlined" />
 						<Chip label={step.status} size="small" color={stepStatusChipColor(step.status)} />
 					</Stack>
 				</Stack>
 			</Box>
+			<StepExecutionMetaSummary step={step} stepStartEndTime={stepTimingRoot} variant="report" />
 			<Box sx={{ p: 0 }}>{children}</Box>
 		</Paper>
 	);
@@ -213,7 +232,7 @@ function ReportTimelineSection({
 		case 'setup':
 			return (
 				<Box className={className}>
-					<ReportSectionShell step={step}>
+					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						<ExecutionSetupStep
 							step={step}
 							executionData={execution}
@@ -228,7 +247,7 @@ function ReportTimelineSection({
 		case 'rawMaterials':
 			return (
 				<Box className={className}>
-					<ReportSectionShell step={step}>
+					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						<RawMaterialsStep step={step} onStepComplete={noopForm} readOnlyOverride />
 					</ReportSectionShell>
 				</Box>
@@ -236,7 +255,7 @@ function ReportTimelineSection({
 		case 'bom':
 			return (
 				<Box className={className}>
-					<ReportSectionShell step={step}>
+					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						<BomStep
 							step={step}
 							executionData={execution}
@@ -251,7 +270,7 @@ function ReportTimelineSection({
 			const preview = buildSequenceStepPreviewForReport(step, agg, stepTimingRoot);
 			return (
 				<Box className={className}>
-					<ReportSectionShell step={step}>
+					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						{preview ? (
 							<Box className="prc-report-step-preview-wrap" sx={{ px: { xs: 1.5, sm: 2 }, pt: 2, pb: 2 }}>
 								<StepPreview
@@ -279,7 +298,7 @@ function ReportTimelineSection({
 			const preview = buildInspectionStepPreviewForReport(step, agg);
 			return (
 				<Box className={className}>
-					<ReportSectionShell step={step}>
+					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						{preview ? (
 							<Box className="prc-report-step-preview-wrap" sx={{ px: { xs: 1.5, sm: 2 }, pt: 2, pb: 2 }}>
 								<StepPreview
@@ -306,7 +325,7 @@ function ReportTimelineSection({
 		case 'sapConfirmations':
 			return (
 				<Box className={className}>
-					<ReportSectionShell step={step}>
+					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						<SapConfirmationStep
 							executionData={execution}
 							onStepComplete={noopAsyncForm}
@@ -318,7 +337,7 @@ function ReportTimelineSection({
 		default:
 			return (
 				<Box className={className}>
-					<ReportSectionShell step={step}>
+					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						<Box sx={{ p: 2.5 }}>
 							<Typography variant="body2" color="text.secondary">
 								This step type is not supported in the consolidated report.

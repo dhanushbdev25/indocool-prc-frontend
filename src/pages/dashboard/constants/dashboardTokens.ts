@@ -89,3 +89,56 @@ export const dateRangeTriggerButton: SxProps<Theme> = theme => ({
 		backgroundColor: alpha(theme.palette.action.hover, 0.04)
 	}
 });
+
+export const dashboardFilterField: SxProps<Theme> = theme => ({
+	'& .MuiOutlinedInput-root': {
+		borderRadius: '10px',
+		minHeight: 40,
+		maxHeight: 40,
+		flexWrap: 'nowrap',
+		paddingTop: '0 !important',
+		paddingBottom: '0 !important',
+		paddingLeft: '10px !important',
+		paddingRight: '36px !important',
+		backgroundColor: theme.palette.background.paper,
+		boxShadow: `0 1px 2px ${alpha(theme.palette.common.black, 0.04)}`,
+		transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+		'& fieldset': {
+			borderColor: alpha(theme.palette.divider, 0.9)
+		},
+		'&:hover fieldset': {
+			borderColor: alpha(theme.palette.grey[500], 0.35)
+		},
+		'&.Mui-focused': {
+			boxShadow: `0 0 0 1px ${alpha(theme.palette.primary.main, 0.08)}, 0 4px 12px ${alpha(theme.palette.primary.main, 0.08)}`,
+			'& fieldset': {
+				borderColor: alpha(theme.palette.primary.main, 0.35),
+				borderWidth: 1
+			}
+		}
+	},
+	'& .MuiInputLabel-root': {
+		fontSize: '0.8125rem',
+		fontWeight: 500,
+		color: 'text.secondary',
+		transform: 'translate(10px, 10px) scale(1)',
+		'&.MuiInputLabel-shrink': {
+			transform: 'translate(10px, -7px) scale(0.78)',
+			fontWeight: 600,
+			letterSpacing: '0.02em'
+		}
+	},
+	'& .MuiAutocomplete-input': {
+		minWidth: '24px !important',
+		padding: '8px 4px !important',
+		fontSize: '0.8125rem',
+		fontWeight: 500
+	},
+	'& .MuiAutocomplete-endAdornment': {
+		right: 8
+	},
+	'& .MuiAutocomplete-tag': {
+		margin: 0,
+		maxWidth: 'calc(100% - 8px)'
+	}
+});

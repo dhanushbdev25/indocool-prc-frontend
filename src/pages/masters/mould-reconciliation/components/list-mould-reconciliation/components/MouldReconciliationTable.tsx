@@ -22,83 +22,38 @@ const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
 const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagination, onPaginationChange }: MouldReconciliationTableProps) => {
 	const { hasPermission } = useCurrentRole();
-	const reconcilePermissions = {
-		canCreate: hasPermission('MOULD_RECONCILIATION_CREATE'),
-		canEdit: hasPermission('MOULD_RECONCILIATION_EDIT')
-	};
+	const canCreateReconcile = hasPermission('MOULD_RECONCILIATION_CREATE');
+	const canEditReconcile = hasPermission('MOULD_RECONCILIATION_EDIT');
 	const columns = useMemo<MRT_ColumnDef<MouldReconciliationRow>[]>(
 		() => [
 			{
 				accessorKey: 'partNumber',
-				header: 'Part code',
+				header: 'Part Number',
 				size: 180
 			},
 			{
-				accessorKey: 'sapReferenceNumber',
-				header: 'SAP reference',
-				size: 160,
-				Cell: ({ row }) => (
-					<Typography variant="body2">
-						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
-					</Typography>
-				)
-			},
-			{
 				accessorKey: 'mouldCode',
-				header: 'Mould ID',
+				header: 'Mould Code',
 				size: 160
 			},
 			{
-				accessorKey: 'reconciliationCount',
-				header: 'Reconciliation count',
-				size: 170
-			},
-			{
-				accessorKey: 'currentCount',
-				header: 'Current count',
-				size: 140,
-				Cell: ({ row }) => (
-					<Chip
-						label={row.original.currentCount}
-						color={row.original.currentCount >= row.original.reconciliationCount ? 'warning' : 'default'}
-						size="small"
-					/>
-				)
-			},
-			{
-				accessorKey: 'totalCount',
-				header: 'Total count',
-				size: 140
-			},
-			{
-				id: 'due',
-				accessorFn: row => (isMouldDueForReconciliation(row) ? 'Yes' : 'No'),
-				header: 'Due',
-				size: 100,
+				id: 'status',
+				accessorFn: row => (isMouldDueForReconciliation(row) ? 'Due' : 'Not due'),
+				header: 'Reconciliation Status',
+				size: 180,
 				filterVariant: 'select',
-				filterSelectOptions: ['Yes', 'No'],
+				filterSelectOptions: ['Due', 'Not due'],
 				Cell: ({ row }) => {
 					const due = isMouldDueForReconciliation(row.original);
 					return (
 						<Chip
-							label={due ? 'Yes' : 'No'}
+							label={due ? 'Due' : 'Not due'}
 							color={due ? 'warning' : 'default'}
 							size="small"
 							variant={due ? 'filled' : 'outlined'}
 						/>
 					);
 				}
-			},
-			{
-				accessorKey: 'lastReconciledAt',
-				header: 'Last reconciled',
-				size: 180,
-				enableColumnFilter: false,
-				Cell: ({ row }) => (
-					<Typography variant="body2">
-						{row.original.lastReconciledAt ? new Date(row.original.lastReconciledAt).toLocaleString() : '—'}
-					</Typography>
-				)
 			},
 			{
 				id: 'actions',
@@ -109,7 +64,10 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 				Cell: ({ row }) => {
 					const rowKey = getRowKey(row.original);
 					const isLoading = reconcilingKey === rowKey;
-					const { showAction, isDue } = canReconcileMouldRow(row.original, reconcilePermissions);
+					const { showAction, isDue } = canReconcileMouldRow(row.original, {
+						canCreate: canCreateReconcile,
+						canEdit: canEditReconcile
+					});
 					if (!showAction) {
 						return null;
 					}
@@ -127,7 +85,7 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 				}
 			}
 		],
-		[onReconcile, reconcilingKey, reconcilePermissions.canCreate, reconcilePermissions.canEdit]
+		[onReconcile, reconcilingKey, canCreateReconcile, canEditReconcile]
 	);
 
 	if (!data.length) {

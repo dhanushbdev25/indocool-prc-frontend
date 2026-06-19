@@ -108,12 +108,25 @@ export const prcExecutionApi = createApi({
 			providesTags: ['OperationDelayReasonCombo']
 		}),
 
-		/** GET /web/combo/workstations?plantCode= — workstations for a plant */
-		fetchWorkstationsCombo: builder.query<WebComboItem[], { plantCode: string | number }>({
-			query: ({ plantCode }) => ({
-				url: 'combo/workstations',
-				method: 'GET',
-				params: { plantCode }
+		/** GET /web/combo/workstations?plantCode=&plantCode= — workstations for one or more plants */
+		fetchWorkstationsCombo: builder.query<WebComboItem[], { plantCodes: (string | number)[] }>({
+			query: ({ plantCodes }) => {
+				const searchParams = new URLSearchParams();
+				for (const code of plantCodes) {
+					const normalized = String(code).trim();
+					if (normalized) searchParams.append('plantCode', normalized);
+				}
+				const queryString = searchParams.toString();
+				return {
+					url: queryString ? `combo/workstations?${queryString}` : 'combo/workstations',
+					method: 'GET'
+				};
+			},
+			serializeQueryArgs: ({ queryArgs }) => ({
+				plantCodes: queryArgs.plantCodes
+					.map(code => String(code).trim())
+					.filter(Boolean)
+					.join('\0')
 			}),
 			transformResponse: (response: unknown) => {
 				if (!isWebComboResponse(response)) {
@@ -133,7 +146,8 @@ export const prcExecutionApi = createApi({
 				}
 				return response.data;
 			},
-			providesTags: (_r, _e, { plantCode }) => [{ type: 'WorkstationsCombo', id: String(plantCode) }]
+			providesTags: (_r, _e, { plantCodes }) =>
+				plantCodes.map(code => ({ type: 'WorkstationsCombo', id: String(code) }))
 		})
 	})
 });

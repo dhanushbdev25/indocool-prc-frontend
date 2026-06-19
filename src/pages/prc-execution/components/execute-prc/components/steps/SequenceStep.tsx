@@ -134,7 +134,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 
 	const plantCode = executionData.plantCode ?? '';
 	const { data: workstationOptions = [] } = useFetchWorkstationsComboQuery(
-		{ plantCode },
+		{ plantCodes: plantCode ? [plantCode] : [] },
 		{ skip: !plantCode }
 	);
 

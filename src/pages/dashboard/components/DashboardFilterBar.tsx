@@ -1,6 +1,7 @@
 import { Box, ButtonBase, Grid } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import FilterAutocomplete from '../../../components/masters/filters/FilterAutocomplete';
+import { dashboardFilterField } from '../constants/dashboardTokens';
 import type { DashboardEntityFilters, DashboardEntityFilterKey } from '../hooks/useDashboardEntityFilters';
 
 interface DashboardFilterBarProps {
@@ -29,10 +30,11 @@ export const DashboardFilterBar = ({
 	const theme = useTheme();
 	const mutedText = alpha(theme.palette.text.primary, 0.55);
 	const hairlineHover = alpha(theme.palette.text.primary, 0.04);
+	const filterFieldSx = [dashboardFilterField];
 
 	return (
 		<Box sx={{ width: '100%' }}>
-			<Grid container spacing={1.5} alignItems="center">
+			<Grid container spacing={1.25} alignItems="center">
 				<Grid size={{ xs: 12, sm: 6, lg: 3 }}>
 					<FilterAutocomplete
 						label="Units"
@@ -41,6 +43,8 @@ export const DashboardFilterBar = ({
 						value={filters.units}
 						onChange={value => onFilterChange('units', value)}
 						disabled={disabled}
+						compactDisplay
+						sx={filterFieldSx}
 					/>
 				</Grid>
 				<Grid size={{ xs: 12, sm: 6, lg: 3 }}>
@@ -50,7 +54,9 @@ export const DashboardFilterBar = ({
 						options={workstationOptions}
 						value={filters.workstation}
 						onChange={value => onFilterChange('workstation', value)}
-						disabled={disabled}
+						disabled={disabled || filters.units.length === 0}
+						compactDisplay
+						sx={filterFieldSx}
 					/>
 				</Grid>
 				<Grid size={{ xs: 12, sm: 6, lg: 3 }}>
@@ -61,6 +67,8 @@ export const DashboardFilterBar = ({
 						value={filters.shift}
 						onChange={value => onFilterChange('shift', value)}
 						disabled={disabled}
+						compactDisplay
+						sx={filterFieldSx}
 					/>
 				</Grid>
 				<Grid size={{ xs: 12, sm: 6, lg: 3 }}>
@@ -71,6 +79,8 @@ export const DashboardFilterBar = ({
 						value={filters.projects}
 						onChange={value => onFilterChange('projects', value)}
 						disabled={disabled}
+						compactDisplay
+						sx={filterFieldSx}
 					/>
 				</Grid>
 			</Grid>
@@ -81,9 +91,9 @@ export const DashboardFilterBar = ({
 						onClick={onClearAll}
 						aria-label="Clear dashboard filters"
 						sx={{
-							height: 22,
+							height: 24,
 							px: 0.75,
-							borderRadius: 0.5,
+							borderRadius: 0.75,
 							color: mutedText,
 							fontSize: '0.75rem',
 							fontWeight: 500,
