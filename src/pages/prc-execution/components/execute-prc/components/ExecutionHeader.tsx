@@ -180,6 +180,15 @@ const ExecutionHeader = ({
 						>
 							SAP reference: {sapRef}
 						</Typography>
+						<Typography
+							variant="caption"
+							color="text.secondary"
+							noWrap
+							title={reservation === '—' ? undefined : reservation}
+							sx={{ display: 'block', mt: 0.25, fontFamily: 'ui-monospace, monospace' }}
+						>
+							Reservation: {reservation}
+						</Typography>
 					</Box>
 				</Stack>
 

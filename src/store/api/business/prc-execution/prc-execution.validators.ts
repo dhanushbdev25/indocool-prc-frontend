@@ -80,6 +80,7 @@ export interface PrcExecution {
 	customerName?: string | null;
 	customerVariantName?: string | null;
 	sapReferenceNumber?: string | null;
+	reservation?: string | null;
 	progress: string | number;
 	stepsCompleted?: number;
 	totalSteps?: number;

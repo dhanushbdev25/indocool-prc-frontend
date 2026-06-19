@@ -85,6 +85,21 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 				)
 			},
 			{
+				accessorKey: 'reservation',
+				header: 'Reservation',
+				size: 150,
+				Cell: ({ row }) => (
+					<Typography
+						variant="body2"
+						sx={{ color: '#333', fontSize: '0.875rem', fontFamily: 'ui-monospace, monospace' }}
+					>
+						{row.original.reservation != null && String(row.original.reservation).trim()
+							? String(row.original.reservation)
+							: '—'}
+					</Typography>
+				)
+			},
+			{
 				accessorKey: 'partNumber',
 				header: 'Part Number',
 				size: 170,

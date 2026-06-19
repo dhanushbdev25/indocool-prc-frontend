@@ -18,7 +18,7 @@ import {
 } from '../../../../components/masters';
 import { isFilterValueEmpty, isStringArrayValue } from '../../../../components/masters/filters/types';
 
-const SEARCH_PLACEHOLDER = 'Order, SAP, part, serial, customer, operation';
+const SEARCH_PLACEHOLDER = 'Order, SAP, reservation, part, serial, customer, operation';
 
 const ListPrcExecution = () => {
 	const navigate = useNavigate();
@@ -58,6 +58,14 @@ const ListPrcExecution = () => {
 				key: 'sapReferenceNumber',
 				label: 'SAP Number',
 				options: deriveOptions(allExecutionData, r => r.sapReferenceNumber)
+			},
+			{
+				kind: 'autocomplete',
+				key: 'reservation',
+				label: 'Reservation',
+				options: deriveOptions(allExecutionData, r =>
+					r.reservation != null && String(r.reservation).trim() ? String(r.reservation) : ''
+				)
 			},
 			{
 				kind: 'autocomplete',
@@ -119,6 +127,14 @@ const ListPrcExecution = () => {
 		return allExecutionData.filter(e => {
 			if (!matchesMulti(e.orderId != null ? String(e.orderId) : '', filters.orderId)) return false;
 			if (!matchesMulti(e.sapReferenceNumber, filters.sapReferenceNumber)) return false;
+			if (
+				!matchesMulti(
+					e.reservation != null && String(e.reservation).trim() ? String(e.reservation) : '',
+					filters.reservation
+				)
+			) {
+				return false;
+			}
 			if (!matchesMulti(e.partNumber, filters.partNumber)) return false;
 			const description = (e as unknown as Record<string, unknown>).description;
 			if (!matchesMulti(typeof description === 'string' ? description : '', filters.description)) return false;
@@ -139,6 +155,7 @@ const ListPrcExecution = () => {
 			const mould = (e.mouldId ?? '').toLowerCase();
 			const customerName = (e.customerName ?? '').toLowerCase();
 			const sapRef = (e.sapReferenceNumber ?? '').toLowerCase();
+			const reservation = (e.reservation != null ? String(e.reservation) : '').toLowerCase();
 			const opHaystack = (e.operationStatus ?? [])
 				.flatMap(op => [(op.operationText ?? '').toLowerCase(), (op.operationId ?? '').toLowerCase()])
 				.join(' ');
@@ -150,6 +167,7 @@ const ListPrcExecution = () => {
 				mould.includes(term) ||
 				customerName.includes(term) ||
 				sapRef.includes(term) ||
+				reservation.includes(term) ||
 				opHaystack.includes(term)
 			);
 		});
