@@ -70,6 +70,7 @@ export interface PrcExecution {
 	id: number;
 	orderId?: string | number | null;
 	partNumber: string;
+	partDescription?: string | null;
 	updatedAt?: string;
 	version: number;
 	customer: string;

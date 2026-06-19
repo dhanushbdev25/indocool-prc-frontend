@@ -286,6 +286,7 @@ const LinkedMastersTab = ({
 	const handleAddStep = useCallback(
 		(item: StepSelectableItem, group: string) => {
 			const itemType = isSequenceItem(item) ? 'sequence' : 'inspection';
+			const operationText = operationGroups.find(g => g.id === group)?.name;
 			const newStep: ExtendedPrcTemplateStep = {
 				version: 1,
 				isLatest: true,
@@ -295,6 +296,7 @@ const LinkedMastersTab = ({
 				blockCatalystMixing: false,
 				requestSupervisorApproval: false,
 				group,
+				operationText: typeof operationText === 'string' && operationText.trim().length > 0 ? operationText : undefined,
 				itemName: isSequenceItem(item) ? item.sequenceName : item.inspectionName,
 				itemId: isSequenceItem(item) ? item.sequenceId : item.inspectionId,
 				itemType: itemType
@@ -302,7 +304,7 @@ const LinkedMastersTab = ({
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			append(newStep as any);
 		},
-		[fields.length, append]
+		[fields.length, append, operationGroups]
 	);
 
 	const handleRemoveStep = useCallback(

@@ -598,6 +598,10 @@ const CreatePart = () => {
 					}
 
 					const groupFromApi = (step as { operationID?: string }).operationID ?? step.group ?? '';
+					const operationTextFromApi =
+						typeof step.operationText === 'string' && step.operationText.trim().length > 0
+							? step.operationText
+							: undefined;
 
 					return {
 						id: step.id,
@@ -613,7 +617,8 @@ const CreatePart = () => {
 						itemName,
 						itemId,
 						itemType,
-						group: groupFromApi
+						group: groupFromApi,
+						operationText: operationTextFromApi
 					};
 				});
 			}

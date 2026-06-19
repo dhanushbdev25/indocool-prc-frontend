@@ -497,12 +497,6 @@ const BomStep = ({
 				if (!entry.role) {
 					newErrors[`${entry.id}_role`] = 'Skill level is required';
 				}
-				if (!entry.employeeName || entry.employeeName.trim() === '') {
-					newErrors[`${entry.id}_employeeName`] = 'Employee name is required';
-				}
-				if (!entry.employeeCode || entry.employeeCode.trim() === '') {
-					newErrors[`${entry.id}_employeeCode`] = 'Employee number is required';
-				}
 				if (entry.fodCheckpoint !== 'ok' && entry.fodCheckpoint !== 'not ok') {
 					newErrors[`${entry.id}_fod`] = 'FOD checkpoint is required';
 				} else if (entry.fodCheckpoint === 'not ok' && !entry.fodDeviationComment.trim()) {
@@ -901,7 +895,6 @@ const BomStep = ({
 														error={!!errors[`${entry.id}_employeeName`]}
 														helperText={errors[`${entry.id}_employeeName`]}
 														disabled={isReadOnly || entry.blocked}
-														required
 													/>
 												</Grid>
 												<Grid size={{ xs: 12, md: 4 }}>
@@ -913,7 +906,6 @@ const BomStep = ({
 														error={!!errors[`${entry.id}_employeeCode`]}
 														helperText={errors[`${entry.id}_employeeCode`]}
 														disabled={isReadOnly || entry.blocked}
-														required
 													/>
 												</Grid>
 											</Grid>

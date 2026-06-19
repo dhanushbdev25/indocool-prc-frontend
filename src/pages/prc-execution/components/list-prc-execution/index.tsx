@@ -75,12 +75,9 @@ const ListPrcExecution = () => {
 			},
 			{
 				kind: 'autocomplete',
-				key: 'description',
+				key: 'partDescription',
 				label: 'Part Description',
-				options: deriveOptions(allExecutionData, r => {
-					const desc = (r as unknown as Record<string, unknown>).description;
-					return typeof desc === 'string' ? desc : '';
-				})
+				options: deriveOptions(allExecutionData, r => r.partDescription ?? '')
 			},
 			{
 				kind: 'autocomplete',
@@ -136,8 +133,7 @@ const ListPrcExecution = () => {
 				return false;
 			}
 			if (!matchesMulti(e.partNumber, filters.partNumber)) return false;
-			const description = (e as unknown as Record<string, unknown>).description;
-			if (!matchesMulti(typeof description === 'string' ? description : '', filters.description)) return false;
+			if (!matchesMulti(e.partDescription ?? '', filters.partDescription)) return false;
 			if (!matchesMulti(e.productionSetId, filters.productionSetId)) return false;
 			if (!matchesMulti(e.customerName, filters.customerName)) return false;
 			if (!matchesMulti(e.customerVariantName, filters.customerVariantName)) return false;

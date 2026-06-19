@@ -107,6 +107,7 @@ export const prcTemplateStepFormSchema = yup.object({
 	blockCatalystMixing: yup.boolean().default(false),
 	requestSupervisorApproval: yup.boolean().default(false),
 	group: yup.string().required('Operation group is required'),
+	operationText: yup.string().optional(),
 	createdAt: yup.string().optional(),
 	updatedAt: yup.string().optional()
 });

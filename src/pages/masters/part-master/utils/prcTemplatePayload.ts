@@ -52,7 +52,14 @@ export const normalizePrcTemplateSteps = (
 			return { steps: [], error: `PRC step ${stepNumber} has no Operation Group selected.` };
 		}
 
-		const operationText = operationTextByValue.get(group);
+		const operationTextFromCombo = operationTextByValue.get(group);
+		const operationTextFromStep = (step as { operationText?: unknown }).operationText;
+		const operationText =
+			typeof operationTextFromCombo === 'string' && operationTextFromCombo.trim().length > 0
+				? operationTextFromCombo
+				: typeof operationTextFromStep === 'string' && operationTextFromStep.trim().length > 0
+					? operationTextFromStep
+					: undefined;
 
 		normalized.push({
 			version: step.version ?? 1,
@@ -63,7 +70,7 @@ export const normalizePrcTemplateSteps = (
 			blockCatalystMixing: step.blockCatalystMixing ?? false,
 			requestSupervisorApproval: step.requestSupervisorApproval ?? false,
 			operationID: group,
-			...(typeof operationText === 'string' && operationText.trim().length > 0 ? { operationText } : {})
+			...(operationText ? { operationText } : {})
 		});
 	}
 

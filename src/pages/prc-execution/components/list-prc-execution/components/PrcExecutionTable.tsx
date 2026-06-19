@@ -23,10 +23,7 @@ interface PrcExecutionTableProps {
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const getDescription = (row: PrcExecutionData): string => {
-	const desc = (row as unknown as Record<string, unknown>).description;
-	return typeof desc === 'string' ? desc : '';
-};
+const getDescription = (row: PrcExecutionData): string => row.partDescription ?? '';
 
 const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, pagination, onPaginationChange }: PrcExecutionTableProps) => {
 	const { hasPermission } = useCurrentRole();
@@ -110,7 +107,7 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 				)
 			},
 			{
-				id: 'description',
+				id: 'partDescription',
 				header: 'Part Description',
 				size: 220,
 				accessorFn: row => getDescription(row),

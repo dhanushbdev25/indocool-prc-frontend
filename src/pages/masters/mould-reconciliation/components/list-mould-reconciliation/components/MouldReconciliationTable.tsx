@@ -37,6 +37,26 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 				size: 160
 			},
 			{
+				accessorKey: 'reconciliationCount',
+				header: 'Reconciliation Count',
+				size: 170,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.reconciliationCount ?? '—'}
+					</Typography>
+				)
+			},
+			{
+				accessorKey: 'currentCount',
+				header: 'Current Count',
+				size: 140,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.currentCount ?? '—'}
+					</Typography>
+				)
+			},
+			{
 				id: 'status',
 				accessorFn: row => (isMouldDueForReconciliation(row) ? 'Due' : 'Not due'),
 				header: 'Reconciliation Status',
