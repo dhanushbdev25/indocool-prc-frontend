@@ -14,8 +14,8 @@ function hasActiveExecutionRuntime(stepStartEndTime: Record<string, unknown> | u
 }
 
 /**
- * Live elapsed duration from `stepStartEndTime.executionRuntime` (first template step → last template step).
- * Returns 0 until the operator opens the first sequence/inspection step.
+ * Live elapsed duration from `stepStartEndTime.executionRuntime` (setup completion → last template step close).
+ * Returns 0 until Execution Setup is completed and runtime start is persisted.
  */
 export function useLiveExecutionDurationMs(executionData: ExecutionData): number {
 	const [now, setNow] = useState(() => Date.now());

@@ -392,7 +392,7 @@ export function formatApproverDisplay(approver: ApproverInfo): string {
 	return approver.employeeNo ? `${approver.name} (${approver.employeeNo})` : approver.name;
 }
 
-/** Elapsed execution runtime (ms) from first template step open until last template step close. */
+/** Elapsed execution runtime (ms) from setup completion until last template step close. */
 export function getExecutionRuntimeMs(
 	executionData: { stepStartEndTime?: Record<string, unknown> },
 	now: number = Date.now()

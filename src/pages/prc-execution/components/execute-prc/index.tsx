@@ -190,25 +190,58 @@ const ExecutePrc = () => {
 		console.log('🕐 Initialized start time for step group:', stepStartTimeRef.current);
 	};
 
-	const persistExecutionRuntimeStart = useCallback(async () => {
-		if (isViewOnlyMode || !executionData) return;
+	const persistExecutionRuntimeStart = useCallback(
+		async (startTimeOverride?: string) => {
+			if (isViewOnlyMode || !executionData) return;
+
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const existingRuntime = (actualData.stepStartEndTime as Record<string, unknown> | undefined)
+				?.executionRuntime as Record<string, unknown> | undefined;
+			if (typeof existingRuntime?.startTime === 'string') return;
+
+			const startTime = startTimeOverride ?? new Date().toISOString();
+			const mergedTimingData = mergeTimingData(
+				(actualData.stepStartEndTime as Record<string, unknown>) ?? {},
+				{ executionRuntime: { startTime } }
+			);
+
+			await updateProgress({
+				id: executionId,
+				data: { stepStartEndTime: mergedTimingData }
+			}).unwrap();
+		},
+		[executionData, executionId, isViewOnlyMode, updateProgress]
+	);
+
+	// Backfill executionRuntime for in-progress executions that completed setup before runtime tracking
+	useEffect(() => {
+		if (isViewOnlyMode || !executionData || isUpdateProgressLoading || isExecutionDataFetching) return;
 
 		const actualData = (executionData as { data: ExecutionData }).data;
-		const existingRuntime = (actualData.stepStartEndTime as Record<string, unknown> | undefined)
-			?.executionRuntime as Record<string, unknown> | undefined;
+		if (['COMPLETED', 'INACTIVE', 'PREVIEW'].includes(actualData.status)) return;
+
+		const timing = actualData.stepStartEndTime as Record<string, unknown> | undefined;
+		const existingRuntime = timing?.executionRuntime as Record<string, unknown> | undefined;
 		if (typeof existingRuntime?.startTime === 'string') return;
 
-		const startTime = new Date().toISOString();
-		const mergedTimingData = mergeTimingData(
-			(actualData.stepStartEndTime as Record<string, unknown>) ?? {},
-			{ executionRuntime: { startTime } }
-		);
+		const meta = actualData.prcAggregatedSteps?.prcmetadata;
+		const setupCompleted =
+			meta && typeof meta === 'object' && Object.keys(meta as Record<string, unknown>).length > 0;
+		if (!setupCompleted) return;
 
-		await updateProgress({
-			id: executionId,
-			data: { stepStartEndTime: mergedTimingData }
-		}).unwrap();
-	}, [executionData, executionId, isViewOnlyMode, updateProgress]);
+		const setupEndTime = (timing?.prcmetadata as Record<string, unknown> | undefined)?.endTime;
+		const startTime = typeof setupEndTime === 'string' ? setupEndTime : new Date().toISOString();
+
+		void persistExecutionRuntimeStart(startTime).catch(err =>
+			console.error('Failed to backfill execution runtime start:', err)
+		);
+	}, [
+		executionData,
+		isViewOnlyMode,
+		isUpdateProgressLoading,
+		isExecutionDataFetching,
+		persistExecutionRuntimeStart
+	]);
 
 	const persistStepData = useCallback(
 		async (
@@ -248,7 +281,21 @@ const ExecutePrc = () => {
 			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
 			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
 			const actualData = (executionData as { data: ExecutionData }).data;
-			const mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
+			let mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
+
+			if (stepToProcess.type === 'setup') {
+				const existingRuntime =
+					((mergedTimingData as Record<string, unknown>).executionRuntime as Record<string, unknown> | undefined) ??
+					((actualData.stepStartEndTime as Record<string, unknown> | undefined)?.executionRuntime as
+						| Record<string, unknown>
+						| undefined);
+				if (typeof existingRuntime?.startTime !== 'string') {
+					mergedTimingData = mergeTimingData(mergedTimingData, {
+						executionRuntime: { startTime: endTime }
+					});
+				}
+			}
+
 			const mergedUserApprovalData = mergeUserApprovalData(
 				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
 				userApprovalData
