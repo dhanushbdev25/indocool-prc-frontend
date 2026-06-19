@@ -24,7 +24,7 @@ import { FullScreenFormSavingOverlay } from '../../../../../components/common/Fu
 import { type DeleteCatalystTaskRequest } from '../../../../../store/api/business/catalyst-master/catalyst.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 
-const SEARCH_PLACEHOLDER = 'Chart ID, supplier, or notes';
+const SEARCH_PLACEHOLDER = 'Chart ID, customer name, or notes';
 
 const ListCatalyst = () => {
 	const navigate = useNavigate();

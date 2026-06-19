@@ -1,6 +1,7 @@
-import { Grid, Paper, IconButton, Typography } from '@mui/material';
-import { Close as CloseIcon, Add as AddIcon } from '@mui/icons-material';
+import { Grid, Paper, IconButton, Typography, CircularProgress } from '@mui/material';
+import { Close as CloseIcon, Add as AddIcon, BrokenImage as BrokenImageIcon } from '@mui/icons-material';
 import { ImageItem } from '../../../../../../hooks/useImageGallery';
+import { useAuthenticatedFileUrl } from '../../../../../../hooks/useAuthenticatedFileUrl';
 
 interface PartImageUploadProps {
 	gallery: ImageItem[];
@@ -8,6 +9,20 @@ interface PartImageUploadProps {
 	onRemoveImage: (id: number | string) => void;
 	view?: boolean;
 }
+
+const GalleryImage = ({ item }: { item: ImageItem }) => {
+	const { src, loading, error } = useAuthenticatedFileUrl(item.filePath || item.image);
+
+	return (
+		<>
+			{loading && <CircularProgress size={24} />}
+			{error && !loading && <BrokenImageIcon sx={{ color: 'text.disabled', fontSize: 32 }} />}
+			{!loading && !error && src && (
+				<img src={src} alt={`IMAGE-${item.id}`} width={120} height={100} style={{ objectFit: 'cover' }} />
+			)}
+		</>
+	);
+};
 
 const PartImageUpload = ({ gallery, onAddImage, onRemoveImage, view = false }: PartImageUploadProps) => {
 	return (
@@ -28,7 +43,7 @@ const PartImageUpload = ({ gallery, onAddImage, onRemoveImage, view = false }: P
 							m: 1
 						}}
 					>
-						<img src={item.image} alt={`IMAGE-${item.id}`} width={120} height={100} style={{ objectFit: 'cover' }} />
+						<GalleryImage item={item} />
 						{item.fileName && (
 							<Typography
 								variant="caption"

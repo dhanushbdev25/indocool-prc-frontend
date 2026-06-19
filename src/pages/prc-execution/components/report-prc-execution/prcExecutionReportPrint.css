@@ -216,6 +216,14 @@
 		word-break: break-word !important;
 	}
 
+	.prc-report-step-preview-wrap .MuiTableCell-root .MuiTypography-root {
+		white-space: normal !important;
+		overflow: visible !important;
+		text-overflow: unset !important;
+		max-width: none !important;
+		word-break: break-word !important;
+	}
+
 	.prc-report-page-break-before {
 		page-break-before: always;
 		break-before: page;

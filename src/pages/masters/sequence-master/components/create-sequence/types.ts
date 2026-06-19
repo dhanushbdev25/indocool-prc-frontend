@@ -32,7 +32,8 @@ export const tableColumnTypeOptions = [
 	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
 	{ value: 'date', label: 'Date' },
 	{ value: 'datetime', label: 'Date & Time' },
-	{ value: 'shift', label: 'Shift' }
+	{ value: 'shift', label: 'Shift' },
+	{ value: 'workstation', label: 'Workstation' }
 ];
 
 // Common UOM options

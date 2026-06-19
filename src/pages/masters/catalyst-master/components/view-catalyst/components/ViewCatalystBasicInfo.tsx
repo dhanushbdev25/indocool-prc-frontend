@@ -53,11 +53,11 @@ const ViewCatalystBasicInfo = ({ catalyst }: ViewCatalystBasicInfoProps) => {
 						</Box>
 					</Grid>
 
-					{/* Chart Supplier */}
+					{/* Customer Name */}
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Box>
 							<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
-								Chart Supplier
+								Customer Name
 							</Typography>
 							<Box sx={{ display: 'flex', alignItems: 'center' }}>
 								<BusinessIcon sx={{ mr: 1, color: '#1976d2', fontSize: '1.2rem' }} />

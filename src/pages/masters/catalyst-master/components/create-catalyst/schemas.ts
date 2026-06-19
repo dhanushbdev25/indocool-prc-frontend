@@ -122,9 +122,9 @@ export const catalystFormSchema = yup.object({
 	chartId: yup.string().trim().required('Chart ID is required'),
 	chartSupplier: yup
 		.string()
-		.required('Chart supplier is required')
-		.min(2, 'Chart supplier must be at least 2 characters')
-		.max(100, 'Chart supplier must be less than 100 characters'),
+		.required('Customer name is required')
+		.min(2, 'Customer name must be at least 2 characters')
+		.max(100, 'Customer name must be less than 100 characters'),
 	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
 	isActive: yup.boolean(),
 	catalystConfiguration: yup.array(catalystConfigurationSchema).min(1, 'At least one configuration is required'),
@@ -168,9 +168,9 @@ export const basicInfoSchema = yup.object({
 	chartId: yup.string().trim().required('Chart ID is required'),
 	chartSupplier: yup
 		.string()
-		.required('Chart supplier is required')
-		.min(2, 'Chart supplier must be at least 2 characters')
-		.max(100, 'Chart supplier must be less than 100 characters'),
+		.required('Customer name is required')
+		.min(2, 'Customer name must be at least 2 characters')
+		.max(100, 'Customer name must be less than 100 characters'),
 	notes: yup.string().max(500, 'Notes must be less than 500 characters').optional(),
 	isActive: yup.boolean()
 });

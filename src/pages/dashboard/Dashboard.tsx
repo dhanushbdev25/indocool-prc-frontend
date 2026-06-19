@@ -37,7 +37,8 @@ const Dashboard = () => {
 	const { unitOptions, workstationOptions, shiftOptions, projectOptions } = useDashboardFilterOptions({
 		from,
 		to,
-		isReady
+		isReady,
+		selectedUnits: filters.units
 	});
 
 	const queryArgs = {

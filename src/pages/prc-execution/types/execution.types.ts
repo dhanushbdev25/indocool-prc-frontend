@@ -317,6 +317,8 @@ export interface ExecutionData {
 	productionSetId: string;
 	mouldId: string;
 	mouldCode?: string | null;
+	/** Plant code for the execution; used to load workstations combo */
+	plantCode?: string | number | null;
 	date: string;
 	shift: string;
 	inCharge: number;
@@ -521,6 +523,9 @@ export interface CatalystMixingEntry {
 	fodCheckpoint: 'ok' | 'not ok' | '';
 	/** Required when fodCheckpoint === 'not ok' */
 	fodDeviationComment: string;
+	employeeName: string;
+	employeeCode: string;
+	role: 'l1' | 'l2' | 'l3' | 'l4';
 }
 
 export interface CatalystMixingFormData {

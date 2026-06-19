@@ -145,8 +145,8 @@ export const partMasterFormSchema = yup.object({
 	sqM: yup
 		.number()
 		.transform((value, originalValue) => (originalValue === '' || originalValue == null ? undefined : value))
-		.typeError('SQM must be a number')
-		.min(0, 'SQM cannot be negative')
+		.typeError('sq.m must be a number')
+		.min(0, 'sq.m cannot be negative')
 		.optional(),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),
@@ -279,8 +279,8 @@ export const generalInfoSchema = yup.object({
 	sqM: yup
 		.number()
 		.transform((value, originalValue) => (originalValue === '' || originalValue == null ? undefined : value))
-		.typeError('SQM must be a number')
-		.min(0, 'SQM cannot be negative')
+		.typeError('sq.m must be a number')
+		.min(0, 'sq.m cannot be negative')
 		.optional(),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),

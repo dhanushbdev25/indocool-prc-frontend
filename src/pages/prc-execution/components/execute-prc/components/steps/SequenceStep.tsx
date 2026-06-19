@@ -28,6 +28,7 @@ import dayjs from 'dayjs';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 import { OK_NOT_OK_NEGATIVE_LABEL } from '../../../../../../utils/okNotOkLabels';
+import { useFetchWorkstationsComboQuery } from '../../../../../../store/api/business/prc-execution/prc-execution.api';
 
 const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
 
@@ -130,6 +131,12 @@ const normalizeMeasurementsToCount = (
 const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }: SequenceStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
+
+	const plantCode = executionData.plantCode ?? '';
+	const { data: workstationOptions = [] } = useFetchWorkstationsComboQuery(
+		{ plantCode },
+		{ skip: !plantCode }
+	);
 
 	const getOkNotOkValue = (value: unknown): string => {
 		if (typeof value === 'string') return value;
@@ -918,6 +925,33 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 														{SHIFT_OPTIONS.map(option => (
 															<MenuItem key={option} value={option}>
 																{option}
+															</MenuItem>
+														))}
+													</TextField>
+												</td>
+											);
+										}
+
+										if (col.type === 'workstation') {
+											return (
+												<td key={col.name}>
+													<TextField
+														select
+														size="small"
+														fullWidth
+														value={cellValue}
+														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
+														error={!!errors[`table_${rowIdx}_${col.name}`]}
+														helperText={
+															errors[`table_${rowIdx}_${col.name}`] ||
+															(!plantCode ? 'No plant configured' : undefined)
+														}
+														disabled={isReadOnly || !plantCode}
+														sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px' } }}
+													>
+														{workstationOptions.map(option => (
+															<MenuItem key={String(option.value)} value={String(option.value)}>
+																{option.label}
 															</MenuItem>
 														))}
 													</TextField>

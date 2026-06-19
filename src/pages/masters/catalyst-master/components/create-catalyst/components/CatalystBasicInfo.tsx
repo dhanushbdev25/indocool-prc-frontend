@@ -39,7 +39,7 @@ const CatalystBasicInfo = ({ control, errors }: CatalystBasicInfoProps) => {
 						/>
 					</Grid>
 
-					{/* Chart Supplier */}
+					{/* Customer Name */}
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="chartSupplier"
@@ -48,10 +48,10 @@ const CatalystBasicInfo = ({ control, errors }: CatalystBasicInfoProps) => {
 								<TextField
 									{...field}
 									fullWidth
-									label="Chart Supplier"
+									label="Customer Name"
 									required
 									placeholder="e.g., ABC Chemicals Ltd."
-									helperText={errors.chartSupplier?.message || 'Name of the chemical supplier'}
+									helperText={errors.chartSupplier?.message || 'Name of the customer'}
 									error={!!errors.chartSupplier}
 									sx={{
 										'& .MuiOutlinedInput-root': {

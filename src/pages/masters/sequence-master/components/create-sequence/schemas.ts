@@ -21,7 +21,7 @@ const tableColumnSchema = yup.object({
 	type: yup
 		.string()
 		.required('Column type is required')
-		.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift'], 'Invalid column type')
+		.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift', 'workstation'], 'Invalid column type')
 });
 
 const tableConfigSchema = yup

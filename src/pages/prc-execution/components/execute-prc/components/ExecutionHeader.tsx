@@ -96,7 +96,7 @@ function MetaField({
 const ExecutionHeader = ({
 	executionData,
 	onBackOverride,
-	hideExecutionActions = false,
+	hideExecutionActions: _hideExecutionActions = false,
 	viewOnlyMode = false,
 	onCatalystMixingClick,
 	catalystMixingDisabled = false
@@ -239,7 +239,7 @@ const ExecutionHeader = ({
 						<Chip label={durationLabel} size="small" variant="outlined" color="info" />
 					</Stack>
 
-					{!hideExecutionActions && !viewOnlyMode && onCatalystMixingClick && (
+					{onCatalystMixingClick && (
 						<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
 							<Button
 								startIcon={<Science />}

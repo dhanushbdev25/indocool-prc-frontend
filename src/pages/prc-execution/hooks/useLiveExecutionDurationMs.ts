@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { type ExecutionData } from '../types/execution.types';
+import { getExecutionRuntimeMs } from '../utils/timelineCardTiming';
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'INACTIVE', 'PREVIEW']);
 
@@ -7,29 +8,25 @@ function isTerminalStatus(status: string): boolean {
 	return TERMINAL_STATUSES.has(status);
 }
 
+function hasActiveExecutionRuntime(stepStartEndTime: Record<string, unknown> | undefined): boolean {
+	const runtime = stepStartEndTime?.executionRuntime as Record<string, unknown> | undefined;
+	return typeof runtime?.startTime === 'string' && typeof runtime?.endTime !== 'string';
+}
+
 /**
- * Extrapolates total execution duration from the last API snapshot (`duration` as of `updatedAt`)
- * while the run is non-terminal, updating once per second without extra GETs.
+ * Live elapsed duration from `stepStartEndTime.executionRuntime` (first template step → last template step).
+ * Returns 0 until the operator opens the first sequence/inspection step.
  */
 export function useLiveExecutionDurationMs(executionData: ExecutionData): number {
 	const [now, setNow] = useState(() => Date.now());
 	const terminal = isTerminalStatus(executionData.status);
+	const stepStartEndTime = executionData.stepStartEndTime as Record<string, unknown> | undefined;
 
 	useEffect(() => {
-		if (terminal) return;
+		if (terminal || !hasActiveExecutionRuntime(stepStartEndTime)) return;
 		const id = window.setInterval(() => setNow(Date.now()), 1000);
 		return () => clearInterval(id);
-	}, [terminal]);
+	}, [terminal, stepStartEndTime]);
 
-	const base = executionData.duration;
-	if (terminal) {
-		return Math.max(0, base);
-	}
-
-	const updated = new Date(executionData.updatedAt).getTime();
-	if (!Number.isFinite(updated)) {
-		return Math.max(0, base);
-	}
-
-	return Math.max(0, base + (now - updated));
+	return getExecutionRuntimeMs(executionData, now);
 }

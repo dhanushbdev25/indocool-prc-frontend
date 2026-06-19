@@ -213,7 +213,7 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPag
 			},
 			{
 				accessorKey: 'sqM',
-				header: 'SQM',
+				header: 'sq.m',
 				size: 90,
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>

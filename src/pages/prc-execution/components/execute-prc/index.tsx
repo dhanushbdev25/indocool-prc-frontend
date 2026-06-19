@@ -7,9 +7,9 @@ import {
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
-import { calculateSequenceStepGroupTiming } from '../../utils/timelineCardTiming';
+import { calculateSequenceStepGroupTiming, findLastTemplateStepIndex } from '../../utils/timelineCardTiming';
 import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
-import { canEditStepForRole, getExecutionRoleKind } from '../../utils/roleStepAccess';
+import { canEditStepForRole } from '../../utils/roleStepAccess';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
 	buildAggregatedData,
@@ -44,8 +44,9 @@ const ExecutePrc = () => {
 	const executionId = id ? parseInt(id, 10) : 0;
 	const isViewOnlyMode = location.pathname.includes('/prc-execution/view/');
 	const { userInfo, hasPermission, currentRole } = useCurrentRole();
-	const canKit =
-		hasPermission('KITTING_UPDATE') && !isViewOnlyMode && getExecutionRoleKind(currentRole?.name) === 'other';
+	const canKitUpdate = hasPermission('KITTING_UPDATE');
+	const canKitView = hasPermission('KITTING_VIEW');
+	const canAccessCatalystMixing = canKitUpdate || canKitView;
 
 	// State management
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -188,6 +189,26 @@ const ExecutePrc = () => {
 		stepStartTimeRef.current = new Date().toISOString();
 		console.log('🕐 Initialized start time for step group:', stepStartTimeRef.current);
 	};
+
+	const persistExecutionRuntimeStart = useCallback(async () => {
+		if (isViewOnlyMode || !executionData) return;
+
+		const actualData = (executionData as { data: ExecutionData }).data;
+		const existingRuntime = (actualData.stepStartEndTime as Record<string, unknown> | undefined)
+			?.executionRuntime as Record<string, unknown> | undefined;
+		if (typeof existingRuntime?.startTime === 'string') return;
+
+		const startTime = new Date().toISOString();
+		const mergedTimingData = mergeTimingData(
+			(actualData.stepStartEndTime as Record<string, unknown>) ?? {},
+			{ executionRuntime: { startTime } }
+		);
+
+		await updateProgress({
+			id: executionId,
+			data: { stepStartEndTime: mergedTimingData }
+		}).unwrap();
+	}, [executionData, executionId, isViewOnlyMode, updateProgress]);
 
 	const persistStepData = useCallback(
 		async (
@@ -546,7 +567,7 @@ const ExecutePrc = () => {
 		const actualData = (executionData as { data: ExecutionData }).data;
 		const existingBomTiming = (actualData.stepStartEndTime as Record<string, unknown> | undefined)?.bom;
 
-		if (existingBomTiming === undefined) {
+		if (canKitUpdate && existingBomTiming === undefined) {
 			catalystMixingStartTimeRef.current = new Date().toISOString();
 		}
 
@@ -558,7 +579,7 @@ const ExecutePrc = () => {
 			const actualData = (executionData as { data: ExecutionData }).data;
 			const existingBomTiming = (actualData.stepStartEndTime as Record<string, unknown> | undefined)?.bom;
 
-			if (existingBomTiming === undefined) {
+			if (canKitUpdate && existingBomTiming === undefined) {
 				catalystMixingStartTimeRef.current = null;
 			}
 		}
@@ -567,7 +588,7 @@ const ExecutePrc = () => {
 	};
 
 	const handleCatalystMixingSave = async (stepFormData: FormData): Promise<void> => {
-		if (isViewOnlyMode || !executionData) return;
+		if (!executionData || !canKitUpdate) return;
 
 		const actualData = (executionData as { data: ExecutionData }).data;
 		const catalystStep = buildCatalystMixingTimelineStep(actualData, { status: 'pending' });
@@ -996,6 +1017,26 @@ const ExecutePrc = () => {
 
 			// Merge step completion timing data
 			mergedTimingData = mergeTimingData(mergedTimingData, stepCompletionTimingData);
+
+			const lastTemplateStepIndex = findLastTemplateStepIndex(timelineSteps);
+			if (
+				lastTemplateStepIndex >= 0 &&
+				lastTemplateStepIndex === currentStepIndex &&
+				(currentStep.type === 'sequence' || currentStep.type === 'inspection')
+			) {
+				const existingRuntime = ((mergedTimingData as Record<string, unknown>).executionRuntime ??
+					(actualData.stepStartEndTime as Record<string, unknown> | undefined)?.executionRuntime) as
+					| Record<string, unknown>
+					| undefined;
+				const runtimeStart =
+					typeof existingRuntime?.startTime === 'string' ? existingRuntime.startTime : undefined;
+				if (runtimeStart && typeof existingRuntime?.endTime !== 'string') {
+					mergedTimingData = mergeTimingData(mergedTimingData, {
+						executionRuntime: { startTime: runtimeStart, endTime }
+					});
+				}
+			}
+
 			// Merge user approval data
 			const mergedUserApprovalData = mergeUserApprovalData(
 				actualData.prcAggregatedSteps?.stepApprovedBy as Record<string, unknown>,
@@ -1138,6 +1179,9 @@ const ExecutePrc = () => {
 			// Initialize start time when clicking on sequence step group
 			if (!isViewOnlyMode) {
 				initializeStepStartTime();
+				void persistExecutionRuntimeStart().catch(err =>
+					console.error('Failed to persist execution runtime start:', err)
+				);
 			}
 
 			const allStepsFilled = areAllStepsInGroupFilled(targetStep);
@@ -1245,6 +1289,13 @@ const ExecutePrc = () => {
 
 		// For inspection steps, check if data is filled and show preview if ready
 		if (targetStep.type === 'inspection') {
+			if (!isViewOnlyMode) {
+				initializeStepStartTime();
+				void persistExecutionRuntimeStart().catch(err =>
+					console.error('Failed to persist execution runtime start:', err)
+				);
+			}
+
 			const prcTemplateStepId = targetStep.stepData?.prcTemplateStepId;
 			if (prcTemplateStepId) {
 				const stepData = getCurrentAggregatedData()?.[prcTemplateStepId.toString()] as Record<string, unknown>;
@@ -1410,8 +1461,7 @@ const ExecutePrc = () => {
 		...actualExecutionData,
 		prcAggregatedSteps: getCurrentAggregatedData()
 	};
-	const isCatalystMixingReadOnly =
-		actualExecutionData.status === 'COMPLETED' || actualExecutionData.status === 'INACTIVE';
+	const isCatalystMixingReadOnly = !canKitUpdate;
 	const catalystMixingStep = buildCatalystMixingTimelineStep(actualExecutionData, {
 		status: isCatalystMixingReadOnly ? undefined : 'pending'
 	});
@@ -1428,7 +1478,7 @@ const ExecutePrc = () => {
 	return (
 		<>
 			<FullScreenFormSavingOverlay
-				open={!isViewOnlyMode && (isExecutionDataFetching || isUpdateProgressLoading)}
+				open={isExecutionDataFetching || isUpdateProgressLoading}
 				message={isUpdateProgressLoading ? 'Saving…' : 'Refreshing…'}
 			/>
 			<Box
@@ -1447,7 +1497,7 @@ const ExecutePrc = () => {
 					executionData={actualExecutionData}
 					viewOnlyMode={isViewOnlyMode}
 					hideExecutionActions={isViewOnlyMode}
-					onCatalystMixingClick={catalystMixingStep && canKit ? handleOpenCatalystMixing : undefined}
+					onCatalystMixingClick={canAccessCatalystMixing ? handleOpenCatalystMixing : undefined}
 					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
 				/>
 
@@ -1533,7 +1583,7 @@ const ExecutePrc = () => {
 					)}
 				</DialogContent>
 				<DialogActions>
-					{catalystMixingStep && !isCatalystMixingReadOnly && canKit && (
+					{catalystMixingStep && !isCatalystMixingReadOnly && canKitUpdate && (
 						<Button
 							variant="contained"
 							onClick={() => catalystMixingSubmitRef.current?.()}

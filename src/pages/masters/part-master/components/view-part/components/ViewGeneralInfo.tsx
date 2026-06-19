@@ -16,7 +16,8 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 		id: index,
 		file: null,
 		image: toFileRenderUrl(file.filePath),
-		fileName: file.fileName || `Image ${index}`
+		filePath: file.filePath,
+		fileName: file.fileName || file.originalFileName || `Image ${index}`
 	}));
 
 	const statusDisplay = partMaster.status ?? 'NEW';
@@ -173,7 +174,7 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Box sx={{ mb: 2 }}>
 							<Typography variant="body2" sx={{ color: '#666', fontWeight: 500, mb: 0.5 }}>
-								SQM
+								sq.m
 							</Typography>
 							<Typography variant="body1" sx={{ color: '#333' }}>
 								{partMaster.sqM}

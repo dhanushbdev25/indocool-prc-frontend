@@ -482,7 +482,7 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 						/>
 					</Grid>
 
-					{/* SQM */}
+					{/* sq.m */}
 					<Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="sqM"
@@ -497,7 +497,7 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 									}}
 									fullWidth
 									type="number"
-									label="SQM"
+									label="sq.m"
 									placeholder="e.g., 12.5"
 									helperText="Square meter value"
 									inputProps={{ min: 0, step: 'any' }}

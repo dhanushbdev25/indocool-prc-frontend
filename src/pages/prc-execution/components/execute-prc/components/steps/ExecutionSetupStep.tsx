@@ -125,8 +125,6 @@ const ExecutionSetupStep = ({
 		const next: Record<string, string> = {};
 		if (!productionSetId.trim()) next.productionSetId = 'Production Set ID is required';
 		if (!partId) next.mouldId = 'Part is missing; cannot load moulds for this execution';
-		const mouldCode = getMouldCode(selectedMould);
-		if (partId && !mouldCode) next.mouldId = 'Mould is required';
 		setErrors(next);
 		return Object.keys(next).length === 0;
 	};
@@ -236,13 +234,12 @@ const ExecutionSetupStep = ({
 											<TextField
 												{...params}
 												label="Mould"
-												required
 												error={!!errors.mouldId}
 												helperText={
 													errors.mouldId ||
 													(mouldOptions.length === 0 && !mouldComboBusy
 														? 'No moulds linked to this part'
-														: 'Select a mould for this part')
+														: 'Optional — select a mould for this part')
 												}
 												sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
 												InputProps={{

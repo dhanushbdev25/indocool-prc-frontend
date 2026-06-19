@@ -147,6 +147,30 @@ const NotOkCommentPreview = ({ comment }: { comment: string }) => {
 	);
 };
 
+function descriptionTextSx(embeddedReportMode: boolean, options?: { fontWeight?: number }) {
+	if (embeddedReportMode) {
+		return {
+			fontWeight: options?.fontWeight ?? 500,
+			whiteSpace: 'normal' as const,
+			wordBreak: 'break-word' as const,
+			overflow: 'visible',
+			textOverflow: 'unset'
+		};
+	}
+	return {
+		fontWeight: options?.fontWeight ?? 500,
+		overflow: 'hidden',
+		textOverflow: 'ellipsis',
+		whiteSpace: 'nowrap' as const
+	};
+}
+
+function descriptionTableCellSx(embeddedReportMode: boolean, maxWidth?: number) {
+	return embeddedReportMode
+		? { py: 1, fontSize: '0.8rem' }
+		: { py: 1, fontSize: '0.8rem', maxWidth: maxWidth ?? 200 };
+}
+
 interface StepPreviewProps {
 	previewData: StepPreviewData;
 	onBackToStep: () => void;
@@ -615,15 +639,10 @@ const StepPreview = ({
 													)}
 												</Box>
 											</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', maxWidth: 200 }}>
+											<TableCell sx={descriptionTableCellSx(embeddedReportMode)}>
 												<Typography
 													variant="body2"
-													sx={{
-														fontWeight: 500,
-														overflow: 'hidden',
-														textOverflow: 'ellipsis',
-														whiteSpace: 'nowrap'
-													}}
+													sx={descriptionTextSx(embeddedReportMode)}
 													title={measurement.parameterDescription}
 												>
 													{measurement.parameterDescription}
@@ -1325,16 +1344,11 @@ const StepPreview = ({
 															</Typography>
 														</Box>
 													</TableCell>
-													<TableCell sx={{ py: 1, fontSize: '0.8rem', maxWidth: 200 }}>
+													<TableCell sx={descriptionTableCellSx(embeddedReportMode)}>
 														<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
 															<Typography
 																variant="body2"
-																sx={{
-																	fontWeight: 500,
-																	overflow: 'hidden',
-																	textOverflow: 'ellipsis',
-																	whiteSpace: 'nowrap'
-																}}
+																sx={descriptionTextSx(embeddedReportMode)}
 																title={parameterName}
 															>
 																{parameterName}
@@ -1451,14 +1465,10 @@ const StepPreview = ({
 															}}
 														/>
 													</TableCell>
-													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666', maxWidth: 150 }}>
+													<TableCell sx={descriptionTableCellSx(embeddedReportMode, 150)}>
 														<Typography
 															variant="body2"
-															sx={{
-																overflow: 'hidden',
-																textOverflow: 'ellipsis',
-																whiteSpace: 'nowrap'
-															}}
+															sx={descriptionTextSx(embeddedReportMode, { fontWeight: 400 })}
 															title={specification}
 														>
 															{specification}
@@ -1589,7 +1599,7 @@ const StepPreview = ({
 																											...(cellConfig?.readOnly ? { backgroundColor: '#f5f5f5', fontStyle: 'italic' } : {})
 																										}}
 																									>
-																										<Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={displayValue}>
+																										<Typography variant="body2" sx={descriptionTextSx(embeddedReportMode, { fontWeight: 400 })} title={displayValue}>
 																											{displayValue}
 																										</Typography>
 																									</TableCell>
@@ -1728,11 +1738,7 @@ const StepPreview = ({
 																									>
 																										<Typography
 																											variant="body2"
-																											sx={{
-																												overflow: 'hidden',
-																												textOverflow: 'ellipsis',
-																												whiteSpace: 'nowrap'
-																											}}
+																											sx={descriptionTextSx(embeddedReportMode, { fontWeight: 400 })}
 																											title={formattedValue}
 																										>
 																											{formattedValue}
@@ -1779,11 +1785,7 @@ const StepPreview = ({
 																								>
 																									<Typography
 																										variant="body2"
-																										sx={{
-																											overflow: 'hidden',
-																											textOverflow: 'ellipsis',
-																											whiteSpace: 'nowrap'
-																										}}
+																										sx={descriptionTextSx(embeddedReportMode, { fontWeight: 400 })}
 																										title={formattedValue}
 																									>
 																										{formattedValue}

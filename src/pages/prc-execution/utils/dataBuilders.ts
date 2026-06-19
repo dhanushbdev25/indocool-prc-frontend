@@ -50,6 +50,9 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 					temperature: entry.temperature,
 					canNumber: entry.canNumber ?? '',
 					actualQuantity: entry.actualQuantity,
+					employeeName: entry.employeeName,
+					employeeCode: entry.employeeCode,
+					role: entry.role,
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any
 					acknowledged: (formData as any).acknowledgments?.[entry.id] || false
 				};

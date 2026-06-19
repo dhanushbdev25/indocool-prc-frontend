@@ -2,13 +2,15 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '../../baseApi';
 import {
 	isOperationDelayReasonComboResponse,
-	type OperationDelayReasonComboItem
+	isWebComboResponse,
+	type OperationDelayReasonComboItem,
+	type WebComboItem
 } from './prc-execution.validators';
 
 export const prcExecutionApi = createApi({
 	reducerPath: 'prcExecutionApi',
 	baseQuery,
-	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant', 'OperationDelayReasonCombo'],
+	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant', 'OperationDelayReasonCombo', 'WorkstationsCombo'],
 	endpoints: builder => ({
 		// Fetch all PRC executions
 		fetchPrcExecutions: builder.query<unknown, void>({
@@ -104,6 +106,34 @@ export const prcExecutionApi = createApi({
 				return response.data;
 			},
 			providesTags: ['OperationDelayReasonCombo']
+		}),
+
+		/** GET /web/combo/workstations?plantCode= — workstations for a plant */
+		fetchWorkstationsCombo: builder.query<WebComboItem[], { plantCode: string | number }>({
+			query: ({ plantCode }) => ({
+				url: 'combo/workstations',
+				method: 'GET',
+				params: { plantCode }
+			}),
+			transformResponse: (response: unknown) => {
+				if (!isWebComboResponse(response)) {
+					console.warn('Invalid workstations combo response structure', response);
+					if (Array.isArray(response)) {
+						return response as WebComboItem[];
+					}
+					if (
+						typeof response === 'object' &&
+						response !== null &&
+						'data' in response &&
+						Array.isArray((response as { data?: unknown }).data)
+					) {
+						return (response as { data: WebComboItem[] }).data;
+					}
+					return [];
+				}
+				return response.data;
+			},
+			providesTags: (_r, _e, { plantCode }) => [{ type: 'WorkstationsCombo', id: String(plantCode) }]
 		})
 	})
 });
@@ -116,5 +146,6 @@ export const {
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation,
 	useFetchPlantsQuery,
-	useFetchOperationDelayReasonComboQuery
+	useFetchOperationDelayReasonComboQuery,
+	useFetchWorkstationsComboQuery
 } = prcExecutionApi;

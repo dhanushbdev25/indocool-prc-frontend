@@ -19,7 +19,8 @@ import {
 	buildInspectionStepPreviewForReport,
 	buildSequenceStepPreviewForReport
 } from '../../utils/reportStepPreviewData';
-import { formatExecutionDuration } from '../../utils/timelineCardTiming';
+import { getExecutionRuntimeMs } from '../../utils/timelineCardTiming';
+import { formatExecutionDuration } from '../../utils/formatExecutionDuration';
 import ExecutionSetupStep from '../execute-prc/components/steps/ExecutionSetupStep';
 import RawMaterialsStep from '../execute-prc/components/steps/RawMaterialsStep';
 import BomStep from '../execute-prc/components/steps/BomStep';
@@ -100,7 +101,7 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 			<ReportSummaryField label="Progress (steps)">{progressSteps}</ReportSummaryField>
 			<ReportSummaryField label="CTQ">{ctqSummary}</ReportSummaryField>
 			<ReportSummaryField label="Elapsed duration">
-				{formatExecutionDuration(Number(execution.duration) || 0)}
+				{formatExecutionDuration(getExecutionRuntimeMs(execution))}
 			</ReportSummaryField>
 			<ReportSummaryField label="Current stage">{execution.currentStage ?? '—'}</ReportSummaryField>
 			<ReportSummaryField label="Mould">{mouldDisplay}</ReportSummaryField>
@@ -342,7 +343,7 @@ const PrcExecutionReport = () => {
 		return (executionData as { data: ExecutionData }).data;
 	}, [executionData]);
 
-	const timelineSteps = useMemo(() => {
+	const fullTimelineSteps = useMemo(() => {
 		if (!execution) return [];
 		return buildTimelineSteps(execution);
 	}, [execution]);
@@ -353,11 +354,22 @@ const PrcExecutionReport = () => {
 			return { kind: 'full' as const };
 		}
 		const idx = parseInt(raw, 10);
-		if (Number.isNaN(idx) || idx < 0 || idx >= timelineSteps.length) {
+		if (Number.isNaN(idx) || idx < 0 || idx >= fullTimelineSteps.length) {
 			return { kind: 'invalid' as const };
 		}
+		if (fullTimelineSteps[idx]?.type === 'sapConfirmations') {
+			return { kind: 'sapExcluded' as const };
+		}
 		return { kind: 'single' as const, index: idx };
-	}, [searchParams, timelineSteps.length]);
+	}, [searchParams, fullTimelineSteps]);
+
+	const timelineSteps = useMemo(() => {
+		if (!execution) return [];
+		if (stepReportMode.kind === 'full') {
+			return buildTimelineSteps(execution, { omitStepTypes: ['sapConfirmations'] });
+		}
+		return fullTimelineSteps;
+	}, [execution, stepReportMode.kind, fullTimelineSteps]);
 
 	const agg = useMemo(() => {
 		if (!execution?.prcAggregatedSteps || typeof execution.prcAggregatedSteps !== 'object') return {};
@@ -404,7 +416,7 @@ const PrcExecutionReport = () => {
 	const singleTimelineStep =
 		stepReportMode.kind === 'single' ? timelineSteps[stepReportMode.index] : null;
 
-	if (stepReportMode.kind === 'invalid') {
+	if (stepReportMode.kind === 'invalid' || stepReportMode.kind === 'sapExcluded') {
 		return (
 			<Box sx={{ p: { xs: 1.5, md: 3 }, maxWidth: 1100, mx: 'auto' }}>
 				<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 3 }}>
@@ -416,7 +428,9 @@ const PrcExecutionReport = () => {
 					</Button>
 				</Stack>
 				<Alert severity="error">
-					This step index is not valid for this execution (check the URL or open the full report).
+					{stepReportMode.kind === 'sapExcluded'
+						? 'SAP confirmations are not included in PDF reports. Open the full consolidated report instead.'
+						: 'This step index is not valid for this execution (check the URL or open the full report).'}
 				</Alert>
 			</Box>
 		);

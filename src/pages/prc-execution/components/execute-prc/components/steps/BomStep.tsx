@@ -19,7 +19,10 @@ import {
 	FormControl,
 	FormLabel,
 	Radio,
-	RadioGroup
+	RadioGroup,
+	InputLabel,
+	Select,
+	MenuItem
 } from '@mui/material';
 import {
 	CheckCircle as CheckCircleIcon,
@@ -91,24 +94,39 @@ const getMaterialCodeKey = (materialCode: string) => {
 	}
 };
 
-// Helper function to calculate catalyst range
+// Helper function to convert a catalyst mass (kg) to volume (ml) using MEKP density (g/ml).
+// Falls back to the original mass when density is missing/invalid to avoid divide-by-zero.
+const convertCatalystMassToMl = (massKg: number, mekpDensity: number) => {
+	if (!Number.isFinite(mekpDensity) || mekpDensity <= 0) {
+		console.warn('Invalid or missing MEKP density; skipping kg->ml conversion for catalyst range.');
+		return massKg;
+	}
+	return (massKg * 1000) / mekpDensity;
+};
+
+// Helper function to calculate catalyst range (returned in ml)
 const calculateCatalystRange = (
 	quantity: number,
 	materialCode: string,
 	catalystConfig: {
 		[key: string]: string;
-	}
+	},
+	mekpDensity: number
 ) => {
 	const key = getMaterialCodeKey(materialCode);
 	const minKey = `min${key.charAt(0).toUpperCase()}${key.slice(1)}`;
 	const maxKey = `max${key.charAt(0).toUpperCase()}${key.slice(1)}`;
 
-	const minPerKg = parseFloat(catalystConfig[minKey] || '0');
-	const maxPerKg = parseFloat(catalystConfig[maxKey] || '0');
+	// Config values are dosage percentages, so divide by 100 to get the mass fraction.
+	const minPercent = parseFloat(catalystConfig[minKey] || '0');
+	const maxPercent = parseFloat(catalystConfig[maxKey] || '0');
+
+	const minMassKg = (minPercent / 100) * quantity;
+	const maxMassKg = (maxPercent / 100) * quantity;
 
 	return {
-		min: minPerKg * quantity,
-		max: maxPerKg * quantity
+		min: convertCatalystMassToMl(minMassKg, mekpDensity),
+		max: convertCatalystMassToMl(maxMassKg, mekpDensity)
 	};
 };
 
@@ -222,7 +240,10 @@ const BomStep = ({
 					blocked: false,
 					requiresSupervisorApproval: false,
 					fodCheckpoint: '',
-					fodDeviationComment: ''
+					fodDeviationComment: '',
+					employeeName: '',
+					employeeCode: '',
+					role: 'l1'
 				});
 			});
 		});
@@ -275,7 +296,13 @@ const BomStep = ({
 								savedEntry.fodCheckpoint === 'ok' || savedEntry.fodCheckpoint === 'not ok'
 									? savedEntry.fodCheckpoint
 									: '',
-							fodDeviationComment: savedEntry.fodDeviationComment || ''
+							fodDeviationComment: savedEntry.fodDeviationComment || '',
+							employeeName: savedEntry.employeeName || '',
+							employeeCode: savedEntry.employeeCode || '',
+							role:
+								savedEntry.role === 'l2' || savedEntry.role === 'l3' || savedEntry.role === 'l4'
+									? savedEntry.role
+									: 'l1'
 						};
 					}
 					return entry;
@@ -330,12 +357,17 @@ const BomStep = ({
 								const config = findCatalystConfiguration(temp, hum, executionData.catalystData.catalystConfiguration);
 
 								if (config) {
-									const quantity = parseFloat(updatedEntry.quantity);
+									// Prefer the operator's actual measured quantity; fall back to planned quantity.
+									const actualQty = parseFloat(updatedEntry.actualQuantity);
+									const plannedQty = parseFloat(updatedEntry.quantity);
+									const quantity = !isNaN(actualQty) && actualQty > 0 ? actualQty : plannedQty;
+									const mekpDensity = parseFloat(executionData.catalystData.catalyst?.mekpDensity ?? '');
 									if (!isNaN(quantity)) {
 										const range = calculateCatalystRange(
 											quantity,
 											updatedEntry.materialCode,
-											config as Record<string, string>
+											config as Record<string, string>,
+											mekpDensity
 										);
 										updatedEntry.calculatedMin = range.min;
 										updatedEntry.calculatedMax = range.max;
@@ -399,6 +431,15 @@ const BomStep = ({
 		if (field === 'fodDeviationComment' && errors[`${entryId}_fodComment`]) {
 			setErrors(prev => ({ ...prev, [`${entryId}_fodComment`]: '' }));
 		}
+		if (field === 'role' && errors[`${entryId}_role`]) {
+			setErrors(prev => ({ ...prev, [`${entryId}_role`]: '' }));
+		}
+		if (field === 'employeeName' && errors[`${entryId}_employeeName`]) {
+			setErrors(prev => ({ ...prev, [`${entryId}_employeeName`]: '' }));
+		}
+		if (field === 'employeeCode' && errors[`${entryId}_employeeCode`]) {
+			setErrors(prev => ({ ...prev, [`${entryId}_employeeCode`]: '' }));
+		}
 	};
 
 	const handleAcknowledgmentChange = (entryId: string, acknowledged: boolean) => {
@@ -453,6 +494,15 @@ const BomStep = ({
 
 			// FOD checkpoint is mandatory unless the entry is blocked
 			if (!entry.blocked) {
+				if (!entry.role) {
+					newErrors[`${entry.id}_role`] = 'Skill level is required';
+				}
+				if (!entry.employeeName || entry.employeeName.trim() === '') {
+					newErrors[`${entry.id}_employeeName`] = 'Employee name is required';
+				}
+				if (!entry.employeeCode || entry.employeeCode.trim() === '') {
+					newErrors[`${entry.id}_employeeCode`] = 'Employee number is required';
+				}
 				if (entry.fodCheckpoint !== 'ok' && entry.fodCheckpoint !== 'not ok') {
 					newErrors[`${entry.id}_fod`] = 'FOD checkpoint is required';
 				} else if (entry.fodCheckpoint === 'not ok' && !entry.fodDeviationComment.trim()) {
@@ -762,12 +812,12 @@ const BomStep = ({
 											<Grid size={{ xs: 12, md: 3 }}>
 												<TextField
 													fullWidth
-													label="Catalyst Quantity"
+													label="Catalyst Quantity (ml)"
 													type="number"
 													value={entry.catalystQuantity}
 													onChange={e => handleInputChange(entry.id, 'catalystQuantity', e.target.value)}
 													error={!!errors[`${entry.id}_catalyst`]}
-													helperText={errors[`${entry.id}_catalyst`] || 'Enter catalyst quantity'}
+													helperText={errors[`${entry.id}_catalyst`] || 'Enter catalyst quantity in ml'}
 													disabled={isReadOnly || entry.blocked}
 													InputProps={{
 														startAdornment: (
@@ -816,6 +866,58 @@ const BomStep = ({
 												/>
 											</Grid>
 										</Grid>
+
+										<Box sx={{ mt: 3, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+											<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', mb: 2 }}>
+												Operator details
+											</Typography>
+											<Grid container spacing={2}>
+												<Grid size={{ xs: 12, md: 4 }}>
+													<FormControl fullWidth error={!!errors[`${entry.id}_role`]} disabled={isReadOnly || entry.blocked}>
+														<InputLabel>Skill level</InputLabel>
+														<Select
+															value={entry.role}
+															onChange={e => handleInputChange(entry.id, 'role', e.target.value)}
+															label="Skill level"
+														>
+															<MenuItem value="l1">L1</MenuItem>
+															<MenuItem value="l2">L2</MenuItem>
+															<MenuItem value="l3">L3</MenuItem>
+															<MenuItem value="l4">L4</MenuItem>
+														</Select>
+														{errors[`${entry.id}_role`] && (
+															<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+																{errors[`${entry.id}_role`]}
+															</Typography>
+														)}
+													</FormControl>
+												</Grid>
+												<Grid size={{ xs: 12, md: 4 }}>
+													<TextField
+														fullWidth
+														label="Employee name"
+														value={entry.employeeName}
+														onChange={e => handleInputChange(entry.id, 'employeeName', e.target.value)}
+														error={!!errors[`${entry.id}_employeeName`]}
+														helperText={errors[`${entry.id}_employeeName`]}
+														disabled={isReadOnly || entry.blocked}
+														required
+													/>
+												</Grid>
+												<Grid size={{ xs: 12, md: 4 }}>
+													<TextField
+														fullWidth
+														label="Employee number"
+														value={entry.employeeCode}
+														onChange={e => handleInputChange(entry.id, 'employeeCode', e.target.value)}
+														error={!!errors[`${entry.id}_employeeCode`]}
+														helperText={errors[`${entry.id}_employeeCode`]}
+														disabled={isReadOnly || entry.blocked}
+														required
+													/>
+												</Grid>
+											</Grid>
+										</Box>
 
 										{/* FOD Checkpoint */}
 										<Box sx={{ mt: 3 }}>
@@ -894,7 +996,7 @@ const BomStep = ({
 																Recommended Range
 															</Typography>
 															<Typography variant="h6" sx={{ fontWeight: 600 }}>
-																{entry.calculatedMin.toFixed(2)} - {entry.calculatedMax.toFixed(2)} {entry.uom}
+																{entry.calculatedMin.toFixed(2)} - {entry.calculatedMax.toFixed(2)} ml
 															</Typography>
 														</Box>
 													</Box>
