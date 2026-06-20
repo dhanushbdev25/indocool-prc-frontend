@@ -492,8 +492,11 @@ const BomStep = ({
 				newErrors[`${entry.id}_acknowledge`] = 'Please acknowledge the out-of-range value';
 			}
 
-			// FOD checkpoint is mandatory unless the entry is blocked
-			if (!entry.blocked) {
+			// FOD checkpoint is mandatory only when catalyst quantity has been entered
+			// (and the entry isn't blocked). Without a catalyst quantity, the operator
+			// hasn't filled the material yet, so we don't force an FOD answer.
+			const catalystQuantityEntered = entry.catalystQuantity.trim() !== '';
+			if (!entry.blocked && catalystQuantityEntered) {
 				if (!entry.role) {
 					newErrors[`${entry.id}_role`] = 'Skill level is required';
 				}
@@ -919,7 +922,11 @@ const BomStep = ({
 												fullWidth
 												error={!!errors[`${entry.id}_fod`]}
 											>
-												<FormLabel component="legend" sx={{ mb: 1, fontWeight: 500 }} required>
+												<FormLabel
+													component="legend"
+													sx={{ mb: 1, fontWeight: 500 }}
+													required={entry.catalystQuantity.trim() !== ''}
+												>
 													Mixing Material is free from Foreign Object Debris (FOD) and stirred as per Work
 													Instruction
 												</FormLabel>
