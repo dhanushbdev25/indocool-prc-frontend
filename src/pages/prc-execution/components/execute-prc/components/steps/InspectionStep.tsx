@@ -49,6 +49,7 @@ import {
 	GATE_FIELD_LABEL,
 	formatGateValueForDisplay
 } from '../../../../../../utils/gateLabels';
+import { getTodayMinDate } from '../../../../../../utils/datePickerConstraints';
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 
 interface InspectionStepProps {
@@ -1390,6 +1391,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 															<LocalizationProvider dateAdapter={AdapterDayjs}>
 																<DateTimePicker
 																	label="Value"
+																	minDate={getTodayMinDate()}
 																	value={currentValue ? dayjs(currentValue) : null}
 																	onChange={newValue => {
 																		const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
@@ -1628,6 +1630,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																						<TableCell key={col.name}>
 																							<LocalizationProvider dateAdapter={AdapterDayjs}>
 																								<DatePicker
+																									minDate={getTodayMinDate()}
 																									value={cellValue ? dayjs(cellValue) : null}
 																									onChange={newValue => {
 																										const formatted = formatDateColumnStorageValue(newValue);
@@ -1654,6 +1657,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																						<TableCell key={col.name}>
 																							<LocalizationProvider dateAdapter={AdapterDayjs}>
 																								<DateTimePicker
+																									minDate={getTodayMinDate()}
 																									value={cellValue ? dayjs(cellValue) : null}
 																									onChange={newValue => {
 																										const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
@@ -1918,6 +1922,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																							) : column.type === 'date' ? (
 																								<LocalizationProvider dateAdapter={AdapterDayjs}>
 																									<DatePicker
+																										minDate={getTodayMinDate()}
 																										value={currentValue ? dayjs(currentValue) : null}
 																										onChange={newValue => {
 																											const formattedValue = formatDateColumnStorageValue(newValue);
@@ -1943,6 +1948,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																							) : column.type === 'datetime' ? (
 																								<LocalizationProvider dateAdapter={AdapterDayjs}>
 																									<DateTimePicker
+																										minDate={getTodayMinDate()}
 																										value={currentValue ? dayjs(currentValue) : null}
 																										onChange={newValue => {
 																											const formattedValue = newValue
@@ -2136,6 +2142,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																			<LocalizationProvider dateAdapter={AdapterDayjs}>
 																				<DatePicker
 																					label={column.name}
+																					minDate={getTodayMinDate()}
 																					value={currentValue ? dayjs(currentValue) : null}
 																					onChange={newValue => {
 																						const formattedValue = formatDateColumnStorageValue(newValue);
@@ -2156,6 +2163,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																			<LocalizationProvider dateAdapter={AdapterDayjs}>
 																				<DateTimePicker
 																					label={column.name}
+																					minDate={getTodayMinDate()}
 																					value={currentValue ? dayjs(currentValue) : null}
 																					onChange={newValue => {
 																						const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';

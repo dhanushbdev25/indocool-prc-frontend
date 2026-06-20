@@ -94,39 +94,26 @@ const getMaterialCodeKey = (materialCode: string) => {
 	}
 };
 
-// Helper function to convert a catalyst mass (kg) to volume (ml) using MEKP density (g/ml).
-// Falls back to the original mass when density is missing/invalid to avoid divide-by-zero.
-const convertCatalystMassToMl = (massKg: number, mekpDensity: number) => {
-	if (!Number.isFinite(mekpDensity) || mekpDensity <= 0) {
-		console.warn('Invalid or missing MEKP density; skipping kg->ml conversion for catalyst range.');
-		return massKg;
-	}
-	return (massKg * 1000) / mekpDensity;
-};
-
-// Helper function to calculate catalyst range (returned in ml)
+// Helper function to calculate catalyst range
+// Dosage = (min/max dosage from config) / 100
+// Min / Max = Dosage * material quantity (kg) * 1000
 const calculateCatalystRange = (
 	quantity: number,
 	materialCode: string,
 	catalystConfig: {
 		[key: string]: string;
-	},
-	mekpDensity: number
+	}
 ) => {
 	const key = getMaterialCodeKey(materialCode);
 	const minKey = `min${key.charAt(0).toUpperCase()}${key.slice(1)}`;
 	const maxKey = `max${key.charAt(0).toUpperCase()}${key.slice(1)}`;
 
-	// Config values are dosage percentages, so divide by 100 to get the mass fraction.
-	const minPercent = parseFloat(catalystConfig[minKey] || '0');
-	const maxPercent = parseFloat(catalystConfig[maxKey] || '0');
-
-	const minMassKg = (minPercent / 100) * quantity;
-	const maxMassKg = (maxPercent / 100) * quantity;
+	const minDosage = parseFloat(catalystConfig[minKey] || '0') / 100;
+	const maxDosage = parseFloat(catalystConfig[maxKey] || '0') / 100;
 
 	return {
-		min: convertCatalystMassToMl(minMassKg, mekpDensity),
-		max: convertCatalystMassToMl(maxMassKg, mekpDensity)
+		min: minDosage * quantity * 1000,
+		max: maxDosage * quantity * 1000
 	};
 };
 
@@ -361,13 +348,11 @@ const BomStep = ({
 									const actualQty = parseFloat(updatedEntry.actualQuantity);
 									const plannedQty = parseFloat(updatedEntry.quantity);
 									const quantity = !isNaN(actualQty) && actualQty > 0 ? actualQty : plannedQty;
-									const mekpDensity = parseFloat(executionData.catalystData.catalyst?.mekpDensity ?? '');
 									if (!isNaN(quantity)) {
 										const range = calculateCatalystRange(
 											quantity,
 											updatedEntry.materialCode,
-											config as Record<string, string>,
-											mekpDensity
+											config as Record<string, string>
 										);
 										updatedEntry.calculatedMin = range.min;
 										updatedEntry.calculatedMax = range.max;

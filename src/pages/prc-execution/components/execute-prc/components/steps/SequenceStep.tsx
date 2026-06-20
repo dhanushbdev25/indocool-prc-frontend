@@ -26,6 +26,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
+import { getTodayMinDate } from '../../../../../../utils/datePickerConstraints';
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 import { OK_NOT_OK_NEGATIVE_LABEL } from '../../../../../../utils/okNotOkLabels';
 import { useFetchWorkstationsComboQuery } from '../../../../../../store/api/business/prc-execution/prc-execution.api';
@@ -862,6 +863,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 												<td key={col.name}>
 													<LocalizationProvider dateAdapter={AdapterDayjs}>
 														<DatePicker
+															minDate={getTodayMinDate()}
 															value={cellValue ? dayjs(cellValue) : null}
 															onChange={newValue => {
 																const formatted = formatDateColumnStorageValue(newValue);
@@ -888,6 +890,7 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 												<td key={col.name}>
 													<LocalizationProvider dateAdapter={AdapterDayjs}>
 														<DateTimePicker
+															minDate={getTodayMinDate()}
 															value={cellValue ? dayjs(cellValue) : null}
 															onChange={newValue => {
 																const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';

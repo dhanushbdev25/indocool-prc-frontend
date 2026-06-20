@@ -34,6 +34,7 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
+import { getTodayMinDate } from '../../../../../../utils/datePickerConstraints';
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
@@ -1107,6 +1108,7 @@ const ParameterColumns = memo(
 														<LocalizationProvider dateAdapter={AdapterDayjs}>
 															<DatePicker
 																label="Default Value"
+																minDate={getTodayMinDate()}
 																value={field.value ? dayjs(field.value as string) : null}
 																onChange={newValue => {
 																	const formattedValue = newValue ? newValue.format('YYYY-MM-DD') : '';
@@ -1141,6 +1143,7 @@ const ParameterColumns = memo(
 														<LocalizationProvider dateAdapter={AdapterDayjs}>
 															<DateTimePicker
 																label="Default Value"
+																minDate={getTodayMinDate()}
 																value={field.value ? dayjs(field.value as string) : null}
 																onChange={newValue => {
 																	const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
