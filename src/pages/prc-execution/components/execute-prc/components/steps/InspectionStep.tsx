@@ -25,11 +25,11 @@ import {
 	MenuItem,
 	Checkbox
 } from '@mui/material';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
+import {
+	OperationalDatePicker,
+	OperationalDateTimePicker
+} from '../../../../../../components/common/OperationalDatePicker';
 import { Image, ExpandMore, ExpandLess, CameraAlt, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import {
 	type TimelineStep,
@@ -49,7 +49,6 @@ import {
 	GATE_FIELD_LABEL,
 	formatGateValueForDisplay
 } from '../../../../../../utils/gateLabels';
-import { getTodayMinDate } from '../../../../../../utils/datePickerConstraints';
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 
 interface InspectionStepProps {
@@ -1388,32 +1387,29 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 
 													if (param.type === 'datetime') {
 														return (
-															<LocalizationProvider dateAdapter={AdapterDayjs}>
-																<DateTimePicker
-																	label="Value"
-																	minDate={getTodayMinDate()}
-																	value={currentValue ? dayjs(currentValue) : null}
-																	onChange={newValue => {
-																		const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
-																		handleParameterChange(param.id, 'value', formattedValue);
-																	}}
-																	disabled={isReadOnly}
-																	slotProps={{
-																		textField: {
-																			size: 'small',
-																			error: !!errors[param.id.toString()],
-																			helperText: errors[param.id.toString()],
-																			variant: 'outlined',
-																			sx: {
-																				minWidth: 200,
-																				'& .MuiOutlinedInput-root': {
-																					height: '40px'
-																				}
+															<OperationalDateTimePicker
+																label="Value"
+																value={currentValue ? dayjs(currentValue) : null}
+																onChange={newValue => {
+																	const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																	handleParameterChange(param.id, 'value', formattedValue);
+																}}
+																disabled={isReadOnly}
+																slotProps={{
+																	textField: {
+																		size: 'small',
+																		error: !!errors[param.id.toString()],
+																		helperText: errors[param.id.toString()],
+																		variant: 'outlined',
+																		sx: {
+																			minWidth: 200,
+																			'& .MuiOutlinedInput-root': {
+																				height: '40px'
 																			}
 																		}
-																	}}
-																/>
-															</LocalizationProvider>
+																	}
+																}}
+															/>
 														);
 													}
 													if (param.type === 'shift') {
@@ -1628,26 +1624,23 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																				if (col.type === 'date') {
 																					return (
 																						<TableCell key={col.name}>
-																							<LocalizationProvider dateAdapter={AdapterDayjs}>
-																								<DatePicker
-																									minDate={getTodayMinDate()}
-																									value={cellValue ? dayjs(cellValue) : null}
-																									onChange={newValue => {
-																										const formatted = formatDateColumnStorageValue(newValue);
-																										handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
-																									}}
-																									disabled={isReadOnly}
-																									slotProps={{
-																										textField: {
-																											size: 'small',
-																											error: !!errors[errKey],
-																											helperText: errors[errKey],
-																											variant: 'outlined',
-																											fullWidth: true
-																										}
-																									}}
-																								/>
-																							</LocalizationProvider>
+																							<OperationalDatePicker
+																								value={cellValue ? dayjs(cellValue) : null}
+																								onChange={newValue => {
+																									const formatted = formatDateColumnStorageValue(newValue);
+																									handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
+																								}}
+																								disabled={isReadOnly}
+																								slotProps={{
+																									textField: {
+																										size: 'small',
+																										error: !!errors[errKey],
+																										helperText: errors[errKey],
+																										variant: 'outlined',
+																										fullWidth: true
+																									}
+																								}}
+																							/>
 																						</TableCell>
 																					);
 																				}
@@ -1655,26 +1648,23 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																				if (col.type === 'datetime') {
 																					return (
 																						<TableCell key={col.name}>
-																							<LocalizationProvider dateAdapter={AdapterDayjs}>
-																								<DateTimePicker
-																									minDate={getTodayMinDate()}
-																									value={cellValue ? dayjs(cellValue) : null}
-																									onChange={newValue => {
-																										const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
-																										handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
-																									}}
-																									disabled={isReadOnly}
-																									slotProps={{
-																										textField: {
-																											size: 'small',
-																											error: !!errors[errKey],
-																											helperText: errors[errKey],
-																											variant: 'outlined',
-																											fullWidth: true
-																										}
-																									}}
-																								/>
-																							</LocalizationProvider>
+																							<OperationalDateTimePicker
+																								value={cellValue ? dayjs(cellValue) : null}
+																								onChange={newValue => {
+																									const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																									handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
+																								}}
+																								disabled={isReadOnly}
+																								slotProps={{
+																									textField: {
+																										size: 'small',
+																										error: !!errors[errKey],
+																										helperText: errors[errKey],
+																										variant: 'outlined',
+																										fullWidth: true
+																									}
+																								}}
+																							/>
 																						</TableCell>
 																					);
 																				}
@@ -1920,59 +1910,53 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																									)}
 																								</FormControl>
 																							) : column.type === 'date' ? (
-																								<LocalizationProvider dateAdapter={AdapterDayjs}>
-																									<DatePicker
-																										minDate={getTodayMinDate()}
-																										value={currentValue ? dayjs(currentValue) : null}
-																										onChange={newValue => {
-																											const formattedValue = formatDateColumnStorageValue(newValue);
-																											handleTableRowChange(
-																												param.id,
-																												rowIndex,
-																												column.name,
-																												formattedValue
-																											);
-																										}}
-																										disabled={isReadOnly}
-																										slotProps={{
-																											textField: {
-																												size: 'small',
-																												error: !!errors[key],
-																												helperText: errors[key],
-																												variant: 'outlined',
-																												fullWidth: true
-																											}
-																										}}
-																									/>
-																								</LocalizationProvider>
+																								<OperationalDatePicker
+																									value={currentValue ? dayjs(currentValue) : null}
+																									onChange={newValue => {
+																										const formattedValue = formatDateColumnStorageValue(newValue);
+																										handleTableRowChange(
+																											param.id,
+																											rowIndex,
+																											column.name,
+																											formattedValue
+																										);
+																									}}
+																									disabled={isReadOnly}
+																									slotProps={{
+																										textField: {
+																											size: 'small',
+																											error: !!errors[key],
+																											helperText: errors[key],
+																											variant: 'outlined',
+																											fullWidth: true
+																										}
+																									}}
+																								/>
 																							) : column.type === 'datetime' ? (
-																								<LocalizationProvider dateAdapter={AdapterDayjs}>
-																									<DateTimePicker
-																										minDate={getTodayMinDate()}
-																										value={currentValue ? dayjs(currentValue) : null}
-																										onChange={newValue => {
-																											const formattedValue = newValue
-																												? newValue.format('YYYY-MM-DDTHH:mm')
-																												: '';
-																											handleTableRowChange(
-																												param.id,
-																												rowIndex,
-																												column.name,
-																												formattedValue
-																											);
-																										}}
-																										disabled={isReadOnly}
-																										slotProps={{
-																											textField: {
-																												size: 'small',
-																												error: !!errors[key],
-																												helperText: errors[key],
-																												variant: 'outlined',
-																												fullWidth: true
-																											}
-																										}}
-																									/>
-																								</LocalizationProvider>
+																								<OperationalDateTimePicker
+																									value={currentValue ? dayjs(currentValue) : null}
+																									onChange={newValue => {
+																										const formattedValue = newValue
+																											? newValue.format('YYYY-MM-DDTHH:mm')
+																											: '';
+																										handleTableRowChange(
+																											param.id,
+																											rowIndex,
+																											column.name,
+																											formattedValue
+																										);
+																									}}
+																									disabled={isReadOnly}
+																									slotProps={{
+																										textField: {
+																											size: 'small',
+																											error: !!errors[key],
+																											helperText: errors[key],
+																											variant: 'outlined',
+																											fullWidth: true
+																										}
+																									}}
+																								/>
 																							) : (
 																								column.type === 'shift' ? (
 																									<TextField
@@ -2139,47 +2123,41 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																				})()}
 																			</Box>
 																		) : column.type === 'date' ? (
-																			<LocalizationProvider dateAdapter={AdapterDayjs}>
-																				<DatePicker
-																					label={column.name}
-																					minDate={getTodayMinDate()}
-																					value={currentValue ? dayjs(currentValue) : null}
-																					onChange={newValue => {
-																						const formattedValue = formatDateColumnStorageValue(newValue);
-																						handleParameterChange(param.id, column.name, formattedValue);
-																					}}
-																					disabled={isReadOnly}
-																					slotProps={{
-																						textField: {
-																							fullWidth: true,
-																							error: !!errors[key],
-																							helperText: errors[key],
-																							variant: 'outlined'
-																						}
-																					}}
-																				/>
-																			</LocalizationProvider>
+																			<OperationalDatePicker
+																				label={column.name}
+																				value={currentValue ? dayjs(currentValue) : null}
+																				onChange={newValue => {
+																					const formattedValue = formatDateColumnStorageValue(newValue);
+																					handleParameterChange(param.id, column.name, formattedValue);
+																				}}
+																				disabled={isReadOnly}
+																				slotProps={{
+																					textField: {
+																						fullWidth: true,
+																						error: !!errors[key],
+																						helperText: errors[key],
+																						variant: 'outlined'
+																					}
+																				}}
+																			/>
 																		) : column.type === 'datetime' ? (
-																			<LocalizationProvider dateAdapter={AdapterDayjs}>
-																				<DateTimePicker
-																					label={column.name}
-																					minDate={getTodayMinDate()}
-																					value={currentValue ? dayjs(currentValue) : null}
-																					onChange={newValue => {
-																						const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
-																						handleParameterChange(param.id, column.name, formattedValue);
-																					}}
-																					disabled={isReadOnly}
-																					slotProps={{
-																						textField: {
-																							fullWidth: true,
-																							error: !!errors[key],
-																							helperText: errors[key],
-																							variant: 'outlined'
-																						}
-																					}}
-																				/>
-																			</LocalizationProvider>
+																			<OperationalDateTimePicker
+																				label={column.name}
+																				value={currentValue ? dayjs(currentValue) : null}
+																				onChange={newValue => {
+																					const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																					handleParameterChange(param.id, column.name, formattedValue);
+																				}}
+																				disabled={isReadOnly}
+																				slotProps={{
+																					textField: {
+																						fullWidth: true,
+																						error: !!errors[key],
+																						helperText: errors[key],
+																						variant: 'outlined'
+																					}
+																				}}
+																			/>
 																		) : (
 																			column.type === 'shift' ? (
 																				<TextField

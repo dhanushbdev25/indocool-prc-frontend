@@ -20,13 +20,12 @@ import {
 	Paper
 } from '@mui/material';
 import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
+import {
+	OperationalDatePicker,
+	OperationalDateTimePicker
+} from '../../../../../../components/common/OperationalDatePicker';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
-import { getTodayMinDate } from '../../../../../../utils/datePickerConstraints';
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 import { OK_NOT_OK_NEGATIVE_LABEL } from '../../../../../../utils/okNotOkLabels';
 import { useFetchWorkstationsComboQuery } from '../../../../../../store/api/business/prc-execution/prc-execution.api';
@@ -861,26 +860,23 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 										if (col.type === 'date') {
 											return (
 												<td key={col.name}>
-													<LocalizationProvider dateAdapter={AdapterDayjs}>
-														<DatePicker
-															minDate={getTodayMinDate()}
-															value={cellValue ? dayjs(cellValue) : null}
-															onChange={newValue => {
-																const formatted = formatDateColumnStorageValue(newValue);
-																handleTableCellChange(rowIdx, col.name, formatted);
-															}}
-															slotProps={{
-																textField: {
-																	size: 'small',
-																	fullWidth: true,
-																	variant: 'outlined',
-																	error: !!errors[`table_${rowIdx}_${col.name}`],
-																	helperText: errors[`table_${rowIdx}_${col.name}`],
-																	sx: { '& .MuiOutlinedInput-root': { borderRadius: '4px' } }
-																}
-															}}
-														/>
-													</LocalizationProvider>
+													<OperationalDatePicker
+														value={cellValue ? dayjs(cellValue) : null}
+														onChange={newValue => {
+															const formatted = formatDateColumnStorageValue(newValue);
+															handleTableCellChange(rowIdx, col.name, formatted);
+														}}
+														slotProps={{
+															textField: {
+																size: 'small',
+																fullWidth: true,
+																variant: 'outlined',
+																error: !!errors[`table_${rowIdx}_${col.name}`],
+																helperText: errors[`table_${rowIdx}_${col.name}`],
+																sx: { '& .MuiOutlinedInput-root': { borderRadius: '4px' } }
+															}
+														}}
+													/>
 												</td>
 											);
 										}
@@ -888,26 +884,23 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 										if (col.type === 'datetime') {
 											return (
 												<td key={col.name}>
-													<LocalizationProvider dateAdapter={AdapterDayjs}>
-														<DateTimePicker
-															minDate={getTodayMinDate()}
-															value={cellValue ? dayjs(cellValue) : null}
-															onChange={newValue => {
-																const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
-																handleTableCellChange(rowIdx, col.name, formatted);
-															}}
-															slotProps={{
-																textField: {
-																	size: 'small',
-																	fullWidth: true,
-																	variant: 'outlined',
-																	error: !!errors[`table_${rowIdx}_${col.name}`],
-																	helperText: errors[`table_${rowIdx}_${col.name}`],
-																	sx: { '& .MuiOutlinedInput-root': { borderRadius: '4px' } }
-																}
-															}}
-														/>
-													</LocalizationProvider>
+													<OperationalDateTimePicker
+														value={cellValue ? dayjs(cellValue) : null}
+														onChange={newValue => {
+															const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+															handleTableCellChange(rowIdx, col.name, formatted);
+														}}
+														slotProps={{
+															textField: {
+																size: 'small',
+																fullWidth: true,
+																variant: 'outlined',
+																error: !!errors[`table_${rowIdx}_${col.name}`],
+																helperText: errors[`table_${rowIdx}_${col.name}`],
+																sx: { '& .MuiOutlinedInput-root': { borderRadius: '4px' } }
+															}
+														}}
+													/>
 												</td>
 											);
 										}

@@ -7,17 +7,8 @@ import ThemeCustomization from './themes';
 import ScrollTop from './components/common/ScrollTop';
 
 import './App.css';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
-import timezone from 'dayjs/plugin/timezone';
+import './utils/dayjsSetup';
 import { useAuthRoutes } from './hooks/useAuthRoutes';
-
-// Extend Day.js with plugins
-dayjs.extend(utc);
-dayjs.extend(timezone);
-
-// Set default timezone
-dayjs.tz.setDefault('Africa/Lagos');
 
 // ==============================|| APP - THEME, ROUTER, LOCAL  ||============================== //
 

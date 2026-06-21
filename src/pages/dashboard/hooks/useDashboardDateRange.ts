@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import dayjs, { type Dayjs } from 'dayjs';
+import dayjs, { type Dayjs } from '../../../utils/dayjsSetup';
+import { APP_TIMEZONE } from '../../../utils/dateConfig';
 
 export type DateRangePreset = 'today' | 'yesterday' | 'thisMonth' | 'last7' | 'last30' | 'last90' | 'custom';
 
@@ -11,8 +12,8 @@ export interface DashboardDateRange {
 const toIsoDate = (d: Dayjs): string => d.format('YYYY-MM-DD');
 
 const rangeForPreset = (preset: Exclude<DateRangePreset, 'custom'>): DashboardDateRange => {
-	const today = dayjs().startOf('day');
-	const endToday = dayjs().endOf('day');
+	const today = dayjs.tz(undefined, APP_TIMEZONE).startOf('day');
+	const endToday = dayjs.tz(undefined, APP_TIMEZONE).endOf('day');
 
 	switch (preset) {
 		case 'today':

@@ -29,12 +29,11 @@ import {
 	Tooltip
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
-import { getTodayMinDate } from '../../../../../../utils/datePickerConstraints';
+import {
+	OperationalDatePicker,
+	OperationalDateTimePicker
+} from '../../../../../../components/common/OperationalDatePicker';
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
@@ -1105,30 +1104,27 @@ const ParameterColumns = memo(
 													name={`inspectionParameters.${parameterIndex}.columns.${columnIndex}.defaultValue`}
 													control={control as Control<InspectionFormData>}
 													render={({ field }) => (
-														<LocalizationProvider dateAdapter={AdapterDayjs}>
-															<DatePicker
-																label="Default Value"
-																minDate={getTodayMinDate()}
-																value={field.value ? dayjs(field.value as string) : null}
-																onChange={newValue => {
-																	const formattedValue = newValue ? newValue.format('YYYY-MM-DD') : '';
-																	field.onChange(formattedValue);
-																}}
-																slotProps={{
-																	textField: {
-																		fullWidth: true,
-																		size: 'small',
-																		helperText: 'Default date value',
-																		sx: {
-																			'& .MuiOutlinedInput-root': {
-																				borderRadius: '6px',
-																				backgroundColor: 'white'
-																			}
+														<OperationalDatePicker
+															label="Default Value"
+															value={field.value ? dayjs(field.value as string) : null}
+															onChange={newValue => {
+																const formattedValue = newValue ? newValue.format('YYYY-MM-DD') : '';
+																field.onChange(formattedValue);
+															}}
+															slotProps={{
+																textField: {
+																	fullWidth: true,
+																	size: 'small',
+																	helperText: 'Default date value',
+																	sx: {
+																		'& .MuiOutlinedInput-root': {
+																			borderRadius: '6px',
+																			backgroundColor: 'white'
 																		}
 																	}
-																}}
-															/>
-														</LocalizationProvider>
+																}
+															}}
+														/>
 													)}
 												/>
 											);
@@ -1140,30 +1136,27 @@ const ParameterColumns = memo(
 													name={`inspectionParameters.${parameterIndex}.columns.${columnIndex}.defaultValue`}
 													control={control as Control<InspectionFormData>}
 													render={({ field }) => (
-														<LocalizationProvider dateAdapter={AdapterDayjs}>
-															<DateTimePicker
-																label="Default Value"
-																minDate={getTodayMinDate()}
-																value={field.value ? dayjs(field.value as string) : null}
-																onChange={newValue => {
-																	const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
-																	field.onChange(formattedValue);
-																}}
-																slotProps={{
-																	textField: {
-																		fullWidth: true,
-																		size: 'small',
-																		helperText: 'Default datetime value',
-																		sx: {
-																			'& .MuiOutlinedInput-root': {
-																				borderRadius: '6px',
-																				backgroundColor: 'white'
-																			}
+														<OperationalDateTimePicker
+															label="Default Value"
+															value={field.value ? dayjs(field.value as string) : null}
+															onChange={newValue => {
+																const formattedValue = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
+																field.onChange(formattedValue);
+															}}
+															slotProps={{
+																textField: {
+																	fullWidth: true,
+																	size: 'small',
+																	helperText: 'Default datetime value',
+																	sx: {
+																		'& .MuiOutlinedInput-root': {
+																			borderRadius: '6px',
+																			backgroundColor: 'white'
 																		}
 																	}
-																}}
-															/>
-														</LocalizationProvider>
+																}
+															}}
+														/>
 													)}
 												/>
 											);

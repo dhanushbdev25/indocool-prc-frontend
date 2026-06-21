@@ -15,6 +15,7 @@ import { CalendarMonth, Check, KeyboardArrowDown } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { type Dayjs } from 'dayjs';
 import { dateRangeTriggerButton } from '../constants/dashboardTokens';
+import { DATE_PICKER_FORMAT } from '../../../utils/dateConfig';
 import { PRESET_OPTIONS, type DateRangePreset } from '../hooks/useDashboardDateRange';
 
 interface DashboardDateRangePickerProps {
@@ -179,7 +180,7 @@ export const DashboardDateRangePicker = ({
 										value={draftFrom}
 										onChange={d => onCustomRangeChange(toIsoDate(d), customTo)}
 										slotProps={{ textField: { size: 'small', fullWidth: true } }}
-										format="DD MMM YYYY"
+										format={DATE_PICKER_FORMAT}
 										maxDate={draftTo ?? undefined}
 									/>
 									<DatePicker
@@ -187,7 +188,7 @@ export const DashboardDateRangePicker = ({
 										value={draftTo}
 										onChange={d => onCustomRangeChange(customFrom, toIsoDate(d))}
 										slotProps={{ textField: { size: 'small', fullWidth: true } }}
-										format="DD MMM YYYY"
+										format={DATE_PICKER_FORMAT}
 										minDate={draftFrom ?? undefined}
 									/>
 									<Button
