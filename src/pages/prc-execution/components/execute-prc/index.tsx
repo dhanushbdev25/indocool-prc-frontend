@@ -8,7 +8,7 @@ import {
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
 import { calculateSequenceStepGroupTiming, findLastTemplateStepIndex } from '../../utils/timelineCardTiming';
-import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
+import { buildCatalystMixingTimelineStep, buildRawMaterialsTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
 import { canEditStepForRole } from '../../utils/roleStepAccess';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
@@ -34,6 +34,7 @@ import StepDetailView from './components/StepDetailView';
 import StepPreview from './components/StepPreview';
 import ExecutionQuickStats from './components/ExecutionQuickStats';
 import BomStep from './components/steps/BomStep';
+import RawMaterialsStep from './components/steps/RawMaterialsStep';
 
 type ViewState = 'list' | 'detail' | 'preview';
 
@@ -56,6 +57,7 @@ const ExecutePrc = () => {
 	const [timelineSteps, setTimelineSteps] = useState<TimelineStep[]>([]);
 	const [currentAggregatedData, setCurrentAggregatedData] = useState<Record<string, unknown>>({});
 	const [catalystMixingOpen, setCatalystMixingOpen] = useState(false);
+	const [rawMaterialsOpen, setRawMaterialsOpen] = useState(false);
 	const catalystMixingStartTimeRef = useRef<string | null>(null);
 	const catalystMixingSubmitRef = useRef<(() => void) | null>(null);
 
@@ -74,7 +76,7 @@ const ExecutePrc = () => {
 		if (executionData && !isUpdateProgressLoading && !isExecutionDataFetching) {
 			// Extract the actual data from the API response wrapper
 			const actualData = (executionData as { data: ExecutionData }).data;
-			const steps = buildTimelineSteps(actualData, { omitStepTypes: ['bom'] });
+			const steps = buildTimelineSteps(actualData, { omitStepTypes: ['bom', 'rawMaterials'] });
 
 			// Use setTimeout to avoid setState in effect warning
 			setTimeout(() => {
@@ -651,6 +653,14 @@ const ExecutePrc = () => {
 		} catch (error) {
 			console.error('Failed to save catalyst mixing:', error);
 		}
+	};
+
+	const handleOpenRawMaterials = () => {
+		setRawMaterialsOpen(true);
+	};
+
+	const handleCloseRawMaterials = () => {
+		setRawMaterialsOpen(false);
 	};
 
 	// Helper function to check if all steps in a sequence group are filled (but not necessarily approved)
@@ -1512,6 +1522,7 @@ const ExecutePrc = () => {
 	const catalystMixingStep = buildCatalystMixingTimelineStep(actualExecutionData, {
 		status: isCatalystMixingReadOnly ? undefined : 'pending'
 	});
+	const rawMaterialsStep = buildRawMaterialsTimelineStep(actualExecutionData);
 
 	// No timeline steps state
 	if (timelineSteps.length === 0) {
@@ -1544,6 +1555,8 @@ const ExecutePrc = () => {
 					executionData={actualExecutionData}
 					viewOnlyMode={isViewOnlyMode}
 					hideExecutionActions={isViewOnlyMode}
+					onRawMaterialsClick={rawMaterialsStep ? handleOpenRawMaterials : undefined}
+					rawMaterialsDisabled={isExecutionDataFetching || isUpdateProgressLoading}
 					onCatalystMixingClick={canAccessCatalystMixing ? handleOpenCatalystMixing : undefined}
 					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
 				/>
@@ -1610,6 +1623,25 @@ const ExecutePrc = () => {
 					)}
 				</Box>
 			</Box>
+			<Dialog open={rawMaterialsOpen} onClose={handleCloseRawMaterials} fullWidth maxWidth="lg">
+				<DialogTitle>Bill of Material</DialogTitle>
+				<DialogContent dividers sx={{ p: 0 }}>
+					{rawMaterialsStep ? (
+						<RawMaterialsStep
+							step={rawMaterialsStep}
+							onStepComplete={async () => {}}
+							readOnlyOverride
+						/>
+					) : (
+						<Box sx={{ p: 3 }}>
+							<Alert severity="info">No bill of material items are available for this execution.</Alert>
+						</Box>
+					)}
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={handleCloseRawMaterials}>Close</Button>
+				</DialogActions>
+			</Dialog>
 			<Dialog open={catalystMixingOpen} onClose={handleCloseCatalystMixing} fullWidth maxWidth="lg">
 				<DialogTitle>Catalyst Mixing</DialogTitle>
 				<DialogContent dividers sx={{ p: 0 }}>

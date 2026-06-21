@@ -16,6 +16,7 @@ import {
 import { ZoomIn, ZoomOut, Fullscreen, Image as ImageIcon, PanTool } from '@mui/icons-material';
 import { type AnnotationRegion } from '../../../types/execution.types';
 import { getDefectStyle } from './defectAnnotationStyles';
+import { useAuthenticatedFileUrl } from '../../../../../hooks/useAuthenticatedFileUrl';
 
 interface ImageDisplayProps {
 	imageUrl: string;
@@ -37,6 +38,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	readOnly: _readOnly = true,
 	showAnnotations = true
 }) => {
+	const { src: resolvedImageUrl, loading: urlLoading, error: urlError } = useAuthenticatedFileUrl(imageUrl);
 	const [imageLoaded, setImageLoaded] = useState(false);
 	const [imageError, setImageError] = useState(false);
 	const [konvaImage, setKonvaImage] = useState<HTMLImageElement | null>(null);
@@ -54,9 +56,13 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	const imageFullRef = useRef<Konva.Image>(null);
 
 	useEffect(() => {
-		if (!imageUrl) {
+		if (urlLoading) {
+			return;
+		}
+
+		if (!resolvedImageUrl) {
 			const timeoutId = setTimeout(() => {
-				setImageError(true);
+				setImageError(Boolean(imageUrl) || urlError);
 				setImageLoaded(false);
 				setKonvaImage(null);
 			}, 0);
@@ -106,13 +112,13 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 			setImageLoaded(false);
 		};
 
-		img.src = imageUrl;
+		img.src = resolvedImageUrl;
 
 		return () => {
 			clearTimeout(resetTimeoutId);
 			isMounted = false;
 		};
-	}, [imageUrl]);
+	}, [resolvedImageUrl, urlLoading, urlError, imageUrl]);
 
 	const isPanSurface = useCallback((target: Konva.Node, stage: Konva.Stage | null, imageRef: React.RefObject<Konva.Image | null>) => {
 		if (!stage) return false;

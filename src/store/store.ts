@@ -17,6 +17,7 @@ import { mouldApi } from './api/business/mould/mould.api';
 import { prcExecutionApi } from './api/business/prc-execution/prc-execution.api';
 import { dashboardApi } from './api/business/dashboard/dashboard.api';
 import { sapJobRunsApi } from './api/business/sap-job-runs/sap-job-runs.api';
+import { filesApi } from './api/business/files/files.api';
 import { attachListViewPersistence, loadPersistedListView } from './persistListView';
 import { hydrateListView } from './slices/listView';
 
@@ -60,6 +61,7 @@ export const store = configureStore({
 			prcExecutionApi.middleware,
 			dashboardApi.middleware,
 			sapJobRunsApi.middleware,
+			filesApi.middleware,
 			rtkQueryErrorLogger
 		] as Middleware[])
 });

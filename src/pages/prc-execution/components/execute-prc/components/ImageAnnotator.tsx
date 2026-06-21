@@ -38,6 +38,7 @@ import {
 	type AnnotationCircle
 } from '../../../types/execution.types';
 import { toFileRenderUrl } from '../../../../../utils/fileUrl';
+import { useAuthenticatedFileUrl } from '../../../../../hooks/useAuthenticatedFileUrl';
 import {
 	DEFECT_CATEGORIES,
 	getDefectStyle,
@@ -144,7 +145,8 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	const spacePressedRef = useRef(false);
 
 	const currentImage = images[currentImageIndex];
-	const currentImageUrl = toFileRenderUrl(currentImage?.filePath);
+	const persistedImageUrl = toFileRenderUrl(currentImage?.filePath);
+	const { src: displayImageUrl, loading: imageUrlLoading } = useAuthenticatedFileUrl(currentImage?.filePath);
 
 	const getCurrentImageAnnotations = useCallback(() => {
 		return annotations.find(ann => ann.imageFileName === currentImage?.fileName)?.regions || [];
@@ -182,29 +184,36 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	}, []);
 
 	useEffect(() => {
-		if (currentImageUrl) {
-			setImageLoaded(false);
-			setImageError(false);
-			const img = new window.Image();
-			img.onload = () => {
-				setImageSize({ width: img.width, height: img.height });
-				const expanded = showFullscreen;
-				const optimalSize = calculateCanvasSize(img.width, img.height, {
-					maxWidth: expanded ? 1200 : 800,
-					maxHeight: expanded ? 900 : 600
-				});
-				setCanvasSize(optimalSize);
-				setImageLoaded(true);
-				setKonvaImage(img);
-			};
-			img.onerror = () => {
+		if (imageUrlLoading || !displayImageUrl) {
+			if (!imageUrlLoading && !displayImageUrl) {
 				setImageError(true);
 				setImageLoaded(false);
 				setKonvaImage(null);
-			};
-			img.src = currentImageUrl;
+			}
+			return;
 		}
-	}, [currentImageUrl, showFullscreen]);
+
+		setImageLoaded(false);
+		setImageError(false);
+		const img = new window.Image();
+		img.onload = () => {
+			setImageSize({ width: img.width, height: img.height });
+			const expanded = showFullscreen;
+			const optimalSize = calculateCanvasSize(img.width, img.height, {
+				maxWidth: expanded ? 1200 : 800,
+				maxHeight: expanded ? 900 : 600
+			});
+			setCanvasSize(optimalSize);
+			setImageLoaded(true);
+			setKonvaImage(img);
+		};
+		img.onerror = () => {
+			setImageError(true);
+			setImageLoaded(false);
+			setKonvaImage(null);
+		};
+		img.src = displayImageUrl;
+	}, [displayImageUrl, imageUrlLoading, showFullscreen]);
 
 	const isPanSurface = useCallback(
 		(target: Konva.Node, stage: Konva.Stage | null) => {
@@ -331,7 +340,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 		const updatedAnnotations = annotations.filter(ann => ann.imageFileName !== currentImage.fileName);
 		updatedAnnotations.push({
 			imageFileName: currentImage.fileName,
-			imageUrl: currentImageUrl,
+			imageUrl: persistedImageUrl,
 			regions: updatedRegions
 		});
 
@@ -346,7 +355,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 		comment,
 		category,
 		currentImage,
-		currentImageUrl,
+		persistedImageUrl,
 		getCurrentImageAnnotations,
 		annotations,
 		onSave
@@ -363,7 +372,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 			if (updatedRegions.length > 0) {
 				updatedAnnotations.push({
 					imageFileName: currentImage.fileName,
-					imageUrl: currentImageUrl,
+					imageUrl: persistedImageUrl,
 					regions: updatedRegions
 				});
 			}
@@ -371,7 +380,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 			setAnnotations(updatedAnnotations);
 			onSave(updatedAnnotations);
 		},
-		[currentImage, getCurrentImageAnnotations, annotations, currentImageUrl, onSave]
+		[currentImage, getCurrentImageAnnotations, annotations, persistedImageUrl, onSave]
 	);
 
 	const handleSaveAll = useCallback(() => {

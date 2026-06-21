@@ -3,6 +3,7 @@ import { Stage, Layer, Image as KonvaImage, Circle, Line, Group, Text } from 're
 import { Box } from '@mui/material';
 import type { AnnotationRegion } from '../../types/execution.types';
 import { getDefectStyle } from '../execute-prc/components/defectAnnotationStyles';
+import { useAuthenticatedFileUrl } from '../../../../hooks/useAuthenticatedFileUrl';
 
 const DEFAULT_MAX = 900;
 
@@ -142,6 +143,7 @@ const InspectionAnnotatedImageRaster: React.FC<InspectionAnnotatedImageRasterPro
 	maxWidth = DEFAULT_MAX,
 	onRasterReady
 }) => {
+	const { src: resolvedImageUrl, loading: urlLoading, error: urlError } = useAuthenticatedFileUrl(imageUrl);
 	const stageRef = useRef<any>(null);
 	const onReadyRef = useRef(onRasterReady);
 	onReadyRef.current = onRasterReady;
@@ -152,8 +154,11 @@ const InspectionAnnotatedImageRaster: React.FC<InspectionAnnotatedImageRasterPro
 	useEffect(() => {
 		setHtmlImage(null);
 		setDims(null);
-		if (!imageUrl) {
-			onReadyRef.current(null, 'No image URL');
+		if (urlLoading) {
+			return;
+		}
+		if (!resolvedImageUrl) {
+			onReadyRef.current(null, urlError ? 'Failed to resolve image URL' : 'No image URL');
 			return;
 		}
 
@@ -175,12 +180,12 @@ const InspectionAnnotatedImageRaster: React.FC<InspectionAnnotatedImageRasterPro
 			onReadyRef.current(null, 'Failed to load image');
 		};
 
-		img.src = imageUrl;
+		img.src = resolvedImageUrl;
 
 		return () => {
 			cancelled = true;
 		};
-	}, [imageUrl, maxWidth]);
+	}, [resolvedImageUrl, urlLoading, urlError, maxWidth]);
 
 	useEffect(() => {
 		if (!dims || !htmlImage || !stageRef.current) return;

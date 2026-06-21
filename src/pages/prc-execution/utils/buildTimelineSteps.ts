@@ -11,6 +11,39 @@ function isPrcMetadataComplete(prcAggregatedSteps: Record<string, unknown> | und
 	return Object.keys(meta as Record<string, unknown>).length > 0;
 }
 
+export function buildRawMaterialsTimelineStep(
+	executionData: ExecutionData,
+	overrides?: Partial<Pick<TimelineStep, 'stepNumber' | 'status' | 'reportStepIndex'>>
+): TimelineStep | null {
+	if (!executionData.rawMaterials || executionData.rawMaterials.length === 0) {
+		return null;
+	}
+
+	const isCompleted = isRawMaterialsStepCompleteForNavigation(executionData);
+
+	return {
+		stepNumber: overrides?.stepNumber ?? 1,
+		reportStepIndex: overrides?.reportStepIndex,
+		type: 'rawMaterials',
+		title: 'Bill of Material Validation',
+		description: 'Validate bill of material quantities and batch tracking',
+		status: overrides?.status ?? (isCompleted ? 'completed' : 'pending'),
+		ctq: false,
+		items: executionData.rawMaterials.map(material => ({
+			id: material.id,
+			name: material.materialName,
+			quantity: material.quantity,
+			uom: material.uom,
+			actualUom: material.actualUom ?? material.uom,
+			actualQuantity: material.actualQuantity,
+			batchNumber: material.batchNumber,
+			expiryDate: material.expiryDate,
+			description: material.materialCode,
+			batching: material.batching
+		}))
+	};
+}
+
 export function buildCatalystMixingTimelineStep(
 	executionData: ExecutionData,
 	overrides?: Partial<Pick<TimelineStep, 'stepNumber' | 'status' | 'reportStepIndex'>>
@@ -68,29 +101,10 @@ export function buildTimelineSteps(
 		ctq: false
 	});
 
-	// Bill of Material
-	if (executionData.rawMaterials && executionData.rawMaterials.length > 0) {
-		const isCompleted = isRawMaterialsStepCompleteForNavigation(executionData);
-		steps.push({
-			stepNumber: stepNumber++,
-			type: 'rawMaterials',
-			title: 'Bill of Material Validation',
-			description: 'Validate bill of material quantities and batch tracking',
-			status: isCompleted ? 'completed' : 'pending',
-			ctq: false,
-			items: executionData.rawMaterials.map(material => ({
-				id: material.id,
-				name: material.materialName,
-				quantity: material.quantity,
-				uom: material.uom,
-				actualUom: material.actualUom ?? material.uom,
-				actualQuantity: material.actualQuantity,
-				batchNumber: material.batchNumber,
-				expiryDate: material.expiryDate,
-				description: material.materialCode,
-				batching: material.batching
-			}))
-		});
+	const rawMaterialsStep = buildRawMaterialsTimelineStep(executionData, { stepNumber });
+	if (rawMaterialsStep) {
+		steps.push(rawMaterialsStep);
+		stepNumber += 1;
 	}
 
 	// Step 2: Catalyst Mixing (formerly BOM)

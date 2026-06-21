@@ -23,6 +23,34 @@ export const toFileStoragePath = (pathOrKey: string) => {
 	return `files/${normalized}`;
 };
 
+const isDirectDisplayUrl = (url: string) => url.startsWith('blob:') || url.startsWith('data:');
+
+/**
+ * Resolves a stored path or API URL to the relative endpoint used for signed-URL fetch.
+ */
+export const toFileFetchEndpoint = (filePathOrUrl: string): string => {
+	if (isDirectDisplayUrl(filePathOrUrl)) {
+		return filePathOrUrl;
+	}
+
+	if (/^https?:\/\//i.test(filePathOrUrl)) {
+		const base = getApiBaseUrl();
+		if (base && filePathOrUrl.startsWith(base)) {
+			return filePathOrUrl.slice(base.length).replace(/^\/+/, '');
+		}
+		return filePathOrUrl;
+	}
+
+	return toFileStoragePath(filePathOrUrl);
+};
+
+export const isExternalFileUrl = (filePathOrUrl: string): boolean => {
+	if (isDirectDisplayUrl(filePathOrUrl)) return true;
+	if (!/^https?:\/\//i.test(filePathOrUrl)) return false;
+	const base = getApiBaseUrl();
+	return Boolean(base && !filePathOrUrl.startsWith(base));
+};
+
 /**
  * Converts persisted file path/key to a full renderable URL.
  */

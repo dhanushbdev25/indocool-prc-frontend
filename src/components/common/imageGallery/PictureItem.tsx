@@ -1,7 +1,9 @@
-import { Grid, Paper, IconButton } from '@mui/material';
+import { Grid, Paper, IconButton, CircularProgress } from '@mui/material';
 
 import CloseIcon from '@mui/icons-material/Close';
+import BrokenImageIcon from '@mui/icons-material/BrokenImage';
 import { ImageItem } from '../../../hooks/useImageGallery';
+import { useAuthenticatedFileUrl } from '../../../hooks/useAuthenticatedFileUrl';
 
 interface PictureItemProps {
 	item: ImageItem;
@@ -10,6 +12,8 @@ interface PictureItemProps {
 }
 
 const PictureItem = ({ item, onRemoveImage, view }: PictureItemProps) => {
+	const { src, loading, error } = useAuthenticatedFileUrl(item.filePath || item.image);
+
 	return (
 		<Grid>
 			<Paper
@@ -25,7 +29,11 @@ const PictureItem = ({ item, onRemoveImage, view }: PictureItemProps) => {
 					m: 1
 				}}
 			>
-				<img src={item.image} alt={`IMAGE-${item.id}`} width={120} height={120} style={{ objectFit: 'cover' }} />
+				{loading && <CircularProgress size={24} />}
+				{error && !loading && <BrokenImageIcon sx={{ color: 'text.disabled', fontSize: 32 }} />}
+				{!loading && !error && src && (
+					<img src={src} alt={`IMAGE-${item.id}`} width={120} height={120} style={{ objectFit: 'cover' }} />
+				)}
 				{!view && (
 					<IconButton
 						onClick={() => onRemoveImage(item.id)}

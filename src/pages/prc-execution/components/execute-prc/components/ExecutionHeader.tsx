@@ -10,7 +10,7 @@ import {
 	IconButton,
 	Tooltip
 } from '@mui/material';
-import { ArrowBack, PictureAsPdf, Science } from '@mui/icons-material';
+import { ArrowBack, Inventory2, PictureAsPdf, Science } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { type ExecutionData } from '../../../types/execution.types';
 import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
@@ -26,6 +26,8 @@ interface ExecutionHeaderProps {
 	viewOnlyMode?: boolean;
 	onCatalystMixingClick?: () => void;
 	catalystMixingDisabled?: boolean;
+	onRawMaterialsClick?: () => void;
+	rawMaterialsDisabled?: boolean;
 }
 
 function formatCustomerContext(execution: ExecutionData): {
@@ -58,7 +60,7 @@ function MetaField({
 	monospace?: boolean;
 }) {
 	return (
-		<Stack spacing={0.35} sx={{ minWidth: 0, flex: '1 1 120px', maxWidth: { xs: '100%', sm: 220 } }}>
+		<Stack spacing={0.35} sx={{ minWidth: 0 }}>
 			<Typography
 				variant="caption"
 				color="text.secondary"
@@ -67,7 +69,8 @@ function MetaField({
 					letterSpacing: '0.06em',
 					textTransform: 'uppercase',
 					fontSize: '0.65rem',
-					lineHeight: 1.2
+					lineHeight: 1.2,
+					whiteSpace: 'nowrap'
 				}}
 			>
 				{label}
@@ -81,9 +84,7 @@ function MetaField({
 					lineHeight: 1.35,
 					overflow: 'hidden',
 					textOverflow: 'ellipsis',
-					display: '-webkit-box',
-					WebkitLineClamp: 2,
-					WebkitBoxOrient: 'vertical',
+					whiteSpace: 'nowrap',
 					fontFamily: monospace ? 'ui-monospace, monospace' : undefined
 				}}
 			>
@@ -99,7 +100,9 @@ const ExecutionHeader = ({
 	hideExecutionActions: _hideExecutionActions = false,
 	viewOnlyMode = false,
 	onCatalystMixingClick,
-	catalystMixingDisabled = false
+	catalystMixingDisabled = false,
+	onRawMaterialsClick,
+	rawMaterialsDisabled = false
 }: ExecutionHeaderProps) => {
 	const theme = useTheme();
 	const navigate = useNavigate();
@@ -171,24 +174,6 @@ const ExecutionHeader = ({
 						<Typography variant="body2" color="text.secondary" noWrap title={executionData.partNumber}>
 							{executionData.partNumber}
 						</Typography>
-						<Typography
-							variant="caption"
-							color="text.secondary"
-							noWrap
-							title={sapRef === '—' ? undefined : sapRef}
-							sx={{ display: 'block', mt: 0.25, fontFamily: 'ui-monospace, monospace' }}
-						>
-							SAP reference: {sapRef}
-						</Typography>
-						<Typography
-							variant="caption"
-							color="text.secondary"
-							noWrap
-							title={reservation === '—' ? undefined : reservation}
-							sx={{ display: 'block', mt: 0.25, fontFamily: 'ui-monospace, monospace' }}
-						>
-							Reservation: {reservation}
-						</Typography>
 					</Box>
 				</Stack>
 
@@ -248,18 +233,32 @@ const ExecutionHeader = ({
 						<Chip label={durationLabel} size="small" variant="outlined" color="info" />
 					</Stack>
 
-					{onCatalystMixingClick && (
+					{(onRawMaterialsClick || onCatalystMixingClick) && (
 						<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
-							<Button
-								startIcon={<Science />}
-								variant="outlined"
-								size="small"
-								color="inherit"
-								onClick={onCatalystMixingClick}
-								disabled={catalystMixingDisabled}
-							>
-								Catalyst Mixing
-							</Button>
+							{onRawMaterialsClick && (
+								<Button
+									startIcon={<Inventory2 />}
+									variant="outlined"
+									size="small"
+									color="inherit"
+									onClick={onRawMaterialsClick}
+									disabled={rawMaterialsDisabled}
+								>
+									Bill of Material
+								</Button>
+							)}
+							{onCatalystMixingClick && (
+								<Button
+									startIcon={<Science />}
+									variant="outlined"
+									size="small"
+									color="inherit"
+									onClick={onCatalystMixingClick}
+									disabled={catalystMixingDisabled}
+								>
+									Catalyst Mixing
+								</Button>
+							)}
 						</Stack>
 					)}
 
@@ -287,32 +286,32 @@ const ExecutionHeader = ({
 
 			<Divider />
 
-			{/* Context strip — labeled fields, breathable grid */}
+			{/* Context strip — labeled fields, single row */}
 			<Box
 				sx={{
 					px: { xs: 2, sm: 2.5 },
 					py: 2,
-					background: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : theme.palette.grey[50]
+					background: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.03)' : theme.palette.grey[50],
+					overflowX: 'auto'
 				}}
 			>
-				<Stack
-					direction="row"
-					flexWrap="wrap"
-					useFlexGap
-					spacing={3}
+				<Box
 					sx={{
-						columnGap: 3,
-						rowGap: 2.5,
-						alignItems: 'flex-start'
+						display: 'grid',
+						gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+						columnGap: 2,
+						width: '100%',
+						minWidth: 640
 					}}
 				>
 					<MetaField label="Order ID" value={executionData.orderId != null && String(executionData.orderId).trim() ? String(executionData.orderId) : '—'} monospace />
+					<MetaField label="SAP reference" value={sapRef} monospace />
 					<MetaField label="Customer" value={customerLabel} />
 					<MetaField label="Customer variant" value={customerVariant} />
 					<MetaField label="Reservation" value={reservation} monospace />
 					<MetaField label="Production set" value={executionData.productionSetId || '—'} />
 					<MetaField label="Mould" value={executionData.mouldCode || executionData.mouldId || '—'} />
-				</Stack>
+				</Box>
 			</Box>
 		</Box>
 	);
