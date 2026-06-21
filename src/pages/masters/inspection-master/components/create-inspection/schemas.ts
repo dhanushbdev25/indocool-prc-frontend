@@ -22,28 +22,26 @@ export const columnSchema = yup
 					return value === undefined || typeof value === 'number';
 				});
 		},
-		otherwise: () => yup.string().optional()
+		otherwise: () => yup.string().nullable().optional()
 	}),
-	minimumAcceptanceValue: yup.mixed().when('type', {
-		is: 'number',
-		then: schema =>
-			schema.transform(value => {
-				if (value === '' || value === null || value === undefined) return undefined;
-				const num = Number(value);
-				return isNaN(num) ? undefined : num;
-			}),
-		otherwise: schema => schema.optional()
-	}),
-	maximumAcceptanceValue: yup.mixed().when('type', {
-		is: 'number',
-		then: schema =>
-			schema.transform(value => {
-				if (value === '' || value === null || value === undefined) return undefined;
-				const num = Number(value);
-				return isNaN(num) ? undefined : num;
-			}),
-		otherwise: schema => schema.optional()
-	})
+	minimumAcceptanceValue: yup
+		.mixed()
+		.nullable()
+		.optional()
+		.transform(value => {
+			if (value === '' || value === null || value === undefined) return undefined;
+			const num = Number(value);
+			return isNaN(num) ? value : num;
+		}),
+	maximumAcceptanceValue: yup
+		.mixed()
+		.nullable()
+		.optional()
+		.transform(value => {
+			if (value === '' || value === null || value === undefined) return undefined;
+			const num = Number(value);
+			return isNaN(num) ? value : num;
+		})
 	})
 	.test('column-min-max-range', 'Minimum value cannot be greater than maximum value', value => {
 		if (!value || value.type !== 'number') return true;
@@ -79,27 +77,25 @@ export const inspectionParameterSchema = yup.object({
 		.min(1, 'Order must be at least 1')
 		.integer('Order must be a whole number'),
 	parameterName: yup.string().required('Parameter name is required'),
-	specification: yup.string().optional(),
-	minimumAcceptanceValue: yup.mixed().when('type', {
-		is: 'number',
-		then: schema =>
-			schema.transform(value => {
-				if (value === '' || value === null || value === undefined) return undefined;
-				const num = Number(value);
-				return isNaN(num) ? undefined : num;
-			}),
-		otherwise: schema => schema.optional()
-	}),
-	maximumAcceptanceValue: yup.mixed().when('type', {
-		is: 'number',
-		then: schema =>
-			schema.transform(value => {
-				if (value === '' || value === null || value === undefined) return undefined;
-				const num = Number(value);
-				return isNaN(num) ? undefined : num;
-			}),
-		otherwise: schema => schema.optional()
-	}),
+	specification: yup.string().nullable().optional(),
+	minimumAcceptanceValue: yup
+		.mixed()
+		.nullable()
+		.optional()
+		.transform(value => {
+			if (value === '' || value === null || value === undefined) return undefined;
+			const num = Number(value);
+			return isNaN(num) ? value : num;
+		}),
+	maximumAcceptanceValue: yup
+		.mixed()
+		.nullable()
+		.optional()
+		.transform(value => {
+			if (value === '' || value === null || value === undefined) return undefined;
+			const num = Number(value);
+			return isNaN(num) ? value : num;
+		}),
 	type: yup
 		.string()
 		.required('Parameter type is required')

@@ -102,17 +102,17 @@ const CreateInspection = () => {
 		const inspectionParameters = inspectionData.detail.inspectionParameters.map((param, index) => ({
 			order: param.order ?? index + 1,
 			parameterName: param.parameterName,
-			specification: param.specification,
-			minimumAcceptanceValue: param.minimumAcceptanceValue,
-			maximumAcceptanceValue: param.maximumAcceptanceValue,
+			specification: param.specification ?? '',
+			minimumAcceptanceValue: param.minimumAcceptanceValue ?? '',
+			maximumAcceptanceValue: param.maximumAcceptanceValue ?? '',
 			type: param.type,
 			files: param.files || {},
 			columns: param.columns.map(col => ({
 				name: col.name,
 				type: col.type,
-				defaultValue: col.defaultValue || '',
-				minimumAcceptanceValue: col.minimumAcceptanceValue || '',
-				maximumAcceptanceValue: col.maximumAcceptanceValue || ''
+				defaultValue: col.defaultValue ?? '',
+				minimumAcceptanceValue: col.minimumAcceptanceValue ?? '',
+				maximumAcceptanceValue: col.maximumAcceptanceValue ?? ''
 			})),
 			tableConfig: param.tableConfig || undefined,
 			role: param.role,
@@ -230,11 +230,11 @@ const CreateInspection = () => {
 			parameterName: param.parameterName,
 			specification: param.specification,
 			minimumAcceptanceValue:
-				param.minimumAcceptanceValue !== undefined && param.minimumAcceptanceValue !== ''
+				param.minimumAcceptanceValue != null && param.minimumAcceptanceValue !== ''
 					? String(param.minimumAcceptanceValue)
 					: undefined,
 			maximumAcceptanceValue:
-				param.maximumAcceptanceValue !== undefined && param.maximumAcceptanceValue !== ''
+				param.maximumAcceptanceValue != null && param.maximumAcceptanceValue !== ''
 					? String(param.maximumAcceptanceValue)
 					: undefined,
 			type: param.type,
@@ -244,11 +244,11 @@ const CreateInspection = () => {
 				type: col.type,
 				defaultValue: col.defaultValue ? String(col.defaultValue) : undefined,
 				minimumAcceptanceValue:
-					col.minimumAcceptanceValue !== undefined && col.minimumAcceptanceValue !== ''
+					col.minimumAcceptanceValue != null && col.minimumAcceptanceValue !== ''
 						? String(col.minimumAcceptanceValue)
 						: undefined,
 				maximumAcceptanceValue:
-					col.maximumAcceptanceValue !== undefined && col.maximumAcceptanceValue !== ''
+					col.maximumAcceptanceValue != null && col.maximumAcceptanceValue !== ''
 						? String(col.maximumAcceptanceValue)
 						: undefined
 			})),
