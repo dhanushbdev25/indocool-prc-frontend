@@ -4,9 +4,11 @@ import {
 	parseSapJobConfigsResponse,
 	parseSapConfirmationLogsResponse,
 	parseSapJobRunsResponse,
+	parseFetchRmResponse,
 	type SapJobConfigItem,
 	type SapConfirmationLogItem,
-	type SapJobRunItem
+	type SapJobRunItem,
+	type FetchRmResponse
 } from './sap-job-runs.validators';
 
 export const sapJobRunsApi = createApi({
@@ -49,6 +51,13 @@ export const sapJobRunsApi = createApi({
 			invalidatesTags: (_result, _err, { prcExecutionId }) => [
 				{ type: 'SapConfirmationLogs', id: prcExecutionId }
 			]
+		}),
+		fetchRawMaterials: builder.mutation<FetchRmResponse, { orderId: string }>({
+			query: ({ orderId }) => ({
+				url: `sapJobRuns/fetch-rm/${encodeURIComponent(orderId)}`,
+				method: 'POST'
+			}),
+			transformResponse: (response: unknown) => parseFetchRmResponse(response)
 		})
 	})
 });
@@ -57,5 +66,6 @@ export const {
 	useFetchSapJobConfigsQuery,
 	useFetchSapJobRunsQuery,
 	useFetchSapConfirmationLogsQuery,
-	useRetriggerSapConfirmationsMutation
+	useRetriggerSapConfirmationsMutation,
+	useFetchRawMaterialsMutation
 } = sapJobRunsApi;

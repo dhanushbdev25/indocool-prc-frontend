@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Box, Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
+import { Box, Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
 import { FullScreenFormSavingOverlay } from '../../../../components/common/FullScreenFormSavingOverlay';
 import { useCurrentRole } from '../../../../hooks/useCurrentRole';
 import {
 	useFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
+import { useFetchRawMaterialsMutation } from '../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import { calculateSequenceStepGroupTiming, findLastTemplateStepIndex } from '../../utils/timelineCardTiming';
-import { buildCatalystMixingTimelineStep, buildRawMaterialsTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
+import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
 import { canEditStepForRole } from '../../utils/roleStepAccess';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
@@ -70,6 +71,11 @@ const ExecutePrc = () => {
 	} = useFetchPrcExecutionDetailsQuery(executionId);
 
 	const [updateProgress, { isLoading: isUpdateProgressLoading }] = useUpdatePrcExecutionProgressMutation();
+
+	const [
+		fetchRawMaterials,
+		{ data: rmData, isLoading: rmLoading, error: rmError, reset: rmReset }
+	] = useFetchRawMaterialsMutation();
 
 	// Build timeline steps from API data, but not during API calls
 	useEffect(() => {
@@ -655,12 +661,30 @@ const ExecutePrc = () => {
 		}
 	};
 
-	const handleOpenRawMaterials = () => {
+	const handleOpenRawMaterials = async () => {
+		const actualData = (executionData as { data: ExecutionData } | undefined)?.data;
+		const orderId = actualData?.orderId;
+		if (orderId == null || String(orderId).trim() === '') {
+			return;
+		}
 		setRawMaterialsOpen(true);
+		try {
+			await fetchRawMaterials({ orderId: String(orderId) }).unwrap();
+		} catch (error) {
+			console.error('Failed to fetch raw materials from SAP:', error);
+		}
 	};
 
 	const handleCloseRawMaterials = () => {
 		setRawMaterialsOpen(false);
+		rmReset();
+	};
+
+	const handleRetryRawMaterials = () => {
+		const actualData = (executionData as { data: ExecutionData } | undefined)?.data;
+		const orderId = actualData?.orderId;
+		if (orderId == null || String(orderId).trim() === '') return;
+		void fetchRawMaterials({ orderId: String(orderId) });
 	};
 
 	// Helper function to check if all steps in a sequence group are filled (but not necessarily approved)
@@ -1522,7 +1546,7 @@ const ExecutePrc = () => {
 	const catalystMixingStep = buildCatalystMixingTimelineStep(actualExecutionData, {
 		status: isCatalystMixingReadOnly ? undefined : 'pending'
 	});
-	const rawMaterialsStep = buildRawMaterialsTimelineStep(actualExecutionData);
+	const hasOrderId = actualExecutionData?.orderId != null && String(actualExecutionData.orderId).trim() !== '';
 
 	// No timeline steps state
 	if (timelineSteps.length === 0) {
@@ -1555,8 +1579,8 @@ const ExecutePrc = () => {
 					executionData={actualExecutionData}
 					viewOnlyMode={isViewOnlyMode}
 					hideExecutionActions={isViewOnlyMode}
-					onRawMaterialsClick={rawMaterialsStep ? handleOpenRawMaterials : undefined}
-					rawMaterialsDisabled={isExecutionDataFetching || isUpdateProgressLoading}
+					onRawMaterialsClick={hasOrderId ? handleOpenRawMaterials : undefined}
+					rawMaterialsDisabled={isExecutionDataFetching || isUpdateProgressLoading || rmLoading}
 					onCatalystMixingClick={canAccessCatalystMixing ? handleOpenCatalystMixing : undefined}
 					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
 				/>
@@ -1624,18 +1648,28 @@ const ExecutePrc = () => {
 				</Box>
 			</Box>
 			<Dialog open={rawMaterialsOpen} onClose={handleCloseRawMaterials} fullWidth maxWidth="lg">
-				<DialogTitle>Bill of Material</DialogTitle>
+				<DialogTitle>Raw Materials</DialogTitle>
 				<DialogContent dividers sx={{ p: 0 }}>
-					{rawMaterialsStep ? (
-						<RawMaterialsStep
-							step={rawMaterialsStep}
-							onStepComplete={async () => {}}
-							readOnlyOverride
-						/>
-					) : (
-						<Box sx={{ p: 3 }}>
-							<Alert severity="info">No bill of material items are available for this execution.</Alert>
+					{rmLoading || (!rmData && !rmError) ? (
+						<Box sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+							<CircularProgress />
+							<Typography variant="body2" sx={{ color: '#666' }}>
+								Fetching raw materials from SAP…
+							</Typography>
 						</Box>
+					) : rmError ? (
+						<Box sx={{ p: 3 }}>
+							<Alert severity="error" sx={{ mb: 2 }}>
+								Failed to fetch raw materials. Please try again.
+							</Alert>
+							<Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+								<Button variant="outlined" onClick={handleRetryRawMaterials}>
+									Retry
+								</Button>
+							</Box>
+						</Box>
+					) : (
+						<RawMaterialsStep sapRawMaterials={rmData?.rawMaterials ?? []} readOnlyOverride />
 					)}
 				</DialogContent>
 				<DialogActions>

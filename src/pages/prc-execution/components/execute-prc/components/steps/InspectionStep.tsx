@@ -380,6 +380,28 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 			}
 		});
 
+		// Inspection 378: default blank numeric parameter values to '0' so the saved
+		// payload carries a numeric 0 (backend stores inspection_issues.count = 0).
+		// Existing non-blank values (e.g. superadmin edits) are preserved.
+		// If param.defaultValue ever becomes a fallback for rendered value, apply the
+		// same isBlank -> '0' coercion below.
+		if (step.inspectionMetadata?.id === 378) {
+			const isBlank = (v: unknown) => v === undefined || v === null || v === '';
+			step.inspectionParameters?.forEach(param => {
+				if (param.type !== 'number') return;
+				const k = param.id.toString();
+				const existing = updatedFormData[k];
+				if (typeof existing === 'object' && existing !== null) {
+					const val = (existing as Record<string, unknown>).value;
+					if (isBlank(val)) {
+						updatedFormData[k] = { ...(existing as Record<string, unknown>), value: '0' };
+					}
+				} else if (isBlank(existing)) {
+					updatedFormData[k] = { value: '0' };
+				}
+			});
+		}
+
 		setFormData(updatedFormData);
 
 		// Initialize annotations from form data
@@ -402,7 +424,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 			console.log('Total extracted annotations:', extractedAnnotations);
 			setAnnotations(extractedAnnotations);
 		}
-	}, [initialFormData, step.inspectionParameters]);
+	}, [initialFormData, step.inspectionParameters, step.inspectionMetadata?.id]);
 
 	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 

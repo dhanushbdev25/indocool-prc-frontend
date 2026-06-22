@@ -243,6 +243,25 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 			}
 		}
 
+		// Inspection 378: coerce blank numeric values to '0' at save time so the PUT
+		// payload never carries null/empty for count fields (backend stores 0).
+		if (step.inspectionMetadata?.id === 378) {
+			const isBlank = (v: unknown) => v === undefined || v === null || v === '';
+			for (const param of step.inspectionParameters) {
+				if (param.type !== 'number') continue;
+				const paramId = param.id.toString();
+				const existing = inspectionData[paramId];
+				if (typeof existing === 'object' && existing !== null) {
+					const rec = existing as Record<string, unknown>;
+					if (isBlank(rec.value)) {
+						inspectionData[paramId] = { ...rec, value: '0' };
+					}
+				} else {
+					inspectionData[paramId] = { value: '0' };
+				}
+			}
+		}
+
 		return {
 			[prcTemplateStepId.toString()]: inspectionData
 		};

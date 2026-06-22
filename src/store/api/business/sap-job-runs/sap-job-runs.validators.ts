@@ -172,3 +172,65 @@ export function parseSapConfirmationLogsResponse(response: unknown): SapConfirma
 	}
 	return out;
 }
+
+/** POST sapJobRuns/fetch-rm/:orderId — fresh SAP-backed raw materials list */
+
+export interface RawMaterialItem {
+	id: number;
+	uom: string;
+	quantity: string;
+	materialCode: string;
+	materialName: string;
+	materialGroup: string;
+	[key: string]: unknown;
+}
+
+export interface FetchRmResponse {
+	message: string;
+	orderId: string;
+	prcExecutionId: number;
+	rawMaterials: RawMaterialItem[];
+}
+
+function isRawMaterialApiItem(value: unknown): value is RawMaterialItem {
+	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+		return false;
+	}
+	const o = value as Record<string, unknown>;
+	// Only validate fields the UI renders so the popup tolerates SAP-side variance.
+	return (
+		typeof o.id === 'number' &&
+		typeof o.materialCode === 'string' &&
+		typeof o.materialName === 'string' &&
+		typeof o.materialGroup === 'string' &&
+		typeof o.quantity === 'string' &&
+		typeof o.uom === 'string'
+	);
+}
+
+export function parseFetchRmResponse(response: unknown): FetchRmResponse {
+	if (response === null || typeof response !== 'object' || Array.isArray(response)) {
+		console.error('Invalid fetch-rm response structure', response);
+		throw new Error('Invalid fetch-rm response structure');
+	}
+	const o = response as Record<string, unknown>;
+	const rawMaterials = o.rawMaterials;
+	if (!Array.isArray(rawMaterials)) {
+		console.error('Invalid fetch-rm response structure', response);
+		throw new Error('Invalid fetch-rm response structure');
+	}
+	const out: RawMaterialItem[] = [];
+	for (const item of rawMaterials) {
+		if (!isRawMaterialApiItem(item)) {
+			console.error('Invalid raw material item', item);
+			throw new Error('Invalid fetch-rm response structure');
+		}
+		out.push(item);
+	}
+	return {
+		message: typeof o.message === 'string' ? o.message : '',
+		orderId: o.orderId != null ? String(o.orderId) : '',
+		prcExecutionId: typeof o.prcExecutionId === 'number' ? o.prcExecutionId : 0,
+		rawMaterials: out
+	};
+}
