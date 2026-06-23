@@ -182,6 +182,11 @@ export interface RawMaterialItem {
 	materialCode: string;
 	materialName: string;
 	materialGroup: string;
+	/** Optional — SAP may not always include these per row */
+	actualQuantity?: string | number | null;
+	actualUom?: string | null;
+	batchNumber?: string | null;
+	expiryDate?: string | null;
 	[key: string]: unknown;
 }
 

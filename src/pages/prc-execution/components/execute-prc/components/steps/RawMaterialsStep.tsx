@@ -49,8 +49,12 @@ const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride, sapRawMateri
 								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Material Code</TableCell>
 								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Material Name</TableCell>
 								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Material Group</TableCell>
-								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Quantity</TableCell>
+								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Required Qty</TableCell>
+								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Planned UOM</TableCell>
+								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Actual Quantity</TableCell>
 								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>UOM</TableCell>
+								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Batch No</TableCell>
+								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Expiry Date</TableCell>
 							</TableRow>
 						</TableHead>
 						<TableBody>
@@ -81,11 +85,31 @@ const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride, sapRawMateri
 											{displayCell(rm.uom)}
 										</Typography>
 									</TableCell>
+									<TableCell sx={{ py: 1 }}>
+										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+											{displayCell(rm.actualQuantity)}
+										</Typography>
+									</TableCell>
+									<TableCell sx={{ py: 1 }}>
+										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+											{displayCell(rm.actualUom ?? rm.uom)}
+										</Typography>
+									</TableCell>
+									<TableCell sx={{ py: 1 }}>
+										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+											{displayCell(rm.batchNumber)}
+										</Typography>
+									</TableCell>
+									<TableCell sx={{ py: 1 }}>
+										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+											{displayCell(rm.expiryDate)}
+										</Typography>
+									</TableCell>
 								</TableRow>
 							))}
 							{sapRawMaterials.length === 0 && (
 								<TableRow>
-									<TableCell colSpan={5} sx={{ py: 2, textAlign: 'center' }}>
+									<TableCell colSpan={9} sx={{ py: 2, textAlign: 'center' }}>
 										<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
 											No raw materials returned from SAP.
 										</Typography>
