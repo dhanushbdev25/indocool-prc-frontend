@@ -1,6 +1,7 @@
 import { useMemo, memo } from 'react';
 import { Box, Chip, Button, Typography, Tooltip, Stack, IconButton } from '@mui/material';
 import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
+import dayjs from 'dayjs';
 import {
 	PlayArrow as PlayArrowIcon,
 	Visibility as VisibilityIcon,
@@ -10,6 +11,7 @@ import {
 import TableComponent from '../../../../../components/table/TableComponent';
 import { type PrcExecution } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
+import { DATE_PICKER_FORMAT } from '../../../../../utils/dateConfig';
 
 export type PrcExecutionData = PrcExecution;
 
@@ -198,6 +200,36 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 								);
 							})}
 						</Stack>
+					);
+				}
+			},
+			{
+				accessorKey: 'date',
+				header: 'PRC Date',
+				size: 130,
+				accessorFn: row => (row.date ? row.date : ''),
+				Cell: ({ row }) => {
+					const raw = row.original.date;
+					const d = raw ? dayjs(raw) : null;
+					const text = d && d.isValid() ? d.format(DATE_PICKER_FORMAT) : '—';
+					return (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{text}
+						</Typography>
+					);
+				}
+			},
+			{
+				accessorKey: 'plant',
+				header: 'Plant Code',
+				size: 130,
+				accessorFn: row => (row.plant != null && String(row.plant).trim() ? String(row.plant) : ''),
+				Cell: ({ row }) => {
+					const v = row.original.plant;
+					return (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{v != null && String(v).trim() ? String(v) : '—'}
+						</Typography>
 					);
 				}
 			},

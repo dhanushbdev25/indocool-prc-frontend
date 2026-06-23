@@ -69,7 +69,14 @@ const MasterFilterToolbar = ({
 		onSearchChange('');
 		const cleared: Record<string, FilterValue> = {};
 		for (const field of fields) {
-			cleared[field.key] = field.kind === 'autocomplete' ? [] : EMPTY_DATE_RANGE;
+			if (field.kind === 'autocomplete') {
+				cleared[field.key] = [];
+			} else if (field.kind === 'dateRange') {
+				cleared[field.key] = EMPTY_DATE_RANGE;
+			} else if (field.kind === 'dateRangePreset') {
+				cleared[field.key] = EMPTY_DATE_RANGE;
+				cleared[field.presetKey] = '';
+			}
 		}
 		onFiltersChange(cleared);
 	}, [fields, onSearchChange, onFiltersChange]);
@@ -89,6 +96,9 @@ const MasterFilterToolbar = ({
 				next[key] = arr.filter(v => v !== valueToRemove);
 			} else if (field.kind === 'dateRange') {
 				next[key] = EMPTY_DATE_RANGE;
+			} else if (field.kind === 'dateRangePreset') {
+				next[key] = EMPTY_DATE_RANGE;
+				next[field.presetKey] = '';
 			} else {
 				next[key] = [];
 			}
@@ -126,6 +136,25 @@ const MasterFilterToolbar = ({
 				const from = formatDateLabel(v.from);
 				const to = formatDateLabel(v.to);
 				const valueLabel = from && to ? `${from} – ${to}` : from ? `from ${from}` : `until ${to}`;
+				out.push({
+					id: field.key,
+					field: field.label,
+					value: valueLabel,
+					onDelete: () => handleRemoveChip(field.key)
+				});
+			} else if (field.kind === 'dateRangePreset' && isDateRangeValue(v)) {
+				const customId = field.customPresetId ?? 'custom';
+				const rawPresetId = values[field.presetKey];
+				const presetId = typeof rawPresetId === 'string' ? rawPresetId : '';
+				const preset = field.presets.find(p => p.id === presetId);
+				let valueLabel: string;
+				if (preset && preset.id !== customId) {
+					valueLabel = preset.label;
+				} else {
+					const from = formatDateLabel(v.from);
+					const to = formatDateLabel(v.to);
+					valueLabel = from && to ? `${from} – ${to}` : from ? `from ${from}` : `until ${to}`;
+				}
 				out.push({
 					id: field.key,
 					field: field.label,

@@ -1,6 +1,7 @@
 export { default as FilterDrawer } from './FilterDrawer';
 export { default as FilterAutocomplete } from './FilterAutocomplete';
 export { default as FilterDateRange } from './FilterDateRange';
+export { default as FilterDateRangePreset } from './FilterDateRangePreset';
 export { default as FilterTriggerButton } from './FilterTriggerButton';
 export { default as ActiveFilterChips } from './ActiveFilterChips';
 export { default as MasterFilterToolbar } from './MasterFilterToolbar';
@@ -9,6 +10,8 @@ export type {
 	FilterFieldConfig,
 	AutocompleteFieldConfig,
 	DateRangeFieldConfig,
+	DateRangePresetFieldConfig,
+	DateRangePresetOption,
 	FilterValue,
 	DateRangeFilterValue
 } from './types';

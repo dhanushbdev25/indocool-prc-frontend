@@ -4,8 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import PrcExecutionHeader from './components/PrcExecutionHeader';
 import PrcExecutionTable, { PrcExecutionData } from './components/PrcExecutionTable';
 import CatalystTableSkeleton from '../../../../components/common/skeleton/CatalystTableSkeleton';
-import { useFetchPrcExecutionsQuery } from '../../../../store/api/business/prc-execution/prc-execution.api';
+import {
+	useFetchPrcExecutionsQuery,
+	useFetchPlantsQuery,
+	type PrcExecutionsListArgs
+} from '../../../../store/api/business/prc-execution/prc-execution.api';
 import { parsePrcExecutionOperationStatusList } from '../../../../store/api/business/prc-execution/prc-execution.validators';
+import { useFetchSapComboQuery, useFetchCustomersQuery } from '../../../../store/api/business/part-master/part.api';
 import { useListView } from '../../../../hooks/useListView';
 import {
 	deriveOptions,
@@ -13,12 +18,30 @@ import {
 	MasterListLandingPage,
 	masterListTableFrame,
 	matchesMulti,
+	isDateRangeValue,
+	isStringArrayValue,
+	isFilterValueEmpty,
 	type FilterFieldConfig,
 	type FilterValue
 } from '../../../../components/masters';
-import { isFilterValueEmpty, isStringArrayValue } from '../../../../components/masters/filters/types';
+import { PRC_DATE_RANGE_PRESETS, PRC_DATE_RANGE_DEFAULT_ID, PRC_DATE_RANGE_CUSTOM_ID } from './dateRangePresets';
 
-const SEARCH_PLACEHOLDER = 'Order, SAP, reservation, part, serial, customer, operation';
+const SEARCH_PLACEHOLDER = 'Order ID';
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+	v !== null && typeof v === 'object' && !Array.isArray(v);
+
+const coercePlantCode = (row: unknown): string => {
+	if (typeof row === 'string') return row.trim();
+	if (!isRecord(row)) return '';
+	if (typeof row.value === 'string') return row.value.trim();
+	if (typeof row.value === 'number') return String(row.value);
+	if (typeof row.label === 'string') return row.label.trim();
+	return '';
+};
+
+const uniqueSorted = (values: string[]): string[] =>
+	[...new Set(values.map(v => v.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
 const ListPrcExecution = () => {
 	const navigate = useNavigate();
@@ -26,11 +49,46 @@ const ListPrcExecution = () => {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [executionToDelete, setExecutionToDelete] = useState<PrcExecutionData | null>(null);
 
+	// Combo APIs for backend-driven filter options
+	const { data: sapComboData, isLoading: isSapComboLoading } = useFetchSapComboQuery();
+	const { data: customersData, isLoading: isCustomersLoading } = useFetchCustomersQuery();
+	const { data: plantsData, isLoading: isPlantsLoading } = useFetchPlantsQuery();
+
+	const sapOptions = useMemo(() => uniqueSorted((sapComboData?.data ?? []).map(r => r.value)), [sapComboData]);
+	const customerOptions = useMemo(
+		() => uniqueSorted((customersData?.data ?? []).map(r => r.value)),
+		[customersData]
+	);
+	const plantOptions = useMemo(() => {
+		const rows = Array.isArray(plantsData)
+			? plantsData
+			: isRecord(plantsData) && Array.isArray((plantsData as { data?: unknown }).data)
+				? ((plantsData as { data: unknown[] }).data)
+				: [];
+		return uniqueSorted(rows.map(coercePlantCode));
+	}, [plantsData]);
+
+	// Resolve filter state → API args (sent only when Apply commits to `filters`)
+	const queryArgs = useMemo<PrcExecutionsListArgs>(() => {
+		const dateRange = isDateRangeValue(filters.dateRange) ? filters.dateRange : null;
+		return {
+			fromDate: dateRange?.from ?? undefined,
+			toDate: dateRange?.to ?? undefined,
+			orderId: searchTerm.trim() || undefined,
+			customer: isStringArrayValue(filters.customer) && filters.customer.length ? filters.customer : undefined,
+			plantCode: isStringArrayValue(filters.plantCode) && filters.plantCode.length ? filters.plantCode : undefined,
+			sapReferenceNumber:
+				isStringArrayValue(filters.sapReferenceNumber) && filters.sapReferenceNumber.length
+					? filters.sapReferenceNumber
+					: undefined
+		};
+	}, [filters.dateRange, filters.customer, filters.plantCode, filters.sapReferenceNumber, searchTerm]);
+
 	const {
 		data: prcExecutionData,
 		isLoading: isPrcExecutionDataLoading,
 		isFetching: isPrcExecutionDataFetching
-	} = useFetchPrcExecutionsQuery();
+	} = useFetchPrcExecutionsQuery(queryArgs);
 
 	const allExecutionData: PrcExecutionData[] = useMemo(() => {
 		if (!prcExecutionData) return [];
@@ -48,16 +106,34 @@ const ListPrcExecution = () => {
 	const fields = useMemo<FilterFieldConfig[]>(
 		() => [
 			{
-				kind: 'autocomplete',
-				key: 'orderId',
-				label: 'Order No',
-				options: deriveOptions(allExecutionData, r => (r.orderId != null ? String(r.orderId) : ''))
+				kind: 'dateRangePreset',
+				key: 'dateRange',
+				label: 'Date Range',
+				presets: PRC_DATE_RANGE_PRESETS,
+				presetKey: 'dateRangePreset',
+				defaultPresetId: PRC_DATE_RANGE_DEFAULT_ID,
+				customPresetId: PRC_DATE_RANGE_CUSTOM_ID
 			},
 			{
 				kind: 'autocomplete',
 				key: 'sapReferenceNumber',
 				label: 'SAP Number',
-				options: deriveOptions(allExecutionData, r => r.sapReferenceNumber)
+				options: sapOptions,
+				placeholder: isSapComboLoading ? 'Loading…' : undefined
+			},
+			{
+				kind: 'autocomplete',
+				key: 'customer',
+				label: 'Customer',
+				options: customerOptions,
+				placeholder: isCustomersLoading ? 'Loading…' : undefined
+			},
+			{
+				kind: 'autocomplete',
+				key: 'plantCode',
+				label: 'Plant Code',
+				options: plantOptions,
+				placeholder: isPlantsLoading ? 'Loading…' : undefined
 			},
 			{
 				kind: 'autocomplete',
@@ -87,12 +163,6 @@ const ListPrcExecution = () => {
 			},
 			{
 				kind: 'autocomplete',
-				key: 'customerName',
-				label: 'Customer Name',
-				options: deriveOptions(allExecutionData, r => r.customerName)
-			},
-			{
-				kind: 'autocomplete',
 				key: 'customerVariantName',
 				label: 'Variant',
 				options: deriveOptions(allExecutionData, r => r.customerVariantName)
@@ -115,15 +185,20 @@ const ListPrcExecution = () => {
 				options: deriveOptions(allExecutionData, r => r.status)
 			}
 		],
-		[allExecutionData]
+		[
+			allExecutionData,
+			sapOptions,
+			customerOptions,
+			plantOptions,
+			isSapComboLoading,
+			isCustomersLoading,
+			isPlantsLoading
+		]
 	);
 
 	const filteredData = useMemo(() => {
-		const term = searchTerm.trim().toLowerCase();
 		const opFilter = filters.operation;
 		return allExecutionData.filter(e => {
-			if (!matchesMulti(e.orderId != null ? String(e.orderId) : '', filters.orderId)) return false;
-			if (!matchesMulti(e.sapReferenceNumber, filters.sapReferenceNumber)) return false;
 			if (
 				!matchesMulti(
 					e.reservation != null && String(e.reservation).trim() ? String(e.reservation) : '',
@@ -135,7 +210,6 @@ const ListPrcExecution = () => {
 			if (!matchesMulti(e.partNumber, filters.partNumber)) return false;
 			if (!matchesMulti(e.partDescription ?? '', filters.partDescription)) return false;
 			if (!matchesMulti(e.productionSetId, filters.productionSetId)) return false;
-			if (!matchesMulti(e.customerName, filters.customerName)) return false;
 			if (!matchesMulti(e.customerVariantName, filters.customerVariantName)) return false;
 			if (!matchesMulti(e.status, filters.status)) return false;
 			if (!isFilterValueEmpty(opFilter)) {
@@ -143,31 +217,9 @@ const ListPrcExecution = () => {
 				const ops = (e.operationStatus ?? []).map(op => (op.operationText ?? '').trim()).filter(Boolean);
 				if (selected.length > 0 && !ops.some(o => selected.includes(o))) return false;
 			}
-			if (!term) return true;
-			const idStr = String(e.id ?? '').toLowerCase();
-			const orderId = String(e.orderId ?? '').toLowerCase();
-			const partNumber = (e.partNumber ?? '').toLowerCase();
-			const productionSetId = (e.productionSetId ?? '').toLowerCase();
-			const mould = (e.mouldId ?? '').toLowerCase();
-			const customerName = (e.customerName ?? '').toLowerCase();
-			const sapRef = (e.sapReferenceNumber ?? '').toLowerCase();
-			const reservation = (e.reservation != null ? String(e.reservation) : '').toLowerCase();
-			const opHaystack = (e.operationStatus ?? [])
-				.flatMap(op => [(op.operationText ?? '').toLowerCase(), (op.operationId ?? '').toLowerCase()])
-				.join(' ');
-			return (
-				idStr.includes(term) ||
-				orderId.includes(term) ||
-				partNumber.includes(term) ||
-				productionSetId.includes(term) ||
-				mould.includes(term) ||
-				customerName.includes(term) ||
-				sapRef.includes(term) ||
-				reservation.includes(term) ||
-				opHaystack.includes(term)
-			);
+			return true;
 		});
-	}, [allExecutionData, filters, searchTerm]);
+	}, [allExecutionData, filters]);
 
 	const handleFiltersChange = useCallback(
 		(next: Record<string, FilterValue>) => {

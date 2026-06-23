@@ -15,6 +15,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { Close as CloseIcon, Search as SearchIcon } from '@mui/icons-material';
 import FilterAutocomplete from './FilterAutocomplete';
 import FilterDateRange from './FilterDateRange';
+import FilterDateRangePreset from './FilterDateRangePreset';
 import { EMPTY_DATE_RANGE, isDateRangeValue, isStringArrayValue, type FilterFieldConfig, type FilterValue } from './types';
 import { countActiveFilters } from './filterHelpers';
 
@@ -52,6 +53,26 @@ const buildInitialDraftValues = (
 			init[field.key] = isStringArrayValue(current) ? current : [];
 		} else if (field.kind === 'dateRange') {
 			init[field.key] = isDateRangeValue(current) ? current : EMPTY_DATE_RANGE;
+		} else if (field.kind === 'dateRangePreset') {
+			const existingPresetId = values[field.presetKey];
+			const presetIdFromState = typeof existingPresetId === 'string' && existingPresetId ? existingPresetId : '';
+			const hasStoredRange = isDateRangeValue(current) && (current.from || current.to);
+			if (hasStoredRange && presetIdFromState) {
+				init[field.key] = current as FilterValue;
+				init[field.presetKey] = presetIdFromState;
+			} else {
+				const defaultId = field.defaultPresetId ?? field.presets[0]?.id ?? '';
+				const defaultPreset = field.presets.find(p => p.id === defaultId);
+				const customId = field.customPresetId ?? 'custom';
+				if (defaultPreset && defaultPreset.id !== customId) {
+					const resolved = defaultPreset.resolve();
+					init[field.key] = { from: resolved.from || null, to: resolved.to || null };
+					init[field.presetKey] = defaultPreset.id;
+				} else {
+					init[field.key] = EMPTY_DATE_RANGE;
+					init[field.presetKey] = defaultId || customId;
+				}
+			}
 		}
 	}
 	return init;
@@ -73,16 +94,29 @@ const FilterDrawerForm = ({
 		buildInitialDraftValues(fields, initialValues)
 	);
 
-	const draftActiveCount = useMemo(
-		() => countActiveFilters(draftValues) + (draftSearch.trim() ? 1 : 0),
-		[draftValues, draftSearch]
-	);
+	const draftActiveCount = useMemo(() => {
+		const presetSiblingKeys = new Set(
+			fields.filter(f => f.kind === 'dateRangePreset').map(f => (f as { presetKey: string }).presetKey)
+		);
+		const filtered: Record<string, FilterValue | undefined> = {};
+		for (const [k, v] of Object.entries(draftValues)) {
+			if (!presetSiblingKeys.has(k)) filtered[k] = v;
+		}
+		return countActiveFilters(filtered) + (draftSearch.trim() ? 1 : 0);
+	}, [draftValues, draftSearch, fields]);
 
 	const clearDraft = () => {
 		setDraftSearch('');
 		const cleared: Record<string, FilterValue> = {};
 		for (const field of fields) {
-			cleared[field.key] = field.kind === 'autocomplete' ? [] : EMPTY_DATE_RANGE;
+			if (field.kind === 'autocomplete') {
+				cleared[field.key] = [];
+			} else if (field.kind === 'dateRange') {
+				cleared[field.key] = EMPTY_DATE_RANGE;
+			} else if (field.kind === 'dateRangePreset') {
+				cleared[field.key] = EMPTY_DATE_RANGE;
+				cleared[field.presetKey] = '';
+			}
 		}
 		setDraftValues(cleared);
 	};
@@ -203,6 +237,33 @@ const FilterDrawerForm = ({
 									label={field.label}
 									value={value}
 									onChange={next => setDraftValues(prev => ({ ...prev, [field.key]: next }))}
+								/>
+							);
+						}
+						if (field.kind === 'dateRangePreset') {
+							const current = draftValues[field.key];
+							const value = isDateRangeValue(current) ? current : EMPTY_DATE_RANGE;
+							const rawPresetId = draftValues[field.presetKey];
+							const customId = field.customPresetId ?? 'custom';
+							const presetId =
+								typeof rawPresetId === 'string' && rawPresetId
+									? rawPresetId
+									: (field.defaultPresetId ?? customId);
+							return (
+								<FilterDateRangePreset
+									key={field.key}
+									label={field.label}
+									value={value}
+									presetId={presetId}
+									presets={field.presets}
+									customPresetId={customId}
+									onChange={next =>
+										setDraftValues(prev => ({
+											...prev,
+											[field.key]: next.value,
+											[field.presetKey]: next.presetId
+										}))
+									}
 								/>
 							);
 						}

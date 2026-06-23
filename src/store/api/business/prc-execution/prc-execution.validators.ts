@@ -89,6 +89,8 @@ export interface PrcExecution {
 	/** Per-operation PRC/SAP completion flags when the API returns nested rows. */
 	operationStatus?: PrcExecutionOperationStatusRow[];
 	date: string;
+	/** Plant code (server-side column `plant`). */
+	plant?: string | null;
 }
 
 /** GET /web/combo?type=... — comboFormatter formatComboData */

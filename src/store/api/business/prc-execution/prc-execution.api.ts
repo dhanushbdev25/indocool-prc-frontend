@@ -7,17 +7,54 @@ import {
 	type WebComboItem
 } from './prc-execution.validators';
 
+export interface PrcExecutionsListArgs {
+	/** Inclusive lower bound, `YYYY-MM-DD`. */
+	fromDate?: string;
+	/** Inclusive upper bound, `YYYY-MM-DD`. */
+	toDate?: string;
+	/** Exact match, case-sensitive. */
+	orderId?: string;
+	/** Multi-select; serialized as comma-separated list. */
+	customer?: string[];
+	/** Multi-select; serialized as comma-separated list. */
+	plantCode?: string[];
+	/** Multi-select; serialized as comma-separated list. */
+	sapReferenceNumber?: string[];
+}
+
 export const prcExecutionApi = createApi({
 	reducerPath: 'prcExecutionApi',
 	baseQuery,
 	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant', 'OperationDelayReasonCombo', 'WorkstationsCombo'],
 	endpoints: builder => ({
-		// Fetch all PRC executions
-		fetchPrcExecutions: builder.query<unknown, void>({
-			query: () => ({
-				url: '/prcExecution',
-				method: 'GET'
-			}),
+		// Fetch all PRC executions (server-side filtered)
+		fetchPrcExecutions: builder.query<unknown, PrcExecutionsListArgs | void>({
+			query: (args) => {
+				const a: PrcExecutionsListArgs = args ?? {};
+				const params: Record<string, string> = {};
+				const trim = (s?: string) => s?.trim();
+				const csv = (xs?: string[]) => {
+					const cleaned = (xs ?? []).map(s => s.trim()).filter(Boolean);
+					return cleaned.length ? cleaned.join(',') : undefined;
+				};
+				const fromDate = trim(a.fromDate);
+				if (fromDate) params.fromDate = fromDate;
+				const toDate = trim(a.toDate);
+				if (toDate) params.toDate = toDate;
+				const orderId = trim(a.orderId);
+				if (orderId) params.orderId = orderId;
+				const customer = csv(a.customer);
+				if (customer) params.customer = customer;
+				const plantCode = csv(a.plantCode);
+				if (plantCode) params.plantCode = plantCode;
+				const sap = csv(a.sapReferenceNumber);
+				if (sap) params.sapReferenceNumber = sap;
+				return {
+					url: '/prcExecution',
+					method: 'GET',
+					params
+				};
+			},
 			providesTags: ['PrcExecution']
 		}),
 

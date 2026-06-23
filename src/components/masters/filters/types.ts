@@ -19,7 +19,28 @@ export interface DateRangeFieldConfig extends BaseFieldConfig {
 	kind: 'dateRange';
 }
 
-export type FilterFieldConfig = AutocompleteFieldConfig | DateRangeFieldConfig;
+export interface DateRangePresetOption {
+	id: string;
+	label: string;
+	/** Returns inclusive `YYYY-MM-DD` strings; custom preset returns empty strings. */
+	resolve: () => { from: string; to: string };
+}
+
+export interface DateRangePresetFieldConfig extends BaseFieldConfig {
+	kind: 'dateRangePreset';
+	presets: DateRangePresetOption[];
+	/** Sibling filter key under which the preset id is stored (string FilterValue). */
+	presetKey: string;
+	/** Preset id used when the filter has no stored value yet. */
+	defaultPresetId?: string;
+	/** Id of the preset that lets the user pick start/end dates manually. */
+	customPresetId?: string;
+}
+
+export type FilterFieldConfig =
+	| AutocompleteFieldConfig
+	| DateRangeFieldConfig
+	| DateRangePresetFieldConfig;
 
 export const EMPTY_DATE_RANGE: DateRangeFilterValue = { from: null, to: null };
 

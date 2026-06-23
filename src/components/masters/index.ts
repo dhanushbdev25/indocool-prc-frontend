@@ -20,6 +20,7 @@ export {
 	FilterDrawer,
 	FilterAutocomplete,
 	FilterDateRange,
+	FilterDateRangePreset,
 	FilterTriggerButton,
 	ActiveFilterChips,
 	MasterFilterToolbar,
@@ -38,6 +39,8 @@ export type {
 	FilterFieldConfig,
 	AutocompleteFieldConfig,
 	DateRangeFieldConfig,
+	DateRangePresetFieldConfig,
+	DateRangePresetOption,
 	FilterValue,
 	DateRangeFilterValue
 } from './filters';
