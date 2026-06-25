@@ -57,6 +57,7 @@ import { useFetchPrcTemplatesQuery } from '../../../../../../store/api/business/
 import LinkedMasterCard from './LinkedMasterCard';
 import DefaultStepItem from './DefaultStepItem';
 import OperationGroupComponent from './OperationGroup';
+import { findInsertIndexForGroup as findInsertIndex, sequenceForIndex } from '../utils/sequenceInsertion';
 import PrcExecutionPreviewDialog from './PrcExecutionPreviewDialog';
 import {
 	SelectableCatalyst,
@@ -283,37 +284,22 @@ const LinkedMastersTab = ({
 		[allStepFields, remove, getValues, setValue]
 	);
 
-	/**
-	 * The flat-array index at which a new step for `group` should be inserted.
-	 * It's the position right after the last existing step of the same operation,
-	 * or — if the operation has no steps yet — the position just before the
-	 * first step belonging to any later-added operation. If nothing comes after,
-	 * append at the end.
-	 */
-	const findInsertIndexForGroup = useCallback(
-		(group: string): number => {
-			const groupOrder = addedGroups.indexOf(group);
-			if (groupOrder === -1) return fields.length;
-			for (let i = 0; i < fields.length; i++) {
-				const stepGroup = (fields[i] as unknown as ExtendedPrcTemplateStep).group ?? '';
-				const stepGroupOrder = addedGroups.indexOf(stepGroup);
-				if (stepGroupOrder > groupOrder) return i;
-			}
-			return fields.length;
-		},
-		[fields, addedGroups]
-	);
-
 	const handleAddStep = useCallback(
 		(item: StepSelectableItem, group: string) => {
 			const itemType = isSequenceItem(item) ? 'sequence' : 'inspection';
 			const operationText = operationGroups.find(g => g.id === group)?.name;
+			const insertIndex = findInsertIndex(
+				fields.map(f => ({ group: (f as unknown as ExtendedPrcTemplateStep).group })),
+				addedGroups,
+				group
+			);
 			const newStep: ExtendedPrcTemplateStep = {
 				version: 1,
 				isLatest: true,
-				// Placeholder >= 1 to satisfy the yup min(1) rule; the renumber
-				// effect below rewrites `sequence` to `index + 3` on next render.
-				sequence: 1,
+				// Stamp the correct sequence at insert time so callers never see
+				// a placeholder. The renumber effect below also enforces this on
+				// the next render as a backup.
+				sequence: sequenceForIndex(insertIndex),
 				stepId: item.id,
 				type: itemType,
 				blockCatalystMixing: false,
@@ -324,11 +310,18 @@ const LinkedMastersTab = ({
 				itemId: isSequenceItem(item) ? item.sequenceId : item.inspectionId,
 				itemType: itemType
 			};
-			const insertIndex = findInsertIndexForGroup(group);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			insert(insertIndex, newStep as any);
+			// Bump every later step's sequence by 1 in the same tick so the form
+			// state is immediately correct, without waiting for the renumber effect.
+			for (let i = insertIndex; i < fields.length; i++) {
+				const existing = (fields[i] as unknown as ExtendedPrcTemplateStep).sequence;
+				if (typeof existing === 'number') {
+					setValue(`prcTemplateSteps.${i + 1}.sequence`, existing + 1);
+				}
+			}
 		},
-		[insert, findInsertIndexForGroup, operationGroups]
+		[insert, setValue, fields, addedGroups, operationGroups]
 	);
 
 	const handleRemoveStep = useCallback(
