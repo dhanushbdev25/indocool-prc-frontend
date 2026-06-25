@@ -218,6 +218,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pa
 				tableColumns={columns}
 				pagination={pagination}
 				onPaginationChange={onPaginationChange}
+				exportTitle="inspection-master"
 			/>
 
 			{/* Action Menu */}

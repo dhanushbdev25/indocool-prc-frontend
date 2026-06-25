@@ -199,6 +199,7 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView, pagination
 				data={safeData}
 				pagination={pagination}
 				onPaginationChange={onPaginationChange}
+				exportTitle="prc-template-master"
 			/>
 
 			{/* Action Menu */}

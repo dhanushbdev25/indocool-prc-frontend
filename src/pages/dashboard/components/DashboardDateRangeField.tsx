@@ -15,15 +15,17 @@ import { CalendarMonth, Check, KeyboardArrowDown } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { type Dayjs } from 'dayjs';
 import { DATE_PICKER_FORMAT } from '../../../utils/dateConfig';
-import type { DateRangeFilterValue, DateRangePresetOption } from './types';
+import { PRESET_OPTIONS, type DateRangePreset } from '../hooks/useDashboardDateRange';
 
-interface FilterDateRangePresetProps {
-	label: string;
-	value: DateRangeFilterValue;
-	presetId: string;
-	presets: DateRangePresetOption[];
-	customPresetId: string;
-	onChange: (next: { value: DateRangeFilterValue; presetId: string }) => void;
+interface DashboardDateRangeFieldProps {
+	preset: DateRangePreset;
+	presetLabel: string;
+	displayLabel: string;
+	customFrom: string | null;
+	customTo: string | null;
+	onPresetChange: (preset: DateRangePreset) => void;
+	onCustomRangeChange: (from: string | null, to: string | null) => void;
+	disabled?: boolean;
 }
 
 const toDayjs = (iso: string | null): Dayjs | null => {
@@ -34,57 +36,41 @@ const toDayjs = (iso: string | null): Dayjs | null => {
 
 const toIsoDate = (d: Dayjs | null): string | null => (d && d.isValid() ? d.format('YYYY-MM-DD') : null);
 
-const formatChip = (iso: string | null): string => {
-	const d = toDayjs(iso);
-	return d ? d.format('DD MMM YYYY') : '';
-};
-
-const FilterDateRangePreset = ({
-	label,
-	value,
-	presetId,
-	presets,
-	customPresetId,
-	onChange
-}: FilterDateRangePresetProps) => {
+/**
+ * Compact "Date Range" control sized to sit inline with FilterAutocomplete fields (40px tall, 10px radius).
+ * Click → Popover with preset list. If "Custom range" is selected, From/To date pickers appear in-place.
+ */
+export const DashboardDateRangeField = ({
+	preset,
+	presetLabel,
+	displayLabel,
+	customFrom,
+	customTo,
+	onPresetChange,
+	onCustomRangeChange,
+	disabled = false
+}: DashboardDateRangeFieldProps) => {
 	const theme = useTheme();
 	const anchorRef = useRef<HTMLButtonElement>(null);
 	const [open, setOpen] = useState(false);
 
-	const from = toDayjs(value.from);
-	const to = toDayjs(value.to);
-	const isCustom = presetId === customPresetId;
-	const selectedPreset = presets.find(p => p.id === presetId);
+	const draftFrom = toDayjs(customFrom);
+	const draftTo = toDayjs(customTo);
+	const isCustom = preset === 'custom';
 
 	const handleClose = () => setOpen(false);
 
-	const handlePresetSelect = (id: string) => {
-		const preset = presets.find(p => p.id === id);
-		if (!preset) return;
-		if (preset.id === customPresetId) {
-			onChange({ value: { from: value.from, to: value.to }, presetId: preset.id });
-			return;
-		}
-		const resolved = preset.resolve();
-		onChange({ value: { from: resolved.from || null, to: resolved.to || null }, presetId: preset.id });
-		handleClose();
+	const handlePresetSelect = (id: DateRangePreset) => {
+		onPresetChange(id);
+		if (id !== 'custom') handleClose();
 	};
 
-	const customSummary = (() => {
-		const f = formatChip(value.from);
-		const t = formatChip(value.to);
-		if (f && t) return `${f} – ${t}`;
-		if (f) return `from ${f}`;
-		if (t) return `until ${t}`;
-		return 'Pick range';
-	})();
-
-	const triggerLabel = isCustom ? customSummary : (selectedPreset?.label ?? 'Pick range');
-	const triggerIsPlaceholder = isCustom && triggerLabel === 'Pick range';
+	const valueLabel = isCustom ? (customFrom && customTo ? displayLabel : 'Pick dates…') : presetLabel;
 
 	return (
 		<>
 			<Box sx={{ position: 'relative', width: '100%' }}>
+				{/* Floating label, mimicking MUI outlined input */}
 				<Typography
 					component="label"
 					sx={{
@@ -101,12 +87,13 @@ const FilterDateRangePreset = ({
 						pointerEvents: 'none'
 					}}
 				>
-					{label}
+					Date Range
 				</Typography>
 
 				<ButtonBase
 					ref={anchorRef}
 					onClick={() => setOpen(o => !o)}
+					disabled={disabled}
 					aria-haspopup="dialog"
 					aria-expanded={open}
 					sx={{
@@ -123,13 +110,21 @@ const FilterDateRangePreset = ({
 							: `0 1px 2px ${alpha(theme.palette.common.black, 0.04)}`,
 						px: 1.25,
 						transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
-						'&:hover': { borderColor: alpha(theme.palette.grey[500], 0.35) }
+						'&:hover': {
+							borderColor: alpha(theme.palette.grey[500], 0.35)
+						},
+						'&.Mui-disabled': { opacity: 0.55 }
 					}}
 				>
-					<Stack direction="row" alignItems="center" spacing={1} sx={{ width: '100%', minWidth: 0 }}>
+					<Stack
+						direction="row"
+						alignItems="center"
+						spacing={1}
+						sx={{ width: '100%', minWidth: 0 }}
+					>
 						<CalendarMonth sx={{ fontSize: 18, color: 'text.secondary', flexShrink: 0 }} />
 						<Tooltip
-							title={triggerIsPlaceholder ? '' : triggerLabel}
+							title={valueLabel}
 							placement="top"
 							arrow
 							enterDelay={300}
@@ -146,12 +141,12 @@ const FilterDateRangePreset = ({
 									textAlign: 'left',
 									fontSize: '0.8125rem',
 									fontWeight: 500,
-									color: triggerIsPlaceholder ? 'text.secondary' : 'text.primary',
+									color: customFrom || !isCustom ? 'text.primary' : 'text.secondary',
 									overflow: 'hidden',
 									textOverflow: 'ellipsis'
 								}}
 							>
-								{triggerLabel}
+								{valueLabel}
 							</Typography>
 						</Tooltip>
 						<KeyboardArrowDown
@@ -189,13 +184,13 @@ const FilterDateRangePreset = ({
 				}}
 			>
 				<List dense sx={{ py: 0.75 }}>
-					{presets.map(p => {
-						const selected = presetId === p.id;
+					{PRESET_OPTIONS.map(option => {
+						const selected = preset === option.id;
 						return (
 							<ListItemButton
-								key={p.id}
+								key={option.id}
 								selected={selected}
-								onClick={() => handlePresetSelect(p.id)}
+								onClick={() => handlePresetSelect(option.id)}
 								sx={{
 									mx: 0.75,
 									my: 0.25,
@@ -208,7 +203,7 @@ const FilterDateRangePreset = ({
 								}}
 							>
 								<ListItemText
-									primary={p.label}
+									primary={option.label}
 									primaryTypographyProps={{
 										fontSize: '0.8125rem',
 										fontWeight: selected ? 600 : 500,
@@ -245,26 +240,20 @@ const FilterDateRangePreset = ({
 							Pick range
 						</Typography>
 						<DatePicker
-							label="From"
-							value={from}
-							onChange={d => onChange({ value: { from: toIsoDate(d), to: value.to }, presetId: customPresetId })}
-							slotProps={{
-								textField: { size: 'small', fullWidth: true },
-								field: { clearable: true }
-							}}
+							label="Start date"
+							value={draftFrom}
+							onChange={d => onCustomRangeChange(toIsoDate(d), customTo)}
+							slotProps={{ textField: { size: 'small', fullWidth: true } }}
 							format={DATE_PICKER_FORMAT}
-							maxDate={to ?? undefined}
+							maxDate={draftTo ?? undefined}
 						/>
 						<DatePicker
-							label="To"
-							value={to}
-							onChange={d => onChange({ value: { from: value.from, to: toIsoDate(d) }, presetId: customPresetId })}
-							slotProps={{
-								textField: { size: 'small', fullWidth: true },
-								field: { clearable: true }
-							}}
+							label="End date"
+							value={draftTo}
+							onChange={d => onCustomRangeChange(customFrom, toIsoDate(d))}
+							slotProps={{ textField: { size: 'small', fullWidth: true } }}
 							format={DATE_PICKER_FORMAT}
-							minDate={from ?? undefined}
+							minDate={draftFrom ?? undefined}
 						/>
 					</Box>
 				) : null}
@@ -272,5 +261,3 @@ const FilterDateRangePreset = ({
 		</>
 	);
 };
-
-export default FilterDateRangePreset;

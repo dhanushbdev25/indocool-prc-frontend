@@ -1,5 +1,11 @@
 import { MasterListPageTitle } from '../../../../../../components/masters';
 
-const MouldHeader = () => <MasterListPageTitle title="Mould reconciliation" />;
+interface MouldHeaderProps {
+	action?: React.ReactNode;
+}
+
+const MouldHeader = ({ action }: MouldHeaderProps) => (
+	<MasterListPageTitle title="Mould reconciliation" action={action} />
+);
 
 export default MouldHeader;

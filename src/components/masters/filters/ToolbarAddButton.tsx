@@ -6,21 +6,20 @@ interface ToolbarAddButtonProps {
 	onClick: () => void;
 }
 
-/** Compact Add CTA sized to sit inline with the filter toolbar (26px tall). */
+/** Add CTA sized to sit inline with the filter bar action cluster. */
 const ToolbarAddButton = ({ label, onClick }: ToolbarAddButtonProps) => (
 	<Button
 		variant="contained"
 		size="small"
-		startIcon={<AddIcon sx={{ fontSize: '1rem' }} />}
+		startIcon={<AddIcon sx={{ fontSize: '1.125rem' }} />}
 		onClick={onClick}
 		sx={{
 			textTransform: 'none',
-			borderRadius: 0.75,
-			fontSize: '0.75rem',
-			fontWeight: 600,
-			px: 1.25,
-			py: 0.5,
-			minHeight: 26,
+			borderRadius: '10px',
+			fontSize: '0.8125rem',
+			fontWeight: 700,
+			px: 2,
+			height: 40,
 			boxShadow: 'none',
 			'&:hover': { boxShadow: 'none' }
 		}}

@@ -23,7 +23,7 @@ import {
 import CatalystTableSkeleton from '../../../../../components/common/skeleton/CatalystTableSkeleton';
 import {
 	deriveOptions,
-	MasterFilterToolbar,
+	InlineFilterBar,
 	MasterListLandingPage,
 	masterListTableFrame,
 	matchesMulti,
@@ -157,17 +157,9 @@ const ListMouldReconciliation = () => {
 	return (
 		<>
 			<MasterListLandingPage
-				header={<MouldHeader />}
-				toolbar={
-					<MasterFilterToolbar
-						title="Filter"
-						searchPlaceholder={SEARCH_PLACEHOLDER}
-						searchTerm={searchTerm}
-						fields={fields}
-						values={filters}
-						onSearchChange={handleSearchChange}
-						onFiltersChange={handleFiltersChange}
-						actions={
+				header={
+					<MouldHeader
+						action={
 							<Tooltip title="Refresh list">
 								<span>
 									<IconButton
@@ -175,13 +167,37 @@ const ListMouldReconciliation = () => {
 										disabled={isFetching && !isLoading}
 										size="small"
 										aria-label="Refresh list"
-										sx={{ width: 26, height: 26, color: 'text.secondary' }}
+										sx={{
+											width: 40,
+											height: 40,
+											borderRadius: '10px',
+											border: 1,
+											borderColor: 'divider',
+											color: 'text.secondary',
+											'&:hover': { borderColor: 'text.secondary', color: 'text.primary' }
+										}}
 									>
-										<RefreshIcon sx={{ fontSize: '1rem' }} />
+										<RefreshIcon sx={{ fontSize: '1.125rem' }} />
 									</IconButton>
 								</span>
 							</Tooltip>
 						}
+					/>
+				}
+				toolbar={
+					<InlineFilterBar
+						title="Filter"
+						searchPlaceholder={SEARCH_PLACEHOLDER}
+						searchTerm={searchTerm}
+						fields={fields}
+						values={filters}
+						onSearchChange={handleSearchChange}
+						onApply={({ values }) => handleFiltersChange(values)}
+						onReset={() => {
+							setSearchTerm('');
+							setFilters({});
+							setPagination(prev => ({ ...prev, pageIndex: 0 }));
+						}}
 					/>
 				}
 				alerts={
@@ -232,6 +248,7 @@ const ListMouldReconciliation = () => {
 			</Dialog>
 
 			<FullScreenFormSavingOverlay open={isReconcileBusy} message="Reconciling…" />
+			<FullScreenFormSavingOverlay open={isFetching && !isLoading && !isReconcileBusy} message="Refreshing…" />
 		</>
 	);
 };

@@ -3,7 +3,7 @@ import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typogra
 import { useNavigate } from 'react-router-dom';
 import {
 	deriveOptions,
-	MasterFilterToolbar,
+	InlineFilterBar,
 	MasterListLandingPage,
 	masterListTableFrame,
 	matchesDateRange,
@@ -212,17 +212,9 @@ const ListSequence = () => {
 	return (
 		<>
 			<MasterListLandingPage
-				header={<SequenceHeader />}
-				toolbar={
-					<MasterFilterToolbar
-						title="Filter"
-						searchPlaceholder={SEARCH_PLACEHOLDER}
-						searchTerm={searchTerm}
-						fields={fields}
-						values={filters}
-						onSearchChange={handleSearchChange}
-						onFiltersChange={handleFiltersChange}
-						actions={
+				header={
+					<SequenceHeader
+						action={
 							canCreate ? (
 								<ToolbarAddButton
 									label="Add Sequence"
@@ -230,6 +222,22 @@ const ListSequence = () => {
 								/>
 							) : null
 						}
+					/>
+				}
+				toolbar={
+					<InlineFilterBar
+						title="Filter"
+						searchPlaceholder={SEARCH_PLACEHOLDER}
+						searchTerm={searchTerm}
+						fields={fields}
+						values={filters}
+						onSearchChange={handleSearchChange}
+						onApply={({ values }) => handleFiltersChange(values)}
+						onReset={() => {
+							setSearchTerm('');
+							setFilters({});
+							setPagination(prev => ({ ...prev, pageIndex: 0 }));
+						}}
 					/>
 				}
 				table={

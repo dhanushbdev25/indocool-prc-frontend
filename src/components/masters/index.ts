@@ -17,13 +17,11 @@ export {
 	masterListCardInset
 } from './masterListTokens';
 export {
-	FilterDrawer,
 	FilterAutocomplete,
 	FilterDateRange,
 	FilterDateRangePreset,
-	FilterTriggerButton,
 	ActiveFilterChips,
-	MasterFilterToolbar,
+	InlineFilterBar,
 	ToolbarAddButton,
 	EMPTY_DATE_RANGE,
 	isDateRangeValue,
@@ -35,6 +33,7 @@ export {
 	matchesDateRange,
 	countActiveFilters
 } from './filters';
+export type { InlineFilterBarProps } from './filters';
 export type {
 	FilterFieldConfig,
 	AutocompleteFieldConfig,

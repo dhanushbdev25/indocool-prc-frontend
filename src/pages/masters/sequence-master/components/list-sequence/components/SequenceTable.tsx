@@ -181,6 +181,7 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagi
 				tableColumns={columns}
 				pagination={pagination}
 				onPaginationChange={onPaginationChange}
+				exportTitle="process-sequence-master"
 			/>
 
 			{/* Action Menu */}

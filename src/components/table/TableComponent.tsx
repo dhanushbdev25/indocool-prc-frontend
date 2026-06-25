@@ -9,8 +9,12 @@ import {
 } from 'material-react-table';
 import { Badge, Box, Button, Pagination, PaginationItem, Tooltip } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { FilterAltOutlined as FilterAltOutlinedIcon } from '@mui/icons-material';
+import {
+	FilterAltOutlined as FilterAltOutlinedIcon,
+	FileDownloadOutlined as FileDownloadIcon
+} from '@mui/icons-material';
 import { useMemo, memo, useState } from 'react';
+import { exportTableToExcel } from '../../utils/exportTableToExcel';
 
 /** Case-insensitive substring; empty filter passes; null/undefined cells treated as empty string */
 const nullSafeContains: MRT_FilterFn<MRT_RowData> = (row, id, filterValue) => {
@@ -31,6 +35,8 @@ interface TableProps<T extends MRT_RowData> {
 	/** When provided, pagination becomes controlled; pair with `onPaginationChange`. */
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
+	/** Filename prefix for Excel export (e.g. "catalyst-master"). Omit to hide the Export button. */
+	exportTitle?: string;
 }
 
 const defaultTableContainerSx = {
@@ -43,7 +49,8 @@ const TableComponent = <T extends MRT_RowData>({
 	tableColumns,
 	muiTableContainerSx,
 	pagination,
-	onPaginationChange
+	onPaginationChange,
+	exportTitle
 }: TableProps<T>) => {
 	const columns = useMemo(() => tableColumns, [tableColumns]);
 	const memoData = useMemo(() => data, [data]);
@@ -150,6 +157,14 @@ const TableComponent = <T extends MRT_RowData>({
 		setShowColumnFilters(show => !show);
 	};
 
+	const handleExport = () => {
+		if (!exportTitle) return;
+		exportTableToExcel(table, exportTitle);
+	};
+
+	const canExport = Boolean(exportTitle);
+	const exportRowCount = filteredRowCount;
+
 	return (
 		<Box sx={{ backgroundColor: 'background.paper' }}>
 			<Box
@@ -233,6 +248,40 @@ const TableComponent = <T extends MRT_RowData>({
 					>
 						Clear table filters
 					</Button>
+				) : null}
+
+				{canExport ? (
+					<Tooltip title={`Export ${exportRowCount} row${exportRowCount === 1 ? '' : 's'} to Excel`}>
+						<span>
+							<Button
+								id="table-export-button"
+								size="small"
+								variant="outlined"
+								color="inherit"
+								onClick={handleExport}
+								disabled={exportRowCount === 0}
+								startIcon={<FileDownloadIcon fontSize="small" />}
+								sx={themeArg => ({
+									textTransform: 'none',
+									fontWeight: 600,
+									letterSpacing: '0.01em',
+									borderRadius: 1,
+									px: { xs: 1.125, sm: 1.5 },
+									minHeight: 34,
+									borderColor: themeArg.palette.divider,
+									color: themeArg.palette.text.secondary,
+									backgroundColor: themeArg.palette.background.paper,
+									'&:hover': {
+										borderColor: themeArg.palette.primary.main,
+										color: themeArg.palette.primary.main,
+										backgroundColor: alpha(themeArg.palette.primary.main, themeArg.palette.mode === 'dark' ? 0.14 : 0.08)
+									}
+								})}
+							>
+								Export
+							</Button>
+						</span>
+					</Tooltip>
 				) : null}
 			</Box>
 			<MaterialReactTable table={table} />

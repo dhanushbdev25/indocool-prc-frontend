@@ -133,7 +133,7 @@ const LinkedMastersTab = ({
 		[operationsData]
 	);
 
-	const { fields, append, remove, move } = useFieldArray({
+	const { fields, insert, remove, move } = useFieldArray({
 		control,
 		name: 'prcTemplateSteps'
 	});
@@ -283,6 +283,27 @@ const LinkedMastersTab = ({
 		[allStepFields, remove, getValues, setValue]
 	);
 
+	/**
+	 * The flat-array index at which a new step for `group` should be inserted.
+	 * It's the position right after the last existing step of the same operation,
+	 * or — if the operation has no steps yet — the position just before the
+	 * first step belonging to any later-added operation. If nothing comes after,
+	 * append at the end.
+	 */
+	const findInsertIndexForGroup = useCallback(
+		(group: string): number => {
+			const groupOrder = addedGroups.indexOf(group);
+			if (groupOrder === -1) return fields.length;
+			for (let i = 0; i < fields.length; i++) {
+				const stepGroup = (fields[i] as unknown as ExtendedPrcTemplateStep).group ?? '';
+				const stepGroupOrder = addedGroups.indexOf(stepGroup);
+				if (stepGroupOrder > groupOrder) return i;
+			}
+			return fields.length;
+		},
+		[fields, addedGroups]
+	);
+
 	const handleAddStep = useCallback(
 		(item: StepSelectableItem, group: string) => {
 			const itemType = isSequenceItem(item) ? 'sequence' : 'inspection';
@@ -290,7 +311,9 @@ const LinkedMastersTab = ({
 			const newStep: ExtendedPrcTemplateStep = {
 				version: 1,
 				isLatest: true,
-				sequence: fields.length + 3,
+				// Placeholder >= 1 to satisfy the yup min(1) rule; the renumber
+				// effect below rewrites `sequence` to `index + 3` on next render.
+				sequence: 1,
 				stepId: item.id,
 				type: itemType,
 				blockCatalystMixing: false,
@@ -301,10 +324,11 @@ const LinkedMastersTab = ({
 				itemId: isSequenceItem(item) ? item.sequenceId : item.inspectionId,
 				itemType: itemType
 			};
+			const insertIndex = findInsertIndexForGroup(group);
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			append(newStep as any);
+			insert(insertIndex, newStep as any);
 		},
-		[fields.length, append, operationGroups]
+		[insert, findInsertIndexForGroup, operationGroups]
 	);
 
 	const handleRemoveStep = useCallback(

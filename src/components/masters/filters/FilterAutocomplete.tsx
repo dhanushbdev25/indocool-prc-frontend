@@ -5,16 +5,20 @@ import {
 	TextField,
 	Tooltip,
 	Typography,
-	type AutocompleteProps,
 	type SxProps,
 	type Theme
 } from '@mui/material';
 import { useMemo } from 'react';
 
+export interface FilterComboOption {
+	label: string;
+	value: string;
+}
+
 interface FilterAutocompleteProps {
 	label: string;
 	placeholder?: string;
-	options: string[];
+	options: string[] | FilterComboOption[];
 	value: string[];
 	onChange: (next: string[]) => void;
 	disabled?: boolean;
@@ -23,14 +27,12 @@ interface FilterAutocompleteProps {
 	sx?: SxProps<Theme>;
 }
 
-type MuiProps = AutocompleteProps<string, true, false, false>;
-
 const COMPACT_SUMMARY_MAX_CHARS = 44;
 
-const formatCompactSummary = (values: string[]): { display: string; full: string; truncated: boolean } => {
-	if (values.length === 0) return { display: '', full: '', truncated: false };
+const formatCompactSummary = (labels: string[]): { display: string; full: string; truncated: boolean } => {
+	if (labels.length === 0) return { display: '', full: '', truncated: false };
 
-	const full = values.join(', ');
+	const full = labels.join(', ');
 	if (full.length <= COMPACT_SUMMARY_MAX_CHARS) {
 		return { display: full, full, truncated: false };
 	}
@@ -40,6 +42,14 @@ const formatCompactSummary = (values: string[]): { display: string; full: string
 		full,
 		truncated: true
 	};
+};
+
+const normalizeOptions = (options: string[] | FilterComboOption[]): FilterComboOption[] => {
+	if (options.length === 0) return [];
+	if (typeof options[0] === 'string') {
+		return (options as string[]).map(option => ({ label: option, value: option }));
+	}
+	return options as FilterComboOption[];
 };
 
 const FilterAutocomplete = ({
@@ -52,20 +62,28 @@ const FilterAutocomplete = ({
 	compactDisplay = false,
 	sx
 }: FilterAutocompleteProps) => {
-	const sortedOptions = useMemo(() => [...options].sort((a, b) => a.localeCompare(b)), [options]);
+	const normalizedOptions = useMemo(
+		() => [...normalizeOptions(options)].sort((a, b) => a.label.localeCompare(b.label)),
+		[options]
+	);
 
-	const handleChange: MuiProps['onChange'] = (_event, next) => {
-		onChange(next);
-	};
+	const selectedOptions = useMemo(
+		() => normalizedOptions.filter(option => value.includes(option.value)),
+		[normalizedOptions, value]
+	);
+
+	const selectedLabels = useMemo(() => selectedOptions.map(option => option.label), [selectedOptions]);
 
 	return (
 		<Autocomplete
 			multiple
 			disableCloseOnSelect
 			size="small"
-			options={sortedOptions}
-			value={value}
-			onChange={handleChange}
+			options={normalizedOptions}
+			value={selectedOptions}
+			onChange={(_event, next) => onChange(next.map(option => option.value))}
+			getOptionLabel={option => option.label}
+			isOptionEqualToValue={(option, selected) => option.value === selected.value}
 			disabled={disabled}
 			renderTags={(values, getTagProps) => {
 				if (!compactDisplay) {
@@ -74,8 +92,8 @@ const FilterAutocomplete = ({
 						return (
 							<Chip
 								{...tagProps}
-								key={option}
-								label={option}
+								key={option.value}
+								label={option.label}
 								size="small"
 								sx={{ borderRadius: 1, fontWeight: 500 }}
 							/>
@@ -83,9 +101,9 @@ const FilterAutocomplete = ({
 					});
 				}
 
-				if (values.length === 0) return null;
+				if (selectedLabels.length === 0) return null;
 
-				const { display, full, truncated } = formatCompactSummary(values);
+				const { display, full } = formatCompactSummary(selectedLabels);
 
 				const summaryNode = (
 					<Typography
@@ -105,22 +123,26 @@ const FilterAutocomplete = ({
 					</Typography>
 				);
 
-				if (!truncated) return <Box key="compact-summary">{summaryNode}</Box>;
-
+				// Always wrap in Tooltip so the full list is revealed on hover, even when
+				// the visible text is clipped by a narrow container (not just the 44-char cap).
+				const tooltipTitle = selectedLabels.length > 1 ? selectedLabels.join('\n') : full;
 				return (
 					<Tooltip
 						key="compact-summary"
-						title={full}
-						placement="bottom"
+						title={tooltipTitle}
+						placement="top"
 						arrow
 						enterDelay={200}
 						slotProps={{
 							tooltip: {
-								sx: { maxWidth: 360, fontSize: '0.75rem', lineHeight: 1.45 }
+								sx: { maxWidth: 360, fontSize: '0.75rem', lineHeight: 1.45, whiteSpace: 'pre-line' }
 							}
 						}}
 					>
-						<Box component="span" sx={{ display: 'inline-flex', maxWidth: '100%', minWidth: 0 }}>
+						<Box
+							component="span"
+							sx={{ flex: 1, display: 'inline-flex', maxWidth: '100%', minWidth: 0, overflow: 'hidden' }}
+						>
 							{summaryNode}
 						</Box>
 					</Tooltip>

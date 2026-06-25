@@ -1,5 +1,9 @@
 import { MasterListPageTitle } from '../../../../../../components/masters';
 
-const PartHeader = () => <MasterListPageTitle title="Part Master" />;
+interface PartHeaderProps {
+	action?: React.ReactNode;
+}
+
+const PartHeader = ({ action }: PartHeaderProps) => <MasterListPageTitle title="Part Master" action={action} />;
 
 export default PartHeader;

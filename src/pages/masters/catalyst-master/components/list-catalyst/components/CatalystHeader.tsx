@@ -1,5 +1,11 @@
 import { MasterListPageTitle } from '../../../../../../components/masters';
 
-const CatalystHeader = () => <MasterListPageTitle title="Catalyst Mixing Master" />;
+interface CatalystHeaderProps {
+	action?: React.ReactNode;
+}
+
+const CatalystHeader = ({ action }: CatalystHeaderProps) => (
+	<MasterListPageTitle title="Catalyst Mixing Master" action={action} />
+);
 
 export default CatalystHeader;

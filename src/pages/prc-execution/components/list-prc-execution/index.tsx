@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import PrcExecutionHeader from './components/PrcExecutionHeader';
 import PrcExecutionTable, { PrcExecutionData } from './components/PrcExecutionTable';
 import CatalystTableSkeleton from '../../../../components/common/skeleton/CatalystTableSkeleton';
+import { FullScreenFormSavingOverlay } from '../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	useFetchPrcExecutionsQuery,
 	useFetchPlantsQuery,
@@ -14,7 +15,7 @@ import { useFetchSapComboQuery, useFetchCustomersQuery } from '../../../../store
 import { useListView } from '../../../../hooks/useListView';
 import {
 	deriveOptions,
-	MasterFilterToolbar,
+	InlineFilterBar,
 	MasterListLandingPage,
 	masterListTableFrame,
 	matchesMulti,
@@ -259,7 +260,7 @@ const ListPrcExecution = () => {
 		setExecutionToDelete(null);
 	};
 
-	if (isPrcExecutionDataLoading || isPrcExecutionDataFetching) {
+	if (isPrcExecutionDataLoading) {
 		return (
 			<Box sx={{ minWidth: 0 }}>
 				<PrcExecutionHeader />
@@ -268,19 +269,26 @@ const ListPrcExecution = () => {
 		);
 	}
 
+	const handleResetAll = () => {
+		setSearchTerm('');
+		setFilters({});
+		setPagination(prev => ({ ...prev, pageIndex: 0 }));
+	};
+
 	return (
 		<>
 			<MasterListLandingPage
 				header={<PrcExecutionHeader />}
 				toolbar={
-					<MasterFilterToolbar
+					<InlineFilterBar
 						title="Filter"
 						searchPlaceholder={SEARCH_PLACEHOLDER}
 						searchTerm={searchTerm}
 						fields={fields}
 						values={filters}
 						onSearchChange={handleSearchChange}
-						onFiltersChange={handleFiltersChange}
+						onApply={({ values }) => handleFiltersChange(values)}
+						onReset={handleResetAll}
 					/>
 				}
 				table={
@@ -295,6 +303,11 @@ const ListPrcExecution = () => {
 						/>
 					</Box>
 				}
+			/>
+
+			<FullScreenFormSavingOverlay
+				open={isPrcExecutionDataFetching && !isPrcExecutionDataLoading}
+				message="Refreshing…"
 			/>
 
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>

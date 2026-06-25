@@ -1,6 +1,6 @@
 import dayjs from 'dayjs';
-import type { FilterValue } from './types';
-import { isDateRangeValue, isStringArrayValue, isFilterValueEmpty } from './types';
+import type { FilterFieldConfig, FilterValue } from './types';
+import { EMPTY_DATE_RANGE, isDateRangeValue, isStringArrayValue, isFilterValueEmpty } from './types';
 
 /** Distinct, sorted, trimmed string list from an array of records — for autocomplete options. */
 export function deriveOptions<T>(rows: readonly T[], accessor: (row: T) => string | null | undefined): string[] {
@@ -61,4 +61,85 @@ export function countActiveFilters(filters: Record<string, FilterValue | undefin
 		if (!isFilterValueEmpty(v)) count += 1;
 	}
 	return count;
+}
+
+/**
+ * Seed a draft state object from current applied values + field config.
+ * Honours preset defaults for `dateRangePreset` when no value is stored yet.
+ */
+export function buildInitialDraftValues(
+	fields: FilterFieldConfig[],
+	values: Record<string, FilterValue | undefined>
+): Record<string, FilterValue> {
+	const init: Record<string, FilterValue> = {};
+	for (const field of fields) {
+		const current = values[field.key];
+		if (field.kind === 'autocomplete') {
+			init[field.key] = isStringArrayValue(current) ? current : [];
+		} else if (field.kind === 'dateRange') {
+			init[field.key] = isDateRangeValue(current) ? current : EMPTY_DATE_RANGE;
+		} else if (field.kind === 'dateRangePreset') {
+			const existingPresetId = values[field.presetKey];
+			const presetIdFromState = typeof existingPresetId === 'string' && existingPresetId ? existingPresetId : '';
+			const hasStoredRange = isDateRangeValue(current) && (current.from || current.to);
+			if (hasStoredRange && presetIdFromState) {
+				init[field.key] = current as FilterValue;
+				init[field.presetKey] = presetIdFromState;
+			} else {
+				const defaultId = field.defaultPresetId ?? field.presets[0]?.id ?? '';
+				const defaultPreset = field.presets.find(p => p.id === defaultId);
+				const customId = field.customPresetId ?? 'custom';
+				if (defaultPreset && defaultPreset.id !== customId) {
+					const resolved = defaultPreset.resolve();
+					init[field.key] = { from: resolved.from || null, to: resolved.to || null };
+					init[field.presetKey] = defaultPreset.id;
+				} else {
+					init[field.key] = EMPTY_DATE_RANGE;
+					init[field.presetKey] = defaultId || customId;
+				}
+			}
+		}
+	}
+	return init;
+}
+
+/** Cleared draft for every field — autocomplete `[]`, dateRange `EMPTY_DATE_RANGE`, preset id `''`. */
+export function buildClearedValues(fields: FilterFieldConfig[]): Record<string, FilterValue> {
+	const cleared: Record<string, FilterValue> = {};
+	for (const field of fields) {
+		if (field.kind === 'autocomplete') {
+			cleared[field.key] = [];
+		} else if (field.kind === 'dateRange') {
+			cleared[field.key] = EMPTY_DATE_RANGE;
+		} else if (field.kind === 'dateRangePreset') {
+			cleared[field.key] = EMPTY_DATE_RANGE;
+			cleared[field.presetKey] = '';
+		}
+	}
+	return cleared;
+}
+
+const normalizeForCompare = (value: FilterValue | undefined): FilterValue | null => {
+	if (value === undefined) return null;
+	if (isFilterValueEmpty(value)) {
+		if (isStringArrayValue(value)) return [];
+		if (isDateRangeValue(value)) return EMPTY_DATE_RANGE;
+		return '';
+	}
+	if (isStringArrayValue(value)) return [...value].sort();
+	return value;
+};
+
+/** Shallow structural compare for filter value maps. Order-insensitive for string[]. */
+export function areFiltersEqual(
+	a: Record<string, FilterValue | undefined>,
+	b: Record<string, FilterValue | undefined>
+): boolean {
+	const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+	for (const key of keys) {
+		const na = normalizeForCompare(a[key]);
+		const nb = normalizeForCompare(b[key]);
+		if (JSON.stringify(na) !== JSON.stringify(nb)) return false;
+	}
+	return true;
 }

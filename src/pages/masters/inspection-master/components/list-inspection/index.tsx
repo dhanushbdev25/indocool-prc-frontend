@@ -3,7 +3,7 @@ import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typogra
 import { useNavigate } from 'react-router-dom';
 import {
 	deriveOptions,
-	MasterFilterToolbar,
+	InlineFilterBar,
 	MasterListLandingPage,
 	masterListTableFrame,
 	matchesMulti,
@@ -220,17 +220,9 @@ const ListInspection = () => {
 	return (
 		<>
 			<MasterListLandingPage
-				header={<InspectionHeader />}
-				toolbar={
-					<MasterFilterToolbar
-						title="Filter"
-						searchPlaceholder={SEARCH_PLACEHOLDER}
-						searchTerm={searchTerm}
-						fields={fields}
-						values={filters}
-						onSearchChange={handleSearchChange}
-						onFiltersChange={handleFiltersChange}
-						actions={
+				header={
+					<InspectionHeader
+						action={
 							canCreate ? (
 								<ToolbarAddButton
 									label="Add Inspection"
@@ -238,6 +230,22 @@ const ListInspection = () => {
 								/>
 							) : null
 						}
+					/>
+				}
+				toolbar={
+					<InlineFilterBar
+						title="Filter"
+						searchPlaceholder={SEARCH_PLACEHOLDER}
+						searchTerm={searchTerm}
+						fields={fields}
+						values={filters}
+						onSearchChange={handleSearchChange}
+						onApply={({ values }) => handleFiltersChange(values)}
+						onReset={() => {
+							setSearchTerm('');
+							setFilters({});
+							setPagination(prev => ({ ...prev, pageIndex: 0 }));
+						}}
 					/>
 				}
 				table={

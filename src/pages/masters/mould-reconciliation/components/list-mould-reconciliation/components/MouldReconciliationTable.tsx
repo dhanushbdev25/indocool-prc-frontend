@@ -128,6 +128,7 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 			data={data}
 			pagination={pagination}
 			onPaginationChange={onPaginationChange}
+			exportTitle="mould-reconciliation"
 		/>
 	);
 });

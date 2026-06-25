@@ -3,7 +3,7 @@ import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typogra
 import { useNavigate } from 'react-router-dom';
 import {
 	deriveOptions,
-	MasterFilterToolbar,
+	InlineFilterBar,
 	MasterListLandingPage,
 	masterListTableFrame,
 	matchesMulti,
@@ -200,22 +200,30 @@ const ListPrcTemplate = () => {
 	return (
 		<>
 			<MasterListLandingPage
-				header={<PrcTemplateHeader />}
+				header={
+					<PrcTemplateHeader
+						action={
+							<ToolbarAddButton
+								label="Add Template"
+								onClick={() => navigate('/prc-template-master/create-prc-template')}
+							/>
+						}
+					/>
+				}
 				toolbar={
-					<MasterFilterToolbar
+					<InlineFilterBar
 						title="Filter"
 						searchPlaceholder={SEARCH_PLACEHOLDER}
 						searchTerm={searchTerm}
 						fields={fields}
 						values={filters}
 						onSearchChange={handleSearchChange}
-						onFiltersChange={handleFiltersChange}
-						actions={
-							<ToolbarAddButton
-								label="Add Template"
-								onClick={() => navigate('/prc-template-master/create-prc-template')}
-							/>
-						}
+						onApply={({ values }) => handleFiltersChange(values)}
+						onReset={() => {
+							setSearchTerm('');
+							setFilters({});
+							setPagination(prev => ({ ...prev, pageIndex: 0 }));
+						}}
 					/>
 				}
 				table={

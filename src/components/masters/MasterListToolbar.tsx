@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useId } from 'react';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import {
 	Badge,
 	Box,
@@ -97,14 +98,11 @@ const MasterListToolbar = ({
 		[onSearchChange]
 	);
 
+	const debouncedDraft = useDebouncedValue(draft, debounceMs);
+
 	useEffect(() => {
-		if (debounceMs <= 0) {
-			flushSearch(draft);
-			return;
-		}
-		const id = window.setTimeout(() => flushSearch(draft), debounceMs);
-		return () => window.clearTimeout(id);
-	}, [draft, debounceMs, flushSearch]);
+		flushSearch(debouncedDraft);
+	}, [debouncedDraft, flushSearch]);
 
 	const handleClearField = () => {
 		setDraft('');

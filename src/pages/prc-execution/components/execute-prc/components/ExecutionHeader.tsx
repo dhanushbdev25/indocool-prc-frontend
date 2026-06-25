@@ -298,10 +298,10 @@ const ExecutionHeader = ({
 				<Box
 					sx={{
 						display: 'grid',
-						gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+						gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
 						columnGap: 2,
 						width: '100%',
-						minWidth: 640
+						minWidth: 720
 					}}
 				>
 					<MetaField label="Order ID" value={executionData.orderId != null && String(executionData.orderId).trim() ? String(executionData.orderId) : '—'} monospace />
@@ -309,7 +309,16 @@ const ExecutionHeader = ({
 					<MetaField label="Customer" value={customerLabel} />
 					<MetaField label="Customer variant" value={customerVariant} />
 					<MetaField label="Reservation" value={reservation} monospace />
-					<MetaField label="Production set" value={executionData.productionSetId || '—'} />
+					<MetaField
+						label="PRC Set"
+						value={(() => {
+							const meta = (executionData.prcAggregatedSteps as { prcmetadata?: { prcSetId?: unknown } } | undefined)
+								?.prcmetadata;
+							const v = typeof meta?.prcSetId === 'string' ? meta.prcSetId.trim() : '';
+							return v || '—';
+						})()}
+					/>
+					<MetaField label="SAP Set" value={executionData.productionSetId || '—'} />
 					<MetaField label="Mould" value={executionData.mouldCode || executionData.mouldId || '—'} />
 				</Box>
 			</Box>

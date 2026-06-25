@@ -1,5 +1,11 @@
 import { MasterListPageTitle } from '../../../../../../components/masters';
 
-const SequenceHeader = () => <MasterListPageTitle title="Process Sequence Master" />;
+interface SequenceHeaderProps {
+	action?: React.ReactNode;
+}
+
+const SequenceHeader = ({ action }: SequenceHeaderProps) => (
+	<MasterListPageTitle title="Process Sequence Master" action={action} />
+);
 
 export default SequenceHeader;

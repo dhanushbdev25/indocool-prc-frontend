@@ -244,6 +244,7 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPag
 				data={safeData}
 				pagination={pagination}
 				onPaginationChange={onPaginationChange}
+				exportTitle="part-master"
 			/>
 
 			<Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>

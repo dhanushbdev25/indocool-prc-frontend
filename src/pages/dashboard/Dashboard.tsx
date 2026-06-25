@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { Box, Grid, Stack } from '@mui/material';
 import {
 	useFetchMetricsQuery,
@@ -18,36 +19,50 @@ import { ProjectLossChart } from './components/moulding/ProjectLossChart';
 import { WorkstationOutputChart } from './components/moulding/WorkstationOutputChart';
 import { DatewiseOutputChart } from './components/trends/DatewiseOutputChart';
 import { DashboardErrorBanner } from './components/DashboardErrorBanner';
+import { FullScreenFormSavingOverlay } from '../../components/common/FullScreenFormSavingOverlay';
 
 const Dashboard = () => {
 	const {
 		from,
 		to,
-		preset,
-		presetLabel,
-		setPreset,
-		setCustomRange,
-		displayLabel,
 		isReady,
-		customFrom,
-		customTo
+		draftPreset,
+		draftPresetLabel,
+		draftDisplayLabel,
+		draftCustomFrom,
+		draftCustomTo,
+		setDraftPreset,
+		setDraftCustomRange,
+		applyDraft: applyDateRangeDraft,
+		clearAll: clearAllDateRange,
+		isDirty: isDateRangeDirty
 	} = useDashboardDateRange();
 
-	const { filters, setFilter, clearAll, hasActiveFilters } = useDashboardEntityFilters();
+	const {
+		appliedFilters,
+		draftFilters,
+		setDraftFilter,
+		applyDraft: applyEntityDraft,
+		clearAll: clearAllEntityFilters,
+		isDirty: areEntityFiltersDirty,
+		hasActiveFilters
+	} = useDashboardEntityFilters();
+
+	// Options follow draft.units so the workstation list refreshes as the user edits the selection.
 	const { unitOptions, workstationOptions, shiftOptions, projectOptions } = useDashboardFilterOptions({
 		from,
 		to,
 		isReady,
-		selectedUnits: filters.units
+		selectedUnits: draftFilters.units
 	});
 
 	const queryArgs = {
 		from,
 		to,
-		units: filters.units,
-		workstation: filters.workstation,
-		shift: filters.shift,
-		projects: filters.projects
+		units: appliedFilters.units,
+		workstation: appliedFilters.workstation,
+		shift: appliedFilters.shift,
+		projects: appliedFilters.projects
 	};
 	const skip = !isReady;
 
@@ -55,8 +70,9 @@ const Dashboard = () => {
 	const datewiseQuery = useFetchDatewiseMetricsQuery(queryArgs, { skip });
 	const mouldingQuery = useFetchMouldingAnalysisQuery(queryArgs, { skip });
 
-	const isLoading =
-		!skip && (metricsQuery.isLoading || datewiseQuery.isLoading || mouldingQuery.isLoading);
+	const isLoading = !skip && (metricsQuery.isLoading || datewiseQuery.isLoading || mouldingQuery.isLoading);
+	const isRefreshing =
+		!skip && (metricsQuery.isFetching || datewiseQuery.isFetching || mouldingQuery.isFetching);
 	const hasError = metricsQuery.isError || datewiseQuery.isError || mouldingQuery.isError;
 
 	const refetchAll = () => {
@@ -64,6 +80,19 @@ const Dashboard = () => {
 		datewiseQuery.refetch();
 		mouldingQuery.refetch();
 	};
+
+	const isDirty = isDateRangeDirty || areEntityFiltersDirty;
+
+	const handleApply = useCallback(() => {
+		if (!isDirty) return;
+		applyDateRangeDraft();
+		applyEntityDraft();
+	}, [isDirty, applyDateRangeDraft, applyEntityDraft]);
+
+	const handleReset = useCallback(() => {
+		clearAllDateRange();
+		clearAllEntityFilters();
+	}, [clearAllDateRange, clearAllEntityFilters]);
 
 	const datewiseData = datewiseQuery.data;
 
@@ -74,16 +103,18 @@ const Dashboard = () => {
 	return (
 		<Box component="article" sx={{ minWidth: 0, pb: { xs: 2, sm: 3 } }}>
 			<DashboardPageHeader
-				preset={preset}
-				presetLabel={presetLabel}
-				displayLabel={displayLabel}
-				onPresetChange={setPreset}
-				onCustomRangeChange={setCustomRange}
-				customFrom={customFrom}
-				customTo={customTo}
-				filters={filters}
-				onFilterChange={setFilter}
-				onClearFilters={clearAll}
+				draftPreset={draftPreset}
+				draftPresetLabel={draftPresetLabel}
+				draftDisplayLabel={draftDisplayLabel}
+				onDraftPresetChange={setDraftPreset}
+				onDraftCustomRangeChange={setDraftCustomRange}
+				draftCustomFrom={draftCustomFrom}
+				draftCustomTo={draftCustomTo}
+				draftFilters={draftFilters}
+				onDraftFilterChange={setDraftFilter}
+				onApply={handleApply}
+				onReset={handleReset}
+				isDirty={isDirty}
 				hasActiveFilters={hasActiveFilters}
 				unitOptions={unitOptions}
 				workstationOptions={workstationOptions}
@@ -132,6 +163,8 @@ const Dashboard = () => {
 					</Grid>
 				</DashboardSection>
 			</Stack>
+
+			<FullScreenFormSavingOverlay open={isRefreshing && !isLoading} message="Refreshing dashboard…" />
 		</Box>
 	);
 };

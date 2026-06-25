@@ -1,5 +1,11 @@
 import { MasterListPageTitle } from '../../../../../../components/masters';
 
-const InspectionHeader = () => <MasterListPageTitle title="Inspection Master" />;
+interface InspectionHeaderProps {
+	action?: React.ReactNode;
+}
+
+const InspectionHeader = ({ action }: InspectionHeaderProps) => (
+	<MasterListPageTitle title="Inspection Master" action={action} />
+);
 
 export default InspectionHeader;

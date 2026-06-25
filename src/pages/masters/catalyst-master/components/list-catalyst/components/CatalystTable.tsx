@@ -161,6 +161,7 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView, pagination, o
 				tableColumns={columns}
 				pagination={pagination}
 				onPaginationChange={onPaginationChange}
+				exportTitle="catalyst-mixing-master"
 			/>
 
 			{/* Action Menu */}

@@ -3,7 +3,7 @@ import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typogra
 import { useNavigate } from 'react-router-dom';
 import {
 	deriveOptions,
-	MasterFilterToolbar,
+	InlineFilterBar,
 	MasterListLandingPage,
 	masterListTableFrame,
 	matchesDateRange,
@@ -190,21 +190,29 @@ const ListCatalyst = () => {
 	return (
 		<>
 			<MasterListLandingPage
-				header={<CatalystHeader />}
+				header={
+					<CatalystHeader
+						action={
+							canCreate ? (
+								<ToolbarAddButton label="Add Chart" onClick={() => navigate('/catalyst-master/create-catalyst')} />
+							) : null
+						}
+					/>
+				}
 				toolbar={
-					<MasterFilterToolbar
+					<InlineFilterBar
 						title="Filter"
 						searchPlaceholder={SEARCH_PLACEHOLDER}
 						searchTerm={searchTerm}
 						fields={fields}
 						values={filters}
 						onSearchChange={handleSearchChange}
-						onFiltersChange={handleFiltersChange}
-						actions={
-							canCreate ? (
-								<ToolbarAddButton label="Add Chart" onClick={() => navigate('/catalyst-master/create-catalyst')} />
-							) : null
-						}
+						onApply={({ values }) => handleFiltersChange(values)}
+						onReset={() => {
+							setSearchTerm('');
+							setFilters({});
+							setPagination(prev => ({ ...prev, pageIndex: 0 }));
+						}}
 					/>
 				}
 				table={

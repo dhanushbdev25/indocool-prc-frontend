@@ -329,6 +329,7 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 			data={safeData}
 			pagination={pagination}
 			onPaginationChange={onPaginationChange}
+			exportTitle="prc-execution"
 		/>
 	);
 });

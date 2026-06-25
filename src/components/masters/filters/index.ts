@@ -1,10 +1,9 @@
-export { default as FilterDrawer } from './FilterDrawer';
 export { default as FilterAutocomplete } from './FilterAutocomplete';
 export { default as FilterDateRange } from './FilterDateRange';
 export { default as FilterDateRangePreset } from './FilterDateRangePreset';
-export { default as FilterTriggerButton } from './FilterTriggerButton';
 export { default as ActiveFilterChips } from './ActiveFilterChips';
-export { default as MasterFilterToolbar } from './MasterFilterToolbar';
+export { default as InlineFilterBar } from './InlineFilterBar';
+export type { InlineFilterBarProps } from './InlineFilterBar';
 export { default as ToolbarAddButton } from './ToolbarAddButton';
 export type {
 	FilterFieldConfig,

@@ -96,6 +96,7 @@ export const dashboardFilterField: SxProps<Theme> = theme => ({
 		minHeight: 40,
 		maxHeight: 40,
 		flexWrap: 'nowrap',
+		overflow: 'hidden',
 		paddingTop: '0 !important',
 		paddingBottom: '0 !important',
 		paddingLeft: '10px !important',

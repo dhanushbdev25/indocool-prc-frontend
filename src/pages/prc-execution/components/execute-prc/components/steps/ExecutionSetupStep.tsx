@@ -66,6 +66,7 @@ const ExecutionSetupStep = ({
 	} = useFetchMouldComboQuery({ partId }, { skip: !partId });
 
 	const [productionSetId, setProductionSetId] = useState('');
+	const [prcSetId, setPrcSetId] = useState('');
 	const [selectedMould, setSelectedMould] = useState<MouldComboItem | null>(null);
 	const [fallbackMouldId, setFallbackMouldId] = useState('');
 	const [errors, setErrors] = useState<Record<string, string>>({});
@@ -101,11 +102,13 @@ const ExecutionSetupStep = ({
 		if (hasSaved) {
 			setTimeout(() => {
 				if (typeof saved.productionSetId === 'string') setProductionSetId(saved.productionSetId);
+				if (typeof saved.prcSetId === 'string') setPrcSetId(saved.prcSetId);
 				if (mouldIdStr) setFallbackMouldId(mouldIdStr);
 			}, 0);
 		} else {
 			setTimeout(() => {
 				setProductionSetId(executionData.productionSetId || '');
+				setPrcSetId('');
 				if (mouldIdStr) setFallbackMouldId(mouldIdStr);
 			}, 0);
 		}
@@ -123,7 +126,7 @@ const ExecutionSetupStep = ({
 
 	const validate = () => {
 		const next: Record<string, string> = {};
-		if (!productionSetId.trim()) next.productionSetId = 'Production Set ID is required';
+		if (!prcSetId.trim()) next.prcSetId = 'PRC Set ID is required';
 		if (!partId) next.mouldId = 'Part is missing; cannot load moulds for this execution';
 		setErrors(next);
 		return Object.keys(next).length === 0;
@@ -134,6 +137,7 @@ const ExecutionSetupStep = ({
 		const mouldIdValue = getMouldCode(selectedMould);
 		onStepComplete({
 			productionSetId: productionSetId.trim(),
+			prcSetId: prcSetId.trim(),
 			mouldId: mouldIdValue,
 			recordedByUserId: userInfo.id,
 			operationWiseData: applyCountDeviated(mergedOperationWise.map(r => ({ ...r })))
@@ -177,21 +181,35 @@ const ExecutionSetupStep = ({
 							</Box>
 						</Box>
 						<Grid container spacing={3}>
-							<Grid size={{ xs: 12, md: 6 }}>
+							<Grid size={{ xs: 12, md: 4 }}>
 								<TextField
 									fullWidth
-									label="Production Set ID"
-									value={productionSetId}
-									onChange={e => setProductionSetId(e.target.value)}
-									error={!!errors.productionSetId}
-									helperText={errors.productionSetId}
+									label="PRC Set ID"
+									value={prcSetId}
+									onChange={e => {
+										setPrcSetId(e.target.value);
+										if (errors.prcSetId) setErrors(prev => ({ ...prev, prcSetId: '' }));
+									}}
+									error={!!errors.prcSetId}
+									helperText={errors.prcSetId}
 									disabled={greyDisabledReadOnly}
 									required
 									InputProps={plainLocked ? { readOnly: true } : undefined}
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
 								/>
 							</Grid>
-							<Grid size={{ xs: 12, md: 6 }}>
+							<Grid size={{ xs: 12, md: 4 }}>
+								<TextField
+									fullWidth
+									label="SAP Set ID"
+									value={productionSetId}
+									disabled
+									InputProps={{ readOnly: true }}
+									helperText="Auto-populated from SAP"
+									sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+								/>
+							</Grid>
+							<Grid size={{ xs: 12, md: 4 }}>
 								{!partId ? (
 									<Alert severity="warning" sx={{ borderRadius: 2 }}>
 										Part is missing for this execution, so the mould list cannot be loaded.

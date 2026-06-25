@@ -494,7 +494,12 @@ const PrcExecutionReport = () => {
 				)}
 				<Typography variant="body2" color="text.secondary">
 					Date {execution.date ?? '—'} · Shift {execution.shift ?? '—'} · Order {formatOrderId(execution.orderId)} ·
-					Production set {execution.productionSetId ?? '—'}
+					PRC Set {(() => {
+						const meta = (execution.prcAggregatedSteps as { prcmetadata?: { prcSetId?: unknown } } | undefined)
+							?.prcmetadata;
+						const v = typeof meta?.prcSetId === 'string' ? meta.prcSetId.trim() : '';
+						return v || '—';
+					})()} · SAP Set {execution.productionSetId ?? '—'}
 				</Typography>
 				{execution.sapReferenceNumber && (
 					<Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
