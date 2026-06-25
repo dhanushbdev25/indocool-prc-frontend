@@ -346,7 +346,9 @@ export function buildTimelineSteps(
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
 								approveByProduction: (inspectionData.inspection as any).approveByProduction,
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								approveByQuality: (inspectionData.inspection as any).approveByQuality
+								approveByQuality: (inspectionData.inspection as any).approveByQuality,
+								// eslint-disable-next-line @typescript-eslint/no-explicit-any
+								inspectionTiming: (inspectionData.inspection as any).inspectionTiming
 							}
 						: undefined
 				});

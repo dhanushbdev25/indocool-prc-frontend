@@ -172,6 +172,18 @@ export const inspectionParameterSchema = yup.object({
 	return Number(value.minimumAcceptanceValue) <= Number(value.maximumAcceptanceValue);
 });
 
+// Expected duration (HH:MM) — mirrors sequenceTiming in sequence-master
+const inspectionTimingSchema = yup
+	.string()
+	.required('Expected duration is required')
+	.matches(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter a valid time format (HH:MM)')
+	.test('min-duration', 'Duration must be at least 1 minute', function (value) {
+		if (!value) return false;
+		const [hours, minutes] = value.split(':').map(Number);
+		const totalMinutes = hours * 60 + minutes;
+		return totalMinutes >= 1;
+	});
+
 // Main form validation schema
 export const inspectionFormSchema = yup.object({
 	id: yup.number().optional(),
@@ -190,6 +202,7 @@ export const inspectionFormSchema = yup.object({
 	}),
 	approveByProduction: yup.boolean().optional(),
 	approveByQuality: yup.boolean().optional(),
+	inspectionTiming: inspectionTimingSchema,
 	inspectionParameters: yup.array(inspectionParameterSchema).min(1, 'At least one inspection parameter is required'),
 	notes: yup.string().optional(),
 	createdAt: yup.string().optional(),
@@ -246,6 +259,7 @@ export const defaultInspectionFormData: InspectionFormData = {
 	partImages: [],
 	approveByProduction: false,
 	approveByQuality: true,
+	inspectionTiming: '00:01',
 	inspectionParameters: [defaultInspectionParameter],
 	notes: ''
 };
@@ -264,6 +278,7 @@ export const basicInfoSchema = yup.object({
 	}),
 	approveByProduction: yup.boolean().optional(),
 	approveByQuality: yup.boolean().optional(),
+	inspectionTiming: inspectionTimingSchema,
 	notes: yup.string().optional()
 });
 

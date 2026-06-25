@@ -63,6 +63,7 @@ export interface Inspection {
 	partImages?: PartImage[];
 	approveByProduction?: boolean;
 	approveByQuality?: boolean;
+	inspectionTiming?: number;
 	createdBy?: number | null;
 	updatedBy?: number | null;
 	createdAt?: string;
@@ -127,6 +128,7 @@ export interface InspectionRequest {
 	partImages?: PartImage[];
 	approveByProduction?: boolean;
 	approveByQuality?: boolean;
+	inspectionTiming?: number;
 	createdBy?: number | null;
 	updatedBy?: number | null;
 }
@@ -158,6 +160,7 @@ export interface InspectionBasic {
 	partImages?: PartImage[];
 	approveByProduction?: boolean;
 	approveByQuality?: boolean;
+	inspectionTiming?: number;
 	createdBy?: number | null;
 	updatedBy?: number | null;
 	createdAt: string;

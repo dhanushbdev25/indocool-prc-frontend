@@ -117,6 +117,36 @@ export function calculateSequenceStepGroupTiming(
 }
 
 /**
+ * Inspection step timing vs planned `inspectionTiming` (preview + report).
+ * Reads the flat `stepStartEndTime[prcTemplateStepId]` bucket, computes actual seconds
+ * from `startTime`/`endTime`, and compares against `step.inspectionMetadata.inspectionTiming`.
+ */
+export function calculateInspectionStepTiming(
+	step: TimelineStep,
+	stepStartEndTime: Record<string, unknown>
+): { timingExceeded: boolean; actualDuration: number; expectedDuration: number } {
+	const prcTemplateStepId = step.stepData?.prcTemplateStepId;
+	const expectedDuration = step.inspectionMetadata?.inspectionTiming ?? 0;
+
+	if (prcTemplateStepId === undefined || prcTemplateStepId === null || !expectedDuration) {
+		return { timingExceeded: false, actualDuration: 0, expectedDuration };
+	}
+
+	const bucket = stepStartEndTime?.[prcTemplateStepId.toString()] as Record<string, unknown> | undefined;
+	const actualDuration = actualFromTimingBlob(bucket) ?? 0;
+
+	if (actualDuration === 0) {
+		return { timingExceeded: false, actualDuration: 0, expectedDuration };
+	}
+
+	return {
+		timingExceeded: actualDuration > expectedDuration,
+		actualDuration,
+		expectedDuration
+	};
+}
+
+/**
  * Actual seconds for a sequence step group timing bucket: rollup `duration` when present,
  * otherwise summed sub-step intervals.
  */
@@ -260,7 +290,14 @@ export function getTimelineStepPlannedVsActual(
 			const tid = step.stepData?.prcTemplateStepId;
 			if (tid === undefined || tid === null) return { plannedSec: null, actualSec: null };
 			const bucket = resolveStepTimingBucket(step, root);
-			return inspectionTimingFromBucket(bucket);
+			const t = inspectionTimingFromBucket(bucket);
+			// Fallback to the inspection master's planned duration when the bucket has no plannedTime.
+			let plannedSec = t.plannedSec;
+			if (plannedSec === null) {
+				const inspFall = coercePositiveSeconds(step.inspectionMetadata?.inspectionTiming);
+				if (inspFall !== null) plannedSec = inspFall;
+			}
+			return { plannedSec, actualSec: t.actualSec };
 		}
 		default:
 			return { plannedSec: null, actualSec: null };

@@ -1,6 +1,6 @@
 import type { StepPreviewData, TimelineStep } from '../types/execution.types';
 import { buildSequenceDetailedMeasurements } from './sequencePreviewMeasurements';
-import { calculateSequenceStepGroupTiming } from './timelineCardTiming';
+import { calculateInspectionStepTiming, calculateSequenceStepGroupTiming } from './timelineCardTiming';
 
 /** Builds the same `StepPreviewData` shape as live execution preview for sequence groups. */
 export function buildSequenceStepPreviewForReport(
@@ -59,7 +59,8 @@ export function buildSequenceStepPreviewForReport(
 
 export function buildInspectionStepPreviewForReport(
 	step: TimelineStep,
-	agg: Record<string, unknown>
+	agg: Record<string, unknown>,
+	stepTimingRoot?: Record<string, unknown>
 ): StepPreviewData | null {
 	const tid = step.stepData?.prcTemplateStepId;
 	if (tid === undefined || tid === null) {
@@ -76,6 +77,17 @@ export function buildInspectionStepPreviewForReport(
 		stepData.partialCtqApprove === true;
 	const stepCompleted = stepData.stepCompleted === true;
 
+	const timing = calculateInspectionStepTiming(step, stepTimingRoot ?? {});
+
+	let timingExceededRemarks = '';
+	let timingExceededReasonCode: string | number | undefined;
+	let timingExceededReasonLabel: string | undefined;
+	timingExceededRemarks = (stepData.timingExceededRemarks as string) || '';
+	const rc = stepData.timingExceededReasonCode;
+	if (typeof rc === 'string' || typeof rc === 'number') timingExceededReasonCode = rc;
+	const rl = stepData.timingExceededReasonLabel;
+	if (typeof rl === 'string') timingExceededReasonLabel = rl;
+
 	return {
 		stepNumber: step.stepNumber,
 		title: step.title,
@@ -86,6 +98,12 @@ export function buildInspectionStepPreviewForReport(
 		ctqApproved,
 		partialCtqApprove: stepData.partialCtqApprove === true,
 		stepCompleted,
+		timingExceeded: timing.timingExceeded,
+		actualDuration: timing.actualDuration,
+		expectedDuration: timing.expectedDuration,
+		timingExceededRemarks,
+		timingExceededReasonCode,
+		timingExceededReasonLabel,
 		inspectionParameters: step.inspectionParameters,
 		inspectionMetadata: step.inspectionMetadata
 	};

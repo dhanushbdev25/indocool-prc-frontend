@@ -8,6 +8,14 @@ interface ViewInspectionBasicInfoProps {
 	inspection: Inspection;
 }
 
+const formatTimingFromSeconds = (seconds?: number): string => {
+	if (!seconds || seconds === 0) return '—';
+	const totalMinutes = Math.floor(seconds / 60);
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
 const ViewInspectionBasicInfo = ({ inspection }: ViewInspectionBasicInfoProps) => {
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -100,6 +108,15 @@ const ViewInspectionBasicInfo = ({ inspection }: ViewInspectionBasicInfoProps) =
 								mb: 2
 							}}
 						/>
+					</Grid>
+
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+							Expected Duration
+						</Typography>
+						<Typography variant="body1" sx={{ fontWeight: 500, mb: 2 }}>
+							{formatTimingFromSeconds(inspection.inspectionTiming)}
+						</Typography>
 					</Grid>
 
 					<Grid size={{ xs: 12, md: 6 }}>

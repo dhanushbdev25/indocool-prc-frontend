@@ -174,9 +174,9 @@ function descriptionTableCellSx(embeddedReportMode: boolean, maxWidth?: number) 
 interface StepPreviewProps {
 	previewData: StepPreviewData;
 	onBackToStep: () => void;
-	onApproveProduction: () => void;
-	onApproveCTQ: () => void;
-	onPartialApproveCTQ: () => void;
+	onApproveProduction: (payload?: ProceedFromPreviewPayload) => void;
+	onApproveCTQ: (payload?: ProceedFromPreviewPayload) => void;
+	onPartialApproveCTQ: (payload?: ProceedFromPreviewPayload) => void;
 	onProceedToNext: (payload?: ProceedFromPreviewPayload) => void;
 	onBackToStepGroup?: () => void;
 	/** Read-only embed (e.g. consolidated PDF/report): no approvals, no delay inputs, full-height tables. */
@@ -254,18 +254,30 @@ const StepPreview = ({
 		return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
 	};
 
+	// Snapshot of the timing-exceeded comment + selected delay reason to forward with each action.
+	// Returned as undefined when timing has not been exceeded so the parent payload stays minimal.
+	const buildTimingPayload = (): ProceedFromPreviewPayload | undefined => {
+		if (!previewData.timingExceeded) return undefined;
+		return {
+			timingExceededRemarks:
+				timingExceededRemarks.trim() || (previewData.timingExceededRemarks ?? '').trim(),
+			timingExceededReasonCode: selectedDelayReason?.value ?? previewData.timingExceededReasonCode,
+			timingExceededReasonLabel: selectedDelayReason?.label ?? previewData.timingExceededReasonLabel
+		};
+	};
+
 	const handleApproveProduction = () => {
 		setProductionApproved(true);
-		onApproveProduction();
+		onApproveProduction(buildTimingPayload());
 	};
 
 	const handleApproveCTQ = () => {
 		if (ctqApprovalMode === 'full') {
 			setCtqApproved(true);
-			onApproveCTQ();
+			onApproveCTQ(buildTimingPayload());
 		} else {
 			setPartialCtqApproved(true);
-			onPartialApproveCTQ();
+			onPartialApproveCTQ(buildTimingPayload());
 		}
 	};
 
@@ -292,7 +304,10 @@ const StepPreview = ({
 		isLoading: isDelayReasonLoading,
 		isFetching: isDelayReasonFetching
 	} = useFetchOperationDelayReasonComboQuery(undefined, {
-		skip: browseOnly || previewData.type !== 'sequence' || !previewData.timingExceeded
+		skip:
+			browseOnly ||
+			(previewData.type !== 'sequence' && previewData.type !== 'inspection') ||
+			!previewData.timingExceeded
 	});
 
 	const delayReasonComboBusy = isDelayReasonLoading || isDelayReasonFetching;
@@ -304,7 +319,7 @@ const StepPreview = ({
 		if (browseOnly) {
 			return;
 		}
-		if (previewData.type !== 'sequence' || !previewData.timingExceeded) {
+		if ((previewData.type !== 'sequence' && previewData.type !== 'inspection') || !previewData.timingExceeded) {
 			setSelectedDelayReason(null);
 			return;
 		}
@@ -440,6 +455,131 @@ const StepPreview = ({
 		);
 	};
 
+	const renderTimingExceededSection = () => {
+		if (!previewData.timingExceeded) return null;
+		return (
+			<Box sx={{ mb: 2 }}>
+				<Alert
+					severity="warning"
+					sx={{
+						mb: 1,
+						border: '1px solid #ff9800',
+						backgroundColor: '#fff8e1',
+						'& .MuiAlert-icon': {
+							color: '#f57c00'
+						}
+					}}
+					icon={<AccessTime sx={{ fontSize: 20 }} />}
+				>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+						<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#e65100' }}>
+							Timing Exceeded
+						</Typography>
+						<Chip
+							label={`+${Math.round((previewData.actualDuration || 0) - (previewData.expectedDuration || 0))}s`}
+							size="small"
+							sx={{
+								backgroundColor: '#ff5722',
+								color: 'white',
+								fontSize: '0.7rem',
+								fontWeight: 600,
+								height: 20
+							}}
+						/>
+					</Box>
+					<Typography variant="body2" sx={{ color: '#bf360c', fontSize: '0.875rem' }}>
+						<strong>{formatExecutionDuration(previewData.actualDuration || 0)}</strong> actual vs{' '}
+						<strong>{formatExecutionDuration(previewData.expectedDuration || 0)}</strong> expected
+					</Typography>
+				</Alert>
+				{browseOnly ? (
+					<Box sx={{ mt: 2, pl: 0.5 }}>
+						{(previewData.timingExceededReasonLabel != null ||
+							previewData.timingExceededReasonCode !== undefined) && (
+							<Typography variant="body2" sx={{ color: 'text.primary' }}>
+								<strong>Delay reason:</strong>{' '}
+								{previewData.timingExceededReasonLabel ??
+									(previewData.timingExceededReasonCode !== undefined
+										? String(previewData.timingExceededReasonCode)
+										: '—')}
+							</Typography>
+						)}
+						<Typography variant="body2" sx={{ mt: 0.75, color: 'text.secondary' }}>
+							<strong>Remarks:</strong> {(previewData.timingExceededRemarks ?? '').trim() || '—'}
+						</Typography>
+					</Box>
+				) : (
+					<>
+						<Autocomplete<OperationDelayReasonComboOption, false, false, false>
+							fullWidth
+							sx={{ mt: 2 }}
+							options={operationDelayReasonOptions}
+							loading={delayReasonComboBusy}
+							value={selectedDelayReason}
+							onChange={(_, v) => setSelectedDelayReason(v)}
+							getOptionLabel={o => o.label}
+							isOptionEqualToValue={(a, b) => a.value === b.value}
+							disabled={previewData.stepCompleted}
+							renderInput={params => (
+								<TextField
+									{...params}
+									label="Operation delay reason"
+									placeholder="Select a reason code"
+									required={!previewData.stepCompleted}
+									error={!previewData.stepCompleted && !selectedDelayReason}
+									helperText={
+										!previewData.stepCompleted && !selectedDelayReason ? 'Required to proceed' : undefined
+									}
+									InputProps={{
+										...params.InputProps,
+										endAdornment: (
+											<>
+												{delayReasonComboBusy ? <CircularProgress color="inherit" size={20} /> : null}
+												{params.InputProps.endAdornment}
+											</>
+										)
+									}}
+								/>
+							)}
+						/>
+						<TextField
+							fullWidth
+							multiline
+							rows={2}
+							label="Reason for delay"
+							placeholder="Brief explanation for the timing delay"
+							value={
+								previewData.stepCompleted
+									? previewData.timingExceededRemarks || 'No reason provided'
+									: timingExceededRemarks
+							}
+							onChange={e => setTimingExceededRemarks(e.target.value)}
+							required={!previewData.stepCompleted}
+							disabled={previewData.stepCompleted}
+							sx={{
+								mt: 2,
+								'& .MuiOutlinedInput-root': {
+									borderColor:
+										!previewData.stepCompleted && !timingExceededRemarks.trim() ? '#f44336' : '#e0e0e0',
+									'&:hover .MuiOutlinedInput-notchedOutline': {
+										borderColor:
+											!previewData.stepCompleted && !timingExceededRemarks.trim() ? '#f44336' : '#1976d2'
+									},
+									'&.Mui-disabled': {
+										backgroundColor: '#f5f5f5',
+										color: '#666'
+									}
+								}
+							}}
+							error={!previewData.stepCompleted && !timingExceededRemarks.trim()}
+							helperText={'Required to proceed'}
+						/>
+					</>
+				)}
+			</Box>
+		);
+	};
+
 	const renderDataSummary = () => {
 		let { data } = previewData;
 
@@ -457,137 +597,7 @@ const StepPreview = ({
 			// Handle sequence data - show as compact report table
 			return (
 				<Box>
-					{/* Timing Exceeded Warning */}
-					{previewData.timingExceeded && (
-						<Box sx={{ mb: 2 }}>
-							<Alert
-								severity="warning"
-								sx={{
-									mb: 1,
-									border: '1px solid #ff9800',
-									backgroundColor: '#fff8e1',
-									'& .MuiAlert-icon': {
-										color: '#f57c00'
-									}
-								}}
-								icon={<AccessTime sx={{ fontSize: 20 }} />}
-							>
-								<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#e65100' }}>
-										Timing Exceeded
-									</Typography>
-									<Chip
-										label={`+${Math.round((previewData.actualDuration || 0) - (previewData.expectedDuration || 0))}s`}
-										size="small"
-										sx={{
-											backgroundColor: '#ff5722',
-											color: 'white',
-											fontSize: '0.7rem',
-											fontWeight: 600,
-											height: 20
-										}}
-									/>
-								</Box>
-								<Typography variant="body2" sx={{ color: '#bf360c', fontSize: '0.875rem' }}>
-									<strong>{formatExecutionDuration(previewData.actualDuration || 0)}</strong> actual vs{' '}
-									<strong>{formatExecutionDuration(previewData.expectedDuration || 0)}</strong> expected
-								</Typography>
-							</Alert>
-							{browseOnly ? (
-								<Box sx={{ mt: 2, pl: 0.5 }}>
-									{(previewData.timingExceededReasonLabel != null ||
-										previewData.timingExceededReasonCode !== undefined) && (
-										<Typography variant="body2" sx={{ color: 'text.primary' }}>
-											<strong>Delay reason:</strong>{' '}
-											{previewData.timingExceededReasonLabel ??
-												(previewData.timingExceededReasonCode !== undefined
-													? String(previewData.timingExceededReasonCode)
-													: '—')}
-										</Typography>
-									)}
-									<Typography variant="body2" sx={{ mt: 0.75, color: 'text.secondary' }}>
-										<strong>Remarks:</strong>{' '}
-										{(previewData.timingExceededRemarks ?? '').trim() || '—'}
-									</Typography>
-								</Box>
-							) : (
-								<>
-									<Autocomplete<OperationDelayReasonComboOption, false, false, false>
-										fullWidth
-										sx={{ mt: 2 }}
-										options={operationDelayReasonOptions}
-										loading={delayReasonComboBusy}
-										value={selectedDelayReason}
-										onChange={(_, v) => setSelectedDelayReason(v)}
-										getOptionLabel={o => o.label}
-										isOptionEqualToValue={(a, b) => a.value === b.value}
-										disabled={previewData.stepCompleted}
-										renderInput={params => (
-											<TextField
-												{...params}
-												label="Operation delay reason"
-												placeholder="Select a reason code"
-												required={!previewData.stepCompleted}
-												error={!previewData.stepCompleted && !selectedDelayReason}
-												helperText={
-													!previewData.stepCompleted && !selectedDelayReason
-														? 'Required to proceed'
-														: undefined
-												}
-												InputProps={{
-													...params.InputProps,
-													endAdornment: (
-														<>
-															{delayReasonComboBusy ? (
-																<CircularProgress color="inherit" size={20} />
-															) : null}
-															{params.InputProps.endAdornment}
-														</>
-													)
-												}}
-											/>
-										)}
-									/>
-									<TextField
-										fullWidth
-										multiline
-										rows={2}
-										label="Reason for delay"
-										placeholder="Brief explanation for the timing delay"
-										value={
-											previewData.stepCompleted
-												? previewData.timingExceededRemarks || 'No reason provided'
-												: timingExceededRemarks
-										}
-										onChange={e => setTimingExceededRemarks(e.target.value)}
-										required={!previewData.stepCompleted}
-										disabled={previewData.stepCompleted}
-										sx={{
-											mt: 2,
-											'& .MuiOutlinedInput-root': {
-												borderColor:
-													!previewData.stepCompleted && !timingExceededRemarks.trim()
-														? '#f44336'
-														: '#e0e0e0',
-												'&:hover .MuiOutlinedInput-notchedOutline': {
-													borderColor:
-														!previewData.stepCompleted && !timingExceededRemarks.trim()
-															? '#f44336'
-															: '#1976d2'
-												},
-												'&.Mui-disabled': {
-													backgroundColor: '#f5f5f5',
-													color: '#666'
-												}
-											}
-										}}
-										error={!previewData.stepCompleted && !timingExceededRemarks.trim()}
-										helperText={'Required to proceed'}
-									/>
-								</>
-							)}
-						</Box>
-					)}
+					{renderTimingExceededSection()}
 					<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 						Measurement Report ({Array.isArray(data) ? data.length : 0} measurements)
 					</Typography>
@@ -1136,6 +1146,7 @@ const StepPreview = ({
 
 			return (
 				<Box>
+					{renderTimingExceededSection()}
 					{/* Inspection Metadata Header */}
 					{inspectionMeta && (
 						<Box sx={{ mb: 2, p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}>
@@ -2168,21 +2179,7 @@ const StepPreview = ({
 					<Button
 						variant="contained"
 						color="success"
-						onClick={() =>
-							onProceedToNext(
-								previewData.timingExceeded
-									? {
-											timingExceededRemarks:
-												timingExceededRemarks.trim() ||
-												(previewData.timingExceededRemarks ?? '').trim(),
-											timingExceededReasonCode:
-												selectedDelayReason?.value ?? previewData.timingExceededReasonCode,
-											timingExceededReasonLabel:
-												selectedDelayReason?.label ?? previewData.timingExceededReasonLabel
-										}
-									: undefined
-							)
-						}
+						onClick={() => onProceedToNext(buildTimingPayload())}
 						disabled={!canProceed}
 						startIcon={previewData.stepCompleted ? <CheckCircle /> : <ArrowForward />}
 						size="small"

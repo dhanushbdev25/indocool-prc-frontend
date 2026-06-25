@@ -295,7 +295,7 @@ function ReportTimelineSection({
 			);
 		}
 		case 'inspection': {
-			const preview = buildInspectionStepPreviewForReport(step, agg);
+			const preview = buildInspectionStepPreviewForReport(step, agg, stepTimingRoot);
 			return (
 				<Box className={className}>
 					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>

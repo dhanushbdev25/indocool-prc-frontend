@@ -122,6 +122,36 @@ const InspectionBasicInfo = ({ control, errors }: InspectionBasicInfoProps) => {
 						/>
 					</Grid>
 
+					{/* Expected Duration */}
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Controller
+							name="inspectionTiming"
+							control={control}
+							render={({ field }) => (
+								<TextField
+									{...field}
+									fullWidth
+									label="Expected Duration"
+									required
+									type="time"
+									placeholder="HH:MM"
+									helperText={
+										(errors as Record<string, { message?: string }>).inspectionTiming?.message ||
+										'Enter expected duration in HH:MM format'
+									}
+									error={!!(errors as Record<string, unknown>).inspectionTiming}
+									InputLabelProps={{ shrink: true }}
+									inputProps={{ step: 60 }}
+									sx={{
+										'& .MuiOutlinedInput-root': {
+											borderRadius: '8px'
+										}
+									}}
+								/>
+							)}
+						/>
+					</Grid>
+
 					{/* Notes */}
 					<Grid size={{ xs: 12 }}>
 						<Controller

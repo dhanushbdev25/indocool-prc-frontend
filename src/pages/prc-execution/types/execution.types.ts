@@ -158,6 +158,8 @@ export interface StepPreviewData {
 		inspectionName: string;
 		approveByProduction?: boolean;
 		approveByQuality?: boolean;
+		/** Planned/expected duration for the inspection step, in seconds (parallels `stepGroup.sequenceTiming`). */
+		inspectionTiming?: number;
 	};
 }
 
@@ -276,6 +278,8 @@ export interface TimelineStep {
 		inspectionName: string;
 		approveByProduction?: boolean;
 		approveByQuality?: boolean;
+		/** Planned/expected duration for the inspection step, in seconds (parallels `stepGroup.sequenceTiming`). */
+		inspectionTiming?: number;
 	};
 }
 

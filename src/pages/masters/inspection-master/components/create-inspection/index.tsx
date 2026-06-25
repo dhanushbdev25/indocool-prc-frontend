@@ -40,6 +40,22 @@ const cloneBusinessId = (sourceId: string): string => {
 	return (maxBase > 0 ? sourceId.slice(0, maxBase) : '') + CLONE_ID_SUFFIX;
 };
 
+// Helper: HH:MM -> seconds
+const convertTimeToSeconds = (timeString: string): number => {
+	if (!timeString) return 0;
+	const [hours, minutes] = timeString.split(':').map(Number);
+	return (hours * 60 + minutes) * 60;
+};
+
+// Helper: seconds -> HH:MM (defaults to 00:01 when unset)
+const convertSecondsToTime = (seconds: number): string => {
+	if (!seconds || seconds === 0) return '00:01';
+	const totalMinutes = Math.floor(seconds / 60);
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
 const cloneInspectionName = (name: string): string => {
 	const suffix = ' (Copy)';
 	const combined = `${name}${suffix}`;
@@ -133,6 +149,7 @@ const CreateInspection = () => {
 				partImages: inspectionData.detail.inspection.partImages,
 				approveByProduction: inspectionData.detail.inspection.approveByProduction ?? false,
 				approveByQuality: inspectionData.detail.inspection.approveByQuality ?? false,
+				inspectionTiming: convertSecondsToTime(inspectionData.detail.inspection.inspectionTiming || 60),
 				inspectionParameters,
 				createdAt: inspectionData.detail.inspection.createdAt,
 				updatedAt: inspectionData.detail.inspection.updatedAt
@@ -150,6 +167,7 @@ const CreateInspection = () => {
 				partImages: inspectionData.detail.inspection.partImages ?? [],
 				approveByProduction: inspectionData.detail.inspection.approveByProduction ?? false,
 				approveByQuality: inspectionData.detail.inspection.approveByQuality ?? false,
+				inspectionTiming: convertSecondsToTime(inspectionData.detail.inspection.inspectionTiming || 60),
 				inspectionParameters
 			};
 			reset(formData);
@@ -159,7 +177,7 @@ const CreateInspection = () => {
 	const handleNext = async () => {
 		// Define fields to validate for each step
 		const stepFields = {
-			0: ['inspectionName', 'inspectionId', 'status', 'showPartImages', 'partImages'] as const, // Basic info step
+			0: ['inspectionName', 'inspectionId', 'status', 'showPartImages', 'partImages', 'inspectionTiming'] as const, // Basic info step
 			1: ['inspectionParameters'] as const // Parameters step
 		};
 
@@ -222,7 +240,8 @@ const CreateInspection = () => {
 				showPartImages: data.showPartImages ?? false,
 				partImages: data.partImages || [],
 				approveByProduction: data.approveByProduction ?? false,
-				approveByQuality: data.approveByQuality ?? false
+				approveByQuality: data.approveByQuality ?? false,
+				inspectionTiming: convertTimeToSeconds(data.inspectionTiming)
 			};
 
 		const inspectionParameters = (data.inspectionParameters || []).map(param => ({

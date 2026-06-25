@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Git conventions
+
+Do NOT add a `Co-Authored-By: Claude ...` trailer (or any AI/tool attribution) to commit messages or PR descriptions. Follow the existing commit style — check `git log` first.
+
 ## Commands
 
 ```bash

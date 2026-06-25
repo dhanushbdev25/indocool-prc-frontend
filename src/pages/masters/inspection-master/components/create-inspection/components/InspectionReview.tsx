@@ -141,6 +141,16 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 							/>
 						</Box>
 					</Grid>
+					<Grid size={{ xs: 12, md: 6 }}>
+						<Box>
+							<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
+								Expected Duration
+							</Typography>
+							<Typography variant="body1" sx={{ fontWeight: 500 }}>
+								{watchedData.inspectionTiming || 'Not specified'}
+							</Typography>
+						</Box>
+					</Grid>
 					{watchedData.notes && (
 						<Grid size={{ xs: 12 }}>
 							<Divider sx={{ my: 2 }} />

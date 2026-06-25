@@ -8,7 +8,11 @@ import {
 	useUpdatePrcExecutionProgressMutation
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
 import { useFetchRawMaterialsMutation } from '../../../../store/api/business/sap-job-runs/sap-job-runs.api';
-import { calculateSequenceStepGroupTiming, findLastTemplateStepIndex } from '../../utils/timelineCardTiming';
+import {
+	calculateSequenceStepGroupTiming,
+	calculateInspectionStepTiming,
+	findLastTemplateStepIndex
+} from '../../utils/timelineCardTiming';
 import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
 import { canEditStepForRole } from '../../utils/roleStepAccess';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
@@ -170,8 +174,13 @@ const ExecutePrc = () => {
 		}
 
 		if (step.type === 'inspection' && step.stepData) {
-			const prcTemplateStepId = step.stepData.prcTemplateStepId;
-			return existingTimingData[prcTemplateStepId.toString()] !== undefined;
+			// The inspection bucket is shared with approval-action timestamps
+			// (productionApproved/ctqApproved/stepCompleted), so existence of the bucket
+			// does NOT mean step timing has been written. Check the actual interval keys.
+			const bucket = existingTimingData[step.stepData.prcTemplateStepId.toString()] as
+				| Record<string, unknown>
+				| undefined;
+			return typeof bucket?.startTime === 'string' && typeof bucket?.endTime === 'string';
 		}
 
 		if (step.type === 'setup') {
@@ -333,14 +342,11 @@ const ExecutePrc = () => {
 
 	// Update preview data timing when execution data changes (after API refetch)
 	useEffect(() => {
-		if (
-			executionData &&
-			currentView === 'preview' &&
-			previewData &&
-			previewData.type === 'sequence' &&
-			currentStep?.stepGroup
-		) {
-			const actualData = (executionData as { data: ExecutionData }).data;
+		if (!executionData || currentView !== 'preview' || !previewData || !currentStep) return;
+
+		const actualData = (executionData as { data: ExecutionData }).data;
+
+		if (previewData.type === 'sequence' && currentStep.stepGroup) {
 			const timingResult = calculateSequenceStepGroupTiming(
 				currentStep,
 				actualData.stepStartEndTime as Record<string, unknown>
@@ -370,6 +376,54 @@ const ExecutePrc = () => {
 			}
 
 			// Only update if timing values have changed
+			if (
+				previewData.timingExceeded !== timingResult.timingExceeded ||
+				previewData.actualDuration !== timingResult.actualDuration ||
+				previewData.expectedDuration !== timingResult.expectedDuration ||
+				previewData.timingExceededRemarks !== timingExceededRemarks ||
+				previewData.timingExceededReasonCode !== timingExceededReasonCode ||
+				previewData.timingExceededReasonLabel !== timingExceededReasonLabel
+			) {
+				setPreviewData(prev =>
+					prev
+						? {
+								...prev,
+								timingExceeded: timingResult.timingExceeded,
+								actualDuration: timingResult.actualDuration,
+								expectedDuration: timingResult.expectedDuration,
+								timingExceededRemarks: timingExceededRemarks,
+								timingExceededReasonCode,
+								timingExceededReasonLabel
+							}
+						: null
+				);
+			}
+		} else if (previewData.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
+			const timingResult = calculateInspectionStepTiming(
+				currentStep,
+				actualData.stepStartEndTime as Record<string, unknown>
+			);
+
+			// Inspection bucket is flat — remarks/reason live alongside approvals
+			let timingExceededRemarks = '';
+			let timingExceededReasonCode: string | number | undefined;
+			let timingExceededReasonLabel: string | undefined;
+			const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
+			const inspectionBucket = getCurrentAggregatedData()?.[prcTemplateStepId.toString()] as
+				| Record<string, unknown>
+				| undefined;
+			if (inspectionBucket) {
+				timingExceededRemarks = (inspectionBucket.timingExceededRemarks as string) || '';
+				const rc = inspectionBucket.timingExceededReasonCode;
+				if (typeof rc === 'string' || typeof rc === 'number') {
+					timingExceededReasonCode = rc;
+				}
+				const rl = inspectionBucket.timingExceededReasonLabel;
+				if (typeof rl === 'string') {
+					timingExceededReasonLabel = rl;
+				}
+			}
+
 			if (
 				previewData.timingExceeded !== timingResult.timingExceeded ||
 				previewData.actualDuration !== timingResult.actualDuration ||
@@ -561,6 +615,9 @@ const ExecutePrc = () => {
 				let productionApproved = false;
 				let ctqApproved = false;
 				let stepCompleted = false;
+				let timingExceededRemarks = '';
+				let timingExceededReasonCode: string | number | undefined;
+				let timingExceededReasonLabel: string | undefined;
 
 				if (mergedAggregatedData && prcTemplateStepId) {
 					const templateData = mergedAggregatedData[prcTemplateStepId.toString()] as Record<string, unknown>;
@@ -569,8 +626,20 @@ const ExecutePrc = () => {
 						ctqApproved =
 							!currentStep.ctq || templateData.ctqApproved === true || templateData.partialCtqApprove === true;
 						stepCompleted = templateData.stepCompleted === true;
+						timingExceededRemarks = (templateData.timingExceededRemarks as string) || '';
+						const rc = templateData.timingExceededReasonCode;
+						if (typeof rc === 'string' || typeof rc === 'number') {
+							timingExceededReasonCode = rc;
+						}
+						const rl = templateData.timingExceededReasonLabel;
+						if (typeof rl === 'string') {
+							timingExceededReasonLabel = rl;
+						}
 					}
 				}
+
+				// Compute timing-exceeded vs inspectionTiming
+				const inspectionTimingResult = calculateInspectionStepTiming(currentStep, mergedTimingData);
 
 				const newPreviewData: StepPreviewData = {
 					stepNumber: currentStep.stepNumber,
@@ -581,6 +650,12 @@ const ExecutePrc = () => {
 					productionApproved: productionApproved,
 					ctqApproved: ctqApproved,
 					stepCompleted: stepCompleted,
+					timingExceeded: inspectionTimingResult.timingExceeded,
+					actualDuration: inspectionTimingResult.actualDuration,
+					expectedDuration: inspectionTimingResult.expectedDuration,
+					timingExceededRemarks,
+					timingExceededReasonCode,
+					timingExceededReasonLabel,
 					inspectionParameters: currentStep.inspectionParameters,
 					inspectionMetadata: currentStep.inspectionMetadata
 				};
@@ -726,8 +801,26 @@ const ExecutePrc = () => {
 		return allStepsFilled;
 	};
 
+	// Helper: apply timing-exceeded remarks + delay reason into a step's aggregated bucket.
+	// Used by every approval/complete handler so the comment is persisted on the first action and refreshed on later ones.
+	const applyTimingExceededMetadata = (bucket: Record<string, unknown>, payload?: ProceedFromPreviewPayload): Record<string, unknown> => {
+		if (!previewData?.timingExceeded) return bucket;
+		const next: Record<string, unknown> = { ...bucket, timingExceeded: true };
+		const remarks = payload?.timingExceededRemarks;
+		if (remarks) {
+			next.timingExceededRemarks = remarks;
+		}
+		if (payload?.timingExceededReasonCode !== undefined) {
+			next.timingExceededReasonCode = payload.timingExceededReasonCode;
+		}
+		if (payload?.timingExceededReasonLabel) {
+			next.timingExceededReasonLabel = payload.timingExceededReasonLabel;
+		}
+		return next;
+	};
+
 	// Handle approval actions
-	const handleApproveProduction = async () => {
+	const handleApproveProduction = async (payload?: ProceedFromPreviewPayload) => {
 		if (isViewOnlyMode || !currentStep || !executionData || !previewData) return;
 
 		try {
@@ -789,12 +882,15 @@ const ExecutePrc = () => {
 					stepGroupData[currentStep.stepGroup.id.toString()] = {};
 				}
 
-				// Preserve existing step data and add approval
+				// Preserve existing step data and add approval (+ timing metadata if exceeded)
 				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
-				stepGroupData[currentStep.stepGroup.id.toString()] = {
-					...existingGroupData,
-					productionApproved: true
-				};
+				stepGroupData[currentStep.stepGroup.id.toString()] = applyTimingExceededMetadata(
+					{
+						...existingGroupData,
+						productionApproved: true
+					},
+					payload
+				);
 			} else if (currentStep.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
 				// Handle inspection steps
 				const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
@@ -804,12 +900,15 @@ const ExecutePrc = () => {
 					updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {};
 				}
 
-				// Preserve existing step data and add approval
+				// Preserve existing step data and add approval (+ timing metadata if exceeded)
 				const existingStepData = updatedPrcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {
-					...existingStepData,
-					productionApproved: true
-				};
+				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = applyTimingExceededMetadata(
+					{
+						...existingStepData,
+						productionApproved: true
+					},
+					payload
+				);
 			}
 
 			console.log('After PRODUCTION approval update:', updatedPrcAggregatedSteps);
@@ -838,7 +937,7 @@ const ExecutePrc = () => {
 		}
 	};
 
-	const handleApproveCTQ = async () => {
+	const handleApproveCTQ = async (payload?: ProceedFromPreviewPayload) => {
 		if (isViewOnlyMode || !currentStep || !executionData || !previewData) return;
 
 		try {
@@ -900,12 +999,15 @@ const ExecutePrc = () => {
 					stepGroupData[currentStep.stepGroup.id.toString()] = {};
 				}
 
-				// Preserve existing step data and add approval
+				// Preserve existing step data and add approval (+ timing metadata if exceeded)
 				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
-				stepGroupData[currentStep.stepGroup.id.toString()] = {
-					...existingGroupData,
-					ctqApproved: true
-				};
+				stepGroupData[currentStep.stepGroup.id.toString()] = applyTimingExceededMetadata(
+					{
+						...existingGroupData,
+						ctqApproved: true
+					},
+					payload
+				);
 			} else if (currentStep.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
 				// Handle inspection steps
 				const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
@@ -915,12 +1017,15 @@ const ExecutePrc = () => {
 					updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {};
 				}
 
-				// Preserve existing step data and add approval
+				// Preserve existing step data and add approval (+ timing metadata if exceeded)
 				const existingStepData = updatedPrcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {
-					...existingStepData,
-					ctqApproved: true
-				};
+				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = applyTimingExceededMetadata(
+					{
+						...existingStepData,
+						ctqApproved: true
+					},
+					payload
+				);
 			}
 
 			console.log('After CTQ approval update:', updatedPrcAggregatedSteps);
@@ -949,7 +1054,7 @@ const ExecutePrc = () => {
 		}
 	};
 
-	const handlePartialApproveCTQ = async () => {
+	const handlePartialApproveCTQ = async (payload?: ProceedFromPreviewPayload) => {
 		if (isViewOnlyMode || !currentStep || !executionData || !previewData) return;
 
 		try {
@@ -1011,12 +1116,15 @@ const ExecutePrc = () => {
 					stepGroupData[currentStep.stepGroup.id.toString()] = {};
 				}
 
-				// Preserve existing step data and add partial approval
+				// Preserve existing step data and add partial approval (+ timing metadata if exceeded)
 				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
-				stepGroupData[currentStep.stepGroup.id.toString()] = {
-					...existingGroupData,
-					partialCtqApprove: true
-				};
+				stepGroupData[currentStep.stepGroup.id.toString()] = applyTimingExceededMetadata(
+					{
+						...existingGroupData,
+						partialCtqApprove: true
+					},
+					payload
+				);
 			} else if (currentStep.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
 				// Handle inspection steps
 				const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
@@ -1026,12 +1134,15 @@ const ExecutePrc = () => {
 					updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {};
 				}
 
-				// Preserve existing step data and add partial approval
+				// Preserve existing step data and add partial approval (+ timing metadata if exceeded)
 				const existingStepData = updatedPrcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = {
-					...existingStepData,
-					partialCtqApprove: true
-				};
+				updatedPrcAggregatedSteps[prcTemplateStepId.toString()] = applyTimingExceededMetadata(
+					{
+						...existingStepData,
+						partialCtqApprove: true
+					},
+					payload
+				);
 			}
 
 			console.log('After partial CTQ approval update:', updatedPrcAggregatedSteps);
@@ -1174,12 +1285,15 @@ const ExecutePrc = () => {
 					mergedAggregatedData[prcTemplateStepId.toString()] = {};
 				}
 
-				// Preserve existing data and add stepCompleted flag
+				// Preserve existing data and add stepCompleted flag (+ timing metadata if exceeded)
 				const existingStepData = mergedAggregatedData[prcTemplateStepId.toString()] as Record<string, unknown>;
-				mergedAggregatedData[prcTemplateStepId.toString()] = {
-					...existingStepData,
-					stepCompleted: true
-				};
+				mergedAggregatedData[prcTemplateStepId.toString()] = applyTimingExceededMetadata(
+					{
+						...existingStepData,
+						stepCompleted: true
+					},
+					payload
+				);
 			}
 
 			console.log('handleProceedToNext - Data being sent:', {
@@ -1388,10 +1502,29 @@ const ExecutePrc = () => {
 					let productionApproved = false;
 					let ctqApproved = false;
 					let stepCompleted = false;
+					let timingExceededRemarks = '';
+					let timingExceededReasonCode: string | number | undefined;
+					let timingExceededReasonLabel: string | undefined;
 
 					productionApproved = stepData.productionApproved === true;
 					ctqApproved = !targetStep.ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true;
 					stepCompleted = stepData.stepCompleted === true;
+					timingExceededRemarks = (stepData.timingExceededRemarks as string) || '';
+					const rc = stepData.timingExceededReasonCode;
+					if (typeof rc === 'string' || typeof rc === 'number') {
+						timingExceededReasonCode = rc;
+					}
+					const rl = stepData.timingExceededReasonLabel;
+					if (typeof rl === 'string') {
+						timingExceededReasonLabel = rl;
+					}
+
+					// Compute timing-exceeded vs inspectionTiming
+					const actualData = (executionData as { data: ExecutionData }).data;
+					const inspectionTimingResult = calculateInspectionStepTiming(
+						targetStep,
+						actualData.stepStartEndTime as Record<string, unknown>
+					);
 
 					const newPreviewData: StepPreviewData = {
 						stepNumber: targetStep.stepNumber,
@@ -1402,6 +1535,12 @@ const ExecutePrc = () => {
 						productionApproved: productionApproved,
 						ctqApproved: ctqApproved,
 						stepCompleted: stepCompleted,
+						timingExceeded: inspectionTimingResult.timingExceeded,
+						actualDuration: inspectionTimingResult.actualDuration,
+						expectedDuration: inspectionTimingResult.expectedDuration,
+						timingExceededRemarks,
+						timingExceededReasonCode,
+						timingExceededReasonLabel,
 						inspectionParameters: targetStep.inspectionParameters,
 						inspectionMetadata: targetStep.inspectionMetadata
 					};
