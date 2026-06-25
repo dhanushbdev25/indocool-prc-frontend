@@ -100,7 +100,7 @@ const ListPart = () => {
 						createdAt: item.partMaster.createdAt || '',
 						updatedAt: item.partMaster.updatedAt || '',
 						mouldCodes,
-						variantId: item.partMaster.customerVariantId != null ? String(item.partMaster.customerVariantId) : ''
+						variantId: item.partMaster.customerVariantName != null ? String(item.partMaster.customerVariantName) : ''
 					};
 				}
 			);

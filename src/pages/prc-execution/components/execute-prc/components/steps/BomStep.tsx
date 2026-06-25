@@ -263,6 +263,7 @@ const BomStep = ({
 							calculatedMax: savedEntry.calculatedMax || 0,
 							calculatedMin: savedEntry.calculatedMin || 0,
 							catalystQuantity: savedEntry.catalystQuantity || '',
+							savedEntry : savedEntry.catalystQuantity ? true : false,
 							validationStatus: savedEntry.validationStatus || 'Accepted',
 							humidity: savedEntry.humidity || '',
 							canNumber:
@@ -729,7 +730,7 @@ const BomStep = ({
 														onChange={e => handleInputChange(entry.id, 'temperature', e.target.value)}
 														error={!!errors[`${entry.id}_temperature`]}
 														helperText={errors[`${entry.id}_temperature`] || 'Enter temperature in °C'}
-														disabled={isReadOnly || entry.blocked}
+														disabled={isReadOnly || entry.blocked || entry.savedEntry}
 														InputProps={{
 															startAdornment: (
 																<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
@@ -755,7 +756,7 @@ const BomStep = ({
 													onChange={e => handleInputChange(entry.id, 'humidity', e.target.value)}
 													error={!!errors[`${entry.id}_humidity`]}
 													helperText={errors[`${entry.id}_humidity`] || 'Enter humidity in %'}
-													disabled={isReadOnly || entry.blocked}
+													disabled={isReadOnly || entry.blocked || entry.savedEntry}
 													InputProps={{
 														startAdornment: (
 															<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
@@ -780,7 +781,7 @@ const BomStep = ({
 													onChange={e => handleInputChange(entry.id, 'actualQuantity', e.target.value)}
 													error={!!errors[`${entry.id}_actualQuantity`]}
 													helperText={errors[`${entry.id}_actualQuantity`] || 'Enter actual quantity'}
-													disabled={isReadOnly || entry.blocked}
+													disabled={isReadOnly || entry.blocked || entry.savedEntry}
 													InputProps={{
 														startAdornment: (
 															<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
@@ -800,7 +801,7 @@ const BomStep = ({
 													onChange={e => handleInputChange(entry.id, 'catalystQuantity', e.target.value)}
 													error={!!errors[`${entry.id}_catalyst`]}
 													helperText={errors[`${entry.id}_catalyst`] || 'Enter catalyst quantity in ml'}
-													disabled={isReadOnly || entry.blocked}
+													disabled={isReadOnly || entry.blocked || entry.savedEntry}
 													InputProps={{
 														startAdornment: (
 															<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
@@ -818,7 +819,7 @@ const BomStep = ({
 													value={entry.canNumber}
 													onChange={e => handleInputChange(entry.id, 'canNumber', e.target.value)}
 													helperText="Optional"
-													disabled={isReadOnly || entry.blocked}
+													disabled={isReadOnly || entry.blocked || entry.savedEntry}
 												/>
 											</Grid>
 
@@ -831,7 +832,7 @@ const BomStep = ({
 														handleInputChange(entry.id, 'hygrometerInstrumentId', e.target.value)
 													}
 													helperText="Optional"
-													disabled={isReadOnly || entry.blocked}
+													disabled={isReadOnly || entry.blocked || entry.savedEntry}
 												/>
 											</Grid>
 
@@ -844,7 +845,7 @@ const BomStep = ({
 														handleInputChange(entry.id, 'weighingMachineInstrumentId', e.target.value)
 													}
 													helperText="Optional"
-													disabled={isReadOnly || entry.blocked}
+													disabled={isReadOnly || entry.blocked || entry.savedEntry}
 												/>
 											</Grid>
 										</Grid>
@@ -855,7 +856,7 @@ const BomStep = ({
 											</Typography>
 											<Grid container spacing={2}>
 												<Grid size={{ xs: 12, md: 4 }}>
-													<FormControl fullWidth error={!!errors[`${entry.id}_role`]} disabled={isReadOnly || entry.blocked}>
+													<FormControl fullWidth error={!!errors[`${entry.id}_role`]} disabled={isReadOnly || entry.blocked || entry.savedEntry}>
 														<InputLabel>Skill level</InputLabel>
 														<Select
 															value={entry.role}
@@ -882,7 +883,7 @@ const BomStep = ({
 														onChange={e => handleInputChange(entry.id, 'employeeName', e.target.value)}
 														error={!!errors[`${entry.id}_employeeName`]}
 														helperText={errors[`${entry.id}_employeeName`]}
-														disabled={isReadOnly || entry.blocked}
+														disabled={isReadOnly || entry.blocked || entry.savedEntry}
 													/>
 												</Grid>
 												<Grid size={{ xs: 12, md: 4 }}>
@@ -893,7 +894,7 @@ const BomStep = ({
 														onChange={e => handleInputChange(entry.id, 'employeeCode', e.target.value)}
 														error={!!errors[`${entry.id}_employeeCode`]}
 														helperText={errors[`${entry.id}_employeeCode`]}
-														disabled={isReadOnly || entry.blocked}
+														disabled={isReadOnly || entry.blocked || entry.savedEntry}
 													/>
 												</Grid>
 											</Grid>
@@ -903,7 +904,7 @@ const BomStep = ({
 										<Box sx={{ mt: 3 }}>
 											<FormControl
 												component="fieldset"
-												disabled={isReadOnly || entry.blocked}
+												disabled={isReadOnly || entry.blocked || entry.savedEntry}
 												fullWidth
 												error={!!errors[`${entry.id}_fod`]}
 											>
@@ -952,7 +953,7 @@ const BomStep = ({
 															errors[`${entry.id}_fodComment`] ||
 															`Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
 														}
-														disabled={isReadOnly || entry.blocked}
+														disabled={isReadOnly || entry.blocked || entry.savedEntry}
 														required
 														sx={{ mt: 1.5 }}
 													/>

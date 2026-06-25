@@ -111,6 +111,7 @@ export interface PartMaster {
 	catalyst?: number | null;
 	prcTemplate?: number | null;
 	customerVariantId?: number | null;
+	customerVariantName?: text | null;
 	createdBy?: number | null;
 	updatedBy?: number | null;
 	createdAt?: string | null;

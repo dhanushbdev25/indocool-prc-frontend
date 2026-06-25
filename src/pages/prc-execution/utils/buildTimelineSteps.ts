@@ -175,7 +175,7 @@ export function buildTimelineSteps(
 						steps.push({
 							stepNumber: stepNumber++,
 							type: 'sequence',
-							title: stepGroup.processName,
+							title: `${stepGroup.processName} (${stepGroup.processDescription})`,
 							description: stepGroup.processDescription,
 							status: isCompleted ? 'completed' : isReadyForCompletion ? 'in-progress' : 'pending',
 							ctq: stepGroup.steps.some(step => step.ctq),
@@ -183,7 +183,7 @@ export function buildTimelineSteps(
 							prcTemplateStepId: prcTemplateStep.id,
 							stepGroup: {
 								id: stepGroup.id,
-								processName: stepGroup.processName,
+								processName: `${stepGroup.processName} (${stepGroup.processDescription})`,
 								processDescription: stepGroup.processDescription,
 								sequenceTiming: stepGroup.sequenceTiming || 0, // Default value since sequenceTiming is not available in stepGroup
 								steps: stepGroup.steps.map(step => ({
