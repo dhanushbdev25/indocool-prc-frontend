@@ -55,6 +55,20 @@ const ChartCardSkeleton = () => (
 	</Box>
 );
 
+const DelayCardSkeleton = () => (
+	<Box sx={analyticsPanel}>
+		<Box sx={analyticsPanelHeader}>
+			<Skeleton variant="text" width="60%" height={18} />
+			<Skeleton variant="rounded" width={36} height={22} sx={{ borderRadius: 11 }} />
+		</Box>
+		<Box sx={[analyticsPanelBody, { height: 280 }]}>
+			{Array.from({ length: 3 }).map((_, i) => (
+				<Skeleton key={i} variant="rectangular" height={56} sx={{ borderRadius: 1, mb: 1 }} />
+			))}
+		</Box>
+	</Box>
+);
+
 export const DashboardSkeleton = () => (
 	<Box component="article" sx={{ minWidth: 0, pb: { xs: 2, sm: 3 } }}>
 		<Box sx={{ pb: 2.5, mb: 0.5, borderBottom: 1, borderColor: 'divider' }}>
@@ -90,6 +104,18 @@ export const DashboardSkeleton = () => (
 					{Array.from({ length: 6 }).map((_, i) => (
 						<Grid key={i} size={{ xs: 12, md: 6, xl: 4 }}>
 							<ChartCardSkeleton />
+						</Grid>
+					))}
+				</Grid>
+			</Box>
+
+			<Box>
+				<Skeleton variant="text" width={160} height={22} sx={{ mb: 0.75 }} />
+				<Skeleton variant="text" width={340} height={16} sx={{ mb: 2 }} />
+				<Grid container spacing={2}>
+					{Array.from({ length: 8 }).map((_, i) => (
+						<Grid key={i} size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
+							<DelayCardSkeleton />
 						</Grid>
 					))}
 				</Grid>

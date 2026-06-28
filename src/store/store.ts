@@ -16,6 +16,8 @@ import { partApi } from './api/business/part-master/part.api';
 import { mouldApi } from './api/business/mould/mould.api';
 import { prcExecutionApi } from './api/business/prc-execution/prc-execution.api';
 import { dashboardApi } from './api/business/dashboard/dashboard.api';
+import { dpmoApi } from './api/business/dpmo/dpmo.api';
+import { reportsApi } from './api/business/reports/reports.api';
 import { sapJobRunsApi } from './api/business/sap-job-runs/sap-job-runs.api';
 import { filesApi } from './api/business/files/files.api';
 import { attachListViewPersistence, loadPersistedListView } from './persistListView';
@@ -60,6 +62,8 @@ export const store = configureStore({
 			mouldApi.middleware,
 			prcExecutionApi.middleware,
 			dashboardApi.middleware,
+			dpmoApi.middleware,
+			reportsApi.middleware,
 			sapJobRunsApi.middleware,
 			filesApi.middleware,
 			rtkQueryErrorLogger

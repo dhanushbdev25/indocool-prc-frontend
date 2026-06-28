@@ -12,6 +12,8 @@ import Cookie from '../../utils/Cookie';
 import { prcExecutionApi } from '../api/business/prc-execution/prc-execution.api';
 import { sapJobRunsApi } from '../api/business/sap-job-runs/sap-job-runs.api';
 import { dashboardApi } from '../api/business/dashboard/dashboard.api';
+import { dpmoApi } from '../api/business/dpmo/dpmo.api';
+import { reportsApi } from '../api/business/reports/reports.api';
 import { filesApi } from '../api/business/files/files.api';
 import listViewReducer from '../slices/listView';
 import { clearPersistedListView } from '../persistListView';
@@ -28,6 +30,8 @@ const rootReducer = combineReducers({
 	[mouldApi.reducerPath]: mouldApi.reducer,
 	[sapJobRunsApi.reducerPath]: sapJobRunsApi.reducer,
 	[dashboardApi.reducerPath]: dashboardApi.reducer,
+	[dpmoApi.reducerPath]: dpmoApi.reducer,
+	[reportsApi.reducerPath]: reportsApi.reducer,
 	[filesApi.reducerPath]: filesApi.reducer,
 	listView: listViewReducer
 });

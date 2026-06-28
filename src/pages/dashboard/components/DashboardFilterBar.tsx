@@ -31,7 +31,7 @@ interface DashboardFilterBarProps {
 	unitOptions: FilterComboOption[];
 	workstationOptions: string[];
 	shiftOptions: string[];
-	projectOptions: string[];
+	projectOptions: FilterComboOption[];
 	disabled?: boolean;
 }
 

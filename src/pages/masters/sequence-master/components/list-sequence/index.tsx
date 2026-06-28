@@ -59,12 +59,6 @@ const ListSequence = () => {
 				options: deriveOptions(allSequenceData, r => r.sequenceName)
 			},
 			{
-				kind: 'autocomplete',
-				key: 'totalSteps',
-				label: 'Steps',
-				options: deriveOptions(allSequenceData, r => String(r.totalSteps))
-			},
-			{
 				kind: 'dateRange',
 				key: 'createdAt',
 				label: 'Created On'
@@ -84,7 +78,6 @@ const ListSequence = () => {
 		return allSequenceData.filter(seq => {
 			if (!matchesMulti(seq.sequenceId, filters.sequenceId)) return false;
 			if (!matchesMulti(seq.sequenceName, filters.sequenceName)) return false;
-			if (!matchesMulti(String(seq.totalSteps), filters.totalSteps)) return false;
 			if (!matchesDateRange(seq.createdAt, filters.createdAt)) return false;
 			if (!matchesMulti(seq.status, filters.status)) return false;
 			if (!term) return true;

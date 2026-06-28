@@ -78,9 +78,18 @@ export interface StageMetrics {
 	packaging: MetricBlock;
 }
 
+export interface DelayReasonItem {
+	reasonLabel: string;
+	remarks: string;
+	count: number;
+}
+
+export type StageDelayReasons = Record<StageKey, DelayReasonItem[]>;
+
 export interface MetricsData {
 	output: StageMetrics;
 	manpower: StageMetrics;
+	delayReasons: StageDelayReasons;
 }
 
 export interface MetricsResponse {
@@ -160,6 +169,26 @@ export const coerceStageMetrics = (raw: unknown): StageMetrics => {
 	};
 };
 
+const coerceDelayReasonItem = (raw: unknown): DelayReasonItem => {
+	const o = isRecord(raw) ? raw : {};
+	return {
+		reasonLabel: typeof o.reasonLabel === 'string' ? o.reasonLabel : '',
+		remarks: typeof o.remarks === 'string' ? o.remarks : '',
+		count: coerceNumber(o.count)
+	};
+};
+
+const coerceDelayReasonList = (raw: unknown): DelayReasonItem[] =>
+	Array.isArray(raw) ? raw.map(coerceDelayReasonItem) : [];
+
+export const coerceStageDelayReasons = (raw: unknown): StageDelayReasons => {
+	const o = isRecord(raw) ? raw : {};
+	return STAGE_KEYS.reduce((acc, key) => {
+		acc[key] = coerceDelayReasonList(o[key]);
+		return acc;
+	}, {} as StageDelayReasons);
+};
+
 export const isMetricsResponse = (response: unknown): response is MetricsResponse => {
 	if (!isRecord(response) || !isRecord(response.data)) return false;
 	const { output, manpower } = response.data;
@@ -171,12 +200,14 @@ export const parseMetricsResponse = (response: unknown): MetricsData => {
 		console.warn('Invalid metrics response structure', response);
 		return {
 			output: coerceStageMetrics(null),
-			manpower: coerceStageMetrics(null)
+			manpower: coerceStageMetrics(null),
+			delayReasons: coerceStageDelayReasons(null)
 		};
 	}
 	return {
 		output: coerceStageMetrics(response.data.output),
-		manpower: coerceStageMetrics(response.data.manpower)
+		manpower: coerceStageMetrics(response.data.manpower),
+		delayReasons: coerceStageDelayReasons(response.data.delayReasons)
 	};
 };
 

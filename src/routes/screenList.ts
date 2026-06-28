@@ -10,12 +10,15 @@ import {
 	PlayCircleFilled,
 	Dashboard as DashboardIcon,
 	CloudSync,
-	Monitor as MonitorIcon
+	Monitor as MonitorIcon,
+	Assessment as AssessmentIcon
 } from '@mui/icons-material';
 
 // Lazy-loaded components
 export const imports = {
 	dashboard: Loadable(lazy(() => import('../pages/dashboard/Dashboard'))),
+	dpmoDashboard: Loadable(lazy(() => import('../pages/dpmo-dashboard/DpmoDashboard'))),
+	reports: Loadable(lazy(() => import('../pages/reports/Reports'))),
 	catalystMaster: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/list-catalyst'))),
 	createCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/create-catalyst'))),
 	viewCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/view-catalyst'))),
@@ -80,13 +83,38 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				isInitial: true,
 				order: 1,
 				showInSidebar: true
+			},
+			{
+				icon: DashboardIcon,
+				text: 'DPMO Dashboard',
+				path: 'dpmo-dashboard',
+				element: imports.dpmoDashboard,
+				permission: 'DPMO_DASHBOARD_VIEW',
+				order: 2,
+				showInSidebar: true
+			}
+		]
+	},
+	{
+		text: 'Reports',
+		icon: AssessmentIcon,
+		order: 1,
+		submodules: [
+			{
+				icon: AssessmentIcon,
+				text: 'Reports',
+				path: 'reports',
+				element: imports.reports,
+				permission: 'REPORT_VIEW',
+				order: 1,
+				showInSidebar: true
 			}
 		]
 	},
 	{
 		text: 'Masters',
 		icon: Settings,
-		order: 1,
+		order: 2,
 		submodules: [
 			{
 				icon: Science,
@@ -236,7 +264,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 	{
 		text: 'Monitor',
 		icon: MonitorIcon,
-		order: 2,
+		order: 3,
 		submodules: [
 			{
 				icon: CloudSync,
@@ -259,7 +287,7 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 	{
 		text: 'PRC Execution',
 		icon: PlayArrow,
-		order: 3,
+		order: 4,
 		submodules: [
 			{
 				icon: PlayCircleFilled,

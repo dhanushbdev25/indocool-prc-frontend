@@ -18,6 +18,7 @@ import { ProjectOutputChart } from './components/moulding/ProjectOutputChart';
 import { ProjectLossChart } from './components/moulding/ProjectLossChart';
 import { WorkstationOutputChart } from './components/moulding/WorkstationOutputChart';
 import { DatewiseOutputChart } from './components/trends/DatewiseOutputChart';
+import { DelayReasonsSection } from './components/delay-reasons/DelayReasonsSection';
 import { DashboardErrorBanner } from './components/DashboardErrorBanner';
 import { FullScreenFormSavingOverlay } from '../../components/common/FullScreenFormSavingOverlay';
 
@@ -50,9 +51,6 @@ const Dashboard = () => {
 
 	// Options follow draft.units so the workstation list refreshes as the user edits the selection.
 	const { unitOptions, workstationOptions, shiftOptions, projectOptions } = useDashboardFilterOptions({
-		from,
-		to,
-		isReady,
 		selectedUnits: draftFilters.units
 	});
 
@@ -162,6 +160,15 @@ const Dashboard = () => {
 						))}
 					</Grid>
 				</DashboardSection>
+
+				{metricsQuery.data ? (
+					<DashboardSection
+						title="Delay reasons"
+						subtitle="Reported reasons for production delays by manufacturing stage"
+					>
+						<DelayReasonsSection data={metricsQuery.data.delayReasons} />
+					</DashboardSection>
+				) : null}
 			</Stack>
 
 			<FullScreenFormSavingOverlay open={isRefreshing && !isLoading} message="Refreshing dashboard…" />

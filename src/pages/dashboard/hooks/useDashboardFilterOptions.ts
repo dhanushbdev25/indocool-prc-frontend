@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import type { FilterComboOption } from '../../../components/masters/filters/FilterAutocomplete';
+import { useFetchCustomersQuery } from '../../../store/api/business/part-master/part.api';
 import { useFetchWorkstationsComboQuery } from '../../../store/api/business/prc-execution/prc-execution.api';
 import { useFetchPlantComboQuery } from '../../../store/api/business/prc-template/prc-template.api';
-import { useFetchMouldingAnalysisQuery } from '../../../store/api/business/dashboard/dashboard.api';
 import { SHIFT_OPTION_VALUES } from '../../../constants/shiftOptions';
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -39,19 +39,13 @@ const uniqueSorted = (values: string[]): string[] =>
 	[...new Set(values.map(v => v.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 
 interface UseDashboardFilterOptionsArgs {
-	from: string;
-	to: string;
-	isReady: boolean;
 	selectedUnits: string[];
 }
 
-export const useDashboardFilterOptions = ({ from, to, isReady, selectedUnits }: UseDashboardFilterOptionsArgs) => {
+export const useDashboardFilterOptions = ({ selectedUnits }: UseDashboardFilterOptionsArgs) => {
 	// Linked-master plant combo — called with no partId so the backend returns the full plant list.
 	const { data: plantsData, isLoading: isPlantsLoading } = useFetchPlantComboQuery({});
-	const { data: mouldingData, isLoading: isMouldingOptionsLoading } = useFetchMouldingAnalysisQuery(
-		{ from, to },
-		{ skip: !isReady }
-	);
+	const { data: customersData, isLoading: isCustomersLoading } = useFetchCustomersQuery();
 
 	const plantRows = useMemo(
 		() => (isRecord(plantsData) && Array.isArray(plantsData.data) ? plantsData.data : []),
@@ -81,8 +75,13 @@ export const useDashboardFilterOptions = ({ from, to, isReady, selectedUnits }: 
 	}, [selectedUnits.length, workstationComboData]);
 
 	const projectOptions = useMemo(
-		() => uniqueSorted((mouldingData?.projectWise ?? []).map(item => item.project)),
-		[mouldingData]
+		() =>
+			uniqueSortedByLabel(
+				(customersData?.data ?? [])
+					.map(toPlantOption)
+					.filter((option): option is FilterComboOption => option !== null)
+			),
+		[customersData]
 	);
 
 	const shiftOptions = useMemo(() => [...SHIFT_OPTION_VALUES], []);
@@ -92,6 +91,6 @@ export const useDashboardFilterOptions = ({ from, to, isReady, selectedUnits }: 
 		workstationOptions,
 		projectOptions,
 		shiftOptions,
-		isLoading: isPlantsLoading || isMouldingOptionsLoading || isWorkstationsLoading || isWorkstationsFetching
+		isLoading: isPlantsLoading || isCustomersLoading || isWorkstationsLoading || isWorkstationsFetching
 	};
 };

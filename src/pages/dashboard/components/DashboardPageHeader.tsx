@@ -21,7 +21,7 @@ interface DashboardPageHeaderProps {
 	unitOptions: FilterComboOption[];
 	workstationOptions: string[];
 	shiftOptions: string[];
-	projectOptions: string[];
+	projectOptions: FilterComboOption[];
 	filtersDisabled?: boolean;
 }
 
