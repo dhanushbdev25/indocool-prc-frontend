@@ -18,7 +18,7 @@ export const dashboardApi = createApi({
 	endpoints: builder => ({
 		fetchMetrics: builder.query<MetricsData, DashboardQueryParams>({
 			query: args => ({
-				url: 'dashboardPre/metrics',
+				url: 'dashboard/metrics',
 				method: 'GET',
 				params: buildDashboardQueryParams(args)
 			}),
@@ -27,7 +27,7 @@ export const dashboardApi = createApi({
 		}),
 		fetchDatewiseMetrics: builder.query<DatewiseMetricsItem[], DashboardQueryParams>({
 			query: args => ({
-				url: 'dashboardPre/metrics/datewise',
+				url: 'dashboard/metrics/datewise',
 				method: 'GET',
 				params: buildDashboardQueryParams(args)
 			}),
@@ -36,7 +36,7 @@ export const dashboardApi = createApi({
 		}),
 		fetchMouldingAnalysis: builder.query<MouldingAnalysisData, DashboardQueryParams>({
 			query: args => ({
-				url: 'dashboardPre/metrics/moulding-analysis',
+				url: 'dashboard/metrics/moulding-analysis',
 				method: 'GET',
 				params: buildDashboardQueryParams(args)
 			}),
