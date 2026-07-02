@@ -78,7 +78,7 @@ function LogRow({
 			{errorDescriptionText && (
 				<>
 					<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-						Error description
+						{log.success ? 'Success description' : 'Error description'}
 					</Typography>
 					<Box
 						component="pre"
@@ -87,9 +87,21 @@ function LogRow({
 							mb: 2,
 							p: 1.5,
 							bgcolor: theme =>
-								theme.palette.mode === 'dark' ? theme.palette.error.dark : theme.palette.error.light,
+								log.success
+									? theme.palette.mode === 'dark'
+										? theme.palette.success.dark
+										: theme.palette.success.light
+									: theme.palette.mode === 'dark'
+										? theme.palette.error.dark
+										: theme.palette.error.light,
 							color: theme =>
-								theme.palette.mode === 'dark' ? theme.palette.error.contrastText : theme.palette.error.dark,
+								log.success
+									? theme.palette.mode === 'dark'
+										? theme.palette.success.contrastText
+										: theme.palette.success.dark
+									: theme.palette.mode === 'dark'
+										? theme.palette.error.contrastText
+										: theme.palette.error.dark,
 							borderRadius: 1,
 							fontSize: 12,
 							overflow: 'auto',
@@ -207,7 +219,8 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 
 	const [retrigger, { isLoading: isRetriggering }] = useRetriggerSapConfirmationsMutation();
 
-	const canComplete = logs.length > 0 && logs.every(l => l.success);
+	const grLog = logs.find(l => l.operationId === 'GR');
+	const canComplete = Boolean(grLog?.success);
 
 	const handleRetrigger = async () => {
 		if (!prcExecutionId) return;
@@ -239,7 +252,7 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 			<Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
 				{archivePresentation
 					? 'SAP confirmations posted for this execution (operation name, ID, and status).'
-					: 'Review each call to SAP production order confirmation. Retry failed posts, then complete this execution only when every row shows success.'}
+					: 'Review each call to SAP production order confirmation. Complete this execution once the Goods Receipt (GR) posting succeeds.'}
 			</Typography>
 
 			{!archivePresentation && (
@@ -268,8 +281,8 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 
 			{!archivePresentation && !canComplete && logs.length > 0 && (
 				<Alert severity="warning" sx={{ mb: 2 }}>
-					All SAP confirmations must succeed before you can complete this execution. Use retry for failed rows, then
-					refresh if needed.
+					Goods Receipt (GR) posting must succeed before you can complete this execution. Use retry for failed rows,
+					then refresh if needed.
 				</Alert>
 			)}
 
