@@ -127,6 +127,7 @@ export interface SapConfirmationLogItem {
 	httpStatus: number;
 	success: boolean;
 	errorMessage: string | null;
+	errorDescription?: string | Record<string, unknown> | null;
 	triggeredAt: string;
 	[key: string]: unknown;
 }
@@ -141,6 +142,12 @@ function isSapConfirmationLogItem(value: unknown): value is SapConfirmationLogIt
 		return false;
 	}
 	const err = o.errorMessage;
+	const errDesc = o.errorDescription;
+	const errDescOk =
+		errDesc === undefined ||
+		errDesc === null ||
+		typeof errDesc === 'string' ||
+		(typeof errDesc === 'object' && !Array.isArray(errDesc));
 	return (
 		typeof o.id === 'number' &&
 		typeof o.prcExecutionId === 'number' &&
@@ -150,6 +157,7 @@ function isSapConfirmationLogItem(value: unknown): value is SapConfirmationLogIt
 		typeof o.httpStatus === 'number' &&
 		typeof o.success === 'boolean' &&
 		(err === null || typeof err === 'string') &&
+		errDescOk &&
 		typeof o.triggeredAt === 'string'
 	);
 }

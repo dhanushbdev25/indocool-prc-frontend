@@ -45,6 +45,7 @@ function LogRow({
 		httpStatus: number;
 		success: boolean;
 		errorMessage: string | null;
+		errorDescription?: string | Record<string, unknown> | null;
 		triggeredAt: string;
 	};
 	expanded: boolean;
@@ -57,8 +58,50 @@ function LogRow({
 		: `${log.operationId} — ${log.operationText}`;
 	const payloadForDisplay = log.requestBody;
 
+	const errorDescriptionText = (() => {
+		const raw = log.errorDescription;
+		if (raw == null) return null;
+		if (typeof raw === 'string') {
+			const trimmed = raw.trim();
+			if (!trimmed) return null;
+			try {
+				return JSON.stringify(JSON.parse(trimmed), null, 2);
+			} catch {
+				return trimmed;
+			}
+		}
+		return JSON.stringify(raw, null, 2);
+	})();
+
 	const payloadSection = (
 		<Box sx={{ py: 2, px: 1 }}>
+			{errorDescriptionText && (
+				<>
+					<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
+						Error description
+					</Typography>
+					<Box
+						component="pre"
+						sx={{
+							m: 0,
+							mb: 2,
+							p: 1.5,
+							bgcolor: theme =>
+								theme.palette.mode === 'dark' ? theme.palette.error.dark : theme.palette.error.light,
+							color: theme =>
+								theme.palette.mode === 'dark' ? theme.palette.error.contrastText : theme.palette.error.dark,
+							borderRadius: 1,
+							fontSize: 12,
+							overflow: 'auto',
+							maxHeight: 240,
+							whiteSpace: 'pre-wrap',
+							wordBreak: 'break-word'
+						}}
+					>
+						{errorDescriptionText}
+					</Box>
+				</>
+			)}
 			<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
 				Request URL
 			</Typography>
