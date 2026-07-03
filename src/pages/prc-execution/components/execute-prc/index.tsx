@@ -9,8 +9,8 @@ import {
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
 import { useFetchRawMaterialsMutation } from '../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import {
-	calculateSequenceStepGroupTiming,
-	calculateInspectionStepTiming,
+	getStepTimingStatus,
+	readPersistedDelayMetadata,
 	findLastTemplateStepIndex
 } from '../../utils/timelineCardTiming';
 import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
@@ -42,6 +42,47 @@ import BomStep from './components/steps/BomStep';
 import RawMaterialsStep from './components/steps/RawMaterialsStep';
 
 type ViewState = 'list' | 'detail' | 'preview';
+
+/**
+ * When a step that was already submitted (`stepCompleted: true`) is persisted again (admin edit),
+ * mark its aggregated bucket so the preview can show an "Edited after submission" note.
+ * Clones only along the stamped path; returns the merged data unchanged when not applicable.
+ */
+const stampEditedAfterSubmit = (
+	step: TimelineStep,
+	previousAggregated: Record<string, unknown> | undefined,
+	mergedAggregated: Record<string, unknown>,
+	userId: number | undefined
+): Record<string, unknown> => {
+	const stamp = (bucket: Record<string, unknown>): Record<string, unknown> => ({
+		...bucket,
+		editedAfterSubmit: true,
+		editedAfterSubmitAt: new Date().toISOString(),
+		editedAfterSubmitBy: userId
+	});
+
+	if (step.type === 'sequence' && step.stepGroup && step.prcTemplateStepId) {
+		const pid = step.prcTemplateStepId.toString();
+		const gid = step.stepGroup.id.toString();
+		const prevGroup = (previousAggregated?.[pid] as Record<string, unknown> | undefined)?.[gid] as
+			| Record<string, unknown>
+			| undefined;
+		if (prevGroup?.stepCompleted !== true) return mergedAggregated;
+		const tplBucket = mergedAggregated[pid] as Record<string, unknown> | undefined;
+		const groupBucket = tplBucket?.[gid] as Record<string, unknown> | undefined;
+		if (!tplBucket || !groupBucket) return mergedAggregated;
+		return { ...mergedAggregated, [pid]: { ...tplBucket, [gid]: stamp(groupBucket) } };
+	}
+	if (step.type === 'inspection' && step.stepData?.prcTemplateStepId) {
+		const tid = step.stepData.prcTemplateStepId.toString();
+		const prevBucket = previousAggregated?.[tid] as Record<string, unknown> | undefined;
+		if (prevBucket?.stepCompleted !== true) return mergedAggregated;
+		const bucket = mergedAggregated[tid] as Record<string, unknown> | undefined;
+		if (!bucket) return mergedAggregated;
+		return { ...mergedAggregated, [tid]: stamp(bucket) };
+	}
+	return mergedAggregated;
+};
 
 const ExecutePrc = () => {
 	const { id } = useParams<{ id: string }>();
@@ -296,7 +337,13 @@ const ExecutePrc = () => {
 			}
 
 			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
-			const mergedAggregatedData = mergeAggregatedData(getCurrentAggregatedData(), stepAggregatedData);
+			const previousAggregatedData = getCurrentAggregatedData();
+			const mergedAggregatedData = stampEditedAfterSubmit(
+				stepToProcess,
+				previousAggregatedData,
+				mergeAggregatedData(previousAggregatedData, stepAggregatedData),
+				userInfo.id
+			);
 			const actualData = (executionData as { data: ExecutionData }).data;
 			let mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
 
@@ -346,43 +393,24 @@ const ExecutePrc = () => {
 
 		const actualData = (executionData as { data: ExecutionData }).data;
 
-		if (previewData.type === 'sequence' && currentStep.stepGroup) {
-			const timingResult = calculateSequenceStepGroupTiming(
-				currentStep,
-				actualData.stepStartEndTime as Record<string, unknown>
-			);
-
-			// Get timing exceeded remarks and reason from the step group data
-			let timingExceededRemarks = '';
-			let timingExceededReasonCode: string | number | undefined;
-			let timingExceededReasonLabel: string | undefined;
-			if (currentStep.prcTemplateStepId && currentStep.stepGroup) {
-				const stepGroupData = getCurrentAggregatedData()?.[currentStep.prcTemplateStepId.toString()] as Record<
-					string,
-					unknown
-				>;
-				if (stepGroupData && stepGroupData[currentStep.stepGroup.id.toString()]) {
-					const groupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
-					timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
-					const rc = groupData.timingExceededReasonCode;
-					if (typeof rc === 'string' || typeof rc === 'number') {
-						timingExceededReasonCode = rc;
-					}
-					const rl = groupData.timingExceededReasonLabel;
-					if (typeof rl === 'string') {
-						timingExceededReasonLabel = rl;
-					}
-				}
-			}
+		if (
+			(previewData.type === 'sequence' && currentStep.stepGroup) ||
+			(previewData.type === 'inspection' && currentStep.stepData?.prcTemplateStepId)
+		) {
+			const timingResult = getStepTimingStatus(currentStep, actualData.stepStartEndTime as Record<string, unknown>);
+			const delayMeta = readPersistedDelayMetadata(currentStep, getCurrentAggregatedData());
 
 			// Only update if timing values have changed
 			if (
 				previewData.timingExceeded !== timingResult.timingExceeded ||
 				previewData.actualDuration !== timingResult.actualDuration ||
-				previewData.expectedDuration !== timingResult.expectedDuration ||
-				previewData.timingExceededRemarks !== timingExceededRemarks ||
-				previewData.timingExceededReasonCode !== timingExceededReasonCode ||
-				previewData.timingExceededReasonLabel !== timingExceededReasonLabel
+				previewData.plannedDuration !== timingResult.plannedDuration ||
+				previewData.persistedTimingExceeded !== delayMeta.persistedTimingExceeded ||
+				previewData.timingExceededRemarks !== delayMeta.timingExceededRemarks ||
+				previewData.timingExceededReasonCode !== delayMeta.timingExceededReasonCode ||
+				previewData.timingExceededReasonLabel !== delayMeta.timingExceededReasonLabel ||
+				(previewData.editedAfterSubmit === undefined) !== (delayMeta.editedAfterSubmit === undefined) ||
+				previewData.editedAfterSubmit?.at !== delayMeta.editedAfterSubmit?.at
 			) {
 				setPreviewData(prev =>
 					prev
@@ -390,58 +418,12 @@ const ExecutePrc = () => {
 								...prev,
 								timingExceeded: timingResult.timingExceeded,
 								actualDuration: timingResult.actualDuration,
-								expectedDuration: timingResult.expectedDuration,
-								timingExceededRemarks: timingExceededRemarks,
-								timingExceededReasonCode,
-								timingExceededReasonLabel
-							}
-						: null
-				);
-			}
-		} else if (previewData.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
-			const timingResult = calculateInspectionStepTiming(
-				currentStep,
-				actualData.stepStartEndTime as Record<string, unknown>
-			);
-
-			// Inspection bucket is flat — remarks/reason live alongside approvals
-			let timingExceededRemarks = '';
-			let timingExceededReasonCode: string | number | undefined;
-			let timingExceededReasonLabel: string | undefined;
-			const prcTemplateStepId = currentStep.stepData.prcTemplateStepId;
-			const inspectionBucket = getCurrentAggregatedData()?.[prcTemplateStepId.toString()] as
-				| Record<string, unknown>
-				| undefined;
-			if (inspectionBucket) {
-				timingExceededRemarks = (inspectionBucket.timingExceededRemarks as string) || '';
-				const rc = inspectionBucket.timingExceededReasonCode;
-				if (typeof rc === 'string' || typeof rc === 'number') {
-					timingExceededReasonCode = rc;
-				}
-				const rl = inspectionBucket.timingExceededReasonLabel;
-				if (typeof rl === 'string') {
-					timingExceededReasonLabel = rl;
-				}
-			}
-
-			if (
-				previewData.timingExceeded !== timingResult.timingExceeded ||
-				previewData.actualDuration !== timingResult.actualDuration ||
-				previewData.expectedDuration !== timingResult.expectedDuration ||
-				previewData.timingExceededRemarks !== timingExceededRemarks ||
-				previewData.timingExceededReasonCode !== timingExceededReasonCode ||
-				previewData.timingExceededReasonLabel !== timingExceededReasonLabel
-			) {
-				setPreviewData(prev =>
-					prev
-						? {
-								...prev,
-								timingExceeded: timingResult.timingExceeded,
-								actualDuration: timingResult.actualDuration,
-								expectedDuration: timingResult.expectedDuration,
-								timingExceededRemarks: timingExceededRemarks,
-								timingExceededReasonCode,
-								timingExceededReasonLabel
+								plannedDuration: timingResult.plannedDuration,
+								persistedTimingExceeded: delayMeta.persistedTimingExceeded,
+								timingExceededRemarks: delayMeta.timingExceededRemarks,
+								timingExceededReasonCode: delayMeta.timingExceededReasonCode,
+								timingExceededReasonLabel: delayMeta.timingExceededReasonLabel,
+								editedAfterSubmit: delayMeta.editedAfterSubmit
 							}
 						: null
 				);
@@ -529,31 +511,9 @@ const ExecutePrc = () => {
 						}
 					}
 
-					// Calculate timing for this step group
-					const timingResult = calculateSequenceStepGroupTiming(currentStep, mergedTimingData);
-
-					// Get timing exceeded remarks and reason from the step group data
-					let timingExceededRemarks = '';
-					let timingExceededReasonCode: string | number | undefined;
-					let timingExceededReasonLabel: string | undefined;
-					if (currentStep.prcTemplateStepId && currentStep.stepGroup) {
-						const stepGroupData = mergedAggregatedData[currentStep.prcTemplateStepId.toString()] as Record<
-							string,
-							unknown
-						>;
-						if (stepGroupData && stepGroupData[currentStep.stepGroup.id.toString()]) {
-							const groupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
-							timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
-							const rc = groupData.timingExceededReasonCode;
-							if (typeof rc === 'string' || typeof rc === 'number') {
-								timingExceededReasonCode = rc;
-							}
-							const rl = groupData.timingExceededReasonLabel;
-							if (typeof rl === 'string') {
-								timingExceededReasonLabel = rl;
-							}
-						}
-					}
+					// Calculate timing for this step group (freshly merged root so the just-finished interval counts)
+					const timingResult = getStepTimingStatus(currentStep, mergedTimingData);
+					const delayMeta = readPersistedDelayMetadata(currentStep, mergedAggregatedData);
 
 					const newPreviewData: StepPreviewData = {
 						stepNumber: currentStep.stepNumber,
@@ -567,10 +527,12 @@ const ExecutePrc = () => {
 						stepCompleted: stepCompleted,
 						timingExceeded: timingResult.timingExceeded,
 						actualDuration: timingResult.actualDuration,
-						expectedDuration: timingResult.expectedDuration,
-						timingExceededRemarks: timingExceededRemarks,
-						timingExceededReasonCode,
-						timingExceededReasonLabel
+						plannedDuration: timingResult.plannedDuration,
+						persistedTimingExceeded: delayMeta.persistedTimingExceeded,
+						timingExceededRemarks: delayMeta.timingExceededRemarks,
+						timingExceededReasonCode: delayMeta.timingExceededReasonCode,
+						timingExceededReasonLabel: delayMeta.timingExceededReasonLabel,
+						editedAfterSubmit: delayMeta.editedAfterSubmit
 					};
 
 					console.log('Creating preview data for completed sequence group:', {
@@ -615,9 +577,6 @@ const ExecutePrc = () => {
 				let productionApproved = false;
 				let ctqApproved = false;
 				let stepCompleted = false;
-				let timingExceededRemarks = '';
-				let timingExceededReasonCode: string | number | undefined;
-				let timingExceededReasonLabel: string | undefined;
 
 				if (mergedAggregatedData && prcTemplateStepId) {
 					const templateData = mergedAggregatedData[prcTemplateStepId.toString()] as Record<string, unknown>;
@@ -626,20 +585,12 @@ const ExecutePrc = () => {
 						ctqApproved =
 							!currentStep.ctq || templateData.ctqApproved === true || templateData.partialCtqApprove === true;
 						stepCompleted = templateData.stepCompleted === true;
-						timingExceededRemarks = (templateData.timingExceededRemarks as string) || '';
-						const rc = templateData.timingExceededReasonCode;
-						if (typeof rc === 'string' || typeof rc === 'number') {
-							timingExceededReasonCode = rc;
-						}
-						const rl = templateData.timingExceededReasonLabel;
-						if (typeof rl === 'string') {
-							timingExceededReasonLabel = rl;
-						}
 					}
 				}
 
-				// Compute timing-exceeded vs inspectionTiming
-				const inspectionTimingResult = calculateInspectionStepTiming(currentStep, mergedTimingData);
+				// Compute timing-exceeded vs planned (freshly merged root so the just-finished interval counts)
+				const inspectionTimingResult = getStepTimingStatus(currentStep, mergedTimingData);
+				const delayMeta = readPersistedDelayMetadata(currentStep, mergedAggregatedData);
 
 				const newPreviewData: StepPreviewData = {
 					stepNumber: currentStep.stepNumber,
@@ -652,10 +603,12 @@ const ExecutePrc = () => {
 					stepCompleted: stepCompleted,
 					timingExceeded: inspectionTimingResult.timingExceeded,
 					actualDuration: inspectionTimingResult.actualDuration,
-					expectedDuration: inspectionTimingResult.expectedDuration,
-					timingExceededRemarks,
-					timingExceededReasonCode,
-					timingExceededReasonLabel,
+					plannedDuration: inspectionTimingResult.plannedDuration,
+					persistedTimingExceeded: delayMeta.persistedTimingExceeded,
+					timingExceededRemarks: delayMeta.timingExceededRemarks,
+					timingExceededReasonCode: delayMeta.timingExceededReasonCode,
+					timingExceededReasonLabel: delayMeta.timingExceededReasonLabel,
+					editedAfterSubmit: delayMeta.editedAfterSubmit,
 					inspectionParameters: currentStep.inspectionParameters,
 					inspectionMetadata: currentStep.inspectionMetadata
 				};
@@ -1250,29 +1203,15 @@ const ExecutePrc = () => {
 					stepGroupData[currentStep.stepGroup.id.toString()] = {};
 				}
 
-				// Preserve existing data and add stepCompleted flag and timing metadata
+				// Preserve existing data and add stepCompleted flag (+ timing metadata if exceeded)
 				const existingGroupData = stepGroupData[currentStep.stepGroup.id.toString()] as Record<string, unknown>;
-				const timingMetadata: Record<string, unknown> = {
-					...existingGroupData,
-					stepCompleted: true
-				};
-
-				// Add timing exceeded metadata if applicable
-				if (previewData?.timingExceeded) {
-					timingMetadata.timingExceeded = true;
-					const timingExceededRemarks = payload?.timingExceededRemarks;
-					if (timingExceededRemarks) {
-						timingMetadata.timingExceededRemarks = timingExceededRemarks;
-					}
-					if (payload?.timingExceededReasonCode !== undefined) {
-						timingMetadata.timingExceededReasonCode = payload.timingExceededReasonCode;
-					}
-					if (payload?.timingExceededReasonLabel) {
-						timingMetadata.timingExceededReasonLabel = payload.timingExceededReasonLabel;
-					}
-				}
-
-				stepGroupData[currentStep.stepGroup.id.toString()] = timingMetadata;
+				stepGroupData[currentStep.stepGroup.id.toString()] = applyTimingExceededMetadata(
+					{
+						...existingGroupData,
+						stepCompleted: true
+					},
+					payload
+				);
 			} else if (currentStep.type === 'inspection' && currentStep.stepData?.prcTemplateStepId) {
 				// Handle inspection steps
 				// Create a deep copy to avoid read-only property issues
@@ -1417,33 +1356,8 @@ const ExecutePrc = () => {
 
 				// Calculate timing for the step group
 				const actualData = (executionData as { data: ExecutionData }).data;
-				const timingResult = calculateSequenceStepGroupTiming(
-					targetStep,
-					actualData.stepStartEndTime as Record<string, unknown>
-				);
-
-				// Get timing exceeded remarks and reason from the step group data
-				let timingExceededRemarks = '';
-				let timingExceededReasonCode: string | number | undefined;
-				let timingExceededReasonLabel: string | undefined;
-				if (targetStep.prcTemplateStepId && targetStep.stepGroup) {
-					const stepGroupData = getCurrentAggregatedData()?.[targetStep.prcTemplateStepId.toString()] as Record<
-						string,
-						unknown
-					>;
-					if (stepGroupData && stepGroupData[targetStep.stepGroup.id.toString()]) {
-						const groupData = stepGroupData[targetStep.stepGroup.id.toString()] as Record<string, unknown>;
-						timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
-						const rc = groupData.timingExceededReasonCode;
-						if (typeof rc === 'string' || typeof rc === 'number') {
-							timingExceededReasonCode = rc;
-						}
-						const rl = groupData.timingExceededReasonLabel;
-						if (typeof rl === 'string') {
-							timingExceededReasonLabel = rl;
-						}
-					}
-				}
+				const timingResult = getStepTimingStatus(targetStep, actualData.stepStartEndTime as Record<string, unknown>);
+				const delayMeta = readPersistedDelayMetadata(targetStep, getCurrentAggregatedData());
 
 				const newPreviewData: StepPreviewData = {
 					stepNumber: targetStep.stepNumber,
@@ -1457,10 +1371,12 @@ const ExecutePrc = () => {
 					stepCompleted: stepCompleted,
 					timingExceeded: timingResult.timingExceeded,
 					actualDuration: timingResult.actualDuration,
-					expectedDuration: timingResult.expectedDuration,
-					timingExceededRemarks: timingExceededRemarks,
-					timingExceededReasonCode,
-					timingExceededReasonLabel
+					plannedDuration: timingResult.plannedDuration,
+					persistedTimingExceeded: delayMeta.persistedTimingExceeded,
+					timingExceededRemarks: delayMeta.timingExceededRemarks,
+					timingExceededReasonCode: delayMeta.timingExceededReasonCode,
+					timingExceededReasonLabel: delayMeta.timingExceededReasonLabel,
+					editedAfterSubmit: delayMeta.editedAfterSubmit
 				};
 
 				setPreviewData(newPreviewData);
@@ -1499,32 +1415,17 @@ const ExecutePrc = () => {
 					setCurrentStepIndex(stepIndex);
 
 					// Load approval state from backend
-					let productionApproved = false;
-					let ctqApproved = false;
-					let stepCompleted = false;
-					let timingExceededRemarks = '';
-					let timingExceededReasonCode: string | number | undefined;
-					let timingExceededReasonLabel: string | undefined;
+					const productionApproved = stepData.productionApproved === true;
+					const ctqApproved = !targetStep.ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true;
+					const stepCompleted = stepData.stepCompleted === true;
 
-					productionApproved = stepData.productionApproved === true;
-					ctqApproved = !targetStep.ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true;
-					stepCompleted = stepData.stepCompleted === true;
-					timingExceededRemarks = (stepData.timingExceededRemarks as string) || '';
-					const rc = stepData.timingExceededReasonCode;
-					if (typeof rc === 'string' || typeof rc === 'number') {
-						timingExceededReasonCode = rc;
-					}
-					const rl = stepData.timingExceededReasonLabel;
-					if (typeof rl === 'string') {
-						timingExceededReasonLabel = rl;
-					}
-
-					// Compute timing-exceeded vs inspectionTiming
+					// Compute timing-exceeded vs planned
 					const actualData = (executionData as { data: ExecutionData }).data;
-					const inspectionTimingResult = calculateInspectionStepTiming(
+					const inspectionTimingResult = getStepTimingStatus(
 						targetStep,
 						actualData.stepStartEndTime as Record<string, unknown>
 					);
+					const delayMeta = readPersistedDelayMetadata(targetStep, getCurrentAggregatedData());
 
 					const newPreviewData: StepPreviewData = {
 						stepNumber: targetStep.stepNumber,
@@ -1537,10 +1438,12 @@ const ExecutePrc = () => {
 						stepCompleted: stepCompleted,
 						timingExceeded: inspectionTimingResult.timingExceeded,
 						actualDuration: inspectionTimingResult.actualDuration,
-						expectedDuration: inspectionTimingResult.expectedDuration,
-						timingExceededRemarks,
-						timingExceededReasonCode,
-						timingExceededReasonLabel,
+						plannedDuration: inspectionTimingResult.plannedDuration,
+						persistedTimingExceeded: delayMeta.persistedTimingExceeded,
+						timingExceededRemarks: delayMeta.timingExceededRemarks,
+						timingExceededReasonCode: delayMeta.timingExceededReasonCode,
+						timingExceededReasonLabel: delayMeta.timingExceededReasonLabel,
+						editedAfterSubmit: delayMeta.editedAfterSubmit,
 						inspectionParameters: targetStep.inspectionParameters,
 						inspectionMetadata: targetStep.inspectionMetadata
 					};

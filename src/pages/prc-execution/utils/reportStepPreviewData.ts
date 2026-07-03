@@ -1,6 +1,6 @@
 import type { StepPreviewData, TimelineStep } from '../types/execution.types';
 import { buildSequenceDetailedMeasurements } from './sequencePreviewMeasurements';
-import { calculateInspectionStepTiming, calculateSequenceStepGroupTiming } from './timelineCardTiming';
+import { getStepTimingStatus, readPersistedDelayMetadata } from './timelineCardTiming';
 
 /** Builds the same `StepPreviewData` shape as live execution preview for sequence groups. */
 export function buildSequenceStepPreviewForReport(
@@ -20,18 +20,8 @@ export function buildSequenceStepPreviewForReport(
 	const measurements =
 		groupData && step.stepGroup ? buildSequenceDetailedMeasurements(groupData, step.stepGroup.steps) : [];
 
-	const timing = calculateSequenceStepGroupTiming(step, stepTimingRoot);
-
-	let timingExceededRemarks = '';
-	let timingExceededReasonCode: string | number | undefined;
-	let timingExceededReasonLabel: string | undefined;
-	if (tplBucket && groupData) {
-		timingExceededRemarks = (groupData.timingExceededRemarks as string) || '';
-		const rc = groupData.timingExceededReasonCode;
-		if (typeof rc === 'string' || typeof rc === 'number') timingExceededReasonCode = rc;
-		const rl = groupData.timingExceededReasonLabel;
-		if (typeof rl === 'string') timingExceededReasonLabel = rl;
-	}
+	const timing = getStepTimingStatus(step, stepTimingRoot);
+	const delayMeta = readPersistedDelayMetadata(step, agg);
 
 	const productionApproved = groupData?.productionApproved === true;
 	const ctqApproved =
@@ -50,10 +40,12 @@ export function buildSequenceStepPreviewForReport(
 		stepCompleted,
 		timingExceeded: timing.timingExceeded,
 		actualDuration: timing.actualDuration,
-		expectedDuration: timing.expectedDuration,
-		timingExceededRemarks,
-		timingExceededReasonCode,
-		timingExceededReasonLabel
+		plannedDuration: timing.plannedDuration,
+		persistedTimingExceeded: delayMeta.persistedTimingExceeded,
+		timingExceededRemarks: delayMeta.timingExceededRemarks,
+		timingExceededReasonCode: delayMeta.timingExceededReasonCode,
+		timingExceededReasonLabel: delayMeta.timingExceededReasonLabel,
+		editedAfterSubmit: delayMeta.editedAfterSubmit
 	};
 }
 
@@ -77,16 +69,8 @@ export function buildInspectionStepPreviewForReport(
 		stepData.partialCtqApprove === true;
 	const stepCompleted = stepData.stepCompleted === true;
 
-	const timing = calculateInspectionStepTiming(step, stepTimingRoot ?? {});
-
-	let timingExceededRemarks = '';
-	let timingExceededReasonCode: string | number | undefined;
-	let timingExceededReasonLabel: string | undefined;
-	timingExceededRemarks = (stepData.timingExceededRemarks as string) || '';
-	const rc = stepData.timingExceededReasonCode;
-	if (typeof rc === 'string' || typeof rc === 'number') timingExceededReasonCode = rc;
-	const rl = stepData.timingExceededReasonLabel;
-	if (typeof rl === 'string') timingExceededReasonLabel = rl;
+	const timing = getStepTimingStatus(step, stepTimingRoot);
+	const delayMeta = readPersistedDelayMetadata(step, agg);
 
 	return {
 		stepNumber: step.stepNumber,
@@ -100,10 +84,12 @@ export function buildInspectionStepPreviewForReport(
 		stepCompleted,
 		timingExceeded: timing.timingExceeded,
 		actualDuration: timing.actualDuration,
-		expectedDuration: timing.expectedDuration,
-		timingExceededRemarks,
-		timingExceededReasonCode,
-		timingExceededReasonLabel,
+		plannedDuration: timing.plannedDuration,
+		persistedTimingExceeded: delayMeta.persistedTimingExceeded,
+		timingExceededRemarks: delayMeta.timingExceededRemarks,
+		timingExceededReasonCode: delayMeta.timingExceededReasonCode,
+		timingExceededReasonLabel: delayMeta.timingExceededReasonLabel,
+		editedAfterSubmit: delayMeta.editedAfterSubmit,
 		inspectionParameters: step.inspectionParameters,
 		inspectionMetadata: step.inspectionMetadata
 	};

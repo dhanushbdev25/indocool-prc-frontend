@@ -100,9 +100,18 @@ export interface StepPreviewData {
 	ctqApproved: boolean;
 	partialCtqApprove?: boolean;
 	stepCompleted: boolean;
+	/** Live lateness from `isStepLate` (shared with the card flag); drives the remarks prompt. */
 	timingExceeded?: boolean;
+	/** `timingExceeded === true` saved in the step's `prcAggregatedSteps` bucket at execution time.
+	 * Keeps saved delay remarks visible even when the live recompute disagrees
+	 * (legacy data, edited master timing, incomplete intervals). */
+	persistedTimingExceeded?: boolean;
 	actualDuration?: number;
-	expectedDuration?: number;
+	/** Planned duration in seconds: bucket `plannedTime` with master
+	 * `sequenceTiming`/`inspectionTiming` fallback. The lateness comparison uses this value. */
+	plannedDuration?: number;
+	/** Present when the step was re-submitted after completion (admin edit); shown in preview only. */
+	editedAfterSubmit?: { at?: string };
 	timingExceededRemarks?: string;
 	/** Selected combo value from GET /combo?type=OPERATIONDELAYREASON */
 	timingExceededReasonCode?: string | number;

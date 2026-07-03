@@ -15,6 +15,9 @@ const TIMING_META_KEYS = new Set([
 	'timingExceededRemarks',
 	'timingExceededReasonCode',
 	'timingExceededReasonLabel',
+	'editedAfterSubmit',
+	'editedAfterSubmitAt',
+	'editedAfterSubmitBy',
 	'plannedTime',
 	'duration',
 	'startTime',
@@ -77,73 +80,6 @@ export function sumSequenceSubStepIntervalsSeconds(
 		}
 	}
 	return { totalSeconds: totalActiveDuration, intervalsCount };
-}
-
-/** Sequence step-group timing vs planned sequence duration (preview + report). */
-export function calculateSequenceStepGroupTiming(
-	step: TimelineStep,
-	stepStartEndTime: Record<string, unknown>
-): { timingExceeded: boolean; actualDuration: number; expectedDuration: number } {
-	if (!step.stepGroup || !step.prcTemplateStepId || !step.stepGroup.sequenceTiming) {
-		return { timingExceeded: false, actualDuration: 0, expectedDuration: 0 };
-	}
-
-	const prcTemplateStepId = step.prcTemplateStepId.toString();
-	const stepGroupId = step.stepGroup.id.toString();
-
-	const templateTimingData = stepStartEndTime[prcTemplateStepId] as Record<string, unknown> | undefined;
-	if (!templateTimingData) {
-		return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-	}
-
-	const groupTimingData = templateTimingData[stepGroupId] as Record<string, unknown> | undefined;
-	if (!groupTimingData) {
-		return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-	}
-
-	const { totalSeconds: totalActiveDuration, intervalsCount: stepsWithTiming } = sumSequenceSubStepIntervalsSeconds(
-		groupTimingData,
-		step.stepGroup.steps
-	);
-
-	if (stepsWithTiming === 0) {
-		return { timingExceeded: false, actualDuration: 0, expectedDuration: step.stepGroup.sequenceTiming };
-	}
-
-	const expectedDuration = step.stepGroup.sequenceTiming;
-	const timingExceeded = totalActiveDuration > expectedDuration;
-
-	return { timingExceeded, actualDuration: totalActiveDuration, expectedDuration };
-}
-
-/**
- * Inspection step timing vs planned `inspectionTiming` (preview + report).
- * Reads the flat `stepStartEndTime[prcTemplateStepId]` bucket, computes actual seconds
- * from `startTime`/`endTime`, and compares against `step.inspectionMetadata.inspectionTiming`.
- */
-export function calculateInspectionStepTiming(
-	step: TimelineStep,
-	stepStartEndTime: Record<string, unknown>
-): { timingExceeded: boolean; actualDuration: number; expectedDuration: number } {
-	const prcTemplateStepId = step.stepData?.prcTemplateStepId;
-	const expectedDuration = step.inspectionMetadata?.inspectionTiming ?? 0;
-
-	if (prcTemplateStepId === undefined || prcTemplateStepId === null || !expectedDuration) {
-		return { timingExceeded: false, actualDuration: 0, expectedDuration };
-	}
-
-	const bucket = stepStartEndTime?.[prcTemplateStepId.toString()] as Record<string, unknown> | undefined;
-	const actualDuration = actualFromTimingBlob(bucket) ?? 0;
-
-	if (actualDuration === 0) {
-		return { timingExceeded: false, actualDuration: 0, expectedDuration };
-	}
-
-	return {
-		timingExceeded: actualDuration > expectedDuration,
-		actualDuration,
-		expectedDuration
-	};
 }
 
 /**
@@ -258,7 +194,14 @@ function resolveStepTimingBucket(
 	}
 }
 
-export function getTimelineStepPlannedVsActual(
+/**
+ * Authoritative planned vs actual seconds for a step. Single source used by the card flag,
+ * the live delay-remarks prompt, and the report/preview builders (via `getStepTimingStatus`).
+ * Planned: bucket `plannedTime`, falling back to the master timing
+ * (`stepGroup.sequenceTiming` / `inspectionMetadata.inspectionTiming`).
+ * Actual: rollup `duration`, falling back to summed intervals / start-end delta per step type.
+ */
+export function getStepTiming(
 	step: TimelineStep,
 	stepStartEndTime: Record<string, unknown> | undefined
 ): TimelineCardTiming {
@@ -302,6 +245,102 @@ export function getTimelineStepPlannedVsActual(
 		default:
 			return { plannedSec: null, actualSec: null };
 	}
+}
+
+/** True when the step ran past a positive planned duration. No/zero planned timing ⇒ never late. */
+export function isStepLate(timing: TimelineCardTiming): boolean {
+	return (
+		timing.plannedSec !== null && timing.plannedSec > 0 && timing.actualSec !== null && timing.actualSec > timing.plannedSec
+	);
+}
+
+export interface StepTimingStatus {
+	timingExceeded: boolean;
+	/** Actual seconds (0 when no timing recorded). */
+	actualDuration: number;
+	/** Planned seconds (0 when the step has no planned timing). */
+	plannedDuration: number;
+}
+
+/** `getStepTiming` + `isStepLate` in the shape consumed by `StepPreviewData`. */
+export function getStepTimingStatus(
+	step: TimelineStep,
+	stepStartEndTime: Record<string, unknown> | undefined
+): StepTimingStatus {
+	const timing = getStepTiming(step, stepStartEndTime);
+	return {
+		timingExceeded: isStepLate(timing),
+		actualDuration: timing.actualSec ?? 0,
+		plannedDuration: timing.plannedSec ?? 0
+	};
+}
+
+export interface PersistedDelayMetadata {
+	/** `timingExceeded === true` saved in the step's aggregated bucket at execution time. */
+	persistedTimingExceeded: boolean;
+	timingExceededRemarks: string;
+	timingExceededReasonCode?: string | number;
+	timingExceededReasonLabel?: string;
+	/** Present when the step was re-submitted after completion (admin edit). */
+	editedAfterSubmit?: { at?: string };
+}
+
+const EMPTY_DELAY_METADATA: PersistedDelayMetadata = { persistedTimingExceeded: false, timingExceededRemarks: '' };
+
+/**
+ * Resolve the step's `prcAggregatedSteps` bucket, mirroring the keying used when persisting:
+ * sequence -> [prcTemplateStepId][stepGroupId], inspection -> [prcTemplateStepId].
+ * Only sequence/inspection steps carry delay metadata.
+ */
+function resolveAggregatedStepBucket(
+	step: TimelineStep,
+	aggregated: Record<string, unknown> | undefined
+): Record<string, unknown> | undefined {
+	if (!aggregated) return undefined;
+	if (step.type === 'sequence') {
+		if (!step.stepGroup || step.prcTemplateStepId === undefined || step.prcTemplateStepId === null) {
+			return undefined;
+		}
+		const tplBucket = aggregated[step.prcTemplateStepId.toString()];
+		if (!isPlainObject(tplBucket)) return undefined;
+		const groupBucket = tplBucket[step.stepGroup.id.toString()];
+		return isPlainObject(groupBucket) ? groupBucket : undefined;
+	}
+	if (step.type === 'inspection') {
+		const tid = step.stepData?.prcTemplateStepId;
+		if (tid === undefined || tid === null) return undefined;
+		const bucket = aggregated[String(tid)];
+		return isPlainObject(bucket) ? bucket : undefined;
+	}
+	return undefined;
+}
+
+/** Delay remarks/reason (+ edited-after-submit marker) saved in the step's `prcAggregatedSteps` bucket. */
+export function readPersistedDelayMetadata(
+	step: TimelineStep,
+	aggregated: Record<string, unknown> | undefined
+): PersistedDelayMetadata {
+	const bucket = resolveAggregatedStepBucket(step, aggregated);
+	if (!bucket) return EMPTY_DELAY_METADATA;
+
+	const result: PersistedDelayMetadata = {
+		persistedTimingExceeded: bucket.timingExceeded === true,
+		timingExceededRemarks: typeof bucket.timingExceededRemarks === 'string' ? bucket.timingExceededRemarks : ''
+	};
+	const reasonCode = bucket.timingExceededReasonCode;
+	if (typeof reasonCode === 'string' || typeof reasonCode === 'number') {
+		result.timingExceededReasonCode = reasonCode;
+	}
+	const reasonLabel = bucket.timingExceededReasonLabel;
+	if (typeof reasonLabel === 'string') {
+		result.timingExceededReasonLabel = reasonLabel;
+	}
+	if (bucket.editedAfterSubmit === true) {
+		result.editedAfterSubmit = {
+			at: typeof bucket.editedAfterSubmitAt === 'string' ? bucket.editedAfterSubmitAt : undefined
+		};
+	}
+	return result;
 }
 
 export interface ApproverInfo {

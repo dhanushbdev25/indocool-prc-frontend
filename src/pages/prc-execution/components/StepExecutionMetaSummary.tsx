@@ -12,7 +12,8 @@ import {
 	formatStepTimestamp,
 	formatStepTimestampParts,
 	getTimelineStepApprovalMeta,
-	getTimelineStepPlannedVsActual
+	getStepTiming,
+	isStepLate
 } from '../utils/timelineCardTiming';
 
 const timingFontSx = {
@@ -337,10 +338,9 @@ export function StepExecutionMetaSummary({
 	variant = 'sidebar',
 	dimTiming = false
 }: StepExecutionMetaSummaryProps) {
-	const timing = getTimelineStepPlannedVsActual(step, stepStartEndTime);
+	const timing = getStepTiming(step, stepStartEndTime);
 	const approvalMeta = getTimelineStepApprovalMeta(step, stepStartEndTime);
-	const timingOverPlanned =
-		timing.plannedSec !== null && timing.actualSec !== null && timing.actualSec > timing.plannedSec;
+	const timingOverPlanned = isStepLate(timing);
 
 	if (variant === 'report') {
 		return (

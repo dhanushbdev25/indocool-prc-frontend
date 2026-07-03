@@ -299,6 +299,26 @@ const StepPreview = ({
 		setCtqMenuAnchor(null);
 	};
 
+	const persistedReasonOk = ((): boolean => {
+		const rc = previewData.timingExceededReasonCode;
+		if (rc === undefined || rc === null) return false;
+		if (typeof rc === 'number') return Number.isFinite(rc);
+		return String(rc).trim().length > 0;
+	})();
+
+	// Persisted-first: saved delay documentation stays visible even when the live lateness
+	// recompute disagrees (legacy data, edited master timing, incomplete intervals).
+	const hasPersistedDelayInfo =
+		previewData.persistedTimingExceeded === true ||
+		(previewData.timingExceededRemarks ?? '').trim() !== '' ||
+		persistedReasonOk ||
+		(previewData.timingExceededReasonLabel ?? '').trim() !== '';
+	const showTimingExceededSection =
+		previewData.timingExceeded === true || ((browseOnly || previewData.stepCompleted) && hasPersistedDelayInfo);
+	// The required-input prompt for incomplete steps stays driven purely by live lateness.
+	const hydrateDelayReason =
+		previewData.timingExceeded === true || (previewData.stepCompleted && hasPersistedDelayInfo);
+
 	const {
 		data: operationDelayReasonOptions = [],
 		isLoading: isDelayReasonLoading,
@@ -319,7 +339,7 @@ const StepPreview = ({
 		if (browseOnly) {
 			return;
 		}
-		if ((previewData.type !== 'sequence' && previewData.type !== 'inspection') || !previewData.timingExceeded) {
+		if ((previewData.type !== 'sequence' && previewData.type !== 'inspection') || !hydrateDelayReason) {
 			setSelectedDelayReason(null);
 			return;
 		}
@@ -343,7 +363,7 @@ const StepPreview = ({
 	}, [
 		browseOnly,
 		previewData.type,
-		previewData.timingExceeded,
+		hydrateDelayReason,
 		previewData.timingExceededReasonCode,
 		previewData.timingExceededReasonLabel,
 		previewData.stepNumber,
@@ -353,12 +373,6 @@ const StepPreview = ({
 
 	const remarksSatisfied =
 		timingExceededRemarks.trim().length > 0 || Boolean((previewData.timingExceededRemarks ?? '').trim().length > 0);
-	const persistedReasonOk = ((): boolean => {
-		const rc = previewData.timingExceededReasonCode;
-		if (rc === undefined || rc === null) return false;
-		if (typeof rc === 'number') return Number.isFinite(rc);
-		return String(rc).trim().length > 0;
-	})();
 	const reasonSatisfied = selectedDelayReason !== null || persistedReasonOk;
 	const delayDocumentationSatisfied =
 		browseOnly ||
@@ -455,8 +469,26 @@ const StepPreview = ({
 		);
 	};
 
+	// Shown outside the delay section: an edit can happen on any submitted step. Preview only (hidden in print).
+	const renderEditedAfterSubmitNote = () => {
+		if (!previewData.editedAfterSubmit) return null;
+		const editedAt = previewData.editedAfterSubmit.at ? new Date(previewData.editedAfterSubmit.at) : null;
+		const editedAtDisplay = editedAt && !Number.isNaN(editedAt.getTime()) ? ` on ${editedAt.toLocaleString()}` : '';
+		return (
+			<Box className="prc-report-no-print" sx={{ mb: 1.5 }}>
+				<Chip
+					size="small"
+					color="info"
+					variant="outlined"
+					label={`Edited after submission${editedAtDisplay}`}
+					sx={{ fontWeight: 500 }}
+				/>
+			</Box>
+		);
+	};
+
 	const renderTimingExceededSection = () => {
-		if (!previewData.timingExceeded) return null;
+		if (!showTimingExceededSection) return null;
 		return (
 			<Box sx={{ mb: 2 }}>
 				<Alert
@@ -475,22 +507,26 @@ const StepPreview = ({
 						<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#e65100' }}>
 							Timing Exceeded
 						</Typography>
-						<Chip
-							label={`+${Math.round((previewData.actualDuration || 0) - (previewData.expectedDuration || 0))}s`}
-							size="small"
-							sx={{
-								backgroundColor: '#ff5722',
-								color: 'white',
-								fontSize: '0.7rem',
-								fontWeight: 600,
-								height: 20
-							}}
-						/>
+						{previewData.timingExceeded && (
+							<Chip
+								label={`+${Math.round((previewData.actualDuration || 0) - (previewData.plannedDuration || 0))}s`}
+								size="small"
+								sx={{
+									backgroundColor: '#ff5722',
+									color: 'white',
+									fontSize: '0.7rem',
+									fontWeight: 600,
+									height: 20
+								}}
+							/>
+						)}
 					</Box>
-					<Typography variant="body2" sx={{ color: '#bf360c', fontSize: '0.875rem' }}>
-						<strong>{formatExecutionDuration(previewData.actualDuration || 0)}</strong> actual vs{' '}
-						<strong>{formatExecutionDuration(previewData.expectedDuration || 0)}</strong> expected
-					</Typography>
+					{previewData.timingExceeded && (
+						<Typography variant="body2" sx={{ color: '#bf360c', fontSize: '0.875rem' }}>
+							<strong>{formatExecutionDuration(previewData.actualDuration || 0)}</strong> actual vs{' '}
+							<strong>{formatExecutionDuration(previewData.plannedDuration || 0)}</strong> planned
+						</Typography>
+					)}
 				</Alert>
 				{browseOnly ? (
 					<Box sx={{ mt: 2, pl: 0.5 }}>
@@ -597,6 +633,7 @@ const StepPreview = ({
 			// Handle sequence data - show as compact report table
 			return (
 				<Box>
+					{renderEditedAfterSubmitNote()}
 					{renderTimingExceededSection()}
 					<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 						Measurement Report ({Array.isArray(data) ? data.length : 0} measurements)
@@ -1146,6 +1183,7 @@ const StepPreview = ({
 
 			return (
 				<Box>
+					{renderEditedAfterSubmitNote()}
 					{renderTimingExceededSection()}
 					{/* Inspection Metadata Header */}
 					{inspectionMeta && (
