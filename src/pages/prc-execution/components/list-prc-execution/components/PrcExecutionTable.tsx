@@ -330,6 +330,7 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 			pagination={pagination}
 			onPaginationChange={onPaginationChange}
 			exportTitle="prc-execution"
+			pinnedColumnsLeft={['orderId', 'status', 'execute']}
 		/>
 	);
 });

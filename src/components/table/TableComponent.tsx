@@ -37,6 +37,8 @@ interface TableProps<T extends MRT_RowData> {
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 	/** Filename prefix for Excel export (e.g. "catalyst-master"). Omit to hide the Export button. */
 	exportTitle?: string;
+	/** Column ids pinned to the left edge (stay visible while scrolling horizontally). */
+	pinnedColumnsLeft?: string[];
 }
 
 const defaultTableContainerSx = {
@@ -50,7 +52,8 @@ const TableComponent = <T extends MRT_RowData>({
 	muiTableContainerSx,
 	pagination,
 	onPaginationChange,
-	exportTitle
+	exportTitle,
+	pinnedColumnsLeft
 }: TableProps<T>) => {
 	const columns = useMemo(() => tableColumns, [tableColumns]);
 	const memoData = useMemo(() => data, [data]);
@@ -65,7 +68,8 @@ const TableComponent = <T extends MRT_RowData>({
 		},
 		initialState: {
 			pagination: { pageIndex: 0, pageSize: 5 },
-			showColumnFilters: false
+			showColumnFilters: false,
+			...(pinnedColumnsLeft?.length ? { columnPinning: { left: pinnedColumnsLeft } } : {})
 		},
 		state: {
 			showColumnFilters,
@@ -83,6 +87,7 @@ const TableComponent = <T extends MRT_RowData>({
 			filterFn: 'nullSafeContains'
 		},
 		enableStickyHeader: true,
+		enableColumnPinning: Boolean(pinnedColumnsLeft?.length),
 		enablePagination: true,
 		enableSorting: true,
 		enableTopToolbar: false,

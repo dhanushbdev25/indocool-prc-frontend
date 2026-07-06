@@ -6,6 +6,7 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 		const out: Record<string, unknown> = {
 			prcmetadata: {
 				productionSetId: formData.productionSetId,
+				prcSetId: formData.prcSetId,
 				mouldId: formData.mouldId,
 				shift: formData.shift,
 				date: formData.date,
