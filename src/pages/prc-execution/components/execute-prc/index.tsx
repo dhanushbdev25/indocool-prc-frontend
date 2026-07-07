@@ -10,6 +10,7 @@ import {
 import { useFetchRawMaterialsMutation } from '../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import {
 	getStepTimingStatus,
+	getLiveStepTimingStatus,
 	readPersistedDelayMetadata,
 	findLastTemplateStepIndex
 } from '../../utils/timelineCardTiming';
@@ -100,6 +101,8 @@ const ExecutePrc = () => {
 	const stepStartTimeRef = useRef<string | null>(null);
 	const [currentView, setCurrentView] = useState<ViewState>('list');
 	const [previewData, setPreviewData] = useState<StepPreviewData | null>(null);
+	// Timing root the open preview is judged against (freshly merged at creation, refreshed on refetch).
+	const previewTimingRootRef = useRef<Record<string, unknown> | null>(null);
 	const [timelineSteps, setTimelineSteps] = useState<TimelineStep[]>([]);
 	const [currentAggregatedData, setCurrentAggregatedData] = useState<Record<string, unknown>>({});
 	const [catalystMixingOpen, setCatalystMixingOpen] = useState(false);
@@ -167,6 +170,21 @@ const ExecutePrc = () => {
 		const actualData = (executionData as { data: ExecutionData })?.data;
 		return actualData?.prcAggregatedSteps || {};
 	}, [currentAggregatedData, executionData]);
+
+	// The step whose completion starts the delay clock of the step at `index` (setup for the
+	// first template step; undefined for the first timeline entry).
+	const previousTimelineStepOf = useCallback(
+		(index: number): TimelineStep | undefined => (index > 0 ? timelineSteps[index - 1] : undefined),
+		[timelineSteps]
+	);
+
+	// Single lateness clock for preview checkpoints: in-progress steps are judged on wall clock
+	// (previous step's completion → now); completed steps keep the persisted duration.
+	const resolvePreviewTimingStatus = useCallback(
+		(step: TimelineStep, root: Record<string, unknown>, stepCompleted: boolean, previousStep?: TimelineStep) =>
+			stepCompleted ? getStepTimingStatus(step, root) : getLiveStepTimingStatus(step, root, previousStep),
+		[]
+	);
 
 	// Helper function to check if timing data already exists for a step
 	const hasExistingTimingData = useCallback((step: TimelineStep, formData?: FormData): boolean => {
@@ -397,7 +415,14 @@ const ExecutePrc = () => {
 			(previewData.type === 'sequence' && currentStep.stepGroup) ||
 			(previewData.type === 'inspection' && currentStep.stepData?.prcTemplateStepId)
 		) {
-			const timingResult = getStepTimingStatus(currentStep, actualData.stepStartEndTime as Record<string, unknown>);
+			const refreshedRoot = actualData.stepStartEndTime as Record<string, unknown>;
+			previewTimingRootRef.current = refreshedRoot;
+			const timingResult = resolvePreviewTimingStatus(
+				currentStep,
+				refreshedRoot,
+				previewData.stepCompleted === true,
+				previousTimelineStepOf(currentStepIndex)
+			);
 			const delayMeta = readPersistedDelayMetadata(currentStep, getCurrentAggregatedData());
 
 			// Only update if timing values have changed
@@ -436,6 +461,55 @@ const ExecutePrc = () => {
 		currentStep?.stepGroup?.id,
 		currentStep,
 		getCurrentAggregatedData,
+		resolvePreviewTimingStatus,
+		previousTimelineStepOf,
+		currentStepIndex,
+		previewData
+	]);
+
+	// Checkpoint 1 keeps ticking: while an uncompleted sequence/inspection preview is open,
+	// re-evaluate wall-clock lateness every second so the delay prompt appears the moment
+	// planned time is exceeded (not only at render).
+	useEffect(() => {
+		if (isViewOnlyMode || currentView !== 'preview' || !previewData || previewData.stepCompleted) return;
+		if (previewData.type !== 'sequence' && previewData.type !== 'inspection') return;
+		if (!currentStep) return;
+
+		const tick = () => {
+			const root =
+				previewTimingRootRef.current ??
+				(((executionData as { data: ExecutionData } | undefined)?.data?.stepStartEndTime as
+					| Record<string, unknown>
+					| undefined) ??
+					{});
+			const status = getLiveStepTimingStatus(currentStep, root, previousTimelineStepOf(currentStepIndex));
+			setPreviewData(prev => {
+				if (!prev || prev.stepCompleted) return prev;
+				const flipped = prev.timingExceeded !== status.timingExceeded;
+				const overrunTicked =
+					status.timingExceeded && Math.floor(prev.actualDuration ?? 0) !== Math.floor(status.actualDuration);
+				if (!flipped && !overrunTicked) return prev;
+				return {
+					...prev,
+					timingExceeded: status.timingExceeded,
+					actualDuration: status.actualDuration,
+					plannedDuration: status.plannedDuration
+				};
+			});
+		};
+
+		tick();
+		const intervalId = window.setInterval(tick, 1000);
+		return () => window.clearInterval(intervalId);
+	}, [
+		isViewOnlyMode,
+		currentView,
+		previewData?.stepCompleted,
+		previewData?.type,
+		currentStep,
+		currentStepIndex,
+		previousTimelineStepOf,
+		executionData,
 		previewData
 	]);
 
@@ -511,8 +585,14 @@ const ExecutePrc = () => {
 						}
 					}
 
-					// Calculate timing for this step group (freshly merged root so the just-finished interval counts)
-					const timingResult = getStepTimingStatus(currentStep, mergedTimingData);
+					// Checkpoint 1: wall-clock lateness against the freshly merged root (previous step completion → now)
+					previewTimingRootRef.current = mergedTimingData;
+					const timingResult = resolvePreviewTimingStatus(
+						currentStep,
+						mergedTimingData,
+						stepCompleted,
+						previousTimelineStepOf(currentStepIndex)
+					);
 					const delayMeta = readPersistedDelayMetadata(currentStep, mergedAggregatedData);
 
 					const newPreviewData: StepPreviewData = {
@@ -588,8 +668,14 @@ const ExecutePrc = () => {
 					}
 				}
 
-				// Compute timing-exceeded vs planned (freshly merged root so the just-finished interval counts)
-				const inspectionTimingResult = getStepTimingStatus(currentStep, mergedTimingData);
+				// Checkpoint 1: wall-clock lateness against the freshly merged root (previous step completion → now)
+				previewTimingRootRef.current = mergedTimingData;
+				const inspectionTimingResult = resolvePreviewTimingStatus(
+					currentStep,
+					mergedTimingData,
+					stepCompleted,
+					previousTimelineStepOf(currentStepIndex)
+				);
 				const delayMeta = readPersistedDelayMetadata(currentStep, mergedAggregatedData);
 
 				const newPreviewData: StepPreviewData = {
@@ -754,10 +840,42 @@ const ExecutePrc = () => {
 		return allStepsFilled;
 	};
 
+	// Checkpoints 2 & 3: wall-clock lateness recomputed at the moment of the click, so a step
+	// that became late while the preview was open is still flagged. Completed steps keep the
+	// flag the preview already carries.
+	const isPreviewStepLateNow = (): boolean => {
+		if (!currentStep) return false;
+		if (previewData?.stepCompleted) return previewData.timingExceeded === true;
+		const root =
+			previewTimingRootRef.current ??
+			(((executionData as { data: ExecutionData } | undefined)?.data?.stepStartEndTime as
+				| Record<string, unknown>
+				| undefined) ??
+				{});
+		return getLiveStepTimingStatus(currentStep, root, previousTimelineStepOf(currentStepIndex)).timingExceeded;
+	};
+
+	// Hard gate for checkpoint 3 (Complete Step): a late step can never be completed without delay
+	// documentation, even when lateness crossed planned time between ticker runs and the click.
+	// Approvals are not blocked (StepPreview marks them optimistically) — they stamp the flag via
+	// applyTimingExceededMetadata, and the prompt then holds completion until documented.
+	// Blocks the action and surfaces the required inputs instead. Returns true when blocked.
+	const blockActionIfDelayUndocumented = (payload?: ProceedFromPreviewPayload): boolean => {
+		if (previewData?.stepCompleted) return false;
+		if (!isPreviewStepLateNow()) return false;
+		const remarksOk = Boolean((payload?.timingExceededRemarks ?? previewData?.timingExceededRemarks ?? '').trim());
+		const reasonRaw = payload?.timingExceededReasonCode ?? previewData?.timingExceededReasonCode;
+		const reasonOk = reasonRaw !== undefined && reasonRaw !== null && String(reasonRaw).trim() !== '';
+		if (remarksOk && reasonOk) return false;
+		// Reveal the required delay inputs; the operator retries the action once they are filled.
+		setPreviewData(prev => (prev ? { ...prev, timingExceeded: true } : prev));
+		return true;
+	};
+
 	// Helper: apply timing-exceeded remarks + delay reason into a step's aggregated bucket.
 	// Used by every approval/complete handler so the comment is persisted on the first action and refreshed on later ones.
 	const applyTimingExceededMetadata = (bucket: Record<string, unknown>, payload?: ProceedFromPreviewPayload): Record<string, unknown> => {
-		if (!previewData?.timingExceeded) return bucket;
+		if (!isPreviewStepLateNow() && !payload?.timingExceededRemarks) return bucket;
 		const next: Record<string, unknown> = { ...bucket, timingExceeded: true };
 		const remarks = payload?.timingExceededRemarks;
 		if (remarks) {
@@ -1127,6 +1245,7 @@ const ExecutePrc = () => {
 	// Handle proceeding to next step after approvals
 	const handleProceedToNext = async (payload?: ProceedFromPreviewPayload) => {
 		if (isViewOnlyMode || !currentStep || !executionData) return;
+		if (blockActionIfDelayUndocumented(payload)) return;
 
 		try {
 			const endTime = new Date().toISOString();
@@ -1354,9 +1473,16 @@ const ExecutePrc = () => {
 					}
 				}
 
-				// Calculate timing for the step group
+				// Checkpoint 1: wall-clock lateness for the step group (previous step completion → now)
 				const actualData = (executionData as { data: ExecutionData }).data;
-				const timingResult = getStepTimingStatus(targetStep, actualData.stepStartEndTime as Record<string, unknown>);
+				const navTimingRoot = actualData.stepStartEndTime as Record<string, unknown>;
+				previewTimingRootRef.current = navTimingRoot;
+				const timingResult = resolvePreviewTimingStatus(
+					targetStep,
+					navTimingRoot,
+					stepCompleted,
+					previousTimelineStepOf(stepIndex)
+				);
 				const delayMeta = readPersistedDelayMetadata(targetStep, getCurrentAggregatedData());
 
 				const newPreviewData: StepPreviewData = {
@@ -1419,11 +1545,15 @@ const ExecutePrc = () => {
 					const ctqApproved = !targetStep.ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true;
 					const stepCompleted = stepData.stepCompleted === true;
 
-					// Compute timing-exceeded vs planned
+					// Checkpoint 1: wall-clock lateness (previous step completion → now)
 					const actualData = (executionData as { data: ExecutionData }).data;
-					const inspectionTimingResult = getStepTimingStatus(
+					const inspNavTimingRoot = actualData.stepStartEndTime as Record<string, unknown>;
+					previewTimingRootRef.current = inspNavTimingRoot;
+					const inspectionTimingResult = resolvePreviewTimingStatus(
 						targetStep,
-						actualData.stepStartEndTime as Record<string, unknown>
+						inspNavTimingRoot,
+						stepCompleted,
+						previousTimelineStepOf(stepIndex)
 					);
 					const delayMeta = readPersistedDelayMetadata(targetStep, getCurrentAggregatedData());
 

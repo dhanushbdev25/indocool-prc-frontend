@@ -275,6 +275,75 @@ export function getStepTimingStatus(
 	};
 }
 
+/**
+ * Earliest recorded start for a step: enriched `stepStartTime` / bucket `startTime`,
+ * falling back to the earliest sub-step interval start (sequence groups).
+ */
+export function getStepStartTimeIso(
+	step: TimelineStep,
+	stepStartEndTime: Record<string, unknown> | undefined
+): string | null {
+	const bucket = resolveStepTimingBucket(step, stepStartEndTime ?? {});
+	if (!bucket) return null;
+	const nested = nestedIntervalBounds(bucket);
+	return firstTimestampString(bucket.stepStartTime) ?? firstTimestampString(bucket.startTime) ?? nested.start;
+}
+
+/** Completion timestamp for a step from the timing root (Complete Step click; setup uses its endTime). */
+export function getStepCompletionTimeIso(
+	step: TimelineStep,
+	stepStartEndTime: Record<string, unknown> | undefined
+): string | null {
+	const bucket = resolveStepTimingBucket(step, stepStartEndTime ?? {});
+	if (!bucket) return null;
+	if (step.type === 'setup') {
+		return firstTimestampString(bucket.endTime);
+	}
+	return firstTimestampString(bucket.stepCompleted);
+}
+
+/**
+ * Start of a step's delay clock: the previous step's completion time — a step is "open" from
+ * the moment the step before it finished, so idle time between steps counts against it.
+ * Falls back to the step's own first recorded start when the previous step's completion
+ * timestamp is unavailable (legacy data / no previous step).
+ */
+export function getStepClockStartIso(
+	step: TimelineStep,
+	previousStep: TimelineStep | undefined,
+	stepStartEndTime: Record<string, unknown> | undefined
+): string | null {
+	if (previousStep) {
+		const prevDone = getStepCompletionTimeIso(previousStep, stepStartEndTime);
+		if (prevDone) return prevDone;
+	}
+	return getStepStartTimeIso(step, stepStartEndTime);
+}
+
+/**
+ * Wall-clock lateness for an in-progress step: actual = now − delay-clock start
+ * (previous step's completion, falling back to the step's own first recorded start).
+ * This is the single clock used by the preview checkpoints (render, approve clicks,
+ * Complete Step) so overrun anywhere before completion is caught — not just time
+ * spent inside the entry form. Completed steps keep `getStepTimingStatus` (stored duration).
+ */
+export function getLiveStepTimingStatus(
+	step: TimelineStep,
+	stepStartEndTime: Record<string, unknown> | undefined,
+	previousStep?: TimelineStep,
+	nowMs: number = Date.now()
+): StepTimingStatus {
+	const plannedSec = getStepTiming(step, stepStartEndTime).plannedSec;
+	const startIso = getStepClockStartIso(step, previousStep, stepStartEndTime);
+	const startMs = startIso ? new Date(startIso).getTime() : Number.NaN;
+	const actualSec = Number.isNaN(startMs) ? null : Math.max(0, Math.round(((nowMs - startMs) / 1000) * 10) / 10);
+	return {
+		timingExceeded: isStepLate({ plannedSec, actualSec }),
+		actualDuration: actualSec ?? 0,
+		plannedDuration: plannedSec ?? 0
+	};
+}
+
 export interface PersistedDelayMetadata {
 	/** `timingExceeded === true` saved in the step's aggregated bucket at execution time. */
 	persistedTimingExceeded: boolean;

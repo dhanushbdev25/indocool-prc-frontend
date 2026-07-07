@@ -7,7 +7,15 @@
 import { describe, expect, it } from 'vitest';
 import type { TimelineStep } from '../types/execution.types';
 import { buildInspectionStepPreviewForReport, buildSequenceStepPreviewForReport } from './reportStepPreviewData';
-import { getStepTiming, getStepTimingStatus, isStepLate, readPersistedDelayMetadata } from './timelineCardTiming';
+import {
+	getLiveStepTimingStatus,
+	getStepClockStartIso,
+	getStepStartTimeIso,
+	getStepTiming,
+	getStepTimingStatus,
+	isStepLate,
+	readPersistedDelayMetadata
+} from './timelineCardTiming';
 
 const inspectionStep = {
 	stepNumber: 5,
@@ -125,6 +133,132 @@ describe('isStepLate — no planned timing is never late', () => {
 
 	it('no actual recorded', () => {
 		expect(isStepLate({ plannedSec: 120, actualSec: null })).toBe(false);
+	});
+});
+
+describe('getLiveStepTimingStatus — wall clock from the delay-clock start', () => {
+	it('sequence: late when now exceeds planned even though entry intervals were short', () => {
+		// Sub-step entered in 30s, but 5 minutes have passed since it started (planned 60s)
+		const root = {
+			'300': {
+				'40': {
+					'11': { startTime: '2026-06-01T08:00:00.000Z', endTime: '2026-06-01T08:00:30.000Z' },
+					duration: 30,
+					plannedTime: 60
+				}
+			}
+		};
+		const now = new Date('2026-06-01T08:05:00.000Z').getTime();
+		const status = getLiveStepTimingStatus(sequenceStep, root, undefined, now);
+		expect(status.timingExceeded).toBe(true);
+		expect(status.actualDuration).toBe(300);
+		expect(status.plannedDuration).toBe(60);
+		// The stored-interval computation would NOT flag this — that is exactly the old gap
+		expect(getStepTimingStatus(sequenceStep, root).timingExceeded).toBe(false);
+	});
+
+	it('sequence: anchor is the earliest sub-step start (enriched stepStartTime preferred)', () => {
+		const root = {
+			'300': {
+				'40': {
+					stepStartTime: '2026-06-01T07:59:00.000Z',
+					'11': { startTime: '2026-06-01T08:00:00.000Z', endTime: '2026-06-01T08:00:30.000Z' }
+				}
+			}
+		};
+		expect(getStepStartTimeIso(sequenceStep, root)).toBe('2026-06-01T07:59:00.000Z');
+	});
+
+	it('inspection: anchored to bucket startTime, not the entry-session end', () => {
+		const root = {
+			'501': { startTime: '2026-06-01T08:00:00.000Z', endTime: '2026-06-01T08:00:40.000Z', plannedTime: 120 }
+		};
+		const withinPlan = new Date('2026-06-01T08:01:00.000Z').getTime();
+		expect(getLiveStepTimingStatus(inspectionStep, root, undefined, withinPlan).timingExceeded).toBe(false);
+		const overrun = new Date('2026-06-01T08:03:00.000Z').getTime();
+		expect(getLiveStepTimingStatus(inspectionStep, root, undefined, overrun).timingExceeded).toBe(true);
+	});
+
+	it('no recorded start yet -> not late', () => {
+		const status = getLiveStepTimingStatus(sequenceStep, {}, undefined, new Date('2026-06-01T08:00:00.000Z').getTime());
+		expect(status.timingExceeded).toBe(false);
+		expect(status.actualDuration).toBe(0);
+	});
+
+	it('no planned timing -> never late regardless of elapsed time', () => {
+		const stepWithoutPlan = {
+			...(sequenceStep as unknown as Record<string, unknown>),
+			stepGroup: { id: 40, processName: 'Mixing', processDescription: '', sequenceTiming: 0, steps: [{ id: 11 }] }
+		} as unknown as TimelineStep;
+		const root = {
+			'300': { '40': { '11': { startTime: '2026-06-01T08:00:00.000Z', endTime: '2026-06-01T08:00:30.000Z' } } }
+		};
+		const muchLater = new Date('2026-06-01T18:00:00.000Z').getTime();
+		expect(getLiveStepTimingStatus(stepWithoutPlan, root, undefined, muchLater).timingExceeded).toBe(false);
+	});
+});
+
+describe('delay clock starts at the previous step’s completion', () => {
+	// Previous timeline step: another sequence group completed at 08:00
+	const previousSequenceStep = {
+		stepNumber: 1,
+		type: 'sequence',
+		title: 'Prep',
+		description: '',
+		status: 'completed',
+		ctq: false,
+		prcTemplateStepId: 299,
+		stepGroup: { id: 39, processName: 'Prep', processDescription: '', sequenceTiming: 60, steps: [{ id: 10 }] }
+	} as unknown as TimelineStep;
+
+	const setupStep = { stepNumber: 0, type: 'setup', title: 'Setup', description: '', status: 'completed', ctq: false } as unknown as TimelineStep;
+
+	it('sequence: idle time after the previous step completed counts against this step', () => {
+		const root = {
+			'299': { '39': { stepCompleted: '2026-06-01T08:00:00.000Z' } },
+			// Own entry only started at 08:20 and took 30s (planned 60s)
+			'300': {
+				'40': { '11': { startTime: '2026-06-01T08:20:00.000Z', endTime: '2026-06-01T08:20:30.000Z' }, plannedTime: 60 }
+			}
+		};
+		expect(getStepClockStartIso(sequenceStep, previousSequenceStep, root)).toBe('2026-06-01T08:00:00.000Z');
+		const now = new Date('2026-06-01T08:21:00.000Z').getTime();
+		const status = getLiveStepTimingStatus(sequenceStep, root, previousSequenceStep, now);
+		// 21 minutes since the previous step completed, not 60s since own entry started
+		expect(status.actualDuration).toBe(1260);
+		expect(status.timingExceeded).toBe(true);
+		// Without the previous step, the same moment would NOT be late
+		expect(getLiveStepTimingStatus(sequenceStep, root, undefined, now).timingExceeded).toBe(false);
+	});
+
+	it('first template step: anchored to setup completion (prcmetadata endTime)', () => {
+		const root = {
+			prcmetadata: { startTime: '2026-06-01T07:50:00.000Z', endTime: '2026-06-01T07:55:00.000Z' },
+			'300': { '40': { plannedTime: 60 } }
+		};
+		expect(getStepClockStartIso(sequenceStep, setupStep, root)).toBe('2026-06-01T07:55:00.000Z');
+		const now = new Date('2026-06-01T08:00:00.000Z').getTime();
+		expect(getLiveStepTimingStatus(sequenceStep, root, setupStep, now).actualDuration).toBe(300);
+	});
+
+	it('previous step has no completion timestamp -> falls back to own first recorded start', () => {
+		const root = {
+			'299': { '39': {} },
+			'300': {
+				'40': { '11': { startTime: '2026-06-01T08:20:00.000Z', endTime: '2026-06-01T08:20:30.000Z' }, plannedTime: 60 }
+			}
+		};
+		expect(getStepClockStartIso(sequenceStep, previousSequenceStep, root)).toBe('2026-06-01T08:20:00.000Z');
+	});
+
+	it('inspection: previous step completion anchors the clock too', () => {
+		const root = {
+			'299': { '39': { stepCompleted: '2026-06-01T08:00:00.000Z' } },
+			'501': { startTime: '2026-06-01T08:10:00.000Z', endTime: '2026-06-01T08:10:40.000Z', plannedTime: 120 }
+		};
+		const now = new Date('2026-06-01T08:03:00.000Z').getTime();
+		// 3 minutes after the previous step completed (planned 2 min) — late before entry even began
+		expect(getLiveStepTimingStatus(inspectionStep, root, previousSequenceStep, now).timingExceeded).toBe(true);
 	});
 });
 
