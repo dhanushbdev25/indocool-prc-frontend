@@ -176,11 +176,11 @@ const ListPart = () => {
 			const layup = (p.layupType ?? '').toLowerCase();
 			const model = (p.model ?? '').toLowerCase();
 			return (
-				p.partNumber.toLowerCase().includes(term) ||
-				p.drawingNumber.toLowerCase().includes(term) ||
-				p.description.toLowerCase().includes(term) ||
-				p.customerName.toLowerCase().includes(term) ||
-				p.customer.toLowerCase().includes(term) ||
+				(p.partNumber ?? '').toLowerCase().includes(term) ||
+				(p.drawingNumber ?? '').toLowerCase().includes(term) ||
+				(p.description ?? '').toLowerCase().includes(term) ||
+				(p.customerName ?? '').toLowerCase().includes(term) ||
+				(p.customer ?? '').toLowerCase().includes(term) ||
 				sap.includes(term) ||
 				layup.includes(term) ||
 				model.includes(term)
