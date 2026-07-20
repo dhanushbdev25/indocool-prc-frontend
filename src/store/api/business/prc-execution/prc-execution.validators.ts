@@ -75,6 +75,7 @@ export interface PrcExecution {
 	version: number;
 	customer: string;
 	productionSetId: string;
+	prcSetId?: string | null;
 	mouldId?: string | null;
 	shift?: string | null;
 	sapSync?: boolean;

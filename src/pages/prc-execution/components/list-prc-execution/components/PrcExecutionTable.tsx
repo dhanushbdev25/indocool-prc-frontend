@@ -99,12 +99,26 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 				)
 			},
 			{
+				accessorKey: 'prcSetId',
+				header: 'Prc Set Id',
+				size: 150,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.prcSetId != null && String(row.original.prcSetId).trim()
+							? String(row.original.prcSetId)
+							: '—'}
+					</Typography>
+				)
+			},
+			{
 				accessorKey: 'partNumber',
 				header: 'Part Number',
 				size: 170,
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
-						{row.original.partNumber?.trim() ? row.original.partNumber : '—'}
+						{row.original.partNumber != null && String(row.original.partNumber).trim()
+							? String(row.original.partNumber)
+							: '—'}
 					</Typography>
 				)
 			},

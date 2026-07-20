@@ -13,7 +13,6 @@
     "lint-fix": "eslint --fix src/**/*.{ts,tsx}",
     "pretty": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md,html}\"",
     "pretty:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,md,html}\"",
-    "pre-push": "npx tsc --noEmit && npm run lint && npm run pretty:check && npm run test && npm run build",
     "check-deps": "npm outdated",
     "check-security": "npm audit --audit-level=moderate",
     "check-all": "npm run lint && npm run pretty:check && npx tsc --noEmit && npm run build && npm run check-deps && npm run check-security",

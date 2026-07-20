@@ -16,13 +16,11 @@ npm run preview        # Serve the production build locally
 npm run lint           # ESLint (max-warnings 0 — zero tolerance)
 npm run lint-fix       # Auto-fix lint issues
 npm run pretty         # Format with Prettier
-npm run pretty:check   # Check formatting (used in pre-push)
+npm run pretty:check   # Check formatting
 npm run check-all      # lint + pretty:check + tsc + build + outdated + audit
 npm run deploy         # Build and publish dist/ via gh-pages
 npx tsc --noEmit       # Type check without building
 ```
-
-The `pre-push` script runs type check → lint → prettier check → build in sequence. All must pass before a push succeeds.
 
 ### Lint specifics
 

@@ -146,9 +146,19 @@ const ListPrcExecution = () => {
 			},
 			{
 				kind: 'autocomplete',
+				key: 'prcSetId',
+				label: 'Prc Set Id',
+				options: deriveOptions(allExecutionData, r =>
+					r.prcSetId != null && String(r.prcSetId).trim() ? String(r.prcSetId) : null
+				)
+			},
+			{
+				kind: 'autocomplete',
 				key: 'partNumber',
 				label: 'Part Number',
-				options: deriveOptions(allExecutionData, r => r.partNumber)
+				options: deriveOptions(allExecutionData, r =>
+					r.partNumber != null && String(r.partNumber).trim() ? String(r.partNumber) : null
+				)
 			},
 			{
 				kind: 'autocomplete',
@@ -208,9 +218,31 @@ const ListPrcExecution = () => {
 			) {
 				return false;
 			}
-			if (!matchesMulti(e.partNumber, filters.partNumber)) return false;
+			if (
+				!matchesMulti(
+					e.prcSetId != null && String(e.prcSetId).trim() ? String(e.prcSetId) : '',
+					filters.prcSetId
+				)
+			) {
+				return false;
+			}
+			if (
+				!matchesMulti(
+					e.partNumber != null && String(e.partNumber).trim() ? String(e.partNumber) : '',
+					filters.partNumber
+				)
+			) {
+				return false;
+			}
 			if (!matchesMulti(e.partDescription ?? '', filters.partDescription)) return false;
-			if (!matchesMulti(e.productionSetId, filters.productionSetId)) return false;
+			if (
+				!matchesMulti(
+					e.productionSetId != null && String(e.productionSetId).trim() ? String(e.productionSetId) : '',
+					filters.productionSetId
+				)
+			) {
+				return false;
+			}
 			if (!matchesMulti(e.customerVariantName, filters.customerVariantName)) return false;
 			if (!matchesMulti(e.status, filters.status)) return false;
 			if (!isFilterValueEmpty(opFilter)) {
