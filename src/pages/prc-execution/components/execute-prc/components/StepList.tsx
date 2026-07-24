@@ -8,6 +8,7 @@ import StepExecutionMetaSummary from '../../StepExecutionMetaSummary';
 interface StepListProps {
 	steps: TimelineStep[];
 	currentStepIndex: number;
+	frontierIndex?: number;
 	onStepClick: (stepIndex: number) => void;
 	previewMode?: boolean;
 	stepStartEndTime?: Record<string, unknown>;
@@ -80,6 +81,7 @@ function StatusPill({ label, color }: { label: string; color: string }) {
 const StepList = ({
 	steps,
 	currentStepIndex,
+	frontierIndex = currentStepIndex,
 	onStepClick,
 	previewMode = false,
 	stepStartEndTime,
@@ -94,11 +96,13 @@ const StepList = ({
 
 	const isStepClickable = (step: TimelineStep, index: number) => {
 		if (previewMode) return true;
-		return step.status === 'completed' || step.status === 'in-progress' || index === currentStepIndex;
+		return step.status === 'completed' || index === frontierIndex;
 	};
 
 	return (
-		<Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: alpha(theme.palette.grey[500], 0.04) }}>
+		<Box
+			sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: alpha(theme.palette.grey[500], 0.04) }}
+		>
 			<Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, py: 2.5 }}>
 				<Stack spacing={1.25}>
 					{steps.map((step, index) => {

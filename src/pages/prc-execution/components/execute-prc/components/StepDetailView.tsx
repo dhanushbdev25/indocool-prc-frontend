@@ -3,6 +3,7 @@ import { Box, Typography, Button, Avatar, Chip, IconButton } from '@mui/material
 import { ArrowBack, ArrowForward, CheckCircle, PlayArrow } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../types/execution.types';
 import { isRawMaterialsStepCompleteForNavigation } from '../../../utils/rawMaterialsNavigation';
+import { isTimelineStepComplete } from '../../../utils/stepGating';
 import RawMaterialsStep from './steps/RawMaterialsStep';
 import BomStep from './steps/BomStep';
 import SequenceStep from './steps/SequenceStep';
@@ -129,15 +130,12 @@ const StepDetailView = ({
 				const meta = executionData.prcAggregatedSteps?.prcmetadata as Record<string, unknown> | undefined;
 				return !!meta && typeof meta === 'object' && Object.keys(meta).length > 0;
 			}
-		case 'rawMaterials':
-			return isRawMaterialsStepCompleteForNavigation(executionData);
-		case 'bom':
-			return executionData.prcAggregatedSteps?.bom !== undefined;
+			case 'rawMaterials':
+				return isRawMaterialsStepCompleteForNavigation(executionData);
+			case 'bom':
+				return executionData.prcAggregatedSteps?.bom !== undefined;
 			case 'inspection': {
-				const prcTemplateStepId = step.stepData?.prcTemplateStepId;
-				if (!prcTemplateStepId) return false;
-				const inspData = executionData.prcAggregatedSteps?.[prcTemplateStepId.toString()] as Record<string, unknown>;
-				return !!inspData && Object.keys(inspData).length > 0;
+				return isTimelineStepComplete(step, aggregatedStepsSnapshot ?? executionData.prcAggregatedSteps, executionData);
 			}
 			case 'sapConfirmations': {
 				const sap = executionData.prcAggregatedSteps?.sapConfirmations as Record<string, unknown> | undefined;
@@ -218,27 +216,27 @@ const StepDetailView = ({
 				description: currentSubStep.notes || step.description,
 				status: step.status,
 				ctq: currentSubStep.ctq,
-			stepData: {
-				prcTemplateStepId: step.prcTemplateStepId!,
-				stepGroupId: step.stepGroup!.id,
-				stepId: currentSubStep.id,
-				targetValueType: currentSubStep.targetValueType,
-				uom: currentSubStep.uom,
-				minValue: currentSubStep.minValue,
-				maxValue: currentSubStep.maxValue,
-				minimumAcceptanceValue: currentSubStep.minimumAcceptanceValue,
-				maximumAcceptanceValue: currentSubStep.maximumAcceptanceValue,
-				multipleMeasurements: currentSubStep.multipleMeasurements,
-				multipleMeasurementMaxCount: currentSubStep.multipleMeasurementMaxCount,
-				tableConfig: currentSubStep.tableConfig,
-				notes: currentSubStep.notes,
-				parameterDescription: currentSubStep.parameterDescription,
-				evaluationMethod: currentSubStep.evaluationMethod,
-				allowAttachments: currentSubStep.allowAttachments,
-				stepNumber: currentSubStep.stepNumber,
-				responsiblePerson: currentSubStep.responsiblePerson,
-				getInstrumentId: currentSubStep.getInstrumentId
-			}
+				stepData: {
+					prcTemplateStepId: step.prcTemplateStepId!,
+					stepGroupId: step.stepGroup!.id,
+					stepId: currentSubStep.id,
+					targetValueType: currentSubStep.targetValueType,
+					uom: currentSubStep.uom,
+					minValue: currentSubStep.minValue,
+					maxValue: currentSubStep.maxValue,
+					minimumAcceptanceValue: currentSubStep.minimumAcceptanceValue,
+					maximumAcceptanceValue: currentSubStep.maximumAcceptanceValue,
+					multipleMeasurements: currentSubStep.multipleMeasurements,
+					multipleMeasurementMaxCount: currentSubStep.multipleMeasurementMaxCount,
+					tableConfig: currentSubStep.tableConfig,
+					notes: currentSubStep.notes,
+					parameterDescription: currentSubStep.parameterDescription,
+					evaluationMethod: currentSubStep.evaluationMethod,
+					allowAttachments: currentSubStep.allowAttachments,
+					stepNumber: currentSubStep.stepNumber,
+					responsiblePerson: currentSubStep.responsiblePerson,
+					getInstrumentId: currentSubStep.getInstrumentId
+				}
 			};
 
 			return (
@@ -266,13 +264,7 @@ const StepDetailView = ({
 					/>
 				);
 			case 'rawMaterials':
-				return (
-					<RawMaterialsStep
-						step={step}
-						onStepComplete={handleSubStepComplete}
-						readOnlyOverride={readOnly}
-					/>
-				);
+				return <RawMaterialsStep step={step} onStepComplete={handleSubStepComplete} readOnlyOverride={readOnly} />;
 			case 'bom':
 				return (
 					<BomStep
@@ -325,13 +317,11 @@ const StepDetailView = ({
 						<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', lineHeight: 1.2 }}>
 							{step.title}
 						</Typography>
-						{step.type === 'sequence' &&
-							step.description &&
-							step.description !== step.title && (
-								<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', mt: 0.5, lineHeight: 1.4 }}>
-									{step.description}
-								</Typography>
-							)}
+						{step.type === 'sequence' && step.description && step.description !== step.title && (
+							<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem', mt: 0.5, lineHeight: 1.4 }}>
+								{step.description}
+							</Typography>
+						)}
 					</Box>
 					<Box sx={{ display: 'flex', gap: 0.5 }}>
 						{step.ctq && (

@@ -1,5 +1,6 @@
 import { type TimelineStep, type ExecutionData } from '../types/execution.types';
 import { isRawMaterialsStepCompleteForNavigation } from './rawMaterialsNavigation';
+import { isTimelineStepComplete } from './stepGating';
 
 export interface BuildTimelineStepsOptions {
 	omitStepTypes?: TimelineStep['type'][];
@@ -121,51 +122,34 @@ export function buildTimelineSteps(
 		for (const prcTemplateStep of sortedSteps) {
 			if (prcTemplateStep.type === 'sequence' && prcTemplateStep.data) {
 				// For sequence type, create step groups as main timeline steps
-			const sequenceData = prcTemplateStep.data as {
-				stepGroups: Array<{
-					id: number;
-					steps: Array<{
+				const sequenceData = prcTemplateStep.data as {
+					stepGroups: Array<{
 						id: number;
-						ctq: boolean;
-						targetValueType: string;
-						uom: string;
-						minValue?: string;
-						maxValue?: string;
-						minimumAcceptanceValue?: string | null;
-						maximumAcceptanceValue?: string | null;
-						multipleMeasurements: boolean;
-						tableConfig?: Record<string, unknown> | null;
-						notes: string;
-						parameterDescription: string;
-						evaluationMethod: string;
-						allowAttachments: boolean;
-						responsiblePerson?: boolean;
-						getInstrumentId?: boolean;
+						steps: Array<{
+							id: number;
+							ctq: boolean;
+							targetValueType: string;
+							uom: string;
+							minValue?: string;
+							maxValue?: string;
+							minimumAcceptanceValue?: string | null;
+							maximumAcceptanceValue?: string | null;
+							multipleMeasurements: boolean;
+							tableConfig?: Record<string, unknown> | null;
+							notes: string;
+							parameterDescription: string;
+							evaluationMethod: string;
+							allowAttachments: boolean;
+							responsiblePerson?: boolean;
+							getInstrumentId?: boolean;
+						}>;
+						processName: string;
+						processDescription: string;
+						sequenceTiming: number;
 					}>;
-					processName: string;
-					processDescription: string;
-					sequenceTiming: number;
-				}>;
-			};
+				};
 				if (sequenceData.stepGroups) {
 					for (const stepGroup of sequenceData.stepGroups) {
-						const isCompleted = isSequenceStepGroupCompleted(
-							executionData.prcAggregatedSteps,
-							prcTemplateStep.id,
-							stepGroup.id,
-							stepGroup.steps,
-							stepGroup.steps.some(step => step.ctq)
-						);
-
-						// Check if ready for completion (all approvals done but not completed)
-						const isReadyForCompletion = isSequenceStepGroupReadyForCompletion(
-							executionData.prcAggregatedSteps,
-							prcTemplateStep.id,
-							stepGroup.id,
-							stepGroup.steps,
-							stepGroup.steps.some(step => step.ctq)
-						);
-
 						const seqStepAgg = executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()] as
 							| Record<string, unknown>
 							| undefined;
@@ -177,7 +161,7 @@ export function buildTimelineSteps(
 							type: 'sequence',
 							title: `${stepGroup.processName} (${stepGroup.processDescription})`,
 							description: stepGroup.processDescription,
-							status: isCompleted ? 'completed' : isReadyForCompletion ? 'in-progress' : 'pending',
+							status: 'pending',
 							ctq: stepGroup.steps.some(step => step.ctq),
 							partialCtqApprove: partialCtqApproveSeq,
 							prcTemplateStepId: prcTemplateStep.id,
@@ -241,19 +225,6 @@ export function buildTimelineSteps(
 						}>;
 					}>;
 				};
-				const isCompleted = isInspectionStepCompleted(
-					executionData.prcAggregatedSteps,
-					prcTemplateStep.id,
-					inspectionData.inspectionParameters?.some(p => p.ctq) || false
-				);
-
-				// Check if ready for completion (all approvals done but not completed)
-				const isReadyForCompletion = isInspectionStepReadyForCompletion(
-					executionData.prcAggregatedSteps,
-					prcTemplateStep.id,
-					inspectionData.inspectionParameters?.some(p => p.ctq) || false
-				);
-
 				const inspStepAgg = executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()] as
 					| Record<string, unknown>
 					| undefined;
@@ -264,7 +235,7 @@ export function buildTimelineSteps(
 					type: 'inspection',
 					title: `${inspectionData.inspection?.inspectionName || 'Inspection'}`,
 					description: inspectionData.inspection?.inspectionName || 'Quality inspection parameters',
-					status: isCompleted ? 'completed' : isReadyForCompletion ? 'in-progress' : 'pending',
+					status: 'pending',
 					ctq: inspectionData.inspectionParameters?.some(p => p.ctq) || false,
 					partialCtqApprove: partialCtqApproveInsp,
 					stepData: {
@@ -279,47 +250,47 @@ export function buildTimelineSteps(
 						evaluationMethod: '',
 						allowAttachments: false
 					},
-				inspectionParameters:
-					inspectionData.inspectionParameters?.map((param, index) => ({
-						// Prefer direct inspection parameter mappings; fallback to part-level inspectionDiagrams mappings
-						...(() => {
-							const fallbackDiagram = inspectionDiagramByParameterId.get(param.id);
-							const directFiles = Array.isArray(param.files) ? param.files : [];
-							const directRowMappings = Array.isArray(param.rowMappings) ? param.rowMappings : [];
-							const fallbackFiles = Array.isArray(fallbackDiagram?.fileName) ? fallbackDiagram.fileName : [];
-							const fallbackRowMappings = Array.isArray(fallbackDiagram?.rowMappings)
-								? fallbackDiagram.rowMappings
-								: [];
-							return {
-								files: directFiles.length > 0 ? directFiles : fallbackFiles,
-								rowMappings: directRowMappings.length > 0 ? directRowMappings : fallbackRowMappings
-							};
-						})(),
-						id: param.id,
-						parameterName: param.parameterName,
-						type: param.type,
-						ctq: param.ctq,
-						role: param.role,
-						columns: param.columns || [],
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						tableConfig: (param as any).tableConfig || null,
-						specification: param.specification,
-						order: param.order ?? index + 1,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						minimumAcceptanceValue: (param as any).minimumAcceptanceValue || '',
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						maximumAcceptanceValue: (param as any).maximumAcceptanceValue || '',
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						version: (param as any).version || 1,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						isLatest: (param as any).isLatest !== undefined ? (param as any).isLatest : true,
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						createdAt: (param as any).createdAt || new Date().toISOString(),
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						updatedAt: (param as any).updatedAt || new Date().toISOString(),
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						inspectionId: (param as any).inspectionId || prcTemplateStep.id
-					})) || [],
+					inspectionParameters:
+						inspectionData.inspectionParameters?.map((param, index) => ({
+							// Prefer direct inspection parameter mappings; fallback to part-level inspectionDiagrams mappings
+							...(() => {
+								const fallbackDiagram = inspectionDiagramByParameterId.get(param.id);
+								const directFiles = Array.isArray(param.files) ? param.files : [];
+								const directRowMappings = Array.isArray(param.rowMappings) ? param.rowMappings : [];
+								const fallbackFiles = Array.isArray(fallbackDiagram?.fileName) ? fallbackDiagram.fileName : [];
+								const fallbackRowMappings = Array.isArray(fallbackDiagram?.rowMappings)
+									? fallbackDiagram.rowMappings
+									: [];
+								return {
+									files: directFiles.length > 0 ? directFiles : fallbackFiles,
+									rowMappings: directRowMappings.length > 0 ? directRowMappings : fallbackRowMappings
+								};
+							})(),
+							id: param.id,
+							parameterName: param.parameterName,
+							type: param.type,
+							ctq: param.ctq,
+							role: param.role,
+							columns: param.columns || [],
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							tableConfig: (param as any).tableConfig || null,
+							specification: param.specification,
+							order: param.order ?? index + 1,
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							minimumAcceptanceValue: (param as any).minimumAcceptanceValue || '',
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							maximumAcceptanceValue: (param as any).maximumAcceptanceValue || '',
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							version: (param as any).version || 1,
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							isLatest: (param as any).isLatest !== undefined ? (param as any).isLatest : true,
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							createdAt: (param as any).createdAt || new Date().toISOString(),
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							updatedAt: (param as any).updatedAt || new Date().toISOString(),
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+							inspectionId: (param as any).inspectionId || prcTemplateStep.id
+						})) || [],
 					inspectionMetadata: inspectionData.inspection
 						? {
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -376,129 +347,18 @@ export function buildTimelineSteps(
 	const visibleSteps =
 		omitStepTypes.size > 0 ? stepsWithReportIndex.filter(step => !omitStepTypes.has(step.type)) : stepsWithReportIndex;
 
-	// Mark the first incomplete visible step as 'in-progress'
-	const firstIncompleteIndex = visibleSteps.findIndex(step => step.status === 'pending');
-	if (firstIncompleteIndex >= 0) {
-		visibleSteps[firstIncompleteIndex].status = 'in-progress';
-	}
+	const completionStates = visibleSteps.map(step =>
+		isTimelineStepComplete(step, executionData.prcAggregatedSteps, executionData)
+	);
+	const firstIncompleteIndex = completionStates.findIndex(isComplete => !isComplete);
 
-	return visibleSteps;
-}
-
-function isSequenceStepGroupCompleted(
-	prcAggregatedSteps: Record<string, unknown> | undefined,
-	prcTemplateStepId: number,
-	stepGroupId: number,
-	steps: Array<{ id: number }>,
-	ctq: boolean
-): boolean {
-	if (!prcAggregatedSteps) return false;
-
-	const stepData = prcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-	if (!stepData) return false;
-
-	const groupData = stepData[stepGroupId.toString()] as Record<string, unknown>;
-	if (!groupData) return false;
-
-	// Check if all steps within the group are filled
-	const allStepsFilled = steps.every(step => groupData[step.id.toString()] !== undefined);
-	if (!allStepsFilled) return false;
-
-	// Check if both productionApproved AND stepCompleted are true
-	// CTQ approval is only required if the step is CTQ
-	let productionApproved = false;
-	let ctqApproved = false;
-	let stepCompleted = false;
-
-	const stepGroupData = prcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-	if (stepGroupData && stepGroupData[stepGroupId.toString()]) {
-		const groupData = stepGroupData[stepGroupId.toString()] as Record<string, unknown>;
-		productionApproved = groupData.productionApproved === true;
-		ctqApproved = !ctq || groupData.ctqApproved === true || groupData.partialCtqApprove === true; // Only require CTQ approval if step is CTQ
-		stepCompleted = groupData.stepCompleted === true;
-	}
-
-	// A step is considered completed only when both productionApproved and stepCompleted are set to true
-	// CTQ approval is only required if the step is CTQ
-	return productionApproved && stepCompleted && ctqApproved;
-}
-
-function isSequenceStepGroupReadyForCompletion(
-	prcAggregatedSteps: Record<string, unknown> | undefined,
-	prcTemplateStepId: number,
-	stepGroupId: number,
-	steps: Array<{ id: number }>,
-	ctq: boolean
-): boolean {
-	if (!prcAggregatedSteps) return false;
-
-	const stepData = prcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-	if (!stepData) return false;
-
-	const groupData = stepData[stepGroupId.toString()] as Record<string, unknown>;
-	if (!groupData) return false;
-
-	// Check if all steps within the group are filled
-	const allStepsFilled = steps.every(step => groupData[step.id.toString()] !== undefined);
-	if (!allStepsFilled) return false;
-
-	// Check if both approvals are done (but not necessarily completed)
-	let productionApproved = false;
-	let ctqApproved = false;
-
-	const stepGroupData = prcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-	if (stepGroupData && stepGroupData[stepGroupId.toString()]) {
-		const groupData = stepGroupData[stepGroupId.toString()] as Record<string, unknown>;
-		productionApproved = groupData.productionApproved === true;
-		ctqApproved = !ctq || groupData.ctqApproved === true || groupData.partialCtqApprove === true;
-	}
-
-	return productionApproved && ctqApproved;
-}
-
-function isInspectionStepCompleted(
-	prcAggregatedSteps: Record<string, unknown> | undefined,
-	prcTemplateStepId: number,
-	ctq: boolean = false
-): boolean {
-	if (!prcAggregatedSteps) return false;
-
-	const stepData = prcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-	if (!stepData || Object.keys(stepData).length === 0) return false;
-
-	// Check if both productionApproved AND stepCompleted are true
-	// CTQ approval is only required if the step is CTQ
-	let productionApproved = false;
-	let ctqApproved = false;
-	let stepCompleted = false;
-
-	// Look for approval flags in the step data
-	productionApproved = stepData.productionApproved === true;
-	ctqApproved = !ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true; // Only require CTQ approval if step is CTQ
-	stepCompleted = stepData.stepCompleted === true;
-
-	// A step is considered completed only when both productionApproved and stepCompleted are set to true
-	// CTQ approval is only required if the step is CTQ
-	return productionApproved && stepCompleted && ctqApproved;
-}
-
-function isInspectionStepReadyForCompletion(
-	prcAggregatedSteps: Record<string, unknown> | undefined,
-	prcTemplateStepId: number,
-	ctq: boolean = false
-): boolean {
-	if (!prcAggregatedSteps) return false;
-
-	const stepData = prcAggregatedSteps[prcTemplateStepId.toString()] as Record<string, unknown>;
-	if (!stepData || Object.keys(stepData).length === 0) return false;
-
-	// Check if both approvals are done (but not necessarily completed)
-	let productionApproved = false;
-	let ctqApproved = false;
-
-	// Look for approval flags in the step data
-	productionApproved = stepData.productionApproved === true;
-	ctqApproved = !ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true; // Only require CTQ approval if step is CTQ
-
-	return productionApproved && ctqApproved;
+	return visibleSteps.map((step, index) => ({
+		...step,
+		status:
+			firstIncompleteIndex === -1 || index < firstIncompleteIndex
+				? 'completed'
+				: index === firstIncompleteIndex
+					? 'in-progress'
+					: 'pending'
+	}));
 }

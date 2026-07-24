@@ -1,6 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Box, Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import {
+	Box,
+	Alert,
+	Button,
+	CircularProgress,
+	Dialog,
+	DialogActions,
+	DialogContent,
+	DialogTitle,
+	Typography
+} from '@mui/material';
 import { FullScreenFormSavingOverlay } from '../../../../components/common/FullScreenFormSavingOverlay';
 import { useCurrentRole } from '../../../../hooks/useCurrentRole';
 import {
@@ -17,6 +27,12 @@ import {
 import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
 import { canEditStepForRole } from '../../utils/roleStepAccess';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
+import {
+	canAccessStepIndex,
+	getExecutionFrontierIndex,
+	hasInspectionParameterData,
+	isTimelineStepComplete
+} from '../../utils/stepGating';
 import {
 	buildAggregatedData,
 	buildTimingData,
@@ -109,6 +125,7 @@ const ExecutePrc = () => {
 	const [rawMaterialsOpen, setRawMaterialsOpen] = useState(false);
 	const catalystMixingStartTimeRef = useRef<string | null>(null);
 	const catalystMixingSubmitRef = useRef<(() => void) | null>(null);
+	const initializedExecutionIdRef = useRef<number | null>(null);
 
 	// API hooks
 	const {
@@ -120,10 +137,8 @@ const ExecutePrc = () => {
 
 	const [updateProgress, { isLoading: isUpdateProgressLoading }] = useUpdatePrcExecutionProgressMutation();
 
-	const [
-		fetchRawMaterials,
-		{ data: rmData, isLoading: rmLoading, error: rmError, reset: rmReset }
-	] = useFetchRawMaterialsMutation();
+	const [fetchRawMaterials, { data: rmData, isLoading: rmLoading, error: rmError, reset: rmReset }] =
+		useFetchRawMaterialsMutation();
 
 	// Build timeline steps from API data, but not during API calls
 	useEffect(() => {
@@ -136,6 +151,12 @@ const ExecutePrc = () => {
 			setTimeout(() => {
 				setTimelineSteps(steps);
 				const agg = actualData.prcAggregatedSteps;
+				const currentAggregated =
+					agg && typeof agg === 'object'
+						? (agg as Record<string, unknown>)
+						: Array.isArray(actualData.operationWiseData) && actualData.operationWiseData.length > 0
+							? { operationWiseData: [...actualData.operationWiseData] }
+							: {};
 				if (agg && typeof agg === 'object' && Object.keys(agg).length > 0) {
 					setCurrentAggregatedData({ ...(agg as Record<string, unknown>) });
 				} else if (
@@ -149,9 +170,20 @@ const ExecutePrc = () => {
 				} else {
 					setCurrentAggregatedData({});
 				}
+
+				if (!isViewOnlyMode) {
+					const frontierIndex = getExecutionFrontierIndex(steps, currentAggregated, actualData);
+					setCurrentStepIndex(previousIndex => {
+						if (initializedExecutionIdRef.current !== executionId) {
+							initializedExecutionIdRef.current = executionId;
+							return frontierIndex;
+						}
+						return Math.min(previousIndex, frontierIndex);
+					});
+				}
 			}, 0);
 		}
-	}, [executionData, isUpdateProgressLoading, isExecutionDataFetching]);
+	}, [executionData, executionId, isUpdateProgressLoading, isExecutionDataFetching, isViewOnlyMode]);
 
 	// Current step
 	const currentStep = timelineSteps[currentStepIndex];
@@ -171,6 +203,13 @@ const ExecutePrc = () => {
 		return actualData?.prcAggregatedSteps || {};
 	}, [currentAggregatedData, executionData]);
 
+	const actualExecutionData = (executionData as { data: ExecutionData })?.data;
+	const executionFrontierIndex = getExecutionFrontierIndex(
+		timelineSteps,
+		getCurrentAggregatedData(),
+		actualExecutionData
+	);
+
 	// The step whose completion starts the delay clock of the step at `index` (setup for the
 	// first template step; undefined for the first timeline entry).
 	const previousTimelineStepOf = useCallback(
@@ -187,71 +226,74 @@ const ExecutePrc = () => {
 	);
 
 	// Helper function to check if timing data already exists for a step
-	const hasExistingTimingData = useCallback((step: TimelineStep, formData?: FormData): boolean => {
-		if (!executionData) return false;
+	const hasExistingTimingData = useCallback(
+		(step: TimelineStep, formData?: FormData): boolean => {
+			if (!executionData) return false;
 
-		const actualData = (executionData as { data: ExecutionData }).data;
-		const existingTimingData = actualData.stepStartEndTime as Record<string, unknown>;
+			const actualData = (executionData as { data: ExecutionData }).data;
+			const existingTimingData = actualData.stepStartEndTime as Record<string, unknown>;
 
-		if (!existingTimingData) return false;
+			if (!existingTimingData) return false;
 
-		if (step.type === 'rawMaterials') {
-			return existingTimingData.rawMaterials !== undefined;
-		}
-
-		if (step.type === 'bom') {
-			return existingTimingData.bom !== undefined;
-		}
-
-		if (step.type === 'sequence') {
-			// For sequence steps, we need to check using the step information
-			let prcTemplateStepId: number;
-			let stepGroupId: number;
-			let stepId: number;
-
-			if (step.stepData) {
-				// Use stepData if available
-				prcTemplateStepId = step.stepData.prcTemplateStepId;
-				stepGroupId = step.stepData.stepGroupId || 0;
-				stepId = step.stepData.stepId || 0;
-			} else if (formData) {
-				// Fall back to formData if stepData is not available
-				prcTemplateStepId = (formData.prcTemplateStepId as number) || step.prcTemplateStepId || 0;
-				stepGroupId = (formData.stepGroupId as number) || step.stepGroup?.id || 0;
-				stepId = (formData.stepId as number) || 0;
-			} else {
-				return false;
+			if (step.type === 'rawMaterials') {
+				return existingTimingData.rawMaterials !== undefined;
 			}
 
-			const stepTiming = existingTimingData[prcTemplateStepId.toString()] as Record<string, unknown>;
-			if (stepTiming) {
-				const groupTiming = stepTiming[stepGroupId.toString()] as Record<string, unknown>;
-				if (groupTiming) {
-					return groupTiming[stepId.toString()] !== undefined;
+			if (step.type === 'bom') {
+				return existingTimingData.bom !== undefined;
+			}
+
+			if (step.type === 'sequence') {
+				// For sequence steps, we need to check using the step information
+				let prcTemplateStepId: number;
+				let stepGroupId: number;
+				let stepId: number;
+
+				if (step.stepData) {
+					// Use stepData if available
+					prcTemplateStepId = step.stepData.prcTemplateStepId;
+					stepGroupId = step.stepData.stepGroupId || 0;
+					stepId = step.stepData.stepId || 0;
+				} else if (formData) {
+					// Fall back to formData if stepData is not available
+					prcTemplateStepId = (formData.prcTemplateStepId as number) || step.prcTemplateStepId || 0;
+					stepGroupId = (formData.stepGroupId as number) || step.stepGroup?.id || 0;
+					stepId = (formData.stepId as number) || 0;
+				} else {
+					return false;
+				}
+
+				const stepTiming = existingTimingData[prcTemplateStepId.toString()] as Record<string, unknown>;
+				if (stepTiming) {
+					const groupTiming = stepTiming[stepGroupId.toString()] as Record<string, unknown>;
+					if (groupTiming) {
+						return groupTiming[stepId.toString()] !== undefined;
+					}
 				}
 			}
-		}
 
-		if (step.type === 'inspection' && step.stepData) {
-			// The inspection bucket is shared with approval-action timestamps
-			// (productionApproved/ctqApproved/stepCompleted), so existence of the bucket
-			// does NOT mean step timing has been written. Check the actual interval keys.
-			const bucket = existingTimingData[step.stepData.prcTemplateStepId.toString()] as
-				| Record<string, unknown>
-				| undefined;
-			return typeof bucket?.startTime === 'string' && typeof bucket?.endTime === 'string';
-		}
+			if (step.type === 'inspection' && step.stepData) {
+				// The inspection bucket is shared with approval-action timestamps
+				// (productionApproved/ctqApproved/stepCompleted), so existence of the bucket
+				// does NOT mean step timing has been written. Check the actual interval keys.
+				const bucket = existingTimingData[step.stepData.prcTemplateStepId.toString()] as
+					| Record<string, unknown>
+					| undefined;
+				return typeof bucket?.startTime === 'string' && typeof bucket?.endTime === 'string';
+			}
 
-		if (step.type === 'setup') {
-			return existingTimingData.prcmetadata !== undefined;
-		}
+			if (step.type === 'setup') {
+				return existingTimingData.prcmetadata !== undefined;
+			}
 
-		if (step.type === 'sapConfirmations') {
-			return existingTimingData.sapConfirmations !== undefined;
-		}
+			if (step.type === 'sapConfirmations') {
+				return existingTimingData.sapConfirmations !== undefined;
+			}
 
-		return false;
-	}, [executionData]);
+			return false;
+		},
+		[executionData]
+	);
 
 	// Initialize step start time when step changes
 	useEffect(() => {
@@ -271,15 +313,15 @@ const ExecutePrc = () => {
 			if (isViewOnlyMode || !executionData) return;
 
 			const actualData = (executionData as { data: ExecutionData }).data;
-			const existingRuntime = (actualData.stepStartEndTime as Record<string, unknown> | undefined)
-				?.executionRuntime as Record<string, unknown> | undefined;
+			const existingRuntime = (actualData.stepStartEndTime as Record<string, unknown> | undefined)?.executionRuntime as
+				| Record<string, unknown>
+				| undefined;
 			if (typeof existingRuntime?.startTime === 'string') return;
 
 			const startTime = startTimeOverride ?? new Date().toISOString();
-			const mergedTimingData = mergeTimingData(
-				(actualData.stepStartEndTime as Record<string, unknown>) ?? {},
-				{ executionRuntime: { startTime } }
-			);
+			const mergedTimingData = mergeTimingData((actualData.stepStartEndTime as Record<string, unknown>) ?? {}, {
+				executionRuntime: { startTime }
+			});
 
 			await updateProgress({
 				id: executionId,
@@ -301,8 +343,7 @@ const ExecutePrc = () => {
 		if (typeof existingRuntime?.startTime === 'string') return;
 
 		const meta = actualData.prcAggregatedSteps?.prcmetadata;
-		const setupCompleted =
-			meta && typeof meta === 'object' && Object.keys(meta as Record<string, unknown>).length > 0;
+		const setupCompleted = meta && typeof meta === 'object' && Object.keys(meta as Record<string, unknown>).length > 0;
 		if (!setupCompleted) return;
 
 		const setupEndTime = (timing?.prcmetadata as Record<string, unknown> | undefined)?.endTime;
@@ -311,13 +352,7 @@ const ExecutePrc = () => {
 		void persistExecutionRuntimeStart(startTime).catch(err =>
 			console.error('Failed to backfill execution runtime start:', err)
 		);
-	}, [
-		executionData,
-		isViewOnlyMode,
-		isUpdateProgressLoading,
-		isExecutionDataFetching,
-		persistExecutionRuntimeStart
-	]);
+	}, [executionData, isViewOnlyMode, isUpdateProgressLoading, isExecutionDataFetching, persistExecutionRuntimeStart]);
 
 	const persistStepData = useCallback(
 		async (
@@ -478,10 +513,10 @@ const ExecutePrc = () => {
 		const tick = () => {
 			const root =
 				previewTimingRootRef.current ??
-				(((executionData as { data: ExecutionData } | undefined)?.data?.stepStartEndTime as
+				((executionData as { data: ExecutionData } | undefined)?.data?.stepStartEndTime as
 					| Record<string, unknown>
 					| undefined) ??
-					{});
+				{};
 			const status = getLiveStepTimingStatus(currentStep, root, previousTimelineStepOf(currentStepIndex));
 			setPreviewData(prev => {
 				if (!prev || prev.stepCompleted) return prev;
@@ -848,10 +883,10 @@ const ExecutePrc = () => {
 		if (previewData?.stepCompleted) return previewData.timingExceeded === true;
 		const root =
 			previewTimingRootRef.current ??
-			(((executionData as { data: ExecutionData } | undefined)?.data?.stepStartEndTime as
+			((executionData as { data: ExecutionData } | undefined)?.data?.stepStartEndTime as
 				| Record<string, unknown>
 				| undefined) ??
-				{});
+			{};
 		return getLiveStepTimingStatus(currentStep, root, previousTimelineStepOf(currentStepIndex)).timingExceeded;
 	};
 
@@ -874,7 +909,10 @@ const ExecutePrc = () => {
 
 	// Helper: apply timing-exceeded remarks + delay reason into a step's aggregated bucket.
 	// Used by every approval/complete handler so the comment is persisted on the first action and refreshed on later ones.
-	const applyTimingExceededMetadata = (bucket: Record<string, unknown>, payload?: ProceedFromPreviewPayload): Record<string, unknown> => {
+	const applyTimingExceededMetadata = (
+		bucket: Record<string, unknown>,
+		payload?: ProceedFromPreviewPayload
+	): Record<string, unknown> => {
 		if (!isPreviewStepLateNow() && !payload?.timingExceededRemarks) return bucket;
 		const next: Record<string, unknown> = { ...bucket, timingExceeded: true };
 		const remarks = payload?.timingExceededRemarks;
@@ -1292,8 +1330,7 @@ const ExecutePrc = () => {
 					(actualData.stepStartEndTime as Record<string, unknown> | undefined)?.executionRuntime) as
 					| Record<string, unknown>
 					| undefined;
-				const runtimeStart =
-					typeof existingRuntime?.startTime === 'string' ? existingRuntime.startTime : undefined;
+				const runtimeStart = typeof existingRuntime?.startTime === 'string' ? existingRuntime.startTime : undefined;
 				if (runtimeStart && typeof existingRuntime?.endTime !== 'string') {
 					mergedTimingData = mergeTimingData(mergedTimingData, {
 						executionRuntime: { startTime: runtimeStart, endTime }
@@ -1393,15 +1430,30 @@ const ExecutePrc = () => {
 			setCurrentAggregatedData(mergedAggregatedData);
 
 			// Rebuild timeline steps with updated execution data
-			const updatedTimelineSteps = buildTimelineSteps(updatedExecutionData);
+			const updatedTimelineSteps = buildTimelineSteps(updatedExecutionData, {
+				omitStepTypes: ['bom', 'rawMaterials']
+			});
 			setTimelineSteps(updatedTimelineSteps);
 
 			// Move to next step
-			if (currentStepIndex < updatedTimelineSteps.length - 1) {
+			const updatedFrontierIndex = getExecutionFrontierIndex(
+				updatedTimelineSteps,
+				updatedExecutionData.prcAggregatedSteps,
+				updatedExecutionData
+			);
+			const completedCurrentStep = isTimelineStepComplete(
+				currentStep,
+				updatedExecutionData.prcAggregatedSteps,
+				updatedExecutionData
+			);
+			if (!completedCurrentStep) {
+				return;
+			}
+			if (currentStepIndex < updatedTimelineSteps.length - 1 && updatedFrontierIndex > currentStepIndex) {
 				setCurrentStepIndex(prev => prev + 1);
 				setCurrentView('list');
 				setPreviewData(null);
-			} else {
+			} else if (currentStepIndex === updatedTimelineSteps.length - 1) {
 				// All steps completed
 				navigate('/prc-execution');
 			}
@@ -1415,16 +1467,10 @@ const ExecutePrc = () => {
 		const targetStep = timelineSteps[stepIndex];
 		if (!targetStep) return;
 
-		// Check if user is trying to skip ahead without completing current step
-		if (!isViewOnlyMode && stepIndex > currentStepIndex) {
-			// Check if current step is properly completed
-			const currentStepCompleted = isStepProperlyCompleted(timelineSteps[currentStepIndex]);
-			if (!currentStepCompleted) {
-				console.log('Cannot proceed to next step - current step not properly completed');
-				// Stay on current step and show detail view
-				setCurrentView('detail');
-				return;
-			}
+		if (!isViewOnlyMode && !canAccessStepIndex(stepIndex, executionFrontierIndex)) {
+			setCurrentStepIndex(executionFrontierIndex);
+			setCurrentView('detail');
+			return;
 		}
 
 		// For sequence step groups, check if all steps are filled
@@ -1536,7 +1582,7 @@ const ExecutePrc = () => {
 			const prcTemplateStepId = targetStep.stepData?.prcTemplateStepId;
 			if (prcTemplateStepId) {
 				const stepData = getCurrentAggregatedData()?.[prcTemplateStepId.toString()] as Record<string, unknown>;
-				if (stepData && Object.keys(stepData).length > 0) {
+				if (stepData && hasInspectionParameterData(targetStep, getCurrentAggregatedData())) {
 					// Data is filled, show preview
 					setCurrentStepIndex(stepIndex);
 
@@ -1595,50 +1641,6 @@ const ExecutePrc = () => {
 			setCurrentStepIndex(stepIndex);
 			setCurrentView('detail');
 		}
-	};
-
-	// Helper function to check if a step is properly completed (both productionApproved and stepCompleted)
-	const isStepProperlyCompleted = (step: TimelineStep): boolean => {
-		if (!step) return false;
-
-		if (step.type === 'sequence' && step.stepGroup && step.prcTemplateStepId) {
-			const stepData = getCurrentAggregatedData()?.[step.prcTemplateStepId.toString()] as Record<string, unknown>;
-			if (!stepData) return false;
-
-			const groupData = stepData[step.stepGroup.id.toString()] as Record<string, unknown>;
-			if (!groupData) return false;
-
-			const productionApproved = groupData.productionApproved === true;
-			const ctqApproved = !step.ctq || groupData.ctqApproved === true || groupData.partialCtqApprove === true;
-			const stepCompleted = groupData.stepCompleted === true;
-
-			return productionApproved && stepCompleted && ctqApproved;
-		} else if (step.type === 'inspection' && step.stepData?.prcTemplateStepId) {
-			const stepData = getCurrentAggregatedData()?.[step.stepData.prcTemplateStepId.toString()] as Record<
-				string,
-				unknown
-			>;
-			if (!stepData || Object.keys(stepData).length === 0) return false;
-
-			const productionApproved = stepData.productionApproved === true;
-			const ctqApproved = !step.ctq || stepData.ctqApproved === true || stepData.partialCtqApprove === true;
-			const stepCompleted = stepData.stepCompleted === true;
-
-			return productionApproved && stepCompleted && ctqApproved;
-		}
-
-		if (step.type === 'setup') {
-			const meta = getCurrentAggregatedData()?.prcmetadata as Record<string, unknown> | undefined;
-			return !!meta && typeof meta === 'object' && Object.keys(meta).length > 0;
-		}
-
-		if (step.type === 'sapConfirmations') {
-			const sap = getCurrentAggregatedData()?.sapConfirmations as Record<string, unknown> | undefined;
-			return sap?.stepCompleted === true;
-		}
-
-		// For other step types (rawMaterials, bom), just check if they have data
-		return step.status === 'completed';
 	};
 
 	// Helper function to find the last completed step in a sequence group
@@ -1708,8 +1710,6 @@ const ExecutePrc = () => {
 		);
 	}
 
-	// Extract actual data from API response
-	const actualExecutionData = (executionData as { data: ExecutionData }).data;
 	const catalystMixingExecutionData = {
 		...actualExecutionData,
 		prcAggregatedSteps: getCurrentAggregatedData()
@@ -1766,6 +1766,7 @@ const ExecutePrc = () => {
 								<StepList
 									steps={timelineSteps}
 									currentStepIndex={currentStepIndex}
+									frontierIndex={executionFrontierIndex}
 									onStepClick={handleStepNavigation}
 									previewMode={isViewOnlyMode}
 									stepStartEndTime={actualExecutionData.stepStartEndTime ?? {}}
@@ -1792,13 +1793,20 @@ const ExecutePrc = () => {
 								}
 							}}
 							onNextStep={() => {
-								if (currentStepIndex < timelineSteps.length - 1) {
+								const nextStepIndex = currentStepIndex + 1;
+								if (
+									nextStepIndex < timelineSteps.length &&
+									(isViewOnlyMode || canAccessStepIndex(nextStepIndex, executionFrontierIndex))
+								) {
 									setCurrentStepIndex(prev => prev + 1);
 								}
 							}}
 							onStepComplete={handleStepComplete}
 							canGoPrevious={currentStepIndex > 0}
-							canGoNext={currentStepIndex < timelineSteps.length - 1}
+							canGoNext={
+								currentStepIndex < timelineSteps.length - 1 &&
+								(isViewOnlyMode || canAccessStepIndex(currentStepIndex + 1, executionFrontierIndex))
+							}
 						/>
 					)}
 
