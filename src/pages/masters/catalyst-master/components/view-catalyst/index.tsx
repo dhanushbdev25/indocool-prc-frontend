@@ -4,6 +4,7 @@ import { ArrowBack, Edit } from '@mui/icons-material';
 import ViewCatalystBasicInfo from './components/ViewCatalystBasicInfo';
 import ViewCatalystConfiguration from './components/ViewCatalystConfiguration';
 import { useFetchCatalystByIdQuery } from '../../../../../store/api/business/catalyst-master/catalyst.api';
+import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 
 const ViewCatalyst = () => {
 	const navigate = useNavigate();
@@ -116,6 +117,10 @@ const ViewCatalyst = () => {
 				{/* Configuration Section */}
 				<Box sx={{ mb: 4 }}>
 					<ViewCatalystConfiguration configurations={catalystConfiguration} />
+				</Box>
+
+				<Box sx={{ mb: 4 }}>
+					<AuditHistoryPanel history={catalystData.history} />
 				</Box>
 
 				{/* Action Buttons */}

@@ -1,4 +1,5 @@
 import { TableConfig } from '../../../../types/table-config.types';
+import { AuditHistoryEntry, hasValidAuditHistory } from '../audit-history/audit-history.validators';
 
 export interface ProcessStep {
 	id: number;
@@ -30,6 +31,7 @@ export interface ProcessStepGroup {
 	processSequenceId: number;
 	version: number;
 	isLatest: boolean;
+	sequence: number;
 	processName: string;
 	processDescription: string;
 	sequenceTiming: number;
@@ -74,6 +76,7 @@ export interface SequenceListResponse {
 export interface SequenceByIdResponse {
 	header: SequenceHeader;
 	detail: ProcessSequence;
+	history?: AuditHistoryEntry[];
 }
 
 export interface ProcessStepRequest {
@@ -95,6 +98,7 @@ export interface ProcessStepRequest {
 }
 
 export interface ProcessStepGroupRequest {
+	sequence: number;
 	processName: string;
 	processDescription: string;
 	sequenceTiming: number;
@@ -194,6 +198,7 @@ function isProcessStepGroup(value: unknown): value is ProcessStepGroup {
 	return (
 		typeof g.id === 'number' &&
 		typeof g.processSequenceId === 'number' &&
+		typeof g.sequence === 'number' &&
 		typeof g.processName === 'string' &&
 		Array.isArray(g.steps) &&
 		g.steps.every(isProcessStep)
@@ -239,7 +244,7 @@ export function isSequenceByIdResponse(value: unknown): value is SequenceByIdRes
 		return false;
 	}
 	const o = value as Record<string, unknown>;
-	return isSequenceHeader(o.header) && isProcessSequence(o.detail);
+	return isSequenceHeader(o.header) && isProcessSequence(o.detail) && hasValidAuditHistory(o);
 }
 
 function isProcessSequenceBasic(value: unknown): value is ProcessSequenceBasic {

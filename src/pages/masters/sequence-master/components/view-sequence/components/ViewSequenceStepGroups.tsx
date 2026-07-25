@@ -32,6 +32,7 @@ interface ViewSequenceStepGroupsProps {
 
 const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => {
 	const [expandedGroups, setExpandedGroups] = useState<Set<number>>(new Set([0]));
+	const orderedStepGroups = [...stepGroups].sort((a, b) => a.sequence - b.sequence);
 
 	const toggleGroupExpansion = (index: number) => {
 		const newExpanded = new Set(expandedGroups);
@@ -446,7 +447,7 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 			</Box>
 
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-				{stepGroups.length === 0 ? (
+				{orderedStepGroups.length === 0 ? (
 					<Box sx={{ textAlign: 'center', py: 4 }}>
 						<GroupIcon sx={{ fontSize: 48, color: '#ccc', mb: 2 }} />
 						<Typography variant="h6" sx={{ color: '#666', mb: 1 }}>
@@ -459,10 +460,11 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 				) : (
 					<Box>
 						<Typography variant="body2" sx={{ color: '#666', mb: 3 }}>
-							This process sequence has {stepGroups.length} step group{stepGroups.length > 1 ? 's' : ''} with{' '}
-							{stepGroups.reduce((total, group) => total + (group.steps?.length || 0), 0)} total steps.
+							This process sequence has {orderedStepGroups.length} step group
+							{orderedStepGroups.length > 1 ? 's' : ''} with{' '}
+							{orderedStepGroups.reduce((total, group) => total + (group.steps?.length || 0), 0)} total steps.
 						</Typography>
-						{stepGroups.map((stepGroup, groupIndex) => renderStepGroup(stepGroup, groupIndex))}
+						{orderedStepGroups.map((stepGroup, groupIndex) => renderStepGroup(stepGroup, groupIndex))}
 					</Box>
 				)}
 			</Paper>

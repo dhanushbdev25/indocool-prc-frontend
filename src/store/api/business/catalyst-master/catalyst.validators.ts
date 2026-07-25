@@ -1,3 +1,5 @@
+import { AuditHistoryEntry, hasValidAuditHistory } from '../audit-history/audit-history.validators';
+
 export interface CatalystConfiguration {
 	id: number;
 	catalystId: number;
@@ -59,6 +61,7 @@ export interface CatalystChartResponse {
 export interface CatalystByIdResponse {
 	header: CatalystHeader;
 	detail: CatalystDetail;
+	history?: AuditHistoryEntry[];
 }
 
 export interface CatalystConfigurationRequest {
@@ -199,7 +202,7 @@ export function isCatalystByIdResponse(value: unknown): value is CatalystByIdRes
 		return false;
 	}
 	const o = value as Record<string, unknown>;
-	return isCatalystHeader(o.header) && isCatalystDetail(o.detail);
+	return isCatalystHeader(o.header) && isCatalystDetail(o.detail) && hasValidAuditHistory(o);
 }
 
 function isCatalystBasic(value: unknown): value is CatalystBasic {

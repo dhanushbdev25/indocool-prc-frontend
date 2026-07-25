@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultProcessStep, processStepSchema } from './schemas';
+import { defaultProcessStep, defaultProcessStepGroup, processStepGroupSchema, processStepSchema } from './schemas';
 
 describe('sequence processStepSchema table columns', () => {
 	it('accepts date column type in tableConfig', async () => {
@@ -30,5 +30,27 @@ describe('sequence processStepSchema table columns', () => {
 				}
 			})
 		).rejects.toThrow(/Invalid column type/);
+	});
+});
+
+describe('sequence processStepGroupSchema ordering', () => {
+	it('requires a positive integer sequence', async () => {
+		await expect(
+			processStepGroupSchema.validate({
+				...defaultProcessStepGroup,
+				processName: '30',
+				processDescription: 'Gel coat application',
+				sequence: 2
+			})
+		).resolves.toMatchObject({ sequence: 2 });
+
+		await expect(
+			processStepGroupSchema.validate({
+				...defaultProcessStepGroup,
+				processName: '30',
+				processDescription: 'Gel coat application',
+				sequence: 0
+			})
+		).rejects.toThrow();
 	});
 });

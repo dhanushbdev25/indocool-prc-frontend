@@ -26,6 +26,7 @@ import {
 	useCreateInspectionMutation,
 	useUpdateInspectionMutation
 } from '../../../../../store/api/business/inspection-master/inspection.api';
+import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
 
 const steps = ['Basic Information', 'Inspection Parameters', 'Review & Submit'];
 
@@ -115,8 +116,8 @@ const CreateInspection = () => {
 	useEffect(() => {
 		if (!isFetchSuccess || !inspectionData) return;
 
-		const inspectionParameters = inspectionData.detail.inspectionParameters.map((param, index) => ({
-			order: param.order ?? index + 1,
+		const inspectionParameters = sortByNumericOrder(inspectionData.detail.inspectionParameters).map((param, index) => ({
+			order: index + 1,
 			parameterName: param.parameterName,
 			specification: param.specification ?? '',
 			minimumAcceptanceValue: param.minimumAcceptanceValue ?? '',
@@ -244,8 +245,8 @@ const CreateInspection = () => {
 				inspectionTiming: convertTimeToSeconds(data.inspectionTiming)
 			};
 
-		const inspectionParameters = (data.inspectionParameters || []).map(param => ({
-			order: param.order,
+		const inspectionParameters = (data.inspectionParameters || []).map((param, parameterIndex) => ({
+			order: parameterIndex + 1,
 			parameterName: param.parameterName,
 			specification: param.specification,
 			minimumAcceptanceValue:

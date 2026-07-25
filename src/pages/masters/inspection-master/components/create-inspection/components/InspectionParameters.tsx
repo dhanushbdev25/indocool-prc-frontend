@@ -60,6 +60,10 @@ import { InspectionFormData } from '../schemas';
 import { OK_NOT_OK_NEGATIVE_LABEL, OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../../utils/okNotOkLabels';
 import { GATE_FIELD_LABEL, GATE_NEGATIVE_LABEL, GATE_POSITIVE_LABEL } from '../../../../../../utils/gateLabels';
 import {
+	remapIndexSetAfterMove,
+	remapIndexSetAfterRemove
+} from '../../../../../../utils/orderedRecords';
+import {
 	defaultInspectionParameter,
 	defaultColumn,
 	roleOptions,
@@ -97,7 +101,8 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 	const {
 		fields: parameterFields,
 		append: appendParameter,
-		remove: removeParameter
+		remove: removeParameter,
+		move: moveParameter
 	} = useFieldArray({
 		control,
 		name: 'inspectionParameters'
@@ -141,8 +146,21 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 		});
 	}, [errors.inspectionParameters, manuallyCollapsed, parameterFields.length]);
 
+	const renumberParameters = useCallback(
+		(parameterCount: number) => {
+			for (let index = 0; index < parameterCount; index += 1) {
+				setValue(`inspectionParameters.${index}.order`, index + 1, {
+					shouldDirty: true,
+					shouldValidate: false
+				});
+			}
+		},
+		[setValue]
+	);
+
 	const addParameter = useCallback(() => {
 		const newIndex = parameterFields.length;
+		renumberParameters(newIndex);
 		appendParameter({
 			...defaultInspectionParameter,
 			order: newIndex + 1
@@ -153,7 +171,29 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 			next.delete(newIndex);
 			return next;
 		});
-	}, [appendParameter, parameterFields.length]);
+	}, [appendParameter, parameterFields.length, renumberParameters]);
+
+	const removeParameterAt = useCallback(
+		(index: number) => {
+			removeParameter(index);
+			renumberParameters(parameterFields.length - 1);
+			setExpandedCards(prev => remapIndexSetAfterRemove(prev, index));
+			setManuallyCollapsed(prev => remapIndexSetAfterRemove(prev, index));
+		},
+		[parameterFields.length, removeParameter, renumberParameters]
+	);
+
+	const moveParameterTo = useCallback(
+		(fromIndex: number, toIndex: number) => {
+			if (toIndex < 0 || toIndex >= parameterFields.length) return;
+
+			moveParameter(fromIndex, toIndex);
+			renumberParameters(parameterFields.length);
+			setExpandedCards(prev => remapIndexSetAfterMove(prev, fromIndex, toIndex));
+			setManuallyCollapsed(prev => remapIndexSetAfterMove(prev, fromIndex, toIndex));
+		},
+		[moveParameter, parameterFields.length, renumberParameters]
+	);
 
 	const toggleCardExpansion = useCallback((index: number) => {
 		setExpandedCards(prev => {
@@ -227,6 +267,30 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 					</Box>
 
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+						<Tooltip title="Move parameter up">
+							<span>
+								<IconButton
+									aria-label={`Move parameter ${index + 1} up`}
+									disabled={index === 0}
+									onClick={() => moveParameterTo(index, index - 1)}
+									sx={{ color: '#666' }}
+								>
+									<UpIcon />
+								</IconButton>
+							</span>
+						</Tooltip>
+						<Tooltip title="Move parameter down">
+							<span>
+								<IconButton
+									aria-label={`Move parameter ${index + 1} down`}
+									disabled={index === parameterFields.length - 1}
+									onClick={() => moveParameterTo(index, index + 1)}
+									sx={{ color: '#666' }}
+								>
+									<DownIcon />
+								</IconButton>
+							</span>
+						</Tooltip>
 						<IconButton
 							onClick={() => toggleCardExpansion(index)}
 							sx={{
@@ -237,8 +301,9 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 							{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
 						</IconButton>
 						<IconButton
+							aria-label={`Delete parameter ${index + 1}`}
 							color="error"
-							onClick={() => removeParameter(index)}
+							onClick={() => removeParameterAt(index)}
 							sx={{
 								backgroundColor: '#ffebee',
 								'&:hover': { backgroundColor: '#ffcdd2' }

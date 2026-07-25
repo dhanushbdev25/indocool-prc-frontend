@@ -57,6 +57,10 @@ interface StepGroupAccordionBlockProps {
 	isExpanded: boolean;
 	onToggle: () => void;
 	onRemove: () => void;
+	onMoveUp: () => void;
+	onMoveDown: () => void;
+	canMoveUp: boolean;
+	canMoveDown: boolean;
 }
 
 const StepGroupAccordionBlock = ({
@@ -65,7 +69,11 @@ const StepGroupAccordionBlock = ({
 	errors,
 	isExpanded,
 	onToggle,
-	onRemove
+	onRemove,
+	onMoveUp,
+	onMoveDown,
+	canMoveUp,
+	canMoveDown
 }: StepGroupAccordionBlockProps) => {
 	const processDescription =
 		useWatch({
@@ -123,6 +131,34 @@ const StepGroupAccordionBlock = ({
 							<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', flex: 1, minWidth: 0 }}>
 								Step Group {groupIndex + 1}
 							</Typography>
+							<Tooltip title="Move group up">
+								<span>
+									<IconButton
+										size="small"
+										disabled={!canMoveUp}
+										onClick={e => {
+											e.stopPropagation();
+											onMoveUp();
+										}}
+									>
+										<UpIcon />
+									</IconButton>
+								</span>
+							</Tooltip>
+							<Tooltip title="Move group down">
+								<span>
+									<IconButton
+										size="small"
+										disabled={!canMoveDown}
+										onClick={e => {
+											e.stopPropagation();
+											onMoveDown();
+										}}
+									>
+										<DownIcon />
+									</IconButton>
+								</span>
+							</Tooltip>
 							<IconButton
 								size="small"
 								data-delete-button
@@ -169,6 +205,7 @@ const StepGroupAccordionBlock = ({
 };
 
 const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
+	const { setValue } = useFormContext<SequenceFormData>();
 	const {
 		fields: stepGroupFields,
 		append: appendStepGroup,
@@ -181,12 +218,18 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 
 	const [expandedGroups, setExpandedGroups] = useState<number[]>(() => stepGroupFields.map((_, index) => index));
 
-	const normalizeExpandedGroups = (groupCount: number) => {
-		setExpandedGroups(Array.from({ length: groupCount }, (_, i) => i));
+	const renumberStepGroups = (groupCount: number) => {
+		for (let index = 0; index < groupCount; index += 1) {
+			setValue(`processStepGroups.${index}.sequence`, index + 1, {
+				shouldDirty: true,
+				shouldValidate: false
+			});
+		}
 	};
 
 	const addStepGroup = () => {
 		appendStepGroup({
+			sequence: stepGroupFields.length + 1,
 			processName: '',
 			processDescription: '',
 			sequenceTiming: '00:01',
@@ -212,6 +255,30 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 				}
 			]
 		});
+		setExpandedGroups(prev => [...prev, stepGroupFields.length]);
+	};
+
+	const removeGroup = (groupIndex: number) => {
+		removeStepGroup(groupIndex);
+		renumberStepGroups(stepGroupFields.length - 1);
+		setExpandedGroups(prev =>
+			prev.filter(index => index !== groupIndex).map(index => (index > groupIndex ? index - 1 : index))
+		);
+	};
+
+	const moveGroup = (fromIndex: number, toIndex: number) => {
+		if (toIndex < 0 || toIndex >= stepGroupFields.length) return;
+
+		moveStepGroup(fromIndex, toIndex);
+		renumberStepGroups(stepGroupFields.length);
+		setExpandedGroups(prev =>
+			prev.map(index => {
+				if (index === fromIndex) return toIndex;
+				if (fromIndex < toIndex && index > fromIndex && index <= toIndex) return index - 1;
+				if (toIndex < fromIndex && index >= toIndex && index < fromIndex) return index + 1;
+				return index;
+			})
+		);
 	};
 
 	const handleAccordionToggle = (groupIndex: number) => {
@@ -254,7 +321,11 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 					errors={errors}
 					isExpanded={expandedGroups.includes(groupIndex)}
 					onToggle={() => handleAccordionToggle(groupIndex)}
-					onRemove={() => removeStepGroup(groupIndex)}
+					onRemove={() => removeGroup(groupIndex)}
+					onMoveUp={() => moveGroup(groupIndex, groupIndex - 1)}
+					onMoveDown={() => moveGroup(groupIndex, groupIndex + 1)}
+					canMoveUp={groupIndex > 0}
+					canMoveDown={groupIndex < stepGroupFields.length - 1}
 				/>
 			))}
 
@@ -307,8 +378,12 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 		formState: { errors }
 	} = useFormContext<SequenceFormData>();
 	const basePath = `processStepGroups.${groupIndex}.processSteps.${stepIndex}` as const;
+	const tableConfigPath = `${basePath}.tableConfig` as const;
 	const targetValueType = useWatch({ control, name: `${basePath}.targetValueType` });
-	const tableConfig = useWatch({ control, name: `${basePath}.tableConfig` as `processStepGroups.${number}.processSteps.${number}.tableConfig` });
+	const tableConfig = useWatch({
+		control,
+		name: tableConfigPath
+	});
 
 	if (targetValueType !== 'table') return null;
 
@@ -326,8 +401,7 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 	const rows: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }> = (tableConfig as any)?.rows || [];
 
 	const setConfig = (newColumns: typeof columns, newRows: typeof rows) => {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		setValue(`${basePath}.tableConfig` as any, { columns: newColumns, rows: newRows }, {
+		setValue(tableConfigPath, { columns: newColumns, rows: newRows }, {
 			shouldDirty: true,
 			shouldTouch: true,
 			shouldValidate: true

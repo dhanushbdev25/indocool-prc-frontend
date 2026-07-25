@@ -1,13 +1,7 @@
 import { useMemo, memo } from 'react';
 import { Box, Chip, IconButton, Typography, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from 'material-react-table';
-import {
-	MoreVert as MoreVertIcon,
-	CheckCircle as CheckCircleIcon,
-	Edit as EditIcon,
-	Delete as DeleteIcon,
-	Visibility as ViewIcon
-} from '@mui/icons-material';
+import { MoreVert as MoreVertIcon, CheckCircle as CheckCircleIcon, Edit as EditIcon, Delete as DeleteIcon, Visibility as ViewIcon, History as HistoryIcon } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
 import { type Catalyst } from '../../../../../../store/api/business/catalyst-master/catalyst.validators';
@@ -21,11 +15,12 @@ interface CatalystTableProps {
 	onActionClick?: (chartId: string, action: string) => void;
 	onEdit?: (catalystId: number) => void;
 	onView?: (catalystId: number) => void;
+	onAuditLogs?: (catalyst: CatalystData) => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const CatalystTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPaginationChange }: CatalystTableProps) => {
+const CatalystTable = memo(({ data, onActionClick, onEdit, onView, onAuditLogs, pagination, onPaginationChange }: CatalystTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canEdit = hasPermission('CATALYST_MASTER_EDIT');
 	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -79,6 +74,11 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView, pagination, o
 		if (selectedRow && onActionClick) {
 			onActionClick(selectedRow.chartId, 'delete');
 		}
+		handleMenuClose();
+	};
+
+	const handleAuditLogs = () => {
+		if (selectedRow && onAuditLogs) onAuditLogs(selectedRow);
 		handleMenuClose();
 	};
 
@@ -184,6 +184,12 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView, pagination, o
 							<ViewIcon fontSize="small" />
 						</ListItemIcon>
 						<ListItemText>View</ListItemText>
+					</MenuItem>,
+					<MenuItem key="audit" onClick={handleAuditLogs}>
+						<ListItemIcon>
+							<HistoryIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>Audit Logs</ListItemText>
 					</MenuItem>,
 					canEdit && (
 						<MenuItem key="edit" onClick={handleEdit}>

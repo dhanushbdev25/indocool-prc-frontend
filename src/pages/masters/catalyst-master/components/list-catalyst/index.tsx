@@ -23,6 +23,7 @@ import {
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteCatalystTaskRequest } from '../../../../../store/api/business/catalyst-master/catalyst.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
+import { MasterAuditHistoryDialog, type MasterAuditTarget } from '../../../../../components/common/auditHistory';
 
 const SEARCH_PLACEHOLDER = 'Chart ID, customer name, or notes';
 
@@ -33,6 +34,7 @@ const ListCatalyst = () => {
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('catalyst');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [catalystToDelete, setCatalystToDelete] = useState<CatalystData | null>(null);
+	const [auditTarget, setAuditTarget] = useState<MasterAuditTarget | null>(null);
 
 	const {
 		data: catalystChartData,
@@ -222,6 +224,13 @@ const ListCatalyst = () => {
 							onActionClick={handleActionClick}
 							onEdit={handleEdit}
 							onView={handleView}
+							onAuditLogs={catalyst =>
+								setAuditTarget({
+									domain: 'catalyst',
+									id: catalyst.id,
+									label: catalyst.chartId
+								})
+							}
 							pagination={pagination}
 							onPaginationChange={setPagination}
 						/>
@@ -229,6 +238,7 @@ const ListCatalyst = () => {
 				}
 			/>
 
+			<MasterAuditHistoryDialog target={auditTarget} onClose={() => setAuditTarget(null)} />
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
 				<DialogTitle>Delete Catalyst Task</DialogTitle>
 				<DialogContent>

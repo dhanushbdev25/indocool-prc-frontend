@@ -1,4 +1,5 @@
 import { TableConfig } from '../../../../types/table-config.types';
+import { AuditHistoryEntry, hasValidAuditHistory } from '../audit-history/audit-history.validators';
 
 export interface Column {
 	name: string;
@@ -91,6 +92,7 @@ export interface InspectionListResponse {
 export interface InspectionByIdResponse {
 	header: InspectionHeader;
 	detail: InspectionDetail;
+	history?: AuditHistoryEntry[];
 }
 
 export interface ColumnRequest {
@@ -263,7 +265,7 @@ export function isInspectionByIdResponse(value: unknown): value is InspectionByI
 		return false;
 	}
 	const o = value as Record<string, unknown>;
-	return isInspectionHeader(o.header) && isInspectionDetail(o.detail);
+	return isInspectionHeader(o.header) && isInspectionDetail(o.detail) && hasValidAuditHistory(o);
 }
 
 function isInspectionBasic(value: unknown): value is InspectionBasic {

@@ -27,6 +27,7 @@ import {
 	type Mould
 } from '../../../../../store/api/business/part-master/part.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
+import { MasterAuditHistoryDialog, type MasterAuditTarget } from '../../../../../components/common/auditHistory';
 
 const SEARCH_PLACEHOLDER = 'Part number, SAP, drawing, description, or customer';
 
@@ -59,6 +60,7 @@ const ListPart = () => {
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('part');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [partToDelete, setPartToDelete] = useState<PartRow | null>(null);
+	const [auditTarget, setAuditTarget] = useState<MasterAuditTarget | null>(null);
 
 	const { data: partData, isLoading: isPartDataLoading, refetch: refetchParts } = useFetchPartsQuery();
 
@@ -340,6 +342,7 @@ const ListPart = () => {
 							onActionClick={handleActionClick}
 							onEdit={handleEdit}
 							onView={handleView}
+							onAuditLogs={part => setAuditTarget({ domain: 'part', id: part.id, label: part.partNumber })}
 							pagination={pagination}
 							onPaginationChange={setPagination}
 						/>
@@ -347,6 +350,7 @@ const ListPart = () => {
 				}
 			/>
 
+			<MasterAuditHistoryDialog target={auditTarget} onClose={() => setAuditTarget(null)} />
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
 				<DialogTitle>Delete Part</DialogTitle>
 				<DialogContent>

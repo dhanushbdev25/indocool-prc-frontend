@@ -4,6 +4,7 @@ import { ArrowBack, Edit, ContentCopy } from '@mui/icons-material';
 import ViewInspectionBasicInfo from './components/ViewInspectionBasicInfo';
 import ViewInspectionParameters from './components/ViewInspectionParameters';
 import { useFetchInspectionByIdQuery } from '../../../../../store/api/business/inspection-master/inspection.api';
+import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 
 const ViewInspection = () => {
 	const navigate = useNavigate();
@@ -130,6 +131,10 @@ const ViewInspection = () => {
 				{/* Parameters Section */}
 				<Box sx={{ mb: 4 }}>
 					<ViewInspectionParameters parameters={inspectionParameters} />
+				</Box>
+
+				<Box sx={{ mb: 4 }}>
+					<AuditHistoryPanel history={inspectionData.history} />
 				</Box>
 
 				{/* Action Buttons */}

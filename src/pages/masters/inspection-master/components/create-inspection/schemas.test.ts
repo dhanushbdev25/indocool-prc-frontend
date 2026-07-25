@@ -26,3 +26,23 @@ describe('inspection fixed-table tableConfig', () => {
 		).resolves.toBeDefined();
 	});
 });
+
+describe('inspection parameter ordering', () => {
+	it('requires order to be a positive integer', async () => {
+		await expect(
+			inspectionParameterSchema.validate({
+				...defaultInspectionParameter,
+				parameterName: 'Surface finish',
+				order: 2
+			})
+		).resolves.toMatchObject({ order: 2 });
+
+		await expect(
+			inspectionParameterSchema.validate({
+				...defaultInspectionParameter,
+				parameterName: 'Surface finish',
+				order: 0
+			})
+		).rejects.toThrow(/Order must be at least 1/);
+	});
+});

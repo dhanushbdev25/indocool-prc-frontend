@@ -1,6 +1,7 @@
 import { type TimelineStep, type ExecutionData } from '../types/execution.types';
 import { isRawMaterialsStepCompleteForNavigation } from './rawMaterialsNavigation';
 import { isTimelineStepComplete } from './stepGating';
+import { sortByNumericOrder } from '../../../utils/orderedRecords';
 
 export interface BuildTimelineStepsOptions {
 	omitStepTypes?: TimelineStep['type'][];
@@ -125,6 +126,7 @@ export function buildTimelineSteps(
 				const sequenceData = prcTemplateStep.data as {
 					stepGroups: Array<{
 						id: number;
+						sequence?: number;
 						steps: Array<{
 							id: number;
 							ctq: boolean;
@@ -149,7 +151,14 @@ export function buildTimelineSteps(
 					}>;
 				};
 				if (sequenceData.stepGroups) {
-					for (const stepGroup of sequenceData.stepGroups) {
+					const hasGroupSequence = sequenceData.stepGroups.every(
+						group => typeof group.sequence === 'number' && Number.isFinite(group.sequence)
+					);
+					const orderedStepGroups = hasGroupSequence
+						? [...sequenceData.stepGroups].sort((a, b) => (a.sequence as number) - (b.sequence as number))
+						: sequenceData.stepGroups;
+
+					for (const stepGroup of orderedStepGroups) {
 						const seqStepAgg = executionData.prcAggregatedSteps?.[prcTemplateStep.id.toString()] as
 							| Record<string, unknown>
 							| undefined;
@@ -167,6 +176,7 @@ export function buildTimelineSteps(
 							prcTemplateStepId: prcTemplateStep.id,
 							stepGroup: {
 								id: stepGroup.id,
+								sequence: stepGroup.sequence,
 								processName: `${stepGroup.processName} (${stepGroup.processDescription})`,
 								processDescription: stepGroup.processDescription,
 								sequenceTiming: stepGroup.sequenceTiming || 0, // Default value since sequenceTiming is not available in stepGroup
@@ -251,7 +261,7 @@ export function buildTimelineSteps(
 						allowAttachments: false
 					},
 					inspectionParameters:
-						inspectionData.inspectionParameters?.map((param, index) => ({
+						sortByNumericOrder(inspectionData.inspectionParameters ?? []).map((param, index) => ({
 							// Prefer direct inspection parameter mappings; fallback to part-level inspectionDiagrams mappings
 							...(() => {
 								const fallbackDiagram = inspectionDiagramByParameterId.get(param.id);
@@ -290,7 +300,7 @@ export function buildTimelineSteps(
 							updatedAt: (param as any).updatedAt || new Date().toISOString(),
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							inspectionId: (param as any).inspectionId || prcTemplateStep.id
-						})) || [],
+						})),
 					inspectionMetadata: inspectionData.inspection
 						? {
 								// eslint-disable-next-line @typescript-eslint/no-explicit-any

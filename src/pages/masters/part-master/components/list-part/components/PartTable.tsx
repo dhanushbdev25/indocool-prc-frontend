@@ -7,7 +7,8 @@ import {
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Build as PartIcon,
-	CheckCircle as CheckCircleIcon
+	CheckCircle as CheckCircleIcon,
+	History as HistoryIcon
 } from '@mui/icons-material';
 import TableComponent from '../../../../../../components/table/TableComponent';
 import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
@@ -41,11 +42,12 @@ interface PartTableProps {
 	onActionClick: (partId: string, action: string) => void;
 	onEdit: (partId: number) => void;
 	onView: (partId: number) => void;
+	onAuditLogs: (part: PartData) => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPaginationChange }: PartTableProps) => {
+const PartTable = memo(({ data, onActionClick, onEdit, onView, onAuditLogs, pagination, onPaginationChange }: PartTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canEdit = hasPermission('PART_MASTER_EDIT');
 	const safeData = data || [];
@@ -80,6 +82,11 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPag
 		if (selectedRow && onActionClick) {
 			onActionClick(selectedRow.partNumber, 'delete');
 		}
+		handleMenuClose();
+	};
+
+	const handleAuditLogs = () => {
+		if (selectedRow) onAuditLogs(selectedRow);
 		handleMenuClose();
 	};
 
@@ -253,6 +260,12 @@ const PartTable = memo(({ data, onActionClick, onEdit, onView, pagination, onPag
 						<ViewIcon fontSize="small" />
 					</ListItemIcon>
 					<ListItemText>View</ListItemText>
+				</MenuItem>
+				<MenuItem onClick={handleAuditLogs}>
+					<ListItemIcon>
+						<HistoryIcon fontSize="small" />
+					</ListItemIcon>
+					<ListItemText>Audit Logs</ListItemText>
 				</MenuItem>
 				{canEdit && (
 					<MenuItem onClick={handleEdit}>

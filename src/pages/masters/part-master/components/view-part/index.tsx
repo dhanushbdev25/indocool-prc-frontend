@@ -5,6 +5,7 @@ import ViewGeneralInfo from './components/ViewGeneralInfo';
 import ViewRawMaterials from './components/ViewRawMaterials';
 import ViewLinkedMasters from './components/ViewLinkedMasters';
 import { useFetchPartByIdQuery } from '../../../../../store/api/business/part-master/part.api';
+import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 
 const ViewPart = () => {
 	const navigate = useNavigate();
@@ -113,7 +114,8 @@ const ViewPart = () => {
 				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 					<ViewGeneralInfo partMaster={partMaster} files={partData?.detail?.files || undefined} />
 					<ViewRawMaterials rawMaterials={rawMaterials} />
-					<ViewLinkedMasters partMaster={partMaster} />
+					<ViewLinkedMasters partMaster={partMaster} files={partData.detail.files || undefined} />
+					<AuditHistoryPanel history={partData.history} />
 				</Box>
 
 				{/* Action Buttons */}

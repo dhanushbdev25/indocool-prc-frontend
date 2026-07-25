@@ -22,6 +22,8 @@ import {
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteInspectionTaskRequest } from '../../../../../store/api/business/inspection-master/inspection.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
+import { MasterAuditHistoryDialog, type MasterAuditTarget } from '../../../../../components/common/auditHistory';
+import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
 
 const SEARCH_PLACEHOLDER = 'Inspection ID, name, or type';
 
@@ -32,6 +34,7 @@ const ListInspection = () => {
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('inspection');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [inspectionToDelete, setInspectionToDelete] = useState<InspectionData | null>(null);
+	const [auditTarget, setAuditTarget] = useState<MasterAuditTarget | null>(null);
 
 	const {
 		data: inspectionData,
@@ -160,8 +163,8 @@ const ListInspection = () => {
 						createdBy: fullInspectionDetail.inspection.createdBy,
 						updatedBy: fullInspectionDetail.inspection.updatedBy
 					},
-					inspectionParameters: fullInspectionDetail.inspectionParameters.map((param, index) => ({
-						order: param.order ?? index + 1,
+					inspectionParameters: sortByNumericOrder(fullInspectionDetail.inspectionParameters).map((param, index) => ({
+						order: index + 1,
 						parameterName: param.parameterName,
 						specification: param.specification,
 						minimumAcceptanceValue: param.minimumAcceptanceValue,
@@ -256,6 +259,13 @@ const ListInspection = () => {
 							onEdit={handleEdit}
 							onView={handleView}
 							onClone={handleClone}
+							onAuditLogs={inspection =>
+								setAuditTarget({
+									domain: 'inspection',
+									id: inspection.id,
+									label: inspection.inspectionId
+								})
+							}
 							pagination={pagination}
 							onPaginationChange={setPagination}
 						/>
@@ -263,6 +273,7 @@ const ListInspection = () => {
 				}
 			/>
 
+			<MasterAuditHistoryDialog target={auditTarget} onClose={() => setAuditTarget(null)} />
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
 				<DialogTitle>Delete Inspection Task</DialogTitle>
 				<DialogContent>

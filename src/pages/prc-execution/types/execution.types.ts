@@ -51,6 +51,7 @@ export interface FixedTableRowAnnotation {
 
 export interface StepGroup {
 	id: number;
+	sequence?: number;
 	processName: string;
 	processDescription: string;
 	sequenceTiming?: number;

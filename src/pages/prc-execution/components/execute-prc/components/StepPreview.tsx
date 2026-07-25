@@ -53,6 +53,7 @@ import {
 	isNegativeOkNotOk
 } from '../../../../../utils/okNotOkLabels';
 import { GATE_FIELD_LABEL, formatGateValueForDisplay } from '../../../../../utils/gateLabels';
+import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
 import { formatTableCellDisplay } from '../../../../../utils/formatTableCellDisplay';
 
 import {
@@ -1068,24 +1069,26 @@ const StepPreview = ({
 
 		if (previewData.type === 'inspection') {
 			// Handle inspection data - show as detailed inspection report table
-			const inspectionParams = previewData.inspectionParameters || [];
+			const inspectionParams = sortByNumericOrder(previewData.inspectionParameters || []);
 			const inspectionMeta = previewData.inspectionMetadata;
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const hasAnyAnnotationData = Object.entries(data).some(([key, parameterData]: [string, any]) => {
-				if (
-					key === 'data' ||
-					key === 'startTime' ||
-					key === 'endTime' ||
-					key === 'stepCompleted' ||
-					key === 'productionApproved' ||
-					key === 'ctqApproved'
-				) {
-					return false;
-				}
+			const rawInspectionEntries = Object.entries(data).filter(([key]) => /^\d+$/.test(key));
+			const inspectionEntryById = new Map(rawInspectionEntries);
+			const knownParameterIds = new Set(inspectionParams.map(parameter => parameter.id.toString()));
+			const orderedInspectionEntries: Array<[string, unknown]> = [
+				...inspectionParams.flatMap(parameter => {
+					const parameterId = parameter.id.toString();
+					return inspectionEntryById.has(parameterId)
+						? ([[parameterId, inspectionEntryById.get(parameterId)]] as Array<[string, unknown]>)
+						: [];
+				}),
+				...rawInspectionEntries.filter(([parameterId]) => !knownParameterIds.has(parameterId))
+			];
+			const hasAnyAnnotationData = orderedInspectionEntries.some(([, parameterData]) => {
 				if (typeof parameterData !== 'object' || parameterData === null) return false;
-				const direct = Array.isArray(parameterData.annotations) && parameterData.annotations.length > 0;
-				const row = Array.isArray(parameterData.rowAnnotations)
-					? parameterData.rowAnnotations.some(
+				const parameterRecord = parameterData as Record<string, unknown>;
+				const direct = Array.isArray(parameterRecord.annotations) && parameterRecord.annotations.length > 0;
+				const row = Array.isArray(parameterRecord.rowAnnotations)
+					? parameterRecord.rowAnnotations.some(
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							ra => Array.isArray((ra as any).annotations) && (ra as any).annotations.length > 0
 					  )
@@ -1250,17 +1253,7 @@ const StepPreview = ({
 								</TableRow>
 							</TableHead>
 							<TableBody>
-								{Object.entries(data)
-									.filter(
-										([key]) =>
-											key !== 'data' &&
-											key !== 'startTime' &&
-											key !== 'endTime' &&
-											key !== 'stepCompleted' &&
-											key !== 'productionApproved' &&
-											key !== 'ctqApproved'
-									)
-									.map(([parameterId, parameterData], index) => {
+								{orderedInspectionEntries.map(([parameterId, parameterData], index) => {
 										// Find the corresponding inspection parameter metadata
 										const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
 
@@ -1859,7 +1852,7 @@ const StepPreview = ({
 												)}
 											</React.Fragment>
 										);
-									})}
+								})}
 							</TableBody>
 						</Table>
 					</TableContainer>
@@ -1870,17 +1863,7 @@ const StepPreview = ({
 							<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 								Image Annotations
 							</Typography>
-							{Object.entries(data)
-								.filter(
-									([key]) =>
-										key !== 'data' &&
-										key !== 'startTime' &&
-										key !== 'endTime' &&
-										key !== 'stepCompleted' &&
-										key !== 'productionApproved' &&
-										key !== 'ctqApproved'
-								)
-								.map(([parameterId, parameterData]) => {
+							{orderedInspectionEntries.map(([parameterId, parameterData]) => {
 									// Find the corresponding inspection parameter metadata
 									const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
 
@@ -2015,17 +1998,7 @@ const StepPreview = ({
 									Total Parameters
 								</Typography>
 								<Typography variant="body2" sx={{ fontSize: '0.875rem', fontWeight: 600 }}>
-									{
-										Object.keys(data).filter(
-											key =>
-												key !== 'data' &&
-												key !== 'startTime' &&
-												key !== 'endTime' &&
-												key !== 'stepCompleted' &&
-												key !== 'productionApproved' &&
-												key !== 'ctqApproved'
-										).length
-									}
+									{orderedInspectionEntries.length}
 								</Typography>
 							</Grid>
 							<Grid size={{ xs: 6, sm: 3 }}>

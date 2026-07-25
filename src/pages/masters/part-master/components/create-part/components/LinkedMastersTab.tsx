@@ -34,16 +34,11 @@ import {
 	Science as CatalystIcon,
 	Assignment as TemplateIcon,
 	Visibility as VisibilityIcon,
-	Search as SearchIcon
+	Search as SearchIcon,
+	History as HistoryIcon,
+	Image as ImageIcon
 } from '@mui/icons-material';
-import {
-	Controller,
-	Control,
-	UseFormSetValue,
-	useFieldArray,
-	useFormContext,
-	useWatch
-} from 'react-hook-form';
+import { Controller, Control, UseFormSetValue, useFieldArray, useFormContext, useWatch } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import type { OperationWisePartRow } from '../../../../../../store/api/business/part-master/part.validators';
 import { useFetchCatalystChartsQuery } from '../../../../../../store/api/business/catalyst-master/catalyst.api';
@@ -59,6 +54,9 @@ import DefaultStepItem from './DefaultStepItem';
 import OperationGroupComponent from './OperationGroup';
 import { findInsertIndexForGroup as findInsertIndex, sequenceForIndex } from '../utils/sequenceInsertion';
 import PrcExecutionPreviewDialog from './PrcExecutionPreviewDialog';
+import { MasterAuditHistoryDialog } from '../../../../../../components/common/auditHistory';
+import ViewOnlyImageGallery from '../../../../../../components/common/imageGallery/ViewOnlyImageGallery';
+import type { ImageItem } from '../../../../../../hooks/useImageGallery';
 import {
 	SelectableCatalyst,
 	OperationGroup,
@@ -77,6 +75,7 @@ interface LinkedMastersTabProps {
 	/** Plant id used to filter operations combo. Lifted to CreatePart so submit-time query stays in sync. */
 	selectedPlant: string;
 	onPlantChange: (plant: string) => void;
+	gallery: ImageItem[];
 }
 
 const LinkedMastersTab = ({
@@ -84,12 +83,14 @@ const LinkedMastersTab = ({
 	setValue,
 	operationsPartId,
 	selectedPlant,
-	onPlantChange
+	onPlantChange,
+	gallery
 }: LinkedMastersTabProps) => {
 	const { getValues } = useFormContext<PartMasterFormData>();
 	const [catalystModalOpen, setCatalystModalOpen] = useState(false);
 	const [catalystPickerSearch, setCatalystPickerSearch] = useState('');
 	const [previewSnapshot, setPreviewSnapshot] = useState<PartMasterFormData | null>(null);
+	const [showTemplateHistory, setShowTemplateHistory] = useState(false);
 	const [addedGroups, setAddedGroups] = useState<string[]>([]);
 	const [selectedGroupToAdd, setSelectedGroupToAdd] = useState('');
 
@@ -113,6 +114,7 @@ const LinkedMastersTab = ({
 	const watchedPartNumber = useWatch({ control, name: 'partNumber' });
 	const watchedDrawingNumber = useWatch({ control, name: 'drawingNumber' });
 	const selectedCatalyst = useWatch({ control, name: 'catalyst' });
+	const selectedPrcTemplate = useWatch({ control, name: 'prcTemplate' });
 
 	const canPreviewPrcExecution =
 		Array.isArray(watchedPrcSteps) &&
@@ -154,11 +156,7 @@ const LinkedMastersTab = ({
 		if (hasInitializedGroups.current) return;
 		if (fields.length > 0 && operationGroups.length > 0) {
 			const groupsFromSteps = [
-				...new Set(
-					fields
-						.map(f => (f as unknown as ExtendedPrcTemplateStep).group)
-						.filter(Boolean)
-				)
+				...new Set(fields.map(f => (f as unknown as ExtendedPrcTemplateStep).group).filter(Boolean))
 			];
 			if (groupsFromSteps.length > 0) {
 				setAddedGroups(groupsFromSteps);
@@ -334,12 +332,7 @@ const LinkedMastersTab = ({
 
 	const handleReorderStep = useCallback(
 		(fromIndex: number, toIndex: number) => {
-			if (
-				fromIndex < 0 ||
-				toIndex < 0 ||
-				fromIndex >= allStepFields.length ||
-				toIndex >= allStepFields.length
-			) {
+			if (fromIndex < 0 || toIndex < 0 || fromIndex >= allStepFields.length || toIndex >= allStepFields.length) {
 				return;
 			}
 			move(fromIndex, toIndex);
@@ -412,14 +405,10 @@ const LinkedMastersTab = ({
 					existing.l3Count != null ||
 					existing.l4Count != null
 				) {
-					l1 =
-						existing.l1Count != null ? Math.max(0, Math.floor(Number(existing.l1Count))) : 0;
-					l2 =
-						existing.l2Count != null ? Math.max(0, Math.floor(Number(existing.l2Count))) : 0;
-					l3 =
-						existing.l3Count != null ? Math.max(0, Math.floor(Number(existing.l3Count))) : 0;
-					l4 =
-						existing.l4Count != null ? Math.max(0, Math.floor(Number(existing.l4Count))) : 0;
+					l1 = existing.l1Count != null ? Math.max(0, Math.floor(Number(existing.l1Count))) : 0;
+					l2 = existing.l2Count != null ? Math.max(0, Math.floor(Number(existing.l2Count))) : 0;
+					l3 = existing.l3Count != null ? Math.max(0, Math.floor(Number(existing.l3Count))) : 0;
+					l4 = existing.l4Count != null ? Math.max(0, Math.floor(Number(existing.l4Count))) : 0;
 				} else if (
 					existing.responsiblePersonCount != null &&
 					Number.isFinite(Number(existing.responsiblePersonCount)) &&
@@ -456,15 +445,36 @@ const LinkedMastersTab = ({
 					operationsData={operationsData}
 				/>
 			)}
+			<MasterAuditHistoryDialog
+				target={
+					showTemplateHistory && selectedPrcTemplate
+						? {
+								domain: 'prcTemplate',
+								id: Number(selectedPrcTemplate),
+								label: `PRC Template ${selectedPrcTemplate}`
+							}
+						: null
+				}
+				onClose={() => setShowTemplateHistory(false)}
+			/>
 			<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
 				<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
 					Linked Masters & Operations
 				</Typography>
 			</Box>
 
+			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0', mb: 3 }}>
+				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+					<ImageIcon color="primary" />
+					<Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#333' }}>
+						Part Images
+					</Typography>
+				</Box>
+				<ViewOnlyImageGallery images={gallery} />
+			</Paper>
+
 			{/* Section 1: Catalyst Chart */}
 			<Paper sx={{ p: 3, borderRadius: 2, border: '1px solid #e0e0e0', mb: 3 }}>
-
 				<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 						<CatalystIcon sx={{ color: '#1976d2' }} />
@@ -475,7 +485,9 @@ const LinkedMastersTab = ({
 					{isCatalystLoading ? (
 						<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 							<CircularProgress size={16} />
-							<Typography variant="body2" color="text.secondary">Loading...</Typography>
+							<Typography variant="body2" color="text.secondary">
+								Loading...
+							</Typography>
 						</Box>
 					) : (
 						<Button
@@ -608,16 +620,28 @@ const LinkedMastersTab = ({
 							Operations & PRC Template
 						</Typography>
 					</Box>
-					<Button
-						variant="outlined"
-						color="primary"
-						startIcon={<VisibilityIcon />}
-						disabled={!canPreviewPrcExecution}
-						onClick={() => setPreviewSnapshot(getValues())}
-						sx={{ textTransform: 'none' }}
-					>
-						Preview PRC execution
-					</Button>
+					<Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+						{selectedPrcTemplate && (
+							<Button
+								variant="outlined"
+								startIcon={<HistoryIcon />}
+								onClick={() => setShowTemplateHistory(true)}
+								sx={{ textTransform: 'none' }}
+							>
+								Audit Logs
+							</Button>
+						)}
+						<Button
+							variant="outlined"
+							color="primary"
+							startIcon={<VisibilityIcon />}
+							disabled={!canPreviewPrcExecution}
+							onClick={() => setPreviewSnapshot(getValues())}
+							sx={{ textTransform: 'none' }}
+						>
+							Preview PRC execution
+						</Button>
+					</Box>
 				</Box>
 
 				{/* Template Basic Info */}
@@ -701,7 +725,11 @@ const LinkedMastersTab = ({
 				<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 600, color: '#333' }}>
 					Default Steps
 				</Typography>
-				<DefaultStepItem stepNumber={1} stepName="Bill of Material" stepDescription="Preparation and verification of bill of material" />
+				<DefaultStepItem
+					stepNumber={1}
+					stepName="Bill of Material"
+					stepDescription="Preparation and verification of bill of material"
+				/>
 				<DefaultStepItem stepNumber={2} stepName="Catalyst Mixing" stepDescription="Mixing of catalyst components" />
 
 				<Divider sx={{ my: 3 }} />
@@ -908,11 +936,15 @@ const LinkedMastersTab = ({
 					);
 				})}
 
-				{addedGroups.length === 0 && !isOperationsLoading && operationsPartId && selectedPlant && operationGroups.length > 0 && (
-					<Alert severity="info" sx={{ mt: 1 }}>
-						No operation groups added yet. Select an operation from the dropdown above and click "Add Operation".
-					</Alert>
-				)}
+				{addedGroups.length === 0 &&
+					!isOperationsLoading &&
+					operationsPartId &&
+					selectedPlant &&
+					operationGroups.length > 0 && (
+						<Alert severity="info" sx={{ mt: 1 }}>
+							No operation groups added yet. Select an operation from the dropdown above and click "Add Operation".
+						</Alert>
+					)}
 			</Paper>
 		</Box>
 	);

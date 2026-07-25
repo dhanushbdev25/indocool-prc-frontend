@@ -17,7 +17,8 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 		file: null,
 		image: toFileRenderUrl(file.filePath),
 		filePath: file.filePath,
-		fileName: file.fileName || file.originalFileName || `Image ${index}`
+		fileName: file.fileName || file.originalFileName || `Image ${index + 1}`,
+		originalFileName: file.originalFileName
 	}));
 
 	const statusDisplay = partMaster.status ?? 'NEW';
@@ -230,11 +231,7 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 							<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
 								{moulds.map((mould, index) => (
 									<Chip
-										key={
-											typeof mould.id === 'number'
-												? `mould-${mould.id}`
-												: `${mould.mouldCode}-${index}`
-										}
+										key={typeof mould.id === 'number' ? `mould-${mould.id}` : `${mould.mouldCode}-${index}`}
 										label={`${mould.mouldCode} | Count: ${mould.reconciliationCount}`}
 										variant="outlined"
 									/>

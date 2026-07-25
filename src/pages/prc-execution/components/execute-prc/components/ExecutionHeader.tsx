@@ -10,7 +10,7 @@ import {
 	IconButton,
 	Tooltip
 } from '@mui/material';
-import { ArrowBack, Inventory2, PictureAsPdf, Science } from '@mui/icons-material';
+import { ArrowBack, Image, Inventory2, PictureAsPdf, Science } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { type ExecutionData } from '../../../types/execution.types';
 import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
@@ -28,6 +28,8 @@ interface ExecutionHeaderProps {
 	catalystMixingDisabled?: boolean;
 	onRawMaterialsClick?: () => void;
 	rawMaterialsDisabled?: boolean;
+	onPartImagesClick?: () => void;
+	partImagesCount?: number;
 }
 
 function formatCustomerContext(execution: ExecutionData): {
@@ -36,29 +38,17 @@ function formatCustomerContext(execution: ExecutionData): {
 	reservation: string;
 } {
 	const customer =
-		typeof execution.customer === 'string' && execution.customer.trim()
-			? execution.customer.trim()
-			: '—';
+		typeof execution.customer === 'string' && execution.customer.trim() ? execution.customer.trim() : '—';
 	const customerVariant =
 		typeof execution.customerVariantName === 'string' && execution.customerVariantName.trim()
 			? execution.customerVariantName.trim()
 			: '—';
 	const reservation =
-		execution.reservation != null && String(execution.reservation).trim()
-			? String(execution.reservation).trim()
-			: '—';
+		execution.reservation != null && String(execution.reservation).trim() ? String(execution.reservation).trim() : '—';
 	return { customer, customerVariant, reservation };
 }
 
-function MetaField({
-	label,
-	value,
-	monospace
-}: {
-	label: string;
-	value: string;
-	monospace?: boolean;
-}) {
+function MetaField({ label, value, monospace }: { label: string; value: string; monospace?: boolean }) {
 	return (
 		<Stack spacing={0.35} sx={{ minWidth: 0 }}>
 			<Typography
@@ -102,7 +92,9 @@ const ExecutionHeader = ({
 	onCatalystMixingClick,
 	catalystMixingDisabled = false,
 	onRawMaterialsClick,
-	rawMaterialsDisabled = false
+	rawMaterialsDisabled = false,
+	onPartImagesClick,
+	partImagesCount = 0
 }: ExecutionHeaderProps) => {
 	const theme = useTheme();
 	const navigate = useNavigate();
@@ -222,18 +214,14 @@ const ExecutionHeader = ({
 							size="small"
 							variant="outlined"
 							sx={{
-								borderColor:
-									executionData.completedCtq === executionData.totalCtq ? 'success.light' : 'warning.light',
-								color:
-									executionData.completedCtq === executionData.totalCtq
-										? 'success.dark'
-										: 'warning.dark'
+								borderColor: executionData.completedCtq === executionData.totalCtq ? 'success.light' : 'warning.light',
+								color: executionData.completedCtq === executionData.totalCtq ? 'success.dark' : 'warning.dark'
 							}}
 						/>
 						<Chip label={durationLabel} size="small" variant="outlined" color="info" />
 					</Stack>
 
-					{(onRawMaterialsClick || onCatalystMixingClick) && (
+					{(onRawMaterialsClick || onCatalystMixingClick || onPartImagesClick) && (
 						<Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
 							{onRawMaterialsClick && (
 								<Button
@@ -257,6 +245,17 @@ const ExecutionHeader = ({
 									disabled={catalystMixingDisabled}
 								>
 									Catalyst Mixing
+								</Button>
+							)}
+							{onPartImagesClick && (
+								<Button
+									startIcon={<Image />}
+									variant="outlined"
+									size="small"
+									color="inherit"
+									onClick={onPartImagesClick}
+								>
+									Part Images ({partImagesCount})
 								</Button>
 							)}
 						</Stack>
@@ -304,7 +303,15 @@ const ExecutionHeader = ({
 						minWidth: 720
 					}}
 				>
-					<MetaField label="Order ID" value={executionData.orderId != null && String(executionData.orderId).trim() ? String(executionData.orderId) : '—'} monospace />
+					<MetaField
+						label="Order ID"
+						value={
+							executionData.orderId != null && String(executionData.orderId).trim()
+								? String(executionData.orderId)
+								: '—'
+						}
+						monospace
+					/>
 					<MetaField label="SAP reference" value={sapRef} monospace />
 					<MetaField label="Customer" value={customerLabel} />
 					<MetaField label="Customer variant" value={customerVariant} />

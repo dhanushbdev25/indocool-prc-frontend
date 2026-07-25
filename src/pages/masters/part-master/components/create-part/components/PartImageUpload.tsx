@@ -12,13 +12,14 @@ interface PartImageUploadProps {
 
 const GalleryImage = ({ item }: { item: ImageItem }) => {
 	const { src, loading, error } = useAuthenticatedFileUrl(item.filePath || item.image);
+	const displayName = item.originalFileName?.trim() || item.file?.name || item.fileName?.trim() || `Image ${item.id}`;
 
 	return (
 		<>
 			{loading && <CircularProgress size={24} />}
 			{error && !loading && <BrokenImageIcon sx={{ color: 'text.disabled', fontSize: 32 }} />}
 			{!loading && !error && src && (
-				<img src={src} alt={`IMAGE-${item.id}`} width={120} height={100} style={{ objectFit: 'cover' }} />
+				<img src={src} alt={displayName} width={120} height={100} style={{ objectFit: 'cover' }} />
 			)}
 		</>
 	);
@@ -27,66 +28,71 @@ const GalleryImage = ({ item }: { item: ImageItem }) => {
 const PartImageUpload = ({ gallery, onAddImage, onRemoveImage, view = false }: PartImageUploadProps) => {
 	return (
 		<Grid container spacing={1} columns={3}>
-			{gallery.map(item => (
-				<Grid key={item.id}>
-					<Paper
-						variant="outlined"
-						sx={{
-							width: 120,
-							height: 120,
-							display: 'flex',
-							flexDirection: 'column',
-							alignItems: 'center',
-							justifyContent: 'center',
-							position: 'relative',
-							overflow: 'hidden',
-							m: 1
-						}}
-					>
-						<GalleryImage item={item} />
-						{item.fileName && (
-							<Typography
-								variant="caption"
-								sx={{
-									position: 'absolute',
-									bottom: 0,
-									left: 0,
-									right: 0,
-									backgroundColor: 'rgba(0,0,0,0.7)',
-									color: 'white',
-									p: 0.5,
-									fontSize: '0.7rem',
-									textAlign: 'center',
-									overflow: 'hidden',
-									textOverflow: 'ellipsis',
-									whiteSpace: 'nowrap'
-								}}
-							>
-								{item.fileName}
-							</Typography>
-						)}
-						{!view && (
-							<IconButton
-								onClick={() => onRemoveImage(item.id)}
-								sx={{
-									position: 'absolute',
-									top: 2,
-									right: 2,
-									backgroundColor: 'rgba(255,255,255,0.7)',
-									zIndex: 999999,
-									'&:hover': {
-										backgroundColor: 'rgba(255,0,0,0.7)',
-										color: 'white'
-									}
-								}}
-								size="small"
-							>
-								<CloseIcon fontSize="small" />
-							</IconButton>
-						)}
-					</Paper>
-				</Grid>
-			))}
+			{gallery.map(item => {
+				const displayName =
+					item.originalFileName?.trim() || item.file?.name || item.fileName?.trim() || `Image ${item.id}`;
+				return (
+					<Grid key={item.id}>
+						<Paper
+							variant="outlined"
+							sx={{
+								width: 120,
+								height: 120,
+								display: 'flex',
+								flexDirection: 'column',
+								alignItems: 'center',
+								justifyContent: 'center',
+								position: 'relative',
+								overflow: 'hidden',
+								m: 1
+							}}
+						>
+							<GalleryImage item={item} />
+							{displayName && (
+								<Typography
+									variant="caption"
+									title={displayName}
+									sx={{
+										position: 'absolute',
+										bottom: 0,
+										left: 0,
+										right: 0,
+										backgroundColor: 'rgba(0,0,0,0.7)',
+										color: 'white',
+										p: 0.5,
+										fontSize: '0.7rem',
+										textAlign: 'center',
+										overflow: 'hidden',
+										textOverflow: 'ellipsis',
+										whiteSpace: 'nowrap'
+									}}
+								>
+									{displayName}
+								</Typography>
+							)}
+							{!view && (
+								<IconButton
+									onClick={() => onRemoveImage(item.id)}
+									sx={{
+										position: 'absolute',
+										top: 2,
+										right: 2,
+										backgroundColor: 'rgba(255,255,255,0.7)',
+										zIndex: 999999,
+										'&:hover': {
+											backgroundColor: 'rgba(255,0,0,0.7)',
+											color: 'white'
+										}
+									}}
+									size="small"
+								>
+									<CloseIcon fontSize="small" />
+								</IconButton>
+							)}
+						</Paper>
+					</Grid>
+				);
+			})}
 			{!view && (
 				<Grid>
 					<Paper

@@ -112,6 +112,7 @@ export const processStepSchema = yup
 
 // Process Step Group validation schema
 export const processStepGroupSchema = yup.object({
+	sequence: yup.number().required().min(1).integer(),
 	processName: yup.string().required('Process ID is required'),
 	processDescription: yup.string().required('Process description is required'),
 	sequenceTiming: yup
@@ -177,6 +178,7 @@ export const defaultProcessStep: ProcessStepFormData = {
 };
 
 export const defaultProcessStepGroup: ProcessStepGroupFormData = {
+	sequence: 1,
 	processName: '',
 	processDescription: '',
 	sequenceTiming: '00:01',

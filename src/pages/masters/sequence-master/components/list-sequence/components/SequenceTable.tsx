@@ -7,7 +7,8 @@ import {
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
-	ContentCopy as ContentCopyIcon
+	ContentCopy as ContentCopyIcon,
+	History as HistoryIcon
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
@@ -23,11 +24,12 @@ interface SequenceTableProps {
 	onEdit?: (sequenceId: number) => void;
 	onView?: (sequenceId: number) => void;
 	onClone?: (sequenceId: number) => void;
+	onAuditLogs?: (sequence: SequenceData) => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagination, onPaginationChange }: SequenceTableProps) => {
+const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, onAuditLogs, pagination, onPaginationChange }: SequenceTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canEdit = hasPermission('SEQUENCE_MASTER_EDIT');
 	const canCreate = hasPermission('SEQUENCE_MASTER_CREATE');
@@ -88,6 +90,11 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagi
 		if (selectedRow && onActionClick) {
 			onActionClick(selectedRow.sequenceId, 'delete');
 		}
+		handleMenuClose();
+	};
+
+	const handleAuditLogs = () => {
+		if (selectedRow && onAuditLogs) onAuditLogs(selectedRow);
 		handleMenuClose();
 	};
 
@@ -204,6 +211,12 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagi
 							<ViewIcon fontSize="small" />
 						</ListItemIcon>
 						<ListItemText>View</ListItemText>
+					</MenuItem>,
+					<MenuItem key="audit" onClick={handleAuditLogs}>
+						<ListItemIcon>
+							<HistoryIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>Audit Logs</ListItemText>
 					</MenuItem>,
 					canEdit && (
 						<MenuItem key="edit" onClick={handleEdit}>

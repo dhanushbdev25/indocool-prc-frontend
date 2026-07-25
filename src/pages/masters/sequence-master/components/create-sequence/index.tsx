@@ -165,7 +165,9 @@ const CreateSequence = () => {
 
 		const processStepGroups = (sequenceData.detail.stepGroups ?? [])
 			.filter((group): group is NonNullable<typeof group> => group != null)
+			.sort((a, b) => a.sequence - b.sequence)
 			.map(group => ({
+				sequence: group.sequence,
 				processName: group.processName,
 				processDescription: group.processDescription,
 				sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60),
@@ -305,7 +307,8 @@ const CreateSequence = () => {
 						totalSteps: data.totalSteps || 0,
 						ctqSteps: data.ctqSteps || 0
 					},
-					processStepGroups: (data.processStepGroups || []).map(group => ({
+					processStepGroups: (data.processStepGroups || []).map((group, groupIndex) => ({
+						sequence: groupIndex + 1,
 						processName: group.processName,
 						processDescription: group.processDescription,
 						sequenceTiming: convertTimeToSeconds(group.sequenceTiming),

@@ -1,3 +1,5 @@
+import { AuditHistoryEntry, hasValidAuditHistory } from '../audit-history/audit-history.validators';
+
 export interface PrcTemplateStep {
 	id?: number;
 	templateId?: number;
@@ -56,6 +58,7 @@ export interface PrcTemplateListResponse {
 export interface PrcTemplateByIdResponse {
 	header: PrcTemplateHeader;
 	detail: PrcTemplateDetail;
+	history?: AuditHistoryEntry[];
 }
 
 export interface PrcTemplateInspectionsResponse {
@@ -216,7 +219,7 @@ export function isPrcTemplateByIdResponse(value: unknown): value is PrcTemplateB
 		return false;
 	}
 	const o = value as Record<string, unknown>;
-	return isPrcTemplateHeader(o.header) && isPrcTemplateDetail(o.detail);
+	return isPrcTemplateHeader(o.header) && isPrcTemplateDetail(o.detail) && hasValidAuditHistory(o);
 }
 
 export function isPrcTemplateInspectionsResponse(value: unknown): value is PrcTemplateInspectionsResponse {

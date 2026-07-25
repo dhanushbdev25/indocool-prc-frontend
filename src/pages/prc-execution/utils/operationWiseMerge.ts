@@ -124,16 +124,25 @@ function normalizeExecutionRow(raw: unknown): OperationWiseExecutionRow | null {
 export function extractSequenceStepGroupsFromExecution(execution: ExecutionData): SequenceStepGroupRow[] {
 	const out: SequenceStepGroupRow[] = [];
 	const steps = execution.prcCurrentTemplate?.prcTemplateSteps ?? [];
-	for (const ts of steps) {
+	const orderedTemplateSteps = [...steps].sort((a, b) => a.sequence - b.sequence);
+	for (const ts of orderedTemplateSteps) {
 		if (ts.type !== 'sequence' || !ts.data) continue;
 		const data = ts.data as {
 			stepGroups?: Array<{
 				id: number;
+				sequence?: number;
 				processName: string;
 				processDescription?: string;
 			}>;
 		};
-		for (const g of data.stepGroups ?? []) {
+		const stepGroups = data.stepGroups ?? [];
+		const hasGroupSequence = stepGroups.every(
+			group => typeof group.sequence === 'number' && Number.isFinite(group.sequence)
+		);
+		const orderedStepGroups = hasGroupSequence
+			? [...stepGroups].sort((a, b) => (a.sequence as number) - (b.sequence as number))
+			: stepGroups;
+		for (const g of orderedStepGroups) {
 			out.push({
 				id: String(g.id),
 				processName: g.processName,

@@ -1,3 +1,5 @@
+import { AuditHistoryEntry, hasValidAuditHistory } from '../audit-history/audit-history.validators';
+
 export interface SplittingConfigRow {
 	order: number;
 	splitQuantity: string | number;
@@ -111,7 +113,7 @@ export interface PartMaster {
 	catalyst?: number | null;
 	prcTemplate?: number | null;
 	customerVariantId?: number | null;
-	customerVariantName?: text | null;
+	customerVariantName?: string | null;
 	createdBy?: number | null;
 	updatedBy?: number | null;
 	createdAt?: string | null;
@@ -168,6 +170,7 @@ export interface PartsResponse {
 export interface PartByIdResponse {
 	header: PartListHeader;
 	detail: PartDetail;
+	history?: AuditHistoryEntry[];
 }
 
 export interface CustomersResponse {
@@ -348,7 +351,7 @@ export function isPartByIdResponse(value: unknown): value is PartByIdResponse {
 		return false;
 	}
 	const o = value as Record<string, unknown>;
-	return isPartListHeader(o.header) && isPartDetail(o.detail);
+	return isPartListHeader(o.header) && isPartDetail(o.detail) && hasValidAuditHistory(o);
 }
 
 export function isCustomersResponse(value: unknown): value is CustomersResponse {

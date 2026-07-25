@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ExecutionData, TimelineStep } from '../types/execution.types';
 import { buildTimelineSteps } from './buildTimelineSteps';
+import { extractSequenceStepGroupsFromExecution } from './operationWiseMerge';
 import {
 	canAccessStepIndex,
 	getExecutionFrontierIndex,
@@ -178,5 +179,107 @@ describe('buildTimelineSteps sequential status', () => {
 			['Final inspection', 'pending'],
 			['SAP confirmations', 'pending']
 		]);
+	});
+});
+
+describe('process step group ordering', () => {
+	const sequenceGroup = (id: number, processName: string, sequence?: number) => ({
+		id,
+		sequence,
+		processName,
+		processDescription: `${processName} description`,
+		sequenceTiming: 60,
+		steps: []
+	});
+
+	it('renders timeline and setup rows by group sequence', () => {
+		const executionData = {
+			prcCurrentTemplate: {
+				prcTemplateSteps: [
+					{
+						id: 10,
+						sequence: 1,
+						type: 'sequence',
+						data: {
+							stepGroups: [sequenceGroup(102, 'Second', 2), sequenceGroup(101, 'First', 1)]
+						}
+					}
+				]
+			}
+		} as unknown as ExecutionData;
+
+		const timelineGroups = buildTimelineSteps(executionData).filter(step => step.type === 'sequence');
+		const setupGroups = extractSequenceStepGroupsFromExecution(executionData);
+
+		expect(timelineGroups.map(step => step.stepGroup?.id)).toEqual([101, 102]);
+		expect(setupGroups.map(group => group.id)).toEqual(['101', '102']);
+	});
+
+	it('preserves API array order when a group sequence is missing', () => {
+		const executionData = {
+			prcCurrentTemplate: {
+				prcTemplateSteps: [
+					{
+						id: 10,
+						sequence: 1,
+						type: 'sequence',
+						data: {
+							stepGroups: [sequenceGroup(102, 'Second'), sequenceGroup(101, 'First', 1)]
+						}
+					}
+				]
+			}
+		} as unknown as ExecutionData;
+
+		const timelineGroups = buildTimelineSteps(executionData).filter(step => step.type === 'sequence');
+
+		expect(timelineGroups.map(step => step.stepGroup?.id)).toEqual([102, 101]);
+	});
+});
+
+describe('inspection parameter ordering', () => {
+	const inspectionParameter = (id: number, parameterName: string, order: number) => ({
+		id,
+		parameterName,
+		order,
+		type: 'text',
+		ctq: false,
+		role: 'Production',
+		columns: [],
+		specification: ''
+	});
+
+	it('orders timeline metadata while keeping completion data keyed by parameter id', () => {
+		const executionData = {
+			prcCurrentTemplate: {
+				prcTemplateSteps: [
+					{
+						id: 20,
+						sequence: 1,
+						type: 'inspection',
+						data: {
+							inspection: { inspectionName: 'Final inspection' },
+							inspectionParameters: [
+								inspectionParameter(202, 'Second', 2),
+								inspectionParameter(201, 'First', 1)
+							]
+						}
+					}
+				]
+			}
+		} as unknown as ExecutionData;
+
+		const inspection = buildTimelineSteps(executionData).find(step => step.type === 'inspection');
+
+		expect(inspection?.inspectionParameters?.map(parameter => parameter.id)).toEqual([201, 202]);
+		expect(
+			inspection &&
+				hasInspectionParameterData(inspection, {
+					20: {
+						202: { value: 'second' },
+						201: { value: 'first' }
+					}
+				})
+		).toBe(true);
 	});
 });

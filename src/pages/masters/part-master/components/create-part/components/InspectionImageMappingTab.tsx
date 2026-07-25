@@ -24,6 +24,7 @@ import { PartMasterFormData } from '../schemas';
 import { useFetchPrcTemplateInspectionsQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import { ImageItem } from '../../../../../../hooks/useImageGallery';
 import { GATE_POSITIVE_LABEL } from '../../../../../../utils/gateLabels';
+import { sortByNumericOrder } from '../../../../../../utils/orderedRecords';
 
 interface InspectionParameter {
 	id: number;
@@ -80,7 +81,7 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 						const inspection = inspectionStep.data.inspection;
 
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						const stepParams = inspectionStep.data.inspectionParameters.map((param: any) => ({
+						const stepParams = sortByNumericOrder(inspectionStep.data.inspectionParameters).map((param: any) => ({
 							id: param.id || 0,
 							order: param.order,
 							parameterName: param.parameterName,

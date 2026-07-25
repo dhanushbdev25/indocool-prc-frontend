@@ -4,6 +4,7 @@ import { ArrowBack, Edit, ContentCopy } from '@mui/icons-material';
 import ViewSequenceBasicInfo from './components/ViewSequenceBasicInfo';
 import ViewSequenceStepGroups from './components/ViewSequenceStepGroups';
 import { useFetchProcessSequenceByIdQuery } from '../../../../../store/api/business/sequence-master/sequence.api';
+import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 
 const ViewSequence = () => {
 	const navigate = useNavigate();
@@ -130,6 +131,10 @@ const ViewSequence = () => {
 				{/* Step Groups Section */}
 				<Box sx={{ mb: 4 }}>
 					<ViewSequenceStepGroups stepGroups={sequence.stepGroups} />
+				</Box>
+
+				<Box sx={{ mb: 4 }}>
+					<AuditHistoryPanel history={sequenceData.history} />
 				</Box>
 
 				{/* Action Buttons */}

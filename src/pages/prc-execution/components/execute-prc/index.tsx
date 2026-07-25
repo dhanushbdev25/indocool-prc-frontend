@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
 	Box,
@@ -12,6 +12,7 @@ import {
 	Typography
 } from '@mui/material';
 import { FullScreenFormSavingOverlay } from '../../../../components/common/FullScreenFormSavingOverlay';
+import ViewOnlyImageGallery from '../../../../components/common/imageGallery/ViewOnlyImageGallery';
 import { useCurrentRole } from '../../../../hooks/useCurrentRole';
 import {
 	useFetchPrcExecutionDetailsQuery,
@@ -26,6 +27,7 @@ import {
 } from '../../utils/timelineCardTiming';
 import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
 import { canEditStepForRole } from '../../utils/roleStepAccess';
+import { collectUniqueExecutionInspectionImages } from '../../utils/executionInspectionImages';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
 	canAccessStepIndex,
@@ -123,6 +125,7 @@ const ExecutePrc = () => {
 	const [currentAggregatedData, setCurrentAggregatedData] = useState<Record<string, unknown>>({});
 	const [catalystMixingOpen, setCatalystMixingOpen] = useState(false);
 	const [rawMaterialsOpen, setRawMaterialsOpen] = useState(false);
+	const [partImagesOpen, setPartImagesOpen] = useState(false);
 	const catalystMixingStartTimeRef = useRef<string | null>(null);
 	const catalystMixingSubmitRef = useRef<(() => void) | null>(null);
 	const initializedExecutionIdRef = useRef<number | null>(null);
@@ -187,6 +190,7 @@ const ExecutePrc = () => {
 
 	// Current step
 	const currentStep = timelineSteps[currentStepIndex];
+	const partImages = useMemo(() => collectUniqueExecutionInspectionImages(timelineSteps), [timelineSteps]);
 
 	// Role-based read-only: Production cannot edit quality-approved inspections;
 	// Quality can edit only quality-approved inspections. Other roles unrestricted.
@@ -1755,6 +1759,8 @@ const ExecutePrc = () => {
 					rawMaterialsDisabled={isExecutionDataFetching || isUpdateProgressLoading || rmLoading}
 					onCatalystMixingClick={canAccessCatalystMixing ? handleOpenCatalystMixing : undefined}
 					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
+					onPartImagesClick={partImages.length > 0 ? () => setPartImagesOpen(true) : undefined}
+					partImagesCount={partImages.length}
 				/>
 
 				{/* Main Content */}
@@ -1827,6 +1833,15 @@ const ExecutePrc = () => {
 					)}
 				</Box>
 			</Box>
+			<Dialog open={partImagesOpen} onClose={() => setPartImagesOpen(false)} fullWidth maxWidth="lg">
+				<DialogTitle>Part Images</DialogTitle>
+				<DialogContent dividers>
+					<ViewOnlyImageGallery images={partImages} />
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={() => setPartImagesOpen(false)}>Close</Button>
+				</DialogActions>
+			</Dialog>
 			<Dialog open={rawMaterialsOpen} onClose={handleCloseRawMaterials} fullWidth maxWidth="lg">
 				<DialogTitle>Raw Materials</DialogTitle>
 				<DialogContent dividers sx={{ p: 0 }}>

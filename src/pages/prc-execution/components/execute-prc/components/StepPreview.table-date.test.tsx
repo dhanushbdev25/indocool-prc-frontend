@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { StepPreviewData } from '../../../types/execution.types';
 
@@ -56,6 +56,55 @@ const sequenceTablePreview: StepPreviewData = {
 	stepCompleted: false
 };
 
+const inspectionPreview: StepPreviewData = {
+	stepNumber: 1,
+	title: 'Final inspection',
+	type: 'inspection',
+	ctq: false,
+	data: {
+		5: { value: 'orphan' },
+		10: { value: 'second', annotations: [{ imageFileName: 'second.png', regions: [] }] },
+		20: { value: 'first', annotations: [{ imageFileName: 'first.png', regions: [] }] },
+		partialCtqApprove: true,
+		plannedTime: 60
+	},
+	inspectionParameters: [
+		{
+			id: 10,
+			parameterName: 'Second parameter',
+			type: 'text',
+			ctq: false,
+			role: 'Production',
+			columns: [],
+			specification: '',
+			order: 2,
+			version: 1,
+			isLatest: true,
+			createdAt: '',
+			updatedAt: '',
+			inspectionId: 1
+		},
+		{
+			id: 20,
+			parameterName: 'First parameter',
+			type: 'text',
+			ctq: false,
+			role: 'Production',
+			columns: [],
+			specification: '',
+			order: 1,
+			version: 1,
+			isLatest: true,
+			createdAt: '',
+			updatedAt: '',
+			inspectionId: 1
+		}
+	],
+	productionApproved: false,
+	ctqApproved: false,
+	stepCompleted: false
+};
+
 describe('StepPreview table date display', () => {
 	it('renders formatted date values in sequence table preview', () => {
 		render(
@@ -71,5 +120,34 @@ describe('StepPreview table date display', () => {
 		);
 
 		expect(screen.getByText('17 Jun 2026')).toBeInTheDocument();
+	});
+
+	it('renders inspection rows by metadata order and appends orphan data', () => {
+		render(
+			<StepPreview
+				previewData={inspectionPreview}
+				onBackToStep={noop}
+				onApproveProduction={noop}
+				onApproveCTQ={noop}
+				onPartialApproveCTQ={noop}
+				onProceedToNext={noop}
+				embeddedReportMode
+			/>
+		);
+
+		const rows = screen.getAllByRole('row');
+		expect(rows).toHaveLength(4);
+		expect(within(rows[1]).getByText('First parameter')).toBeInTheDocument();
+		expect(within(rows[2]).getByText('Second parameter')).toBeInTheDocument();
+		expect(within(rows[3]).getByText('Parameter 5')).toBeInTheDocument();
+		expect(screen.queryByText('Parameter partialCtqApprove')).not.toBeInTheDocument();
+
+		const annotationSection = screen.getByText('Image Annotations').parentElement;
+		expect(annotationSection).not.toBeNull();
+		expect(
+			within(annotationSection as HTMLElement)
+				.getAllByText(/parameter$/i)
+				.map(node => node.textContent)
+		).toEqual(['First parameter', 'Second parameter']);
 	});
 });

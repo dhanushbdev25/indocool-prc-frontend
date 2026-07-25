@@ -64,14 +64,11 @@ function parseOptionalNonNegInt(n: unknown): number | undefined {
 }
 
 /** Parse L1–L4 from API row; legacy total-only rows map into L1 only; missing values → 0 for form display. */
-function skillLevelsFromApiRecord(r: Record<string, unknown>): Pick<
-	OperationWisePartRow,
-	'l1Count' | 'l2Count' | 'l3Count' | 'l4Count'
-> {
+function skillLevelsFromApiRecord(
+	r: Record<string, unknown>
+): Pick<OperationWisePartRow, 'l1Count' | 'l2Count' | 'l3Count' | 'l4Count'> {
 	const keys = ['l1Count', 'l2Count', 'l3Count', 'l4Count'] as const;
-	const hasSkillFields = keys.some(
-		k => k in r && r[k] !== undefined && r[k] !== null && r[k] !== ''
-	);
+	const hasSkillFields = keys.some(k => k in r && r[k] !== undefined && r[k] !== null && r[k] !== '');
 	if (hasSkillFields) {
 		return {
 			l1Count: parseOptionalNonNegInt(r.l1Count) ?? 0,
@@ -108,12 +105,10 @@ function mapOperationWiseDataFromApi(partMaster: PartMaster): OperationWisePartR
 			const operationID = Number(r.operationID);
 			if (!Number.isFinite(operationID)) continue;
 			const idRaw = r.id;
-			const id =
-				typeof idRaw === 'string' || typeof idRaw === 'number' ? idRaw : `op-${operationID}`;
+			const id = typeof idRaw === 'string' || typeof idRaw === 'number' ? idRaw : `op-${operationID}`;
 			const operationName = typeof r.operationName === 'string' ? r.operationName : '';
 			const { l1Count, l2Count, l3Count, l4Count } = skillLevelsFromApiRecord(r);
-			const sum =
-				(l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
+			const sum = (l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
 			out.push({
 				id,
 				operationID,
@@ -133,19 +128,14 @@ function mapOperationWiseDataFromApi(partMaster: PartMaster): OperationWisePartR
 		for (const [key, val] of Object.entries(raw)) {
 			const opNum = Number(key);
 			if (!Number.isFinite(opNum)) continue;
-			const valRec =
-				val && typeof val === 'object' && !Array.isArray(val)
-					? (val as Record<string, unknown>)
-					: {};
+			const valRec = val && typeof val === 'object' && !Array.isArray(val) ? (val as Record<string, unknown>) : {};
 			const merged: Record<string, unknown> = { ...valRec };
 			if ('memberCount' in valRec) {
 				merged.responsiblePersonCount = valRec.memberCount;
 			}
-			const operationName =
-				typeof valRec.operationName === 'string' ? valRec.operationName : '';
+			const operationName = typeof valRec.operationName === 'string' ? valRec.operationName : '';
 			const { l1Count, l2Count, l3Count, l4Count } = skillLevelsFromApiRecord(merged);
-			const sum =
-				(l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
+			const sum = (l1Count ?? 0) + (l2Count ?? 0) + (l3Count ?? 0) + (l4Count ?? 0);
 			out.push({
 				id: `legacy-${key}`,
 				operationID: opNum,
@@ -404,15 +394,17 @@ const transformFormDataToApiRequest = (
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const transformArrayData = (arrayData: any[], isEditMode: boolean) => {
-	return (arrayData || []).map((item: { id?: number; version?: number; isLatest?: boolean; [key: string]: unknown }) => {
-		const { id, ...itemWithoutId } = item;
-		return {
-			...(isEditMode && id && typeof id === 'number' ? { id } : {}),
-			...itemWithoutId,
-			version: item.version || 1,
-			isLatest: item.isLatest ?? true
-		};
-	});
+	return (arrayData || []).map(
+		(item: { id?: number; version?: number; isLatest?: boolean; [key: string]: unknown }) => {
+			const { id, ...itemWithoutId } = item;
+			return {
+				...(isEditMode && id && typeof id === 'number' ? { id } : {}),
+				...itemWithoutId,
+				version: item.version || 1,
+				isLatest: item.isLatest ?? true
+			};
+		}
+	);
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -486,10 +478,7 @@ const CreatePart = () => {
 	const { data: customersData } = useFetchCustomersQuery();
 
 	const prcTemplateIdFromPart = partData?.detail?.partMaster?.prcTemplate;
-	const {
-		data: prcTemplateData,
-		isSuccess: isPrcTemplateFetchSuccess
-	} = useFetchPrcTemplateByIdQuery(
+	const { data: prcTemplateData, isSuccess: isPrcTemplateFetchSuccess } = useFetchPrcTemplateByIdQuery(
 		{ id: Number(prcTemplateIdFromPart) },
 		{ skip: !isEditMode || !prcTemplateIdFromPart }
 	);
@@ -530,9 +519,7 @@ const CreatePart = () => {
 	);
 
 	// API-driven tab enablement: tabs 1-3 disabled until PartMaster exists on the backend
-	const partMasterExists = isEditMode
-		? isFetchSuccess && !!partData?.detail?.partMaster?.id
-		: !!formPartId;
+	const partMasterExists = isEditMode ? isFetchSuccess && !!partData?.detail?.partMaster?.id : !!formPartId;
 	const isInspectionMappingEnabled = partMasterExists && !!formPrcTemplateId;
 
 	useEffect(() => {
@@ -718,7 +705,19 @@ const CreatePart = () => {
 				setGallery(galleryItems);
 			}
 		}
-	}, [isEditMode, isFetchSuccess, partData, customersData, isPrcTemplateFetchSuccess, prcTemplateData, operationsData, sequencesData, inspectionsData, reset, setGallery]);
+	}, [
+		isEditMode,
+		isFetchSuccess,
+		partData,
+		customersData,
+		isPrcTemplateFetchSuccess,
+		prcTemplateData,
+		operationsData,
+		sequencesData,
+		inspectionsData,
+		reset,
+		setGallery
+	]);
 
 	useEffect(() => {
 		if (!operationsQueryPartId) return;
@@ -767,7 +766,10 @@ const CreatePart = () => {
 			const shouldUpsertTemplate = shouldCreateMissingPrc || shouldUpdateExistingPrc;
 
 			if (shouldUpsertTemplate) {
-				const { steps: normalizedPrcSteps, error: prcValidationError } = normalizePrcTemplateSteps(data, operationsData);
+				const { steps: normalizedPrcSteps, error: prcValidationError } = normalizePrcTemplateSteps(
+					data,
+					operationsData
+				);
 				if (prcValidationError) {
 					void Swal.fire({
 						icon: 'error',
@@ -948,163 +950,170 @@ const CreatePart = () => {
 	return (
 		<FormProvider {...methods}>
 			<>
-			{/* Match execute-prc: outer column fills viewport segment; header does not scroll; tab body scrolls */}
-			<Box
-				sx={{
-					height: 'calc(100vh - 64px - 38px)',
-					display: 'flex',
-					flexDirection: 'column',
-					overflow: 'hidden',
-					m: -3,
-					p: 3,
-					boxSizing: 'border-box'
-				}}
-			>
+				{/* Match execute-prc: outer column fills viewport segment; header does not scroll; tab body scrolls */}
 				<Box
 					sx={{
-						backgroundColor: 'background.paper',
-						borderBottom: 1,
-						borderColor: 'divider',
-						flexShrink: 0,
-						boxShadow: 'none'
+						height: 'calc(100vh - 64px - 38px)',
+						display: 'flex',
+						flexDirection: 'column',
+						overflow: 'hidden',
+						m: -3,
+						p: 3,
+						boxSizing: 'border-box'
 					}}
 				>
-					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
-							{isEditMode ? 'Edit Part' : 'Create New Part'}
-						</Typography>
-						<Box sx={{ display: 'flex', gap: 2 }}>
-							<Button variant="outlined" startIcon={<Cancel />} onClick={handleCancel} sx={{ textTransform: 'none' }}>
-								Cancel
-							</Button>
-							<Button
-								variant="contained"
-								startIcon={<Save />}
-								// eslint-disable-next-line @typescript-eslint/no-explicit-any
-								onClick={handleSubmit(onSubmit as any, onInvalid)}
-								disabled={isFullScreenBusy}
-								sx={{
-									textTransform: 'none',
-									backgroundColor: '#1976d2',
-									'&:hover': { backgroundColor: '#1565c0' }
-								}}
-							>
-								{isEditMode ? 'Update Part' : 'Create Part'}
-							</Button>
-						</Box>
-					</Box>
-
-					<PartFormStickySummary />
-
-					<Tabs
-						value={activeTab}
-						onChange={handleTabChange}
-						aria-label="part tabs"
+					<Box
 						sx={{
-							mt: 0,
-							bgcolor: 'background.paper',
-							borderTop: 1,
+							backgroundColor: 'background.paper',
 							borderBottom: 1,
 							borderColor: 'divider',
-							minHeight: 48,
-							px: 0,
-							'& .MuiTabs-flexContainer': {
-								alignItems: 'flex-end',
-								minHeight: 48
-							},
-							'& .MuiTabs-indicator': {
-								bottom: 0,
-								height: 2
-							},
-							'& .MuiTab-root': {
-								textTransform: 'none',
+							flexShrink: 0,
+							boxShadow: 'none'
+						}}
+					>
+						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+							<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
+								{isEditMode ? 'Edit Part' : 'Create New Part'}
+							</Typography>
+							<Box sx={{ display: 'flex', gap: 2 }}>
+								<Button variant="outlined" startIcon={<Cancel />} onClick={handleCancel} sx={{ textTransform: 'none' }}>
+									Cancel
+								</Button>
+								<Button
+									variant="contained"
+									startIcon={<Save />}
+									// eslint-disable-next-line @typescript-eslint/no-explicit-any
+									onClick={handleSubmit(onSubmit as any, onInvalid)}
+									disabled={isFullScreenBusy}
+									sx={{
+										textTransform: 'none',
+										backgroundColor: '#1976d2',
+										'&:hover': { backgroundColor: '#1565c0' }
+									}}
+								>
+									{isEditMode ? 'Update Part' : 'Create Part'}
+								</Button>
+							</Box>
+						</Box>
+
+						<PartFormStickySummary />
+
+						<Tabs
+							value={activeTab}
+							onChange={handleTabChange}
+							aria-label="part tabs"
+							sx={{
+								mt: 0,
+								bgcolor: 'background.paper',
+								borderTop: 1,
+								borderBottom: 1,
+								borderColor: 'divider',
 								minHeight: 48,
-								py: 0
-							}
-						}}
-					>
-						<Tab label="General Info" id="part-tab-0" aria-controls="part-tabpanel-0" />
-						<Tab label="Bill of Material" id="part-tab-1" aria-controls="part-tabpanel-1" disabled={!partMasterExists} />
-						<Tab label="Linked Masters" id="part-tab-2" aria-controls="part-tabpanel-2" disabled={!partMasterExists} />
-						<Tab
-							label="Inspection Image Mapping"
-							id="part-tab-3"
-							aria-controls="part-tabpanel-3"
-							disabled={!isInspectionMappingEnabled}
-						/>
-					</Tabs>
+								px: 0,
+								'& .MuiTabs-flexContainer': {
+									alignItems: 'flex-end',
+									minHeight: 48
+								},
+								'& .MuiTabs-indicator': {
+									bottom: 0,
+									height: 2
+								},
+								'& .MuiTab-root': {
+									textTransform: 'none',
+									minHeight: 48,
+									py: 0
+								}
+							}}
+						>
+							<Tab label="General Info" id="part-tab-0" aria-controls="part-tabpanel-0" />
+							<Tab
+								label="Bill of Material"
+								id="part-tab-1"
+								aria-controls="part-tabpanel-1"
+								disabled={!partMasterExists}
+							/>
+							<Tab
+								label="Linked Masters"
+								id="part-tab-2"
+								aria-controls="part-tabpanel-2"
+								disabled={!partMasterExists}
+							/>
+							<Tab
+								label="Inspection Image Mapping"
+								id="part-tab-3"
+								aria-controls="part-tabpanel-3"
+								disabled={!isInspectionMappingEnabled}
+							/>
+						</Tabs>
+					</Box>
+
+					<Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
+						<Paper
+							elevation={0}
+							sx={{
+								p: 4,
+								borderRadius: 2,
+								boxShadow: 'none',
+								border: 1,
+								borderColor: 'divider'
+							}}
+						>
+							{error && (
+								<Alert severity="error" sx={{ mb: 3 }}>
+									{error}
+								</Alert>
+							)}
+
+							<TabPanel value={activeTab} index={0}>
+								<GeneralInfo
+									control={control}
+									gallery={gallery}
+									onAddImage={handleAddImage}
+									onRemoveImage={handleRemoveImage}
+								/>
+							</TabPanel>
+							<TabPanel value={activeTab} index={1}>
+								<RawMaterialsTab control={control} />
+							</TabPanel>
+							<TabPanel value={activeTab} index={2}>
+								<LinkedMastersTab
+									control={control}
+									setValue={setValue}
+									operationsPartId={operationsQueryPartId}
+									selectedPlant={selectedPlant}
+									onPlantChange={setSelectedPlant}
+									gallery={gallery}
+								/>
+							</TabPanel>
+							<TabPanel value={activeTab} index={3}>
+								<InspectionImageMappingTab control={control} setValue={setValue} gallery={gallery} />
+							</TabPanel>
+						</Paper>
+					</Box>
 				</Box>
 
-				<Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden' }}>
-					<Paper
-						elevation={0}
-						sx={{
-							p: 4,
-							borderRadius: 2,
-							boxShadow: 'none',
-							border: 1,
-							borderColor: 'divider'
-						}}
-					>
-						{error && (
-							<Alert severity="error" sx={{ mb: 3 }}>
-								{error}
-							</Alert>
-						)}
+				<Dialog open={showExitDialog} onClose={handleExitCancel} maxWidth="sm" fullWidth>
+					<DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+						<Typography variant="h6">Exit Without Saving</Typography>
+						<IconButton onClick={handleExitCancel} size="small">
+							<CloseIcon />
+						</IconButton>
+					</DialogTitle>
+					<DialogContent>
+						<Typography>Are you sure you want to exit without saving? All unsaved changes will be lost.</Typography>
+					</DialogContent>
+					<DialogActions>
+						<Button onClick={handleExitCancel}>Cancel</Button>
+						<Button onClick={handleExitConfirm} color="error" variant="contained">
+							Exit
+						</Button>
+					</DialogActions>
+				</Dialog>
 
-						<TabPanel value={activeTab} index={0}>
-							<GeneralInfo
-								control={control}
-								gallery={gallery}
-								onAddImage={handleAddImage}
-								onRemoveImage={handleRemoveImage}
-							/>
-						</TabPanel>
-						<TabPanel value={activeTab} index={1}>
-							<RawMaterialsTab control={control} />
-						</TabPanel>
-						<TabPanel value={activeTab} index={2}>
-							<LinkedMastersTab
-								control={control}
-								setValue={setValue}
-								operationsPartId={operationsQueryPartId}
-								selectedPlant={selectedPlant}
-								onPlantChange={setSelectedPlant}
-							/>
-						</TabPanel>
-						<TabPanel value={activeTab} index={3}>
-							<InspectionImageMappingTab
-								control={control}
-								setValue={setValue}
-								gallery={gallery}
-							/>
-						</TabPanel>
-					</Paper>
-				</Box>
-			</Box>
-
-			<Dialog open={showExitDialog} onClose={handleExitCancel} maxWidth="sm" fullWidth>
-				<DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-					<Typography variant="h6">Exit Without Saving</Typography>
-					<IconButton onClick={handleExitCancel} size="small">
-						<CloseIcon />
-					</IconButton>
-				</DialogTitle>
-				<DialogContent>
-					<Typography>Are you sure you want to exit without saving? All unsaved changes will be lost.</Typography>
-				</DialogContent>
-				<DialogActions>
-					<Button onClick={handleExitCancel}>Cancel</Button>
-					<Button onClick={handleExitConfirm} color="error" variant="contained">
-						Exit
-					</Button>
-				</DialogActions>
-			</Dialog>
-
-			<FullScreenFormSavingOverlay
-				open={isFullScreenBusy}
-				message={isUploadingImages ? 'Uploading images…' : 'Saving…'}
-			/>
+				<FullScreenFormSavingOverlay
+					open={isFullScreenBusy}
+					message={isUploadingImages ? 'Uploading images…' : 'Saving…'}
+				/>
 			</>
 		</FormProvider>
 	);

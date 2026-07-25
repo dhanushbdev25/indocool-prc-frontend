@@ -22,12 +22,14 @@ import { InspectionParameter } from '../../../../../../store/api/business/inspec
 import { roleOptions } from '../../create-inspection/schemas';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
 import { GATE_FIELD_LABEL, GATE_POSITIVE_LABEL, formatGateValueForDisplay } from '../../../../../../utils/gateLabels';
+import { sortByNumericOrder } from '../../../../../../utils/orderedRecords';
 
 interface ViewInspectionParametersProps {
 	parameters: InspectionParameter[];
 }
 
 const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps) => {
+	const orderedParameters = sortByNumericOrder(parameters);
 	const formatRange = (min?: unknown, max?: unknown) => {
 		if (min === undefined && max === undefined) return 'Not specified';
 		return `${min ?? '-'} to ${max ?? '-'}`;
@@ -84,12 +86,12 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 		<Card>
 			<CardContent>
 				<Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#333' }}>
-					Inspection Parameters ({parameters.length})
+					Inspection Parameters ({orderedParameters.length})
 				</Typography>
 
-				{parameters.length > 0 ? (
+				{orderedParameters.length > 0 ? (
 					<Box>
-						{parameters.map((parameter, index) => (
+						{orderedParameters.map((parameter, index) => (
 							<Accordion key={parameter.id || index} sx={{ mb: 2, border: '1px solid #e0e0e0' }}>
 								<AccordionSummary expandIcon={<ExpandMore />}>
 									<Box sx={{ display: 'flex', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: 1 }}>

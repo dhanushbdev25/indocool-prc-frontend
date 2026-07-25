@@ -7,7 +7,8 @@ import {
 	Edit as EditIcon,
 	Delete as DeleteIcon,
 	Visibility as ViewIcon,
-	ContentCopy as ContentCopyIcon
+	ContentCopy as ContentCopyIcon,
+	History as HistoryIcon
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
@@ -36,11 +37,12 @@ interface InspectionTableProps {
 	onEdit?: (inspectionId: number) => void;
 	onView?: (inspectionId: number) => void;
 	onClone?: (inspectionId: number) => void;
+	onAuditLogs?: (inspection: InspectionData) => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
-const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pagination, onPaginationChange }: InspectionTableProps) => {
+const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, onAuditLogs, pagination, onPaginationChange }: InspectionTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canEdit = hasPermission('INSPECTION_MASTER_EDIT');
 	const canCreate = hasPermission('INSPECTION_MASTER_CREATE');
@@ -103,6 +105,11 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pa
 		if (selectedRow && onActionClick) {
 			onActionClick(selectedRow.inspectionId, 'delete');
 		}
+		handleMenuClose();
+	};
+
+	const handleAuditLogs = () => {
+		if (selectedRow && onAuditLogs) onAuditLogs(selectedRow);
 		handleMenuClose();
 	};
 
@@ -241,6 +248,12 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, pa
 							<ViewIcon fontSize="small" />
 						</ListItemIcon>
 						<ListItemText>View</ListItemText>
+					</MenuItem>,
+					<MenuItem key="audit" onClick={handleAuditLogs}>
+						<ListItemIcon>
+							<HistoryIcon fontSize="small" />
+						</ListItemIcon>
+						<ListItemText>Audit Logs</ListItemText>
 					</MenuItem>,
 					canEdit && (
 						<MenuItem key="edit" onClick={handleEdit}>

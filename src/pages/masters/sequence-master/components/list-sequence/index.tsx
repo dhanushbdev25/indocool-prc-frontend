@@ -23,6 +23,7 @@ import {
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import { type DeleteSequenceTaskRequest } from '../../../../../store/api/business/sequence-master/sequence.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
+import { MasterAuditHistoryDialog, type MasterAuditTarget } from '../../../../../components/common/auditHistory';
 
 const SEARCH_PLACEHOLDER = 'Sequence ID, name, category, item, type, or notes';
 
@@ -33,6 +34,7 @@ const ListSequence = () => {
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('sequence');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [sequenceToDelete, setSequenceToDelete] = useState<SequenceData | null>(null);
+	const [auditTarget, setAuditTarget] = useState<MasterAuditTarget | null>(null);
 
 	const {
 		data: sequenceData,
@@ -141,6 +143,7 @@ const ListSequence = () => {
 							ctqSteps: fullSequenceDetail.ctqSteps
 						},
 						processStepGroups: fullSequenceDetail.stepGroups.map(stepGroup => ({
+							sequence: stepGroup.sequence,
 							processName: stepGroup.processName,
 							processDescription: stepGroup.processDescription,
 							sequenceTiming: stepGroup.sequenceTiming || 0,
@@ -241,6 +244,13 @@ const ListSequence = () => {
 							onEdit={handleEdit}
 							onView={handleView}
 							onClone={handleClone}
+							onAuditLogs={sequence =>
+								setAuditTarget({
+									domain: 'sequence',
+									id: sequence.id,
+									label: sequence.sequenceId
+								})
+							}
 							pagination={pagination}
 							onPaginationChange={setPagination}
 						/>
@@ -248,6 +258,7 @@ const ListSequence = () => {
 				}
 			/>
 
+			<MasterAuditHistoryDialog target={auditTarget} onClose={() => setAuditTarget(null)} />
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>
 				<DialogTitle>Delete Sequence Task</DialogTitle>
 				<DialogContent>
