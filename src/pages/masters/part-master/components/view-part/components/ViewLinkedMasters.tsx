@@ -1,8 +1,6 @@
-import { useState } from 'react';
-import { Box, Typography, Paper, Grid, Button } from '@mui/material';
-import { Science as CatalystIcon, Assignment as TemplateIcon, History, Image as ImageIcon } from '@mui/icons-material';
+import { Box, Typography, Paper, Grid } from '@mui/material';
+import { Science as CatalystIcon, Assignment as TemplateIcon, Image as ImageIcon } from '@mui/icons-material';
 import { PartDrawing, PartMaster } from '../../../../../../store/api/business/part-master/part.validators';
-import { MasterAuditHistoryDialog } from '../../../../../../components/common/auditHistory';
 import ViewOnlyImageGallery from '../../../../../../components/common/imageGallery/ViewOnlyImageGallery';
 
 interface ViewLinkedMastersProps {
@@ -12,7 +10,6 @@ interface ViewLinkedMastersProps {
 
 const ViewLinkedMasters = ({ partMaster, files = [] }: ViewLinkedMastersProps) => {
 	const hasLinkedMasters = partMaster.catalyst || partMaster.prcTemplate;
-	const [showTemplateHistory, setShowTemplateHistory] = useState(false);
 
 	return (
 		<Paper sx={{ p: 3, borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
@@ -107,14 +104,6 @@ const ViewLinkedMasters = ({ partMaster, files = [] }: ViewLinkedMastersProps) =
 									<Typography variant="body2" sx={{ color: '#666' }}>
 										ID: {partMaster.prcTemplate}
 									</Typography>
-									<Button
-										size="small"
-										startIcon={<History />}
-										onClick={() => setShowTemplateHistory(true)}
-										sx={{ mt: 1, textTransform: 'none' }}
-									>
-										Audit Logs
-									</Button>
 								</Box>
 							</Box>
 						</Grid>
@@ -125,18 +114,6 @@ const ViewLinkedMasters = ({ partMaster, files = [] }: ViewLinkedMastersProps) =
 					No linked masters configured for this part
 				</Typography>
 			)}
-			<MasterAuditHistoryDialog
-				target={
-					showTemplateHistory && partMaster.prcTemplate
-						? {
-								domain: 'prcTemplate',
-								id: partMaster.prcTemplate,
-								label: `PRC Template ${partMaster.prcTemplate}`
-							}
-						: null
-				}
-				onClose={() => setShowTemplateHistory(false)}
-			/>
 		</Paper>
 	);
 };

@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import Swal from 'sweetalert2';
 import {
 	deriveOptions,
 	InlineFilterBar,
@@ -28,6 +29,10 @@ import {
 } from '../../../../../store/api/business/part-master/part.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { MasterAuditHistoryDialog, type MasterAuditTarget } from '../../../../../components/common/auditHistory';
+import {
+	useSyncSapBomMutation,
+	useSyncSapOperationsMutation
+} from '../../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 
 const SEARCH_PLACEHOLDER = 'Part number, SAP, drawing, description, or customer';
 
@@ -40,9 +45,7 @@ function getMouldSummaryFromDetails(mouldDetails: Mould[] | undefined) {
 	const list = mouldDetails ?? [];
 	const totalMoulds = list.length;
 	const dueMoulds = list.filter(
-		m =>
-			Number(m.reconciliationCount ?? 0) > 0 &&
-			Number(m.currentCount ?? 0) >= Number(m.reconciliationCount)
+		m => Number(m.reconciliationCount ?? 0) > 0 && Number(m.currentCount ?? 0) >= Number(m.reconciliationCount)
 	).length;
 	return { totalMoulds, dueMoulds };
 }
@@ -65,18 +68,15 @@ const ListPart = () => {
 	const { data: partData, isLoading: isPartDataLoading, refetch: refetchParts } = useFetchPartsQuery();
 
 	const [deletePartTask, { isLoading: isDeleting }] = useDeletePartTaskMutation();
+	const [syncSapBom, { isLoading: isSyncingBom }] = useSyncSapBomMutation();
+	const [syncSapOperations, { isLoading: isSyncingOperations }] = useSyncSapOperationsMutation();
 
 	const allPartData: PartRow[] = useMemo(() => {
 		if (!partData) return [];
 		return partData.detail
 			.filter((item: { partMaster: PartMaster }) => item.partMaster.id !== undefined)
 			.map(
-				(item: {
-					partMaster: PartMaster;
-					rawMaterials: RawMaterial[];
-					drilling: Drilling[];
-					cutting: Cutting[];
-				}) => {
+				(item: { partMaster: PartMaster; rawMaterials: RawMaterial[]; drilling: Drilling[]; cutting: Cutting[] }) => {
 					const mouldSummary = getMouldSummaryFromDetails(item.partMaster.mouldDetails);
 					const mouldCodes = (item.partMaster.mouldDetails ?? [])
 						.map(m => (m.mouldCode ?? '').trim())
@@ -298,6 +298,39 @@ const ListPart = () => {
 		navigate(`/part-master/view-part/${partId}`);
 	};
 
+	const showSyncSuccess = (message: string) => {
+		void Swal.fire({
+			toast: true,
+			position: 'top-end',
+			icon: 'success',
+			title: 'Synced',
+			text: message,
+			timer: 2000,
+			timerProgressBar: true,
+			showConfirmButton: false
+		});
+	};
+
+	const handleSyncBom = async (partId: number) => {
+		try {
+			await syncSapBom({ partId }).unwrap();
+			showSyncSuccess('SAP BOM synced');
+			await refetchParts();
+		} catch {
+			// Rejected RTK Query actions are displayed by the global API error handler.
+		}
+	};
+
+	const handleSyncOperations = async (partId: number) => {
+		try {
+			await syncSapOperations({ partId }).unwrap();
+			showSyncSuccess('SAP operations synced');
+			await refetchParts();
+		} catch {
+			// Rejected RTK Query actions are displayed by the global API error handler.
+		}
+	};
+
 	if (isPartDataLoading) {
 		return (
 			<Box sx={{ minWidth: 0 }}>
@@ -343,6 +376,10 @@ const ListPart = () => {
 							onEdit={handleEdit}
 							onView={handleView}
 							onAuditLogs={part => setAuditTarget({ domain: 'part', id: part.id, label: part.partNumber })}
+							onSyncBom={partId => void handleSyncBom(partId)}
+							onSyncOperations={partId => void handleSyncOperations(partId)}
+							isSyncingBom={isSyncingBom}
+							isSyncingOperations={isSyncingOperations}
 							pagination={pagination}
 							onPaginationChange={setPagination}
 						/>

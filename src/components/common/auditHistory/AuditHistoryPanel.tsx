@@ -5,20 +5,16 @@ import {
 	Alert,
 	Box,
 	Chip,
-	Divider,
 	Paper,
 	Skeleton,
 	Stack,
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
 	Typography
 } from '@mui/material';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import HistoryIcon from '@mui/icons-material/History';
+import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
+import PersonOutline from '@mui/icons-material/PersonOutline';
+import Schedule from '@mui/icons-material/Schedule';
 import {
 	AuditFieldChange,
 	AuditHistoryEntry,
@@ -37,12 +33,42 @@ export interface AuditHistoryPanelProps {
 	domain?: AuditHistoryDomain;
 }
 
-const actionColor = {
-	CREATE: 'success',
-	UPDATE: 'info',
-	DELETE: 'error',
-	VERSIONED: 'warning'
+const actionConfig = {
+	CREATE: { label: 'Created', color: '#15803d', background: '#dcfce7' },
+	UPDATE: { label: 'Updated', color: '#1d4ed8', background: '#dbeafe' },
+	DELETE: { label: 'Removed', color: '#b91c1c', background: '#fee2e2' },
+	VERSIONED: { label: 'New version', color: '#a16207', background: '#fef3c7' }
 } as const;
+
+const nestedChangeConfig = {
+	ADDED: { label: 'Added', color: '#15803d', background: '#dcfce7' },
+	MODIFIED: { label: 'Modified', color: '#1d4ed8', background: '#dbeafe' },
+	DELETED: { label: 'Removed', color: '#b91c1c', background: '#fee2e2' },
+	REORDERED: { label: 'Reordered', color: '#a16207', background: '#fef3c7' }
+} as const;
+
+const domainCopy: Record<AuditHistoryDomain, { title: string; subtitle: string }> = {
+	part: {
+		title: 'Part history',
+		subtitle: 'Track revisions made to this part and its manufacturing details.'
+	},
+	inspection: {
+		title: 'Inspection history',
+		subtitle: 'Review changes to inspection settings and parameters.'
+	},
+	sequence: {
+		title: 'Sequence history',
+		subtitle: 'Follow revisions to process groups, steps, and their order.'
+	},
+	catalyst: {
+		title: 'Catalyst history',
+		subtitle: 'See how this catalyst chart and its configuration evolved.'
+	},
+	prcTemplate: {
+		title: 'PRC template history',
+		subtitle: 'Review step additions, removals, edits, and reordering.'
+	}
+};
 
 function formatLabel(value: string) {
 	return value
@@ -71,63 +97,166 @@ function formatDate(value: string) {
 	return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
-function ChangeTable({ changes }: { changes: Array<AuditFieldChange | AuditNestedFieldChange> }) {
+function ValueBlock({ label, value, tone }: { label: string; value: unknown; tone: 'before' | 'after' }) {
+	const formatted = formatValue(value);
+	return (
+		<Box
+			sx={{
+				minWidth: 0,
+				p: 1.5,
+				borderRadius: 1.5,
+				border: '1px solid',
+				borderColor: tone === 'before' ? '#e2e8f0' : '#bfdbfe',
+				backgroundColor: tone === 'before' ? '#f8fafc' : '#eff6ff'
+			}}
+		>
+			<Typography
+				variant="caption"
+				sx={{
+					display: 'block',
+					mb: 0.5,
+					color: tone === 'before' ? '#64748b' : '#1d4ed8',
+					fontWeight: 700,
+					letterSpacing: '0.04em',
+					textTransform: 'uppercase'
+				}}
+			>
+				{label}
+			</Typography>
+			<Typography
+				component="pre"
+				variant="body2"
+				sx={{
+					m: 0,
+					maxHeight: 180,
+					overflow: 'auto',
+					whiteSpace: 'pre-wrap',
+					overflowWrap: 'anywhere',
+					fontFamily: 'inherit',
+					color: '#1e293b'
+				}}
+			>
+				{formatted}
+			</Typography>
+		</Box>
+	);
+}
+
+function ChangeList({ changes }: { changes: Array<AuditFieldChange | AuditNestedFieldChange> }) {
 	if (changes.length === 0) return null;
 	return (
-		<TableContainer sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-			<Table size="small">
-				<TableHead>
-					<TableRow sx={{ backgroundColor: 'action.hover' }}>
-						<TableCell sx={{ fontWeight: 600 }}>Field</TableCell>
-						<TableCell sx={{ fontWeight: 600 }}>Previous value</TableCell>
-						<TableCell sx={{ fontWeight: 600 }}>New value</TableCell>
-					</TableRow>
-				</TableHead>
-				<TableBody>
-					{changes.map((change, index) => (
-						<TableRow key={`${change.field}-${index}`}>
-							<TableCell sx={{ verticalAlign: 'top', minWidth: 180 }}>{formatLabel(change.field)}</TableCell>
-							<TableCell sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-								{formatValue(change.oldValue)}
-							</TableCell>
-							<TableCell sx={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-								{formatValue(change.newValue)}
-							</TableCell>
-						</TableRow>
-					))}
-				</TableBody>
-			</Table>
-		</TableContainer>
+		<Stack gap={1.5}>
+			{changes.map((change, index) => {
+				const fieldChange = 'type' in change ? change.type : 'MODIFIED';
+				const config = nestedChangeConfig[fieldChange];
+				return (
+					<Box
+						key={`${change.field}-${index}`}
+						sx={{
+							p: { xs: 1.5, sm: 2 },
+							borderRadius: 2,
+							border: '1px solid #e2e8f0',
+							backgroundColor: '#fff'
+						}}
+					>
+						<Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} sx={{ mb: 1.5 }}>
+							<Typography variant="subtitle2" sx={{ color: '#172033', fontWeight: 700 }}>
+								{formatLabel(change.field)}
+							</Typography>
+							<Chip
+								label={config.label}
+								size="small"
+								sx={{ color: config.color, backgroundColor: config.background, fontWeight: 700 }}
+							/>
+						</Stack>
+						<Box
+							sx={{
+								display: 'grid',
+								gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) auto minmax(0, 1fr)' },
+								alignItems: 'center',
+								gap: 1
+							}}
+						>
+							<ValueBlock label="Before" value={change.oldValue} tone="before" />
+							<ArrowForwardRounded
+								sx={{
+									color: '#94a3b8',
+									transform: { xs: 'rotate(90deg)', md: 'none' },
+									justifySelf: 'center'
+								}}
+							/>
+							<ValueBlock label="After" value={change.newValue} tone="after" />
+						</Box>
+					</Box>
+				);
+			})}
+		</Stack>
 	);
 }
 
 function StructuredChange({ change }: { change: AuditStructuredChange }) {
 	const title =
 		change.stepName ?? change.processName ?? change.parameterName ?? change.parameterDescription ?? 'Changed item';
-	const metadata = Object.entries(change).filter(([key]) => !['changeType', 'details', 'stepChanges'].includes(key));
+	const metadata = Object.entries(change).filter(
+		([key]) =>
+			![
+				'changeType',
+				'details',
+				'stepChanges',
+				'stepName',
+				'processName',
+				'parameterName',
+				'parameterDescription'
+			].includes(key)
+	);
+	const config = nestedChangeConfig[change.changeType];
 
 	return (
-		<Box sx={{ p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-			<Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-				<Chip label={change.changeType} size="small" variant="outlined" />
-				<Typography variant="subtitle2">{String(title)}</Typography>
+		<Box
+			sx={{
+				p: { xs: 1.5, sm: 2 },
+				border: '1px solid #e2e8f0',
+				borderRadius: 2,
+				backgroundColor: '#fff'
+			}}
+		>
+			<Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} flexWrap="wrap">
+				<Typography variant="subtitle2" sx={{ color: '#172033', fontWeight: 700 }}>
+					{String(title)}
+				</Typography>
+				<Chip
+					label={config.label}
+					size="small"
+					sx={{ color: config.color, backgroundColor: config.background, fontWeight: 700 }}
+				/>
 			</Stack>
 			{metadata.length > 0 && (
-				<Stack direction="row" gap={2} flexWrap="wrap" sx={{ mt: 1 }}>
+				<Stack direction="row" gap={1} flexWrap="wrap" sx={{ mt: 1.25 }}>
 					{metadata.map(([key, value]) => (
-						<Typography key={key} variant="caption" color="text.secondary">
-							{formatLabel(key)}: {formatValue(value)}
-						</Typography>
+						<Box
+							key={key}
+							sx={{
+								px: 1,
+								py: 0.5,
+								borderRadius: 1,
+								backgroundColor: '#f1f5f9',
+								color: '#475569'
+							}}
+						>
+							<Typography variant="caption">
+								<strong>{formatLabel(key)}:</strong> {formatValue(value)}
+							</Typography>
+						</Box>
 					))}
 				</Stack>
 			)}
 			{change.details && change.details.length > 0 && (
 				<Box sx={{ mt: 1.5 }}>
-					<ChangeTable changes={change.details} />
+					<ChangeList changes={change.details} />
 				</Box>
 			)}
 			{change.stepChanges && change.stepChanges.length > 0 && (
-				<Stack gap={1} sx={{ mt: 1.5, pl: 1.5 }}>
+				<Stack gap={1} sx={{ mt: 1.5, pl: { sm: 2 }, borderLeft: { sm: '2px solid #dbeafe' } }}>
 					{change.stepChanges.map((stepChange, index) => (
 						<StructuredChange key={index} change={stepChange} />
 					))}
@@ -141,7 +270,7 @@ function StructuredSection({ title, changes }: { title: string; changes?: AuditS
 	if (!changes?.length) return null;
 	return (
 		<Box>
-			<Typography variant="subtitle2" sx={{ mb: 1 }}>
+			<Typography variant="overline" sx={{ mb: 1, display: 'block', color: '#64748b', fontWeight: 700 }}>
 				{title}
 			</Typography>
 			<Stack gap={1}>
@@ -157,93 +286,228 @@ export function AuditHistoryPanel({
 	history,
 	isLoading = false,
 	isError = false,
-	title = 'Audit Logs',
+	title,
 	domain
 }: AuditHistoryPanelProps) {
 	const isPrcTemplate = domain === 'prcTemplate';
+	const visibleHistory = isPrcTemplate ? history?.filter(entry => entry.stepChanges?.length) : history;
+	const copy = domain ? domainCopy[domain] : null;
+	const resolvedTitle = title ?? copy?.title ?? 'Change history';
+	const subtitle = copy?.subtitle ?? 'See what changed, when it changed, and who made the update.';
 
 	return (
-		<Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
-			<Stack direction="row" alignItems="center" gap={1} sx={{ mb: 2 }}>
-				<HistoryIcon color="primary" />
-				<Typography variant="h6" sx={{ fontWeight: 600 }}>
-					{title}
-				</Typography>
-			</Stack>
-
-			{isLoading && (
-				<Stack gap={1}>
-					<Skeleton variant="rounded" height={56} />
-					<Skeleton variant="rounded" height={56} />
+		<Paper
+			variant="outlined"
+			sx={{
+				overflow: 'hidden',
+				borderRadius: 3,
+				borderColor: '#dbe3ef',
+				backgroundColor: '#f8fafc'
+			}}
+		>
+			<Box
+				sx={{
+					p: { xs: 2, sm: 2.5 },
+					borderBottom: '1px solid #dbe3ef',
+					background: 'linear-gradient(135deg, #ffffff 0%, #f1f5ff 100%)'
+				}}
+			>
+				<Stack direction="row" alignItems="center" gap={1.5}>
+					<Box
+						sx={{
+							width: 42,
+							height: 42,
+							display: 'grid',
+							placeItems: 'center',
+							borderRadius: 2,
+							color: '#1d4ed8',
+							backgroundColor: '#dbeafe'
+						}}
+					>
+						<HistoryIcon />
+					</Box>
+					<Box sx={{ minWidth: 0, flex: 1 }}>
+						<Typography variant="h6" sx={{ color: '#172033', fontWeight: 700 }}>
+							{resolvedTitle}
+						</Typography>
+						<Typography variant="body2" sx={{ color: '#64748b' }}>
+							{subtitle}
+						</Typography>
+					</Box>
+					{!isLoading && !isError && visibleHistory && visibleHistory.length > 0 && (
+						<Chip
+							label={`${visibleHistory.length} ${visibleHistory.length === 1 ? 'revision' : 'revisions'}`}
+							size="small"
+							sx={{ color: '#334155', backgroundColor: '#e2e8f0', fontWeight: 700 }}
+						/>
+					)}
 				</Stack>
-			)}
-			{!isLoading && isError && <Alert severity="error">Failed to load audit logs.</Alert>}
-			{!isLoading && !isError && (!history || history.length === 0) && (
-				<Alert severity="info">No audit logs are available for this record.</Alert>
-			)}
-			{!isLoading &&
-				!isError &&
-				history?.map(entry => {
-					const hasStepChanges = Boolean(entry.stepChanges?.length);
-					const hasGroupChanges = Boolean(entry.stepGroupChanges?.length);
-					const hasParamChanges = Boolean(entry.parameterChanges?.length);
-					const hasFieldChanges = !isPrcTemplate && entry.changes.length > 0;
-					const hasAnyChanges = isPrcTemplate
-						? hasStepChanges
-						: hasFieldChanges || hasStepChanges || hasGroupChanges || hasParamChanges;
+			</Box>
 
-					return (
-						<Accordion key={entry.id} disableGutters sx={{ '&:before': { display: 'none' } }}>
-							<AccordionSummary expandIcon={<ExpandMore />}>
-								<Stack
-									direction={{ xs: 'column', sm: 'row' }}
-									alignItems={{ xs: 'flex-start', sm: 'center' }}
-									gap={1}
-									sx={{ width: '100%', pr: 1 }}
+			<Stack sx={{ p: { xs: 2, sm: 2.5 } }}>
+				{isLoading && (
+					<Stack gap={1.5}>
+						<Skeleton variant="rounded" height={76} />
+						<Skeleton variant="rounded" height={76} />
+					</Stack>
+				)}
+				{!isLoading && isError && (
+					<Alert severity="error">History could not be loaded. Refresh the page or try again in a moment.</Alert>
+				)}
+				{!isLoading && !isError && (!visibleHistory || visibleHistory.length === 0) && (
+					<Box sx={{ py: 4, px: 2, textAlign: 'center' }}>
+						<HistoryIcon sx={{ mb: 1, fontSize: 36, color: '#94a3b8' }} />
+						<Typography variant="subtitle1" sx={{ color: '#334155', fontWeight: 700 }}>
+							No revisions recorded yet
+						</Typography>
+						<Typography variant="body2" sx={{ color: '#64748b' }}>
+							Future changes to this record will appear here.
+						</Typography>
+					</Box>
+				)}
+
+				{!isLoading &&
+					!isError &&
+					visibleHistory?.map((entry, index) => {
+						const hasStepChanges = Boolean(entry.stepChanges?.length);
+						const hasGroupChanges = Boolean(entry.stepGroupChanges?.length);
+						const hasParamChanges = Boolean(entry.parameterChanges?.length);
+						const hasFieldChanges = !isPrcTemplate && entry.changes.length > 0;
+						const hasAnyChanges = isPrcTemplate
+							? hasStepChanges
+							: hasFieldChanges || hasStepChanges || hasGroupChanges || hasParamChanges;
+						const structuredCount =
+							(entry.stepChanges?.length ?? 0) +
+							(entry.stepGroupChanges?.length ?? 0) +
+							(entry.parameterChanges?.length ?? 0);
+						const changeCount = isPrcTemplate
+							? (entry.stepChanges?.length ?? 0)
+							: entry.changes.length + structuredCount;
+						const action = actionConfig[entry.changeType];
+						const isLast = index === visibleHistory.length - 1;
+
+						return (
+							<Box
+								key={entry.id}
+								sx={{
+									display: 'grid',
+									gridTemplateColumns: '32px minmax(0, 1fr)',
+									gap: 1.5
+								}}
+							>
+								<Box sx={{ position: 'relative', display: 'flex', justifyContent: 'center' }}>
+									<Box
+										sx={{
+											mt: 2.5,
+											width: 12,
+											height: 12,
+											zIndex: 1,
+											borderRadius: '50%',
+											border: '3px solid #fff',
+											boxShadow: `0 0 0 2px ${action.color}`,
+											backgroundColor: action.color
+										}}
+									/>
+									{!isLast && (
+										<Box
+											sx={{
+												position: 'absolute',
+												top: 34,
+												bottom: -2,
+												width: 2,
+												backgroundColor: '#dbe3ef'
+											}}
+										/>
+									)}
+								</Box>
+
+								<Accordion
+									disableGutters
+									sx={{
+										mb: isLast ? 0 : 1.5,
+										border: '1px solid #dbe3ef',
+										borderRadius: '12px !important',
+										backgroundColor: '#fff',
+										boxShadow: '0 1px 2px rgba(15, 23, 42, 0.04)',
+										'&:before': { display: 'none' },
+										'&.Mui-expanded': { boxShadow: '0 8px 24px rgba(15, 23, 42, 0.08)' }
+									}}
 								>
-									<Chip label={entry.changeType} size="small" color={actionColor[entry.changeType]} />
-									<Typography variant="body2" sx={{ fontWeight: 600 }}>
-										Version {entry.version}
-									</Typography>
-									<Typography variant="body2">{entry.changedByName}</Typography>
-									<Typography variant="caption" color="text.secondary" sx={{ ml: { sm: 'auto' } }}>
-										{formatDate(entry.changedAt)}
-									</Typography>
-								</Stack>
-							</AccordionSummary>
-							<AccordionDetails>
-								<Stack gap={2}>
-									{hasFieldChanges && (
-										<Box>
-											<Typography variant="subtitle2" sx={{ mb: 1 }}>
-												Field changes
-											</Typography>
-											<ChangeTable changes={entry.changes} />
-										</Box>
-									)}
-									{isPrcTemplate ? (
-										<StructuredSection title="Step changes" changes={entry.stepChanges} />
-									) : (
-										<>
-											<StructuredSection title="Template step changes" changes={entry.stepChanges} />
-											<StructuredSection title="Process group changes" changes={entry.stepGroupChanges} />
-											<StructuredSection title="Inspection parameter changes" changes={entry.parameterChanges} />
-										</>
-									)}
-									{!hasAnyChanges && (
-										<Typography variant="body2" color="text.secondary">
-											No field-level changes were returned.
-										</Typography>
-									)}
-									<Divider />
-									<Typography variant="caption" color="text.secondary">
-										Changed by user ID {entry.changedBy}
-									</Typography>
-								</Stack>
-							</AccordionDetails>
-						</Accordion>
-					);
-				})}
+									<AccordionSummary
+										expandIcon={<ExpandMore sx={{ color: '#64748b' }} />}
+										sx={{ px: { xs: 1.5, sm: 2 }, minHeight: 72 }}
+									>
+										<Stack sx={{ width: '100%', pr: 1 }} gap={0.75}>
+											<Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+												<Chip
+													label={action.label}
+													size="small"
+													sx={{
+														color: action.color,
+														backgroundColor: action.background,
+														fontWeight: 700
+													}}
+												/>
+												<Typography
+													variant="subtitle2"
+													sx={{ color: '#172033', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}
+												>
+													Version {entry.version}
+												</Typography>
+												<Typography variant="caption" sx={{ color: '#64748b' }}>
+													{changeCount} {changeCount === 1 ? 'change' : 'changes'}
+												</Typography>
+											</Stack>
+											<Stack direction="row" alignItems="center" gap={2} flexWrap="wrap">
+												<Stack direction="row" alignItems="center" gap={0.5}>
+													<PersonOutline sx={{ fontSize: 16, color: '#64748b' }} />
+													<Typography variant="caption" sx={{ color: '#475569' }}>
+														{entry.changedByName}
+													</Typography>
+												</Stack>
+												<Stack direction="row" alignItems="center" gap={0.5}>
+													<Schedule sx={{ fontSize: 16, color: '#64748b' }} />
+													<Typography variant="caption" sx={{ color: '#475569', fontVariantNumeric: 'tabular-nums' }}>
+														{formatDate(entry.changedAt)}
+													</Typography>
+												</Stack>
+											</Stack>
+										</Stack>
+									</AccordionSummary>
+									<AccordionDetails sx={{ px: { xs: 1.5, sm: 2 }, pt: 0, pb: 2 }}>
+										<Stack gap={2}>
+											{hasFieldChanges && (
+												<Box>
+													<Typography
+														variant="overline"
+														sx={{ mb: 1, display: 'block', color: '#64748b', fontWeight: 700 }}
+													>
+														Changed fields
+													</Typography>
+													<ChangeList changes={entry.changes} />
+												</Box>
+											)}
+											{isPrcTemplate ? (
+												<StructuredSection title="Step changes" changes={entry.stepChanges} />
+											) : (
+												<>
+													<StructuredSection title="Template step changes" changes={entry.stepChanges} />
+													<StructuredSection title="Process group changes" changes={entry.stepGroupChanges} />
+													<StructuredSection title="Inspection parameter changes" changes={entry.parameterChanges} />
+												</>
+											)}
+											{!hasAnyChanges && (
+												<Typography variant="body2" sx={{ color: '#64748b' }}>
+													No field-level details were returned for this revision.
+												</Typography>
+											)}
+										</Stack>
+									</AccordionDetails>
+								</Accordion>
+							</Box>
+						);
+					})}
+			</Stack>
 		</Paper>
 	);
 }

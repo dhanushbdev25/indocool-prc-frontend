@@ -6,7 +6,8 @@ import {
 	PlayArrow as PlayArrowIcon,
 	Visibility as VisibilityIcon,
 	CheckCircle as CheckCircleIcon,
-	PictureAsPdf as PictureAsPdfIcon
+	PictureAsPdf as PictureAsPdfIcon,
+	QrCode2 as QrCode2Icon
 } from '@mui/icons-material';
 import TableComponent from '../../../../../components/table/TableComponent';
 import { type PrcExecution } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
@@ -21,13 +22,26 @@ interface PrcExecutionTableProps {
 	onView: (id: number) => void;
 	/** Opens consolidated report for print / Save as PDF */
 	onOpenReport: (id: number) => void;
+	/** Generate QR sticker label for a single PRC (loads detail by id). */
+	onGenerateQr: (id: number) => void;
+	/** Opens bulk QR selection dialog from the table toolbar. */
+	onBulkGenerateQr?: () => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
 const getDescription = (row: PrcExecutionData): string => row.partDescription ?? '';
 
-const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, pagination, onPaginationChange }: PrcExecutionTableProps) => {
+const PrcExecutionTable = memo(({
+	data,
+	onExecute,
+	onView,
+	onOpenReport,
+	onGenerateQr,
+	onBulkGenerateQr,
+	pagination,
+	onPaginationChange
+}: PrcExecutionTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canExecute = hasPermission('PRC_EXECUTION_EDIT');
 	const canView = hasPermission('PRC_EXECUTION_VIEW');
@@ -272,7 +286,7 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 			{
 				id: 'execute',
 				header: 'Actions',
-				size: 168,
+				size: 210,
 				enableSorting: false,
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
@@ -306,6 +320,16 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 								View
 							</Button>
 						)}
+						<Tooltip title="Generate QR sticker label">
+							<IconButton
+								size="small"
+								color="primary"
+								onClick={() => onGenerateQr(row.original.id)}
+								aria-label={`Generate QR for PRC ${row.original.id}`}
+							>
+								<QrCode2Icon fontSize="small" />
+							</IconButton>
+						</Tooltip>
 						<Tooltip title="Consolidated report — print or save as PDF">
 							<IconButton
 								size="small"
@@ -320,7 +344,7 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 				)
 			}
 		],
-		[onExecute, onView, onOpenReport, canExecute, canView]
+		[onExecute, onView, onOpenReport, onGenerateQr, canExecute, canView]
 	);
 
 	if (safeData.length === 0) {
@@ -345,6 +369,20 @@ const PrcExecutionTable = memo(({ data, onExecute, onView, onOpenReport, paginat
 			onPaginationChange={onPaginationChange}
 			exportTitle="prc-execution"
 			pinnedColumnsLeft={['orderId', 'status', 'execute']}
+			toolbarActions={
+				onBulkGenerateQr ? (
+					<Button
+						size="small"
+						variant="contained"
+						startIcon={<QrCode2Icon fontSize="small" />}
+						onClick={onBulkGenerateQr}
+						disabled={safeData.length === 0}
+						sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
+					>
+						Generate QR Codes
+					</Button>
+				) : null
+			}
 		/>
 	);
 });

@@ -5,6 +5,7 @@ import {
 	type MRT_RowData,
 	type MRT_FilterFn,
 	type MRT_PaginationState,
+	type MRT_RowSelectionState,
 	type MRT_Updater
 } from 'material-react-table';
 import { Badge, Box, Button, Pagination, PaginationItem, Tooltip } from '@mui/material';
@@ -13,7 +14,7 @@ import {
 	FilterAltOutlined as FilterAltOutlinedIcon,
 	FileDownloadOutlined as FileDownloadIcon
 } from '@mui/icons-material';
-import { useMemo, memo, useState } from 'react';
+import { useMemo, memo, useState, type ReactNode } from 'react';
 import { exportTableToExcel } from '../../utils/exportTableToExcel';
 
 /** Case-insensitive substring; empty filter passes; null/undefined cells treated as empty string */
@@ -39,6 +40,14 @@ interface TableProps<T extends MRT_RowData> {
 	exportTitle?: string;
 	/** Column ids pinned to the left edge (stay visible while scrolling horizontally). */
 	pinnedColumnsLeft?: string[];
+	/** When true, shows row checkboxes. Pair with controlled `rowSelection` / `onRowSelectionChange`. */
+	enableRowSelection?: boolean;
+	rowSelection?: MRT_RowSelectionState;
+	onRowSelectionChange?: (updaterOrValue: MRT_Updater<MRT_RowSelectionState>) => void;
+	/** Stable row id for selection (defaults to `id` when present). */
+	getRowId?: (row: T) => string;
+	/** Extra controls rendered in the table toolbar (left of filters/export). */
+	toolbarActions?: ReactNode;
 }
 
 const defaultTableContainerSx = {
@@ -53,19 +62,34 @@ const TableComponent = <T extends MRT_RowData>({
 	pagination,
 	onPaginationChange,
 	exportTitle,
-	pinnedColumnsLeft
+	pinnedColumnsLeft,
+	enableRowSelection = false,
+	rowSelection,
+	onRowSelectionChange,
+	getRowId,
+	toolbarActions
 }: TableProps<T>) => {
 	const columns = useMemo(() => tableColumns, [tableColumns]);
 	const memoData = useMemo(() => data, [data]);
 
 	const [showColumnFilters, setShowColumnFilters] = useState(false);
 	const isControlledPagination = pagination !== undefined && onPaginationChange !== undefined;
+	const isControlledRowSelection =
+		enableRowSelection && rowSelection !== undefined && onRowSelectionChange !== undefined;
 	const table = useMaterialReactTable<T>({
 		columns,
 		data: memoData,
 		filterFns: {
 			nullSafeContains
 		},
+		...(getRowId
+			? { getRowId }
+			: {
+					getRowId: (row: T) => {
+						const id = (row as { id?: unknown }).id;
+						return id != null ? String(id) : JSON.stringify(row);
+					}
+				}),
 		initialState: {
 			pagination: { pageIndex: 0, pageSize: 5 },
 			showColumnFilters: false,
@@ -73,9 +97,11 @@ const TableComponent = <T extends MRT_RowData>({
 		},
 		state: {
 			showColumnFilters,
-			...(isControlledPagination ? { pagination } : {})
+			...(isControlledPagination ? { pagination } : {}),
+			...(isControlledRowSelection ? { rowSelection } : {})
 		},
 		...(isControlledPagination ? { onPaginationChange } : {}),
+		...(isControlledRowSelection ? { onRowSelectionChange } : {}),
 		onShowColumnFiltersChange: (updater: MRT_Updater<boolean>) => {
 			setShowColumnFilters(prev =>
 				typeof updater === 'function' ? (updater as (old: boolean) => boolean)(prev) : updater
@@ -95,7 +121,9 @@ const TableComponent = <T extends MRT_RowData>({
 		enableColumnActions: false,
 		enableColumnFilters: true,
 		enableGlobalFilter: false,
-		enableRowSelection: false,
+		enableRowSelection,
+		enableMultiRowSelection: enableRowSelection,
+		enableSelectAll: enableRowSelection,
 		enableColumnResizing: false,
 		enableColumnOrdering: false,
 		enableHiding: false,
@@ -190,6 +218,9 @@ const TableComponent = <T extends MRT_RowData>({
 						theme.palette.mode === 'dark' ? alpha(theme.palette.common.white, 0.03) : alpha(theme.palette.grey[50], 0.98)
 				}}
 			>
+				{toolbarActions ? (
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 'auto' }}>{toolbarActions}</Box>
+				) : null}
 				<Badge
 					overlap="rectangular"
 					badgeContent={columnFilterCount}

@@ -24,6 +24,7 @@ import { displayValidationErrors } from '../../../utils/helpers';
 import Cookie from '../../../utils/Cookie';
 import { useAppDispatch } from '../../../store/store';
 import { sessionApi } from '../../../store/api/auth/session.api';
+import { consumePostLoginRedirect } from '../../../utils/postLoginRedirect';
 
 interface FormValues {
 	employeeId: string;
@@ -84,7 +85,8 @@ const AuthLogin = () => {
 
 			// Clear stale session query error/data before next route bootstrap.
 			dispatch(sessionApi.util.resetApiState());
-			navigate('/');
+			const returnTo = consumePostLoginRedirect();
+			navigate(returnTo ?? '/');
 		} catch (err: unknown) {
 			setSubmitError(err instanceof Error ? err.message : 'An error occurred');
 		}

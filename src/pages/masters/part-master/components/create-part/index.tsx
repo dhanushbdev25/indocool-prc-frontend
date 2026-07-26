@@ -47,6 +47,8 @@ import type { PartMaster, OperationWisePartRow } from '../../../../../store/api/
 import { normalizePrcTemplateSteps, buildPrcTemplatePayload } from '../../utils/prcTemplatePayload';
 import { flattenRhfFieldErrorsToHtml } from '../../../../../utils/flattenRhfFieldErrors';
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
+import { MasterAuditHistoryButton } from '../../../../../components/common/auditHistory';
+import PartSapSyncActions from '../PartSapSyncActions';
 
 function mapMouldDetailsToFormMoulds(partMaster: PartMaster): PartMasterFormData['moulds'] {
 	return (partMaster.mouldDetails ?? []).map(item => ({
@@ -976,6 +978,18 @@ const CreatePart = () => {
 								{isEditMode ? 'Edit Part' : 'Create New Part'}
 							</Typography>
 							<Box sx={{ display: 'flex', gap: 2 }}>
+								{isEditMode && id && <PartSapSyncActions partId={Number(id)} />}
+								<MasterAuditHistoryButton
+									target={
+										isEditMode && id
+											? {
+													domain: 'part',
+													id: Number(id),
+													label: partData?.detail.partMaster.partNumber ?? `Part ${id}`
+												}
+											: null
+									}
+								/>
 								<Button variant="outlined" startIcon={<Cancel />} onClick={handleCancel} sx={{ textTransform: 'none' }}>
 									Cancel
 								</Button>

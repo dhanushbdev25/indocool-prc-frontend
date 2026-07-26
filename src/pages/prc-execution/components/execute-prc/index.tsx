@@ -57,6 +57,7 @@ import StepList from './components/StepList';
 import StepDetailView from './components/StepDetailView';
 import StepPreview from './components/StepPreview';
 import ExecutionQuickStats from './components/ExecutionQuickStats';
+import { PrcQrLabelsDialog, mapExecutionToQrLabel } from '../qr-labels';
 import BomStep from './components/steps/BomStep';
 import RawMaterialsStep from './components/steps/RawMaterialsStep';
 
@@ -126,6 +127,7 @@ const ExecutePrc = () => {
 	const [catalystMixingOpen, setCatalystMixingOpen] = useState(false);
 	const [rawMaterialsOpen, setRawMaterialsOpen] = useState(false);
 	const [partImagesOpen, setPartImagesOpen] = useState(false);
+	const [qrDialogOpen, setQrDialogOpen] = useState(false);
 	const catalystMixingStartTimeRef = useRef<string | null>(null);
 	const catalystMixingSubmitRef = useRef<(() => void) | null>(null);
 	const initializedExecutionIdRef = useRef<number | null>(null);
@@ -1761,6 +1763,7 @@ const ExecutePrc = () => {
 					catalystMixingDisabled={isExecutionDataFetching || isUpdateProgressLoading}
 					onPartImagesClick={partImages.length > 0 ? () => setPartImagesOpen(true) : undefined}
 					partImagesCount={partImages.length}
+					onGenerateQr={() => setQrDialogOpen(true)}
 				/>
 
 				{/* Main Content */}
@@ -1903,6 +1906,12 @@ const ExecutePrc = () => {
 					<Button onClick={handleCloseCatalystMixing}>Close</Button>
 				</DialogActions>
 			</Dialog>
+
+			<PrcQrLabelsDialog
+				open={qrDialogOpen}
+				onClose={() => setQrDialogOpen(false)}
+				labels={actualExecutionData ? [mapExecutionToQrLabel(actualExecutionData)] : []}
+			/>
 		</>
 	);
 };

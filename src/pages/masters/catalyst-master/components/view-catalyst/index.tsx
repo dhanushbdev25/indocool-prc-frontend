@@ -120,7 +120,7 @@ const ViewCatalyst = () => {
 				</Box>
 
 				<Box sx={{ mb: 4 }}>
-					<AuditHistoryPanel history={catalystData.history} />
+					<AuditHistoryPanel history={catalystData.history} domain="catalyst" />
 				</Box>
 
 				{/* Action Buttons */}

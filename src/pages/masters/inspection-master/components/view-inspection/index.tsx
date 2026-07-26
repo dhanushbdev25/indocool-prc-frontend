@@ -134,7 +134,7 @@ const ViewInspection = () => {
 				</Box>
 
 				<Box sx={{ mb: 4 }}>
-					<AuditHistoryPanel history={inspectionData.history} />
+					<AuditHistoryPanel history={inspectionData.history} domain="inspection" />
 				</Box>
 
 				{/* Action Buttons */}

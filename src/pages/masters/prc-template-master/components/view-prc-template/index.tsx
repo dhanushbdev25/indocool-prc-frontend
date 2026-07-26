@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useFetchPrcTemplateByIdQuery } from '../../../../../store/api/business/prc-template/prc-template.api';
 import ViewPrcTemplateBasicInfo from './components/ViewPrcTemplateBasicInfo';
 import ViewPrcTemplateSteps from './components/ViewPrcTemplateSteps';
+import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 
 const ViewPrcTemplate = () => {
 	const navigate = useNavigate();
@@ -115,6 +116,7 @@ const ViewPrcTemplate = () => {
 				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 					<ViewPrcTemplateBasicInfo template={prcTemplate} />
 					<ViewPrcTemplateSteps steps={prcTemplateSteps} />
+					<AuditHistoryPanel history={templateData.history} domain="prcTemplate" />
 				</Box>
 			</Paper>
 		</Box>

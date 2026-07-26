@@ -324,6 +324,8 @@ export interface OperationWiseExecutionRow {
 export interface ExecutionData {
 	id: number;
 	customer: string;
+	/** Display name when API returns it (preferred for QR labels over `customer` code). */
+	customerName?: string | null;
 	partId: number;
 	partNumber: string;
 	partDescription: string;
@@ -338,6 +340,12 @@ export interface ExecutionData {
 	inCharge: number;
 	remarks?: string;
 	drawingNumber: string;
+	/** Drawing / part revision for QR sticker labels */
+	drawingRevision?: string | number | null;
+	partRevision?: string | number | null;
+	revNo?: string | number | null;
+	/** Part model number for QR sticker labels */
+	model?: string | null;
 	status: string;
 	prcTemplate: number;
 	catalyst: number;

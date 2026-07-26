@@ -27,6 +27,7 @@ import {
 	useUpdateInspectionMutation
 } from '../../../../../store/api/business/inspection-master/inspection.api';
 import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
+import { MasterAuditHistoryButton } from '../../../../../components/common/auditHistory';
 
 const steps = ['Basic Information', 'Inspection Parameters', 'Review & Submit'];
 
@@ -396,10 +397,21 @@ const CreateInspection = () => {
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
-					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 4 }}>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
 							{isEditMode ? 'Edit Inspection' : 'Create New Inspection'}
 						</Typography>
+						<MasterAuditHistoryButton
+							target={
+								isEditMode && id
+									? {
+											domain: 'inspection',
+											id: Number(id),
+											label: inspectionData?.detail.inspection.inspectionId ?? `Inspection ${id}`
+										}
+									: null
+							}
+						/>
 					</Box>
 
 					{/* Error Alert */}

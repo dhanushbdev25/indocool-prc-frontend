@@ -44,18 +44,17 @@ export function MasterAuditHistoryDialog({ target, onClose }: MasterAuditHistory
 		<Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
 			<DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
 				<Typography component="span" variant="h6" sx={{ fontWeight: 600 }}>
-					Audit Logs{target?.label ? ` — ${target.label}` : ''}
+					Change history{target?.label ? ` — ${target.label}` : ''}
 				</Typography>
 				<IconButton onClick={onClose} aria-label="Close audit logs">
 					<Close />
 				</IconButton>
 			</DialogTitle>
-			<DialogContent dividers>
+			<DialogContent dividers sx={{ backgroundColor: '#f8fafc' }}>
 				<AuditHistoryPanel
 					history={query.data?.history}
 					isLoading={query.isFetching}
 					isError={query.isError}
-					title="Change History"
 					domain={target?.domain}
 				/>
 			</DialogContent>

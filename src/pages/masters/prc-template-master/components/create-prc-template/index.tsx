@@ -18,6 +18,7 @@ import {
 import { useFetchProcessSequencesQuery } from '../../../../../store/api/business/sequence-master/sequence.api';
 import { useFetchInspectionsQuery } from '../../../../../store/api/business/inspection-master/inspection.api';
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
+import { MasterAuditHistoryButton } from '../../../../../components/common/auditHistory';
 
 const steps = ['Basic Information', 'Template Steps', 'Review & Submit'];
 
@@ -317,10 +318,21 @@ const CreatePrcTemplate = () => {
 			<Box sx={{ minHeight: '100vh' }}>
 				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
 					{/* Header */}
-					<Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 4 }}>
 						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
 							{isEditMode ? 'Edit PRC Template' : 'Create New PRC Template'}
 						</Typography>
+						<MasterAuditHistoryButton
+							target={
+								isEditMode && id
+									? {
+											domain: 'prcTemplate',
+											id: Number(id),
+											label: templateData?.detail.prcTemplate.templateId ?? `PRC Template ${id}`
+										}
+									: null
+							}
+						/>
 					</Box>
 
 					{/* Error Alert */}

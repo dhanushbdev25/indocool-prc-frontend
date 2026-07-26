@@ -31,27 +31,29 @@ const entry: AuditHistoryEntry = {
 describe('AuditHistoryPanel', () => {
 	it('renders loading, error, and empty states', () => {
 		const { rerender } = render(<AuditHistoryPanel isLoading />);
-		expect(screen.queryByText('No audit logs are available for this record.')).not.toBeInTheDocument();
+		expect(screen.queryByText('No revisions recorded yet')).not.toBeInTheDocument();
 
 		rerender(<AuditHistoryPanel isError />);
-		expect(screen.getByText('Failed to load audit logs.')).toBeInTheDocument();
+		expect(
+			screen.getByText('History could not be loaded. Refresh the page or try again in a moment.')
+		).toBeInTheDocument();
 
 		rerender(<AuditHistoryPanel history={[]} />);
-		expect(screen.getByText('No audit logs are available for this record.')).toBeInTheDocument();
+		expect(screen.getByText('No revisions recorded yet')).toBeInTheDocument();
 	});
 
 	it('shows entry metadata and expandable returned changes', () => {
 		render(<AuditHistoryPanel history={[entry]} />);
 
-		expect(screen.getByText('UPDATE')).toBeInTheDocument();
+		expect(screen.getByText('Updated')).toBeInTheDocument();
 		expect(screen.getByText('Version 3')).toBeInTheDocument();
 		expect(screen.getByText('Dev Admin')).toBeInTheDocument();
 
-		fireEvent.click(screen.getByRole('button', { name: /UPDATE Version 3 Dev Admin/i }));
+		fireEvent.click(screen.getByText('Version 3'));
 
 		expect(screen.getByText('Inspection / Inspection Name')).toBeInTheDocument();
-		expect(screen.getByText('Before')).toBeInTheDocument();
-		expect(screen.getByText('After')).toBeInTheDocument();
+		expect(screen.getByText('Before', { selector: 'pre' })).toBeInTheDocument();
+		expect(screen.getByText('After', { selector: 'pre' })).toBeInTheDocument();
 		expect(screen.getByText('Temperature')).toBeInTheDocument();
 	});
 
@@ -82,12 +84,19 @@ describe('AuditHistoryPanel', () => {
 		};
 
 		render(<AuditHistoryPanel history={[prcEntry]} domain="prcTemplate" />);
-		fireEvent.click(screen.getByRole('button', { name: /UPDATE Version 2 Dev Admin/i }));
+		fireEvent.click(screen.getByText('Version 2'));
 
 		expect(screen.getByText('Step changes')).toBeInTheDocument();
 		expect(screen.getByText('Layup Sequence')).toBeInTheDocument();
-		expect(screen.queryByText('Field changes')).not.toBeInTheDocument();
+		expect(screen.queryByText('Changed fields')).not.toBeInTheDocument();
 		expect(screen.queryByText('Old Name')).not.toBeInTheDocument();
 		expect(screen.queryByText('New Name')).not.toBeInTheDocument();
+	});
+
+	it('hides PRC template entries that do not contain stepChanges', () => {
+		render(<AuditHistoryPanel history={[entry]} domain="prcTemplate" />);
+
+		expect(screen.getByText('No revisions recorded yet')).toBeInTheDocument();
+		expect(screen.queryByText('Version 3')).not.toBeInTheDocument();
 	});
 });

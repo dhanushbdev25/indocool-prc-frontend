@@ -39,18 +39,14 @@ export const sapJobRunsApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) => parseSapConfirmationLogsResponse(response),
-			providesTags: (_result, _err, { prcExecutionId }) => [
-				{ type: 'SapConfirmationLogs', id: prcExecutionId }
-			]
+			providesTags: (_result, _err, { prcExecutionId }) => [{ type: 'SapConfirmationLogs', id: prcExecutionId }]
 		}),
 		retriggerSapConfirmations: builder.mutation<unknown, { prcExecutionId: number }>({
 			query: ({ prcExecutionId }) => ({
 				url: `sapJobRuns/retriggerConfirmations/${prcExecutionId}`,
 				method: 'POST'
 			}),
-			invalidatesTags: (_result, _err, { prcExecutionId }) => [
-				{ type: 'SapConfirmationLogs', id: prcExecutionId }
-			]
+			invalidatesTags: (_result, _err, { prcExecutionId }) => [{ type: 'SapConfirmationLogs', id: prcExecutionId }]
 		}),
 		fetchRawMaterials: builder.mutation<FetchRmResponse, { orderId: string }>({
 			query: ({ orderId }) => ({
@@ -58,6 +54,18 @@ export const sapJobRunsApi = createApi({
 				method: 'POST'
 			}),
 			transformResponse: (response: unknown) => parseFetchRmResponse(response)
+		}),
+		syncSapBom: builder.mutation<unknown, { partId: number }>({
+			query: ({ partId }) => ({
+				url: `sapJobRuns/sync-bom/${partId}`,
+				method: 'POST'
+			})
+		}),
+		syncSapOperations: builder.mutation<unknown, { partId: number }>({
+			query: ({ partId }) => ({
+				url: `sapJobRuns/sync-routing/${partId}`,
+				method: 'POST'
+			})
 		})
 	})
 });
@@ -67,5 +75,7 @@ export const {
 	useFetchSapJobRunsQuery,
 	useFetchSapConfirmationLogsQuery,
 	useRetriggerSapConfirmationsMutation,
-	useFetchRawMaterialsMutation
+	useFetchRawMaterialsMutation,
+	useSyncSapBomMutation,
+	useSyncSapOperationsMutation
 } = sapJobRunsApi;

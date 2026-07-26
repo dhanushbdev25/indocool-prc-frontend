@@ -5,7 +5,9 @@ import ViewGeneralInfo from './components/ViewGeneralInfo';
 import ViewRawMaterials from './components/ViewRawMaterials';
 import ViewLinkedMasters from './components/ViewLinkedMasters';
 import { useFetchPartByIdQuery } from '../../../../../store/api/business/part-master/part.api';
+import { useFetchPrcTemplateByIdQuery } from '../../../../../store/api/business/prc-template/prc-template.api';
 import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
+import PartSapSyncActions from '../PartSapSyncActions';
 
 const ViewPart = () => {
 	const navigate = useNavigate();
@@ -17,8 +19,15 @@ const ViewPart = () => {
 		data: partData,
 		isLoading: isFetching,
 		isError,
-		error
+		error,
+		refetch: refetchPart
 	} = useFetchPartByIdQuery({ id: partId }, { skip: !partId });
+	const linkedPrcTemplateId = partData?.detail.partMaster.prcTemplate;
+	const {
+		data: prcTemplateData,
+		isFetching: isPrcTemplateHistoryLoading,
+		isError: isPrcTemplateHistoryError
+	} = useFetchPrcTemplateByIdQuery({ id: Number(linkedPrcTemplateId) }, { skip: !linkedPrcTemplateId });
 
 	const handleBack = () => {
 		navigate('/part-master');
@@ -96,18 +105,21 @@ const ViewPart = () => {
 							View Part: {partMaster.partNumber}
 						</Typography>
 					</Box>
-					<Button
-						variant="contained"
-						startIcon={<Edit />}
-						onClick={handleEdit}
-						sx={{
-							textTransform: 'none',
-							backgroundColor: '#1976d2',
-							'&:hover': { backgroundColor: '#1565c0' }
-						}}
-					>
-						Edit Part
-					</Button>
+					<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+						<PartSapSyncActions partId={partId} onSynced={() => refetchPart()} />
+						<Button
+							variant="contained"
+							startIcon={<Edit />}
+							onClick={handleEdit}
+							sx={{
+								textTransform: 'none',
+								backgroundColor: '#1976d2',
+								'&:hover': { backgroundColor: '#1565c0' }
+							}}
+						>
+							Edit Part
+						</Button>
+					</Box>
 				</Box>
 
 				{/* Content Sections */}
@@ -115,7 +127,15 @@ const ViewPart = () => {
 					<ViewGeneralInfo partMaster={partMaster} files={partData?.detail?.files || undefined} />
 					<ViewRawMaterials rawMaterials={rawMaterials} />
 					<ViewLinkedMasters partMaster={partMaster} files={partData.detail.files || undefined} />
-					<AuditHistoryPanel history={partData.history} />
+					<AuditHistoryPanel history={partData.history} domain="part" />
+					{linkedPrcTemplateId && (
+						<AuditHistoryPanel
+							history={prcTemplateData?.history}
+							isLoading={isPrcTemplateHistoryLoading}
+							isError={isPrcTemplateHistoryError}
+							domain="prcTemplate"
+						/>
+					)}
 				</Box>
 
 				{/* Action Buttons */}

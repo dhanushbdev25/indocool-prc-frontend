@@ -195,6 +195,7 @@ export const {
 	useCreatePrcExecutionMutation,
 	useFetchPartsByCustomerQuery,
 	useFetchPrcExecutionDetailsQuery,
+	useLazyFetchPrcExecutionDetailsQuery,
 	useUpdatePrcExecutionProgressMutation,
 	useFetchPlantsQuery,
 	useFetchOperationDelayReasonComboQuery,

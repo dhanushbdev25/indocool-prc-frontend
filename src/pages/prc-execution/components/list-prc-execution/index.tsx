@@ -8,6 +8,7 @@ import { FullScreenFormSavingOverlay } from '../../../../components/common/FullS
 import {
 	useFetchPrcExecutionsQuery,
 	useFetchPlantsQuery,
+	useLazyFetchPrcExecutionDetailsQuery,
 	type PrcExecutionsListArgs
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
 import { parsePrcExecutionOperationStatusList } from '../../../../store/api/business/prc-execution/prc-execution.validators';
@@ -26,6 +27,13 @@ import {
 	type FilterValue
 } from '../../../../components/masters';
 import { PRC_DATE_RANGE_PRESETS, PRC_DATE_RANGE_DEFAULT_ID, PRC_DATE_RANGE_CUSTOM_ID } from './dateRangePresets';
+import {
+	BulkQrSelectionDialog,
+	PrcQrLabelsDialog,
+	mapExecutionToQrLabel,
+	unwrapExecutionDetail,
+	type PrcQrLabelFields
+} from '../qr-labels';
 
 const SEARCH_PLACEHOLDER = 'Order ID';
 
@@ -49,6 +57,12 @@ const ListPrcExecution = () => {
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('prcExecution');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [executionToDelete, setExecutionToDelete] = useState<PrcExecutionData | null>(null);
+	const [bulkQrSelectOpen, setBulkQrSelectOpen] = useState(false);
+	const [qrDialogOpen, setQrDialogOpen] = useState(false);
+	const [qrLabels, setQrLabels] = useState<PrcQrLabelFields[]>([]);
+	const [qrLoading, setQrLoading] = useState(false);
+	const [qrError, setQrError] = useState<string | null>(null);
+	const [fetchPrcExecutionDetails] = useLazyFetchPrcExecutionDetailsQuery();
 
 	// Combo APIs for backend-driven filter options
 	const { data: sapComboData, isLoading: isSapComboLoading } = useFetchSapComboQuery();
@@ -282,6 +296,58 @@ const ListPrcExecution = () => {
 		navigate(`/prc-execution/report/${executionId}`);
 	};
 
+	const loadQrLabelsForIds = useCallback(
+		async (ids: number[]) => {
+			setQrDialogOpen(true);
+			setQrLoading(true);
+			setQrError(null);
+			setQrLabels([]);
+			try {
+				const uniqueIds = [...new Set(ids.filter(id => Number.isFinite(id)))];
+				if (uniqueIds.length === 0) {
+					setQrError('No PRC executions selected.');
+					return;
+				}
+				const results = await Promise.all(
+					uniqueIds.map(async id => {
+						const response = await fetchPrcExecutionDetails(id).unwrap();
+						const detail = unwrapExecutionDetail(response);
+						if (!detail) {
+							throw new Error(`Invalid PRC execution detail for #${id}`);
+						}
+						return mapExecutionToQrLabel(detail);
+					})
+				);
+				setQrLabels(results);
+			} catch (err) {
+				setQrError(err instanceof Error ? err.message : 'Failed to load PRC details for QR labels.');
+			} finally {
+				setQrLoading(false);
+			}
+		},
+		[fetchPrcExecutionDetails]
+	);
+
+	const handleGenerateQr = useCallback(
+		(executionId: number) => {
+			void loadQrLabelsForIds([executionId]);
+		},
+		[loadQrLabelsForIds]
+	);
+
+	const handleBulkQrConfirm = useCallback(
+		(ids: number[]) => {
+			setBulkQrSelectOpen(false);
+			void loadQrLabelsForIds(ids);
+		},
+		[loadQrLabelsForIds]
+	);
+
+	const handleCloseQrDialog = useCallback(() => {
+		setQrDialogOpen(false);
+		setQrError(null);
+	}, []);
+
 	const handleDeleteConfirm = async () => {
 		setDeleteDialogOpen(false);
 		setExecutionToDelete(null);
@@ -330,6 +396,8 @@ const ListPrcExecution = () => {
 							onExecute={handleExecute}
 							onView={handleView}
 							onOpenReport={handleOpenReport}
+							onGenerateQr={handleGenerateQr}
+							onBulkGenerateQr={() => setBulkQrSelectOpen(true)}
 							pagination={pagination}
 							onPaginationChange={setPagination}
 						/>
@@ -340,6 +408,21 @@ const ListPrcExecution = () => {
 			<FullScreenFormSavingOverlay
 				open={isPrcExecutionDataFetching && !isPrcExecutionDataLoading}
 				message="Refreshing…"
+			/>
+
+			<BulkQrSelectionDialog
+				open={bulkQrSelectOpen}
+				onClose={() => setBulkQrSelectOpen(false)}
+				executions={allExecutionData}
+				onConfirm={handleBulkQrConfirm}
+			/>
+
+			<PrcQrLabelsDialog
+				open={qrDialogOpen}
+				onClose={handleCloseQrDialog}
+				labels={qrLabels}
+				loading={qrLoading}
+				error={qrError}
 			/>
 
 			<Dialog open={deleteDialogOpen} onClose={handleDeleteCancel} maxWidth="sm" fullWidth>

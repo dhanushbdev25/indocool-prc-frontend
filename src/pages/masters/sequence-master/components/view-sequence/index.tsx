@@ -134,7 +134,7 @@ const ViewSequence = () => {
 				</Box>
 
 				<Box sx={{ mb: 4 }}>
-					<AuditHistoryPanel history={sequenceData.history} />
+					<AuditHistoryPanel history={sequenceData.history} domain="sequence" />
 				</Box>
 
 				{/* Action Buttons */}

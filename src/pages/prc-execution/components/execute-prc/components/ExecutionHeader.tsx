@@ -10,7 +10,7 @@ import {
 	IconButton,
 	Tooltip
 } from '@mui/material';
-import { ArrowBack, Image, Inventory2, PictureAsPdf, Science } from '@mui/icons-material';
+import { ArrowBack, Image, Inventory2, PictureAsPdf, QrCode2, Science } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { type ExecutionData } from '../../../types/execution.types';
 import { useLiveExecutionDurationMs } from '../../../hooks/useLiveExecutionDurationMs';
@@ -30,6 +30,8 @@ interface ExecutionHeaderProps {
 	rawMaterialsDisabled?: boolean;
 	onPartImagesClick?: () => void;
 	partImagesCount?: number;
+	/** Open QR sticker label dialog for this execution. */
+	onGenerateQr?: () => void;
 }
 
 function formatCustomerContext(execution: ExecutionData): {
@@ -94,7 +96,8 @@ const ExecutionHeader = ({
 	onRawMaterialsClick,
 	rawMaterialsDisabled = false,
 	onPartImagesClick,
-	partImagesCount = 0
+	partImagesCount = 0,
+	onGenerateQr
 }: ExecutionHeaderProps) => {
 	const theme = useTheme();
 	const navigate = useNavigate();
@@ -259,6 +262,27 @@ const ExecutionHeader = ({
 								</Button>
 							)}
 						</Stack>
+					)}
+
+					{onGenerateQr && (
+						<Tooltip title="Generate QR sticker label">
+							<IconButton
+								size="small"
+								onClick={onGenerateQr}
+								aria-label="Generate QR sticker label"
+								sx={{
+									flexShrink: 0,
+									border: '1px solid',
+									borderColor: 'divider',
+									borderRadius: 1,
+									p: 0.5,
+									color: 'text.secondary',
+									'&:hover': { bgcolor: 'action.hover', borderColor: 'text.secondary' }
+								}}
+							>
+								<QrCode2 sx={{ fontSize: 18 }} />
+							</IconButton>
+						</Tooltip>
 					)}
 
 					<Tooltip title="Consolidated report — print or save as PDF">

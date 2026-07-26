@@ -7,6 +7,7 @@ import { LoginRoutes } from '../routes/LoginRoutes';
 import NotFound from '../pages/general/NotFound';
 import { getAllPermissions } from '../store/api/userSessionContextParser';
 import { createLoadingRoutes, createErrorRoutes } from './useAuthRoutes.constants';
+import { capturePostLoginRedirect } from '../utils/postLoginRedirect';
 
 export function useAuthRoutes() {
 	const token = Cookie.getToken();
@@ -14,6 +15,7 @@ export function useAuthRoutes() {
 	const { data, isLoading, isError, error, errorMessage } = useSessionContextQuery(token);
 
 	if (!token) {
+		capturePostLoginRedirect();
 		return [LoginRoutes];
 	}
 
@@ -27,12 +29,14 @@ export function useAuthRoutes() {
 				? error.status
 				: null;
 		if (status === 401 || status === 403) {
+			capturePostLoginRedirect();
 			return [LoginRoutes];
 		}
 		return [createErrorRoutes(errorMessage ?? 'unknown Error')];
 	}
 	
 	if (!data) {
+		capturePostLoginRedirect();
 		return [LoginRoutes];
 	}
 
