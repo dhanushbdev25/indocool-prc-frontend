@@ -7,7 +7,8 @@ import {
 	Visibility as VisibilityIcon,
 	CheckCircle as CheckCircleIcon,
 	PictureAsPdf as PictureAsPdfIcon,
-	QrCode2 as QrCode2Icon
+	QrCode2 as QrCode2Icon,
+	QrCodeScanner as QrCodeScannerIcon
 } from '@mui/icons-material';
 import TableComponent from '../../../../../components/table/TableComponent';
 import { type PrcExecution } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
@@ -26,6 +27,8 @@ interface PrcExecutionTableProps {
 	onGenerateQr: (id: number) => void;
 	/** Opens bulk QR selection dialog from the table toolbar. */
 	onBulkGenerateQr?: () => void;
+	/** Opens camera QR scanner from the table toolbar. */
+	onScanQr?: () => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
@@ -39,6 +42,7 @@ const PrcExecutionTable = memo(({
 	onOpenReport,
 	onGenerateQr,
 	onBulkGenerateQr,
+	onScanQr,
 	pagination,
 	onPaginationChange
 }: PrcExecutionTableProps) => {
@@ -370,18 +374,33 @@ const PrcExecutionTable = memo(({
 			exportTitle="prc-execution"
 			pinnedColumnsLeft={['orderId', 'status', 'execute']}
 			toolbarActions={
-				onBulkGenerateQr ? (
-					<Button
-						size="small"
-						variant="contained"
-						startIcon={<QrCode2Icon fontSize="small" />}
-						onClick={onBulkGenerateQr}
-						disabled={safeData.length === 0}
-						sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
-					>
-						Generate QR Codes
-					</Button>
-				) : null
+				(onBulkGenerateQr || onScanQr) && (
+					<Stack direction="row" spacing={1} alignItems="center">
+						{onScanQr ? (
+							<Button
+								size="small"
+								variant="outlined"
+								startIcon={<QrCodeScannerIcon fontSize="small" />}
+								onClick={onScanQr}
+								sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
+							>
+								Scan QR
+							</Button>
+						) : null}
+						{onBulkGenerateQr ? (
+							<Button
+								size="small"
+								variant="contained"
+								startIcon={<QrCode2Icon fontSize="small" />}
+								onClick={onBulkGenerateQr}
+								disabled={safeData.length === 0}
+								sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
+							>
+								Generate QR Codes
+							</Button>
+						) : null}
+					</Stack>
+				)
 			}
 		/>
 	);

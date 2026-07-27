@@ -49,8 +49,38 @@ const formatProductionDate = (date: string | undefined): string => {
 	return parsed.isValid() ? parsed.format(DATE_PICKER_FORMAT) : date.trim();
 };
 
-export function buildPrcExecutionViewUrl(executionId: number, origin = window.location.origin): string {
-	return `${origin}/prc-execution/view/${executionId}`;
+export function buildPrcExecutionExecuteUrl(executionId: number, origin = window.location.origin): string {
+	return `${origin}/prc-execution/execute/${executionId}`;
+}
+
+/** @deprecated Use buildPrcExecutionExecuteUrl — kept for older imports. */
+export const buildPrcExecutionViewUrl = buildPrcExecutionExecuteUrl;
+
+/**
+ * Extract PRC execution id from a scanned QR payload.
+ * Accepts absolute/relative execute URLs, legacy view URLs, or a bare numeric id.
+ */
+export function parsePrcExecutionIdFromQrPayload(text: string): number | null {
+	const trimmed = text.trim();
+	if (!trimmed) return null;
+
+	const pathMatch = trimmed.match(/\/prc-execution\/(?:execute|view)\/(\d+)\b/i);
+	if (pathMatch) {
+		const id = Number(pathMatch[1]);
+		return Number.isFinite(id) ? id : null;
+	}
+
+	if (/^\d+$/.test(trimmed)) {
+		const id = Number(trimmed);
+		return Number.isFinite(id) ? id : null;
+	}
+
+	try {
+		const url = new URL(trimmed);
+		return parsePrcExecutionIdFromQrPayload(url.pathname);
+	} catch {
+		return null;
+	}
 }
 
 /** Map GET /prcExecution/:id payload → sticker label fields. */
@@ -91,7 +121,7 @@ export function mapExecutionToQrLabel(execution: ExecutionData): PrcQrLabelField
 		purchaseOrderNo:
 			asDisplay(execution.orderId) ||
 			pickField(root, ['orderId', 'order_id', 'purchaseOrderNo', 'purchase_order_no', 'poNumber']),
-		qrUrl: buildPrcExecutionViewUrl(execution.id)
+		qrUrl: buildPrcExecutionExecuteUrl(execution.id)
 	};
 }
 

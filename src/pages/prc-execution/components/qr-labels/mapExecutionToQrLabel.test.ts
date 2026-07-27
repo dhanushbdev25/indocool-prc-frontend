@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { ExecutionData } from '../../types/execution.types';
-import { buildPrcExecutionViewUrl, mapExecutionToQrLabel, unwrapExecutionDetail } from './mapExecutionToQrLabel';
+import {
+	buildPrcExecutionExecuteUrl,
+	mapExecutionToQrLabel,
+	parsePrcExecutionIdFromQrPayload,
+	unwrapExecutionDetail
+} from './mapExecutionToQrLabel';
 
 const baseExecution = {
 	id: 42,
@@ -26,7 +31,7 @@ describe('mapExecutionToQrLabel', () => {
 		expect(fields.setIdSerialNo).toBe('1005');
 		expect(fields.productionDate).toBe('15/05/2026');
 		expect(fields.purchaseOrderNo).toBe('');
-		expect(fields.qrUrl).toContain('/prc-execution/view/42');
+		expect(fields.qrUrl).toContain('/prc-execution/execute/42');
 	});
 
 	it('falls back customer code and revision aliases', () => {
@@ -62,10 +67,23 @@ describe('unwrapExecutionDetail', () => {
 	});
 });
 
-describe('buildPrcExecutionViewUrl', () => {
-	it('builds absolute view URL', () => {
-		expect(buildPrcExecutionViewUrl(7, 'https://app.example')).toBe(
-			'https://app.example/prc-execution/view/7'
+describe('buildPrcExecutionExecuteUrl', () => {
+	it('builds absolute execute URL', () => {
+		expect(buildPrcExecutionExecuteUrl(7, 'https://app.example')).toBe(
+			'https://app.example/prc-execution/execute/7'
 		);
+	});
+});
+
+describe('parsePrcExecutionIdFromQrPayload', () => {
+	it('parses execute and legacy view URLs', () => {
+		expect(parsePrcExecutionIdFromQrPayload('https://app.example/prc-execution/execute/99')).toBe(99);
+		expect(parsePrcExecutionIdFromQrPayload('/prc-execution/view/12')).toBe(12);
+		expect(parsePrcExecutionIdFromQrPayload('42')).toBe(42);
+	});
+
+	it('returns null for invalid payloads', () => {
+		expect(parsePrcExecutionIdFromQrPayload('not-a-qr')).toBeNull();
+		expect(parsePrcExecutionIdFromQrPayload('')).toBeNull();
 	});
 });

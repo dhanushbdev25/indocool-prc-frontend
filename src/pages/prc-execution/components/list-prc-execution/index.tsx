@@ -30,6 +30,7 @@ import { PRC_DATE_RANGE_PRESETS, PRC_DATE_RANGE_DEFAULT_ID, PRC_DATE_RANGE_CUSTO
 import {
 	BulkQrSelectionDialog,
 	PrcQrLabelsDialog,
+	ScanQrDialog,
 	mapExecutionToQrLabel,
 	unwrapExecutionDetail,
 	type PrcQrLabelFields
@@ -58,6 +59,7 @@ const ListPrcExecution = () => {
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [executionToDelete, setExecutionToDelete] = useState<PrcExecutionData | null>(null);
 	const [bulkQrSelectOpen, setBulkQrSelectOpen] = useState(false);
+	const [scanQrOpen, setScanQrOpen] = useState(false);
 	const [qrDialogOpen, setQrDialogOpen] = useState(false);
 	const [qrLabels, setQrLabels] = useState<PrcQrLabelFields[]>([]);
 	const [qrLoading, setQrLoading] = useState(false);
@@ -343,6 +345,14 @@ const ListPrcExecution = () => {
 		[loadQrLabelsForIds]
 	);
 
+	const handleQrScanned = useCallback(
+		(executionId: number) => {
+			setScanQrOpen(false);
+			navigate(`/prc-execution/execute/${executionId}`);
+		},
+		[navigate]
+	);
+
 	const handleCloseQrDialog = useCallback(() => {
 		setQrDialogOpen(false);
 		setQrError(null);
@@ -398,6 +408,7 @@ const ListPrcExecution = () => {
 							onOpenReport={handleOpenReport}
 							onGenerateQr={handleGenerateQr}
 							onBulkGenerateQr={() => setBulkQrSelectOpen(true)}
+							onScanQr={() => setScanQrOpen(true)}
 							pagination={pagination}
 							onPaginationChange={setPagination}
 						/>
@@ -416,6 +427,8 @@ const ListPrcExecution = () => {
 				executions={allExecutionData}
 				onConfirm={handleBulkQrConfirm}
 			/>
+
+			<ScanQrDialog open={scanQrOpen} onClose={() => setScanQrOpen(false)} onScanned={handleQrScanned} />
 
 			<PrcQrLabelsDialog
 				open={qrDialogOpen}
