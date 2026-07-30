@@ -35,14 +35,21 @@ const PrcQrLabelsDialog = ({ open, onClose, labels, loading = false, error = nul
 	}, [open]);
 
 	const handlePrint = () => {
-		// Wait until rasterized QR <img> nodes have decoded pixels (SVG/canvas often vanish in PDF).
+		// Avoid aria-hidden focus warning from MUI Dialog while printing.
+		const active = document.activeElement;
+		if (active instanceof HTMLElement) {
+			active.blur();
+		}
+
 		let attempts = 0;
 		const tryPrint = () => {
 			const root = document.querySelector('body > .prc-qr-labels-print-root');
 			const imgs = root ? Array.from(root.querySelectorAll<HTMLImageElement>('img.prc-qr-label__qr-img')) : [];
 			const ready =
-				imgs.length > 0 && imgs.every(img => img.complete && img.naturalWidth > 0 && Boolean(img.src));
-			if (ready || attempts > 30) {
+				imgs.length > 0 &&
+				imgs.length >= labels.length &&
+				imgs.every(img => img.complete && img.naturalWidth > 0 && img.src.startsWith('data:image'));
+			if (ready || attempts > 60) {
 				window.print();
 				return;
 			}
@@ -102,7 +109,7 @@ const PrcQrLabelsDialog = ({ open, onClose, labels, loading = false, error = nul
 				</DialogActions>
 			</Dialog>
 
-			{/* Body-level print surface — avoids MUI Dialog overflow/transform killing QR in PDF */}
+			{/* Body-level print surface — PNG data-URL QRs (not canvas) so off-screen portal still prints */}
 			{open &&
 				canPrint &&
 				createPortal(

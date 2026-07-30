@@ -160,19 +160,6 @@ body > .prc-qr-labels-print-root {
 	position: relative;
 }
 
-.prc-qr-label__qr-source {
-	position: absolute;
-	width: 1px;
-	height: 1px;
-	padding: 0;
-	margin: -1px;
-	overflow: hidden;
-	clip: rect(0, 0, 0, 0);
-	white-space: nowrap;
-	border: 0;
-	pointer-events: none;
-}
-
 .prc-qr-label__qr-img {
 	display: block !important;
 	width: 100% !important;
@@ -181,6 +168,10 @@ body > .prc-qr-labels-print-root {
 	max-height: 100%;
 	object-fit: contain;
 	image-rendering: pixelated;
+}
+
+.prc-qr-label__qr-img--placeholder {
+	background: #f0f0f0;
 }
 
 .prc-qr-label__mark-m {
@@ -269,9 +260,5 @@ body > .prc-qr-labels-print-root {
 
 	.prc-qr-label__header {
 		background: #0b1f3a !important;
-	}
-
-	.prc-qr-label__qr-source {
-		display: none !important;
 	}
 }
