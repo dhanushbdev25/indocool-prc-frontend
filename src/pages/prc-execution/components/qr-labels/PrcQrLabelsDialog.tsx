@@ -23,8 +23,33 @@ type PrcQrLabelsDialogProps = {
 	error?: string | null;
 };
 
+const PAGE_RULE_STYLE_ID = 'prc-qr-labels-page-rule';
+
+/**
+ * `@page` cannot be scoped to a component and its declarations cascade globally,
+ * so another screen's stylesheet (the execution report ships `@page { size: A4
+ * portrait }`) stays in effect once its chunk has loaded. `size: auto` explicitly
+ * resets that and is the only value that leaves the paper-size and layout pickers
+ * enabled in the browser's print dialog. Injected last so it wins the cascade,
+ * and removed on close so it cannot leak into other screens' printing.
+ */
+const usePrintPageRule = (active: boolean) => {
+	useEffect(() => {
+		if (!active) return;
+		const style = document.createElement('style');
+		style.id = PAGE_RULE_STYLE_ID;
+		style.textContent = '@page { size: auto; margin: 8mm; }';
+		document.head.appendChild(style);
+		return () => {
+			style.remove();
+		};
+	}, [active]);
+};
+
 const PrcQrLabelsDialog = ({ open, onClose, labels, loading = false, error = null }: PrcQrLabelsDialogProps) => {
 	const canPrint = !loading && !error && labels.length > 0;
+
+	usePrintPageRule(open);
 
 	useEffect(() => {
 		if (!open) return;
