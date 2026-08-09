@@ -13,6 +13,7 @@ import {
 	getStepStartTimeIso,
 	getStepTiming,
 	getStepTimingStatus,
+	getTimelineStepApprovalMeta,
 	isStepLate,
 	readPersistedDelayMetadata
 } from './timelineCardTiming';
@@ -112,6 +113,106 @@ describe('shared lateness computation (flag + remarks gate cannot diverge)', () 
 		expect(preview?.timingExceeded).toBe(false); // no timing evidence -> live recompute not late
 		expect(preview?.persistedTimingExceeded).toBe(true); // ...but saved documentation still flows through
 		expect(preview?.timingExceededRemarks).toBe('Machine cleaning took longer than planned');
+	});
+});
+
+/**
+ * A step ends when it is approved/completed, not when the entry form was saved. The card's
+ * window and its duration must be derived from that same pair of timestamps — they drifted
+ * apart before: sequence windows ended at the last reading while the duration ran to approval,
+ * and inspection stopped at form save for both.
+ */
+describe('step end anchor is the approval/completion timestamp', () => {
+	/** Seconds between the window's own start and end — what the user can read off the card. */
+	function windowSeconds(step: TimelineStep, root: Record<string, unknown>): number | null {
+		const { startTime, endTime } = getTimelineStepApprovalMeta(step, root);
+		if (!startTime || !endTime) return null;
+		return Math.round((new Date(endTime).getTime() - new Date(startTime).getTime()) / 1000);
+	}
+
+	// Shape taken from execution 9288: readings entered in seconds, approved ~7 minutes later.
+	const sequenceRoot = {
+		'300': {
+			'40': {
+				'11': { startTime: '2026-07-18T04:32:25.000Z', endTime: '2026-07-18T04:32:27.000Z' },
+				'12': { startTime: '2026-07-18T04:32:29.000Z', endTime: '2026-07-18T04:32:32.000Z' },
+				stepStartTime: '2026-07-18T04:32:25.000Z',
+				productionApproved: '2026-07-18T04:34:22.000Z',
+				ctqApproved: '2026-07-18T04:39:16.000Z',
+				stepCompleted: '2026-07-18T04:39:24.000Z',
+				duration: 419,
+				plannedTime: 576
+			}
+		}
+	};
+
+	// Inspection buckets carry a flat entry-session start/end plus the completion timestamp.
+	const inspectionRoot = {
+		'501': {
+			startTime: '2026-08-08T05:18:38.000Z',
+			endTime: '2026-08-08T05:19:05.000Z',
+			stepStartTime: '2026-08-08T05:18:38.000Z',
+			productionApproved: '2026-08-08T05:19:23.000Z',
+			ctqApproved: '2026-08-08T05:19:26.000Z',
+			stepCompleted: '2026-08-08T05:19:28.000Z',
+			duration: 27, // backend rollup: entry session only — must not win
+			plannedTime: 120
+		}
+	};
+
+	it('sequence: window ends at completion, not at the last reading entered', () => {
+		const meta = getTimelineStepApprovalMeta(sequenceStep, sequenceRoot);
+		expect(meta.startTime).toBe('2026-07-18T04:32:25.000Z');
+		expect(meta.endTime).toBe('2026-07-18T04:39:24.000Z');
+	});
+
+	it('inspection: window ends at completion, not at the entry-form save', () => {
+		const meta = getTimelineStepApprovalMeta(inspectionStep, inspectionRoot);
+		expect(meta.startTime).toBe('2026-08-08T05:18:38.000Z');
+		expect(meta.endTime).toBe('2026-08-08T05:19:28.000Z');
+	});
+
+	it('inspection duration counts the approval wait, ignoring the entry-only backend rollup', () => {
+		// 05:18:38 -> 05:19:28 = 50s, not the stored duration of 27s
+		expect(getStepTiming(inspectionStep, inspectionRoot).actualSec).toBe(50);
+	});
+
+	it('window and duration always agree — the two cannot drift apart again', () => {
+		for (const [step, root] of [
+			[sequenceStep, sequenceRoot],
+			[inspectionStep, inspectionRoot]
+		] as const) {
+			expect(getStepTiming(step, root).actualSec).toBe(windowSeconds(step, root));
+		}
+	});
+
+	it('sequence and inspection measure the same thing (start -> approval)', () => {
+		expect(getStepTiming(sequenceStep, sequenceRoot).actualSec).toBe(419); // 04:32:25 -> 04:39:24
+		expect(getStepTiming(inspectionStep, inspectionRoot).actualSec).toBe(50); // 05:18:38 -> 05:19:28
+	});
+
+	it('steps with no approval flow keep their saved end time', () => {
+		const setupStep = {
+			stepNumber: 0,
+			type: 'setup',
+			title: 'Setup',
+			description: '',
+			status: 'completed',
+			ctq: false
+		} as unknown as TimelineStep;
+		const root = {
+			prcmetadata: { startTime: '2026-07-18T04:13:31.000Z', endTime: '2026-07-18T04:13:42.000Z' }
+		};
+		expect(getTimelineStepApprovalMeta(setupStep, root).endTime).toBe('2026-07-18T04:13:42.000Z');
+		expect(getStepTiming(setupStep, root).actualSec).toBe(11);
+	});
+
+	it('falls back to the last sub-step end when a legacy bucket never recorded completion', () => {
+		const root = {
+			'300': { '40': { '11': { startTime: '2026-07-18T04:32:25.000Z', endTime: '2026-07-18T04:32:55.000Z' } } }
+		};
+		expect(getTimelineStepApprovalMeta(sequenceStep, root).endTime).toBe('2026-07-18T04:32:55.000Z');
+		expect(getStepTiming(sequenceStep, root).actualSec).toBe(30);
 	});
 });
 
