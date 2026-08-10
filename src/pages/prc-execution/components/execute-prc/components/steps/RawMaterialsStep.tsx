@@ -1,15 +1,4 @@
-import {
-	Box,
-	Typography,
-	Table,
-	TableBody,
-	TableCell,
-	TableContainer,
-	TableHead,
-	TableRow,
-	Paper,
-	Button
-} from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button } from '@mui/material';
 import { type TimelineStep, type FormData } from '../../../../types/execution.types';
 import { type RawMaterialItem } from '../../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
 
@@ -43,13 +32,7 @@ const displayCell = (value: unknown): string => {
 	return s === '' ? '—' : s;
 };
 
-const RawMaterialsStep = ({
-	step,
-	onStepComplete,
-	readOnlyOverride,
-	sapRawMaterials,
-	sapTitle
-}: RawMaterialsStepProps) => {
+const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride, sapRawMaterials, sapTitle }: RawMaterialsStepProps) => {
 	if (sapRawMaterials) {
 		return (
 			<Box sx={{ p: 2, backgroundColor: 'white' }}>
