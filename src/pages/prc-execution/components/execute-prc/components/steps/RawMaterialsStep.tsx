@@ -1,4 +1,15 @@
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button } from '@mui/material';
+import {
+	Box,
+	Typography,
+	Table,
+	TableBody,
+	TableCell,
+	TableContainer,
+	TableHead,
+	TableRow,
+	Paper,
+	Button
+} from '@mui/material';
 import { type TimelineStep, type FormData } from '../../../../types/execution.types';
 import { type RawMaterialItem } from '../../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
 
@@ -32,7 +43,13 @@ const displayCell = (value: unknown): string => {
 	return s === '' ? '—' : s;
 };
 
-const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride, sapRawMaterials, sapTitle }: RawMaterialsStepProps) => {
+const RawMaterialsStep = ({
+	step,
+	onStepComplete,
+	readOnlyOverride,
+	sapRawMaterials,
+	sapTitle
+}: RawMaterialsStepProps) => {
 	if (sapRawMaterials) {
 		return (
 			<Box sx={{ p: 2, backgroundColor: 'white' }}>
@@ -55,6 +72,7 @@ const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride, sapRawMateri
 								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>UOM</TableCell>
 								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Batch No</TableCell>
 								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>Expiry Date</TableCell>
+								<TableCell sx={{ fontWeight: 600, fontSize: '0.875rem', py: 1 }}>PRC Set ID</TableCell>
 							</TableRow>
 						</TableHead>
 						<TableBody>
@@ -103,6 +121,11 @@ const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride, sapRawMateri
 									<TableCell sx={{ py: 1 }}>
 										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
 											{displayCell(rm.expiryDate)}
+										</Typography>
+									</TableCell>
+									<TableCell sx={{ py: 1 }}>
+										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+											{displayCell(rm.prcSetId)}
 										</Typography>
 									</TableCell>
 								</TableRow>
@@ -191,16 +214,16 @@ const RawMaterialsStep = ({ step, onStepComplete, readOnlyOverride, sapRawMateri
 										{displayCell(item.actualUom ?? item.uom)}
 									</Typography>
 								</TableCell>
-									<TableCell sx={{ py: 1 }}>
-										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-											{displayCell(item.batchNumber)}
-										</Typography>
-									</TableCell>
-									<TableCell sx={{ py: 1 }}>
-										<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
-											{displayCell(item.expiryDate)}
-										</Typography>
-									</TableCell>
+								<TableCell sx={{ py: 1 }}>
+									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+										{displayCell(item.batchNumber)}
+									</Typography>
+								</TableCell>
+								<TableCell sx={{ py: 1 }}>
+									<Typography variant="body2" sx={{ fontSize: '0.875rem' }}>
+										{displayCell(item.expiryDate)}
+									</Typography>
+								</TableCell>
 							</TableRow>
 						))}
 					</TableBody>
