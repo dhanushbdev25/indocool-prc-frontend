@@ -48,6 +48,14 @@ interface TableProps<T extends MRT_RowData> {
 	getRowId?: (row: T) => string;
 	/** Extra controls rendered in the table toolbar (left of filters/export). */
 	toolbarActions?: ReactNode;
+	/** Server-side pagination: `data` is the current page only; pair with `rowCount`. Disables per-column filters. */
+	manualPagination?: boolean;
+	/** Total row count across all server pages (e.g. `pagination.totalCount`). Only used with `manualPagination`. */
+	rowCount?: number;
+	/** Replaces the built-in current-rows export (e.g. a fetch-all-pages export). */
+	onExportOverride?: () => void;
+	/** Disables the Export button and shows an exporting label while an override export runs. */
+	isExporting?: boolean;
 }
 
 const defaultTableContainerSx = {
@@ -67,7 +75,11 @@ const TableComponent = <T extends MRT_RowData>({
 	rowSelection,
 	onRowSelectionChange,
 	getRowId,
-	toolbarActions
+	toolbarActions,
+	manualPagination = false,
+	rowCount,
+	onExportOverride,
+	isExporting = false
 }: TableProps<T>) => {
 	const columns = useMemo(() => tableColumns, [tableColumns]);
 	const memoData = useMemo(() => data, [data]);
@@ -115,11 +127,14 @@ const TableComponent = <T extends MRT_RowData>({
 		enableStickyHeader: true,
 		enableColumnPinning: Boolean(pinnedColumnsLeft?.length),
 		enablePagination: true,
-		enableSorting: true,
+		...(manualPagination ? { manualPagination: true, rowCount: rowCount ?? memoData.length } : {}),
+		// Client sorting would reorder only the current server page; the backend accepts no sort params.
+		enableSorting: !manualPagination,
 		enableTopToolbar: false,
 		renderBottomToolbar: false,
 		enableColumnActions: false,
-		enableColumnFilters: true,
+		// Per-column filters only see the current page under server pagination — misleading, so disabled.
+		enableColumnFilters: !manualPagination,
 		enableGlobalFilter: false,
 		enableRowSelection,
 		enableMultiRowSelection: enableRowSelection,
@@ -160,9 +175,10 @@ const TableComponent = <T extends MRT_RowData>({
 	const pageSize = tablePaginationState.pageSize;
 	const pageIndex = tablePaginationState.pageIndex;
 	const filteredRowCount = table.getFilteredRowModel().rows.length;
+	const effectiveRowCount = manualPagination ? (rowCount ?? 0) : filteredRowCount;
 
 	const paginationState = useMemo(() => {
-		const totalPages = Math.max(1, Math.ceil(filteredRowCount / pageSize));
+		const totalPages = Math.max(1, Math.ceil(effectiveRowCount / pageSize));
 		const currentPage = pageIndex + 1;
 
 		const windowSize = 5;
@@ -181,7 +197,7 @@ const TableComponent = <T extends MRT_RowData>({
 		}
 
 		return { totalPages, currentPage, visiblePages };
-	}, [filteredRowCount, pageSize, pageIndex]);
+	}, [effectiveRowCount, pageSize, pageIndex]);
 
 	const hasActiveColumnFilters = columnFilters.length > 0;
 	const columnFilterCount = columnFilters.length;
@@ -191,12 +207,16 @@ const TableComponent = <T extends MRT_RowData>({
 	};
 
 	const handleExport = () => {
+		if (onExportOverride) {
+			onExportOverride();
+			return;
+		}
 		if (!exportTitle) return;
 		exportTableToExcel(table, exportTitle);
 	};
 
-	const canExport = Boolean(exportTitle);
-	const exportRowCount = filteredRowCount;
+	const canExport = Boolean(exportTitle) || Boolean(onExportOverride);
+	const exportRowCount = effectiveRowCount;
 
 	return (
 		<Box sx={{ backgroundColor: 'background.paper' }}>
@@ -221,50 +241,52 @@ const TableComponent = <T extends MRT_RowData>({
 				{toolbarActions ? (
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 'auto' }}>{toolbarActions}</Box>
 				) : null}
-				<Badge
-					overlap="rectangular"
-					badgeContent={columnFilterCount}
-					showZero={false}
-					max={99}
-					color="primary"
-					invisible={columnFilterCount === 0}
-					sx={{ '& .MuiBadge-badge': { fontWeight: 700, height: 18, minWidth: 18 } }}
-				>
-					<Tooltip title={showColumnFilters ? 'Hide per-column filters' : 'Show per-column filters'}>
-						<span>
-							<Button
-								id="table-column-filters-toggle"
-								size="small"
-								variant="outlined"
-								color={showColumnFilters ? 'primary' : 'inherit'}
-								aria-pressed={showColumnFilters}
-								onClick={handleToggleFilters}
-								startIcon={<FilterAltOutlinedIcon fontSize="small" />}
-								sx={themeArg => ({
-							textTransform: 'none',
-							fontWeight: 600,
-							letterSpacing: '0.01em',
-							borderRadius: 1,
-							px: { xs: 1.125, sm: 1.5 },
-							minHeight: 34,
-							borderColor: showColumnFilters ? themeArg.palette.primary.main : themeArg.palette.divider,
-							color: showColumnFilters ? themeArg.palette.primary.main : themeArg.palette.text.secondary,
-							backgroundColor: showColumnFilters
-								? alpha(themeArg.palette.primary.main, themeArg.palette.mode === 'dark' ? 0.14 : 0.08)
-								: themeArg.palette.background.paper,
-							'&:hover': {
-								borderColor: themeArg.palette.primary.main,
-								backgroundColor: alpha(themeArg.palette.primary.main, themeArg.palette.mode === 'dark' ? 0.22 : 0.1)
-							}
-						})}
+				{manualPagination ? null : (
+					<Badge
+						overlap="rectangular"
+						badgeContent={columnFilterCount}
+						showZero={false}
+						max={99}
+						color="primary"
+						invisible={columnFilterCount === 0}
+						sx={{ '& .MuiBadge-badge': { fontWeight: 700, height: 18, minWidth: 18 } }}
 					>
-						Column filters
-					</Button>
-				</span>
-					</Tooltip>
-				</Badge>
+						<Tooltip title={showColumnFilters ? 'Hide per-column filters' : 'Show per-column filters'}>
+							<span>
+								<Button
+									id="table-column-filters-toggle"
+									size="small"
+									variant="outlined"
+									color={showColumnFilters ? 'primary' : 'inherit'}
+									aria-pressed={showColumnFilters}
+									onClick={handleToggleFilters}
+									startIcon={<FilterAltOutlinedIcon fontSize="small" />}
+									sx={themeArg => ({
+										textTransform: 'none',
+										fontWeight: 600,
+										letterSpacing: '0.01em',
+										borderRadius: 1,
+										px: { xs: 1.125, sm: 1.5 },
+										minHeight: 34,
+										borderColor: showColumnFilters ? themeArg.palette.primary.main : themeArg.palette.divider,
+										color: showColumnFilters ? themeArg.palette.primary.main : themeArg.palette.text.secondary,
+										backgroundColor: showColumnFilters
+											? alpha(themeArg.palette.primary.main, themeArg.palette.mode === 'dark' ? 0.14 : 0.08)
+											: themeArg.palette.background.paper,
+										'&:hover': {
+											borderColor: themeArg.palette.primary.main,
+											backgroundColor: alpha(themeArg.palette.primary.main, themeArg.palette.mode === 'dark' ? 0.22 : 0.1)
+										}
+									})}
+								>
+									Column filters
+								</Button>
+							</span>
+						</Tooltip>
+					</Badge>
+				)}
 
-				{showColumnFilters && hasActiveColumnFilters ? (
+				{!manualPagination && showColumnFilters && hasActiveColumnFilters ? (
 					<Button
 						size="small"
 						variant="text"
@@ -295,7 +317,7 @@ const TableComponent = <T extends MRT_RowData>({
 								variant="outlined"
 								color="inherit"
 								onClick={handleExport}
-								disabled={exportRowCount === 0}
+								disabled={exportRowCount === 0 || isExporting}
 								startIcon={<FileDownloadIcon fontSize="small" />}
 								sx={themeArg => ({
 									textTransform: 'none',
@@ -314,7 +336,7 @@ const TableComponent = <T extends MRT_RowData>({
 									}
 								})}
 							>
-								Export
+								{isExporting ? 'Exporting…' : 'Export'}
 							</Button>
 						</span>
 					</Tooltip>

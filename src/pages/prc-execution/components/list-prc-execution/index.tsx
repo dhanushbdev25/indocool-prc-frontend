@@ -1,28 +1,43 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from '@mui/material';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import {
+	Box,
+	Dialog,
+	DialogTitle,
+	DialogContent,
+	DialogActions,
+	Button,
+	LinearProgress,
+	Typography
+} from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import dayjs from 'dayjs';
 import PrcExecutionHeader from './components/PrcExecutionHeader';
 import PrcExecutionTable, { PrcExecutionData } from './components/PrcExecutionTable';
 import CatalystTableSkeleton from '../../../../components/common/skeleton/CatalystTableSkeleton';
-import { FullScreenFormSavingOverlay } from '../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	useFetchPrcExecutionsQuery,
+	useLazyFetchPrcExecutionsQuery,
 	useFetchPlantsQuery,
 	useLazyFetchPrcExecutionDetailsQuery,
 	type PrcExecutionsListArgs
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
-import { parsePrcExecutionOperationStatusList } from '../../../../store/api/business/prc-execution/prc-execution.validators';
+import {
+	PRC_EXECUTION_STATUSES,
+	type PrcExecution
+} from '../../../../store/api/business/prc-execution/prc-execution.validators';
 import { useFetchSapComboQuery, useFetchCustomersQuery } from '../../../../store/api/business/part-master/part.api';
+import {
+	useFetchReservationComboQuery,
+	useFetchPrcSetIdComboQuery,
+	useFetchSapSetIdComboQuery
+} from '../../../../store/api/business/customer/customer.api';
 import { useListView } from '../../../../hooks/useListView';
 import {
-	deriveOptions,
 	InlineFilterBar,
 	MasterListLandingPage,
 	masterListTableFrame,
-	matchesMulti,
 	isDateRangeValue,
 	isStringArrayValue,
-	isFilterValueEmpty,
 	type FilterFieldConfig,
 	type FilterValue
 } from '../../../../components/masters';
@@ -35,23 +50,52 @@ import {
 	unwrapExecutionDetail,
 	type PrcQrLabelFields
 } from '../qr-labels';
+import { uniqueSorted, plantCodeOptions } from '../../../../utils/comboOptionHelpers';
+import { exportRowsToExcel, type ExportColumn } from '../../../../utils/exportTableToExcel';
+import { DATE_PICKER_FORMAT } from '../../../../utils/dateConfig';
 
 const SEARCH_PLACEHOLDER = 'Order ID';
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-	v !== null && typeof v === 'object' && !Array.isArray(v);
+/** Server clamp on POST /prcExecution/list pageSize. */
+const EXPORT_PAGE_SIZE = 100;
+/** Safety cap for the export-all loop (100 pages × 100 rows = 10k rows). */
+const EXPORT_MAX_PAGES = 100;
 
-const coercePlantCode = (row: unknown): string => {
-	if (typeof row === 'string') return row.trim();
-	if (!isRecord(row)) return '';
-	if (typeof row.value === 'string') return row.value.trim();
-	if (typeof row.value === 'number') return String(row.value);
-	if (typeof row.label === 'string') return row.label.trim();
-	return '';
+const formatDateCell = (raw: string | null | undefined): string => {
+	const d = raw ? dayjs(raw) : null;
+	return d && d.isValid() ? d.format(DATE_PICKER_FORMAT) : '';
 };
 
-const uniqueSorted = (values: string[]): string[] =>
-	[...new Set(values.map(v => v.trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+/** Mirrors the visible table columns for the fetch-all Excel export. */
+const PRC_EXPORT_COLUMNS: ExportColumn<PrcExecution>[] = [
+	{ header: 'Order No', value: r => (r.orderId != null ? String(r.orderId) : '') },
+	{ header: 'SAP Number', value: r => r.sapReferenceNumber ?? '' },
+	{ header: 'Reservation', value: r => r.reservation ?? '' },
+	{ header: 'Prc Set Id', value: r => r.prcSetId ?? '' },
+	{ header: 'Part Number', value: r => r.partNumber ?? '' },
+	{ header: 'Part Description', value: r => r.partDescription ?? '' },
+	{ header: 'Serial Number', value: r => r.productionSetId ?? '' },
+	{ header: 'Customer Name', value: r => r.customerName ?? '' },
+	{ header: 'Variant', value: r => r.customerVariantName ?? '' },
+	{
+		header: 'Operation',
+		value: r =>
+			(r.operationStatus ?? [])
+				.map(op => (op.operationText ?? '').trim())
+				.filter(Boolean)
+				.join(' | ')
+	},
+	{ header: 'PRC Date', value: r => formatDateCell(r.date) },
+	{ header: 'Plant Code', value: r => r.plant ?? '' },
+	{ header: 'Status', value: r => r.status ?? '' }
+];
+
+/** Trimmed, sorted copy of an array filter (sorted for stable RTK Query cache keys), or undefined when empty. */
+const sortedArrayFilter = (value: FilterValue | undefined): string[] | undefined => {
+	if (!isStringArrayValue(value)) return undefined;
+	const cleaned = value.map(v => v.trim()).filter(Boolean);
+	return cleaned.length ? [...cleaned].sort() : undefined;
+};
 
 const ListPrcExecution = () => {
 	const navigate = useNavigate();
@@ -70,36 +114,60 @@ const ListPrcExecution = () => {
 	const { data: sapComboData, isLoading: isSapComboLoading } = useFetchSapComboQuery();
 	const { data: customersData, isLoading: isCustomersLoading } = useFetchCustomersQuery();
 	const { data: plantsData, isLoading: isPlantsLoading } = useFetchPlantsQuery();
+	const { data: reservationComboData, isLoading: isReservationComboLoading } = useFetchReservationComboQuery();
+	const { data: prcSetIdComboData, isLoading: isPrcSetIdComboLoading } = useFetchPrcSetIdComboQuery();
+	const { data: sapSetIdComboData, isLoading: isSapSetIdComboLoading } = useFetchSapSetIdComboQuery();
 
 	const sapOptions = useMemo(() => uniqueSorted((sapComboData?.data ?? []).map(r => r.value)), [sapComboData]);
+	// Server filters customers with ILIKE on customerName, so options must be the names (labels), not codes.
 	const customerOptions = useMemo(
-		() => uniqueSorted((customersData?.data ?? []).map(r => r.value)),
+		() => uniqueSorted((customersData?.data ?? []).map(r => r.label)),
 		[customersData]
 	);
-	const plantOptions = useMemo(() => {
-		const rows = Array.isArray(plantsData)
-			? plantsData
-			: isRecord(plantsData) && Array.isArray((plantsData as { data?: unknown }).data)
-				? ((plantsData as { data: unknown[] }).data)
-				: [];
-		return uniqueSorted(rows.map(coercePlantCode));
-	}, [plantsData]);
+	const plantOptions = useMemo(() => plantCodeOptions(plantsData), [plantsData]);
+	const reservationOptions = useMemo(
+		() => uniqueSorted((reservationComboData?.data ?? []).map(r => r.value)),
+		[reservationComboData]
+	);
+	const prcSetIdOptions = useMemo(
+		() => uniqueSorted((prcSetIdComboData?.data ?? []).map(r => r.value)),
+		[prcSetIdComboData]
+	);
+	const productionSetIdOptions = useMemo(
+		() => uniqueSorted((sapSetIdComboData?.data ?? []).map(r => r.value)),
+		[sapSetIdComboData]
+	);
 
 	// Resolve filter state → API args (sent only when Apply commits to `filters`)
 	const queryArgs = useMemo<PrcExecutionsListArgs>(() => {
 		const dateRange = isDateRangeValue(filters.dateRange) ? filters.dateRange : null;
 		return {
+			page: pagination.pageIndex + 1,
+			pageSize: pagination.pageSize,
 			fromDate: dateRange?.from ?? undefined,
 			toDate: dateRange?.to ?? undefined,
 			orderId: searchTerm.trim() || undefined,
-			customer: isStringArrayValue(filters.customer) && filters.customer.length ? filters.customer : undefined,
-			plantCode: isStringArrayValue(filters.plantCode) && filters.plantCode.length ? filters.plantCode : undefined,
-			sapReferenceNumber:
-				isStringArrayValue(filters.sapReferenceNumber) && filters.sapReferenceNumber.length
-					? filters.sapReferenceNumber
-					: undefined
+			customer: sortedArrayFilter(filters.customer),
+			plantCode: sortedArrayFilter(filters.plantCode),
+			sapReferenceNumber: sortedArrayFilter(filters.sapReferenceNumber),
+			status: sortedArrayFilter(filters.status),
+			reservation: sortedArrayFilter(filters.reservation),
+			prcSetId: sortedArrayFilter(filters.prcSetId),
+			productionSetId: sortedArrayFilter(filters.productionSetId)
 		};
-	}, [filters.dateRange, filters.customer, filters.plantCode, filters.sapReferenceNumber, searchTerm]);
+	}, [
+		filters.dateRange,
+		filters.customer,
+		filters.plantCode,
+		filters.sapReferenceNumber,
+		filters.status,
+		filters.reservation,
+		filters.prcSetId,
+		filters.productionSetId,
+		searchTerm,
+		pagination.pageIndex,
+		pagination.pageSize
+	]);
 
 	const {
 		data: prcExecutionData,
@@ -107,18 +175,47 @@ const ListPrcExecution = () => {
 		isFetching: isPrcExecutionDataFetching
 	} = useFetchPrcExecutionsQuery(queryArgs);
 
-	const allExecutionData: PrcExecutionData[] = useMemo(() => {
-		if (!prcExecutionData) return [];
-		const raw = (prcExecutionData as { data?: PrcExecutionData[] })?.data || [];
-		return raw.map(row => {
-			const legacy = row as { operation_status?: unknown };
-			const rawOps = legacy.operation_status ?? row.operationStatus;
-			return {
-				...row,
-				operationStatus: parsePrcExecutionOperationStatusList(rawOps)
-			};
-		});
-	}, [prcExecutionData]);
+	const rows: PrcExecutionData[] = prcExecutionData?.data ?? [];
+	const totalCount = prcExecutionData?.pagination.totalCount ?? 0;
+
+	// Clamp a stale/persisted page index back into range when the result set shrinks.
+	const responseTotalPages = prcExecutionData?.pagination.totalPages;
+	useEffect(() => {
+		if (responseTotalPages == null || responseTotalPages <= 0) return;
+		setPagination(prev =>
+			prev.pageIndex > responseTotalPages - 1 ? { ...prev, pageIndex: responseTotalPages - 1 } : prev
+		);
+	}, [responseTotalPages, setPagination]);
+
+	// Export the full filtered dataset by walking every server page.
+	const [triggerFetchPrcExecutions] = useLazyFetchPrcExecutionsQuery();
+	const [isExporting, setIsExporting] = useState(false);
+	const [exportError, setExportError] = useState<string | null>(null);
+	const handleExportAll = useCallback(async () => {
+		setIsExporting(true);
+		setExportError(null);
+		try {
+			const base: PrcExecutionsListArgs = { ...queryArgs, page: 1, pageSize: EXPORT_PAGE_SIZE };
+			const first = await triggerFetchPrcExecutions(base, true).unwrap();
+			const byId = new Map<number, PrcExecution>();
+			for (const row of first.data) byId.set(row.id, row);
+			const totalPages = Math.min(first.pagination.totalPages, EXPORT_MAX_PAGES);
+			if (first.pagination.totalPages > EXPORT_MAX_PAGES) {
+				setExportError(
+					`Export limited to the first ${EXPORT_MAX_PAGES * EXPORT_PAGE_SIZE} of ${first.pagination.totalCount} rows. Narrow the filters to export the rest.`
+				);
+			}
+			for (let page = 2; page <= totalPages; page++) {
+				const next = await triggerFetchPrcExecutions({ ...base, page }, true).unwrap();
+				for (const row of next.data) byId.set(row.id, row);
+			}
+			exportRowsToExcel(PRC_EXPORT_COLUMNS, [...byId.values()], 'prc-execution');
+		} catch {
+			setExportError('Export failed. Try again.');
+		} finally {
+			setIsExporting(false);
+		}
+	}, [queryArgs, triggerFetchPrcExecutions]);
 
 	const fields = useMemo<FilterFieldConfig[]>(
 		() => [
@@ -156,119 +253,45 @@ const ListPrcExecution = () => {
 				kind: 'autocomplete',
 				key: 'reservation',
 				label: 'Reservation',
-				options: deriveOptions(allExecutionData, r =>
-					r.reservation != null && String(r.reservation).trim() ? String(r.reservation) : ''
-				)
+				options: reservationOptions,
+				placeholder: isReservationComboLoading ? 'Loading…' : undefined
 			},
 			{
 				kind: 'autocomplete',
 				key: 'prcSetId',
 				label: 'Prc Set Id',
-				options: deriveOptions(allExecutionData, r =>
-					r.prcSetId != null && String(r.prcSetId).trim() ? String(r.prcSetId) : null
-				)
-			},
-			{
-				kind: 'autocomplete',
-				key: 'partNumber',
-				label: 'Part Number',
-				options: deriveOptions(allExecutionData, r =>
-					r.partNumber != null && String(r.partNumber).trim() ? String(r.partNumber) : null
-				)
-			},
-			{
-				kind: 'autocomplete',
-				key: 'partDescription',
-				label: 'Part Description',
-				options: deriveOptions(allExecutionData, r => r.partDescription ?? '')
+				options: prcSetIdOptions,
+				placeholder: isPrcSetIdComboLoading ? 'Loading…' : undefined
 			},
 			{
 				kind: 'autocomplete',
 				key: 'productionSetId',
 				label: 'Serial Number',
-				options: deriveOptions(allExecutionData, r => r.productionSetId)
-			},
-			{
-				kind: 'autocomplete',
-				key: 'customerVariantName',
-				label: 'Variant',
-				options: deriveOptions(allExecutionData, r => r.customerVariantName)
-			},
-			{
-				kind: 'autocomplete',
-				key: 'operation',
-				label: 'Operation',
-				options: deriveOptions(
-					allExecutionData.flatMap(e =>
-						(e.operationStatus ?? []).map(op => ({ text: (op.operationText ?? '').trim() }))
-					),
-					r => r.text
-				)
+				options: productionSetIdOptions,
+				placeholder: isSapSetIdComboLoading ? 'Loading…' : undefined
 			},
 			{
 				kind: 'autocomplete',
 				key: 'status',
 				label: 'Status',
-				options: deriveOptions(allExecutionData, r => r.status)
+				options: [...PRC_EXECUTION_STATUSES]
 			}
 		],
 		[
-			allExecutionData,
 			sapOptions,
 			customerOptions,
 			plantOptions,
+			reservationOptions,
+			prcSetIdOptions,
+			productionSetIdOptions,
 			isSapComboLoading,
 			isCustomersLoading,
-			isPlantsLoading
+			isPlantsLoading,
+			isReservationComboLoading,
+			isPrcSetIdComboLoading,
+			isSapSetIdComboLoading
 		]
 	);
-
-	const filteredData = useMemo(() => {
-		const opFilter = filters.operation;
-		return allExecutionData.filter(e => {
-			if (
-				!matchesMulti(
-					e.reservation != null && String(e.reservation).trim() ? String(e.reservation) : '',
-					filters.reservation
-				)
-			) {
-				return false;
-			}
-			if (
-				!matchesMulti(
-					e.prcSetId != null && String(e.prcSetId).trim() ? String(e.prcSetId) : '',
-					filters.prcSetId
-				)
-			) {
-				return false;
-			}
-			if (
-				!matchesMulti(
-					e.partNumber != null && String(e.partNumber).trim() ? String(e.partNumber) : '',
-					filters.partNumber
-				)
-			) {
-				return false;
-			}
-			if (!matchesMulti(e.partDescription ?? '', filters.partDescription)) return false;
-			if (
-				!matchesMulti(
-					e.productionSetId != null && String(e.productionSetId).trim() ? String(e.productionSetId) : '',
-					filters.productionSetId
-				)
-			) {
-				return false;
-			}
-			if (!matchesMulti(e.customerVariantName, filters.customerVariantName)) return false;
-			if (!matchesMulti(e.status, filters.status)) return false;
-			if (!isFilterValueEmpty(opFilter)) {
-				const selected = isStringArrayValue(opFilter) ? opFilter : [];
-				const ops = (e.operationStatus ?? []).map(op => (op.operationText ?? '').trim()).filter(Boolean);
-				if (selected.length > 0 && !ops.some(o => selected.includes(o))) return false;
-			}
-			return true;
-		});
-	}, [allExecutionData, filters]);
 
 	const handleFiltersChange = useCallback(
 		(next: Record<string, FilterValue>) => {
@@ -400,31 +423,40 @@ const ListPrcExecution = () => {
 					/>
 				}
 				table={
-					<Box sx={masterListTableFrame}>
-						<PrcExecutionTable
-							data={filteredData}
-							onExecute={handleExecute}
-							onView={handleView}
-							onOpenReport={handleOpenReport}
-							onGenerateQr={handleGenerateQr}
-							onBulkGenerateQr={() => setBulkQrSelectOpen(true)}
-							onScanQr={() => setScanQrOpen(true)}
-							pagination={pagination}
-							onPaginationChange={setPagination}
-						/>
+					<Box sx={{ ...masterListTableFrame, position: 'relative' }}>
+						{isPrcExecutionDataFetching && !isPrcExecutionDataLoading ? (
+							<LinearProgress
+								sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, zIndex: 1 }}
+							/>
+						) : null}
+						{exportError ? (
+							<Typography variant="body2" color="error" sx={{ px: 2, pt: 1 }}>
+								{exportError}
+							</Typography>
+						) : null}
+						<Box sx={{ opacity: isPrcExecutionDataFetching && !isPrcExecutionDataLoading ? 0.6 : 1 }}>
+							<PrcExecutionTable
+								data={rows}
+								totalCount={totalCount}
+								onExportAll={handleExportAll}
+								isExporting={isExporting}
+								onExecute={handleExecute}
+								onView={handleView}
+								onOpenReport={handleOpenReport}
+								onGenerateQr={handleGenerateQr}
+								onBulkGenerateQr={() => setBulkQrSelectOpen(true)}
+								onScanQr={() => setScanQrOpen(true)}
+								pagination={pagination}
+								onPaginationChange={setPagination}
+							/>
+						</Box>
 					</Box>
 				}
-			/>
-
-			<FullScreenFormSavingOverlay
-				open={isPrcExecutionDataFetching && !isPrcExecutionDataLoading}
-				message="Refreshing…"
 			/>
 
 			<BulkQrSelectionDialog
 				open={bulkQrSelectOpen}
 				onClose={() => setBulkQrSelectOpen(false)}
-				executions={allExecutionData}
 				onConfirm={handleBulkQrConfirm}
 			/>
 

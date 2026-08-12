@@ -85,3 +85,36 @@ export function exportTableToExcel<T extends MRT_RowData>(
 	const filename = `${slugify(titleSlug) || 'table'}-${timestamp()}.xlsx`;
 	XLSX.writeFile(wb, filename);
 }
+
+export interface ExportColumn<T> {
+	header: string;
+	value: (row: T) => unknown;
+}
+
+/**
+ * Export a raw data array to an .xlsx file — for datasets that are not fully
+ * loaded into a table instance (e.g. server-paginated lists exported in full).
+ */
+export function exportRowsToExcel<T>(columns: ExportColumn<T>[], rows: T[], titleSlug: string): void {
+	const aoa: (string | number | boolean | Date | null)[][] = [
+		columns.map(c => c.header),
+		...rows.map(row => columns.map(col => valueForCell(col.value(row))))
+	];
+
+	const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+	ws['!cols'] = columns.map((_, idx) => {
+		const max = aoa.reduce((acc, r) => {
+			const v = r[idx];
+			const s = v instanceof Date ? v.toISOString() : v == null ? '' : String(v);
+			return Math.max(acc, s.length);
+		}, 0);
+		return { wch: Math.min(Math.max(max + 2, 12), 60) };
+	});
+
+	const wb = XLSX.utils.book_new();
+	XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+
+	const filename = `${slugify(titleSlug) || 'table'}-${timestamp()}.xlsx`;
+	XLSX.writeFile(wb, filename);
+}

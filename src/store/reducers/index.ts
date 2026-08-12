@@ -10,6 +10,7 @@ import { partApi } from '../api/business/part-master/part.api';
 import { mouldApi } from '../api/business/mould/mould.api';
 import Cookie from '../../utils/Cookie';
 import { prcExecutionApi } from '../api/business/prc-execution/prc-execution.api';
+import { customerApi } from '../api/business/customer/customer.api';
 import { sapJobRunsApi } from '../api/business/sap-job-runs/sap-job-runs.api';
 import { dashboardApi } from '../api/business/dashboard/dashboard.api';
 import { dpmoApi } from '../api/business/dpmo/dpmo.api';
@@ -26,6 +27,7 @@ const rootReducer = combineReducers({
 	[inspectionApi.reducerPath]: inspectionApi.reducer,
 	[prcTemplateApi.reducerPath]: prcTemplateApi.reducer,
 	[prcExecutionApi.reducerPath]: prcExecutionApi.reducer,
+	[customerApi.reducerPath]: customerApi.reducer,
 	[partApi.reducerPath]: partApi.reducer,
 	[mouldApi.reducerPath]: mouldApi.reducer,
 	[sapJobRunsApi.reducerPath]: sapJobRunsApi.reducer,

@@ -21,6 +21,22 @@ export interface ReportRequest {
 	reportType: string;
 	from?: string;
 	to?: string;
+	/** Exact match. */
+	plantCode?: string[];
+	/** Customer names; server does partial match (ILIKE) on customerName. */
+	customer?: string[];
+	/** Partial match (ILIKE). */
+	sapReferenceNumber?: string[];
+	/** Exact match: ACTIVE | IN_PROGRESS | COMPLETED. */
+	status?: string[];
+	/** Exact match. */
+	orderId?: string[];
+	/** Exact match. */
+	reservation?: string[];
+	/** Exact match. */
+	prcSetId?: string[];
+	/** Exact match. */
+	productionSetId?: string[];
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>

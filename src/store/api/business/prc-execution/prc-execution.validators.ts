@@ -65,7 +65,7 @@ export function executionOperationsHasIncomplete(
 	return list.length > 0 && list.some(op => !op.prcStatus || !op.sapStatus);
 }
 
-/** List row for PRC execution table (GET /prcExecution list) */
+/** List row for PRC execution table (POST /prcExecution/list) */
 export interface PrcExecution {
 	id: number;
 	orderId?: string | number | null;
@@ -92,6 +92,72 @@ export interface PrcExecution {
 	date: string;
 	/** Plant code (server-side column `plant`). */
 	plant?: string | null;
+}
+
+/** Status values the server writes to `prc_execution.status`. */
+export const PRC_EXECUTION_STATUSES = ['ACTIVE', 'IN_PROGRESS', 'COMPLETED'] as const;
+
+/** Pagination envelope on POST /prcExecution/list. */
+export interface PrcExecutionListPagination {
+	page: number;
+	pageSize: number;
+	totalCount: number;
+	totalPages: number;
+}
+
+/** Response of POST /prcExecution/list. */
+export interface PrcExecutionListResponse {
+	data: PrcExecution[];
+	pagination: PrcExecutionListPagination;
+}
+
+const toFiniteNumber = (value: unknown, fallback: number): number => {
+	const n = typeof value === 'number' ? value : Number(value);
+	return Number.isFinite(n) ? n : fallback;
+};
+
+/** Validate/normalize the POST /prcExecution/list response (warns on mismatch, data flows through). */
+export function parsePrcExecutionListResponse(response: unknown): PrcExecutionListResponse {
+	const root =
+		response !== null && typeof response === 'object' && !Array.isArray(response)
+			? (response as Record<string, unknown>)
+			: null;
+	const rawData = root?.data;
+	if (!Array.isArray(rawData)) {
+		console.warn('Invalid PRC execution list response structure', response);
+		return { data: [], pagination: { page: 1, pageSize: 0, totalCount: 0, totalPages: 0 } };
+	}
+
+	const data = rawData
+		.filter((row): row is Record<string, unknown> => row !== null && typeof row === 'object' && !Array.isArray(row))
+		.map(row => {
+			const legacy = row as { operation_status?: unknown; operationStatus?: unknown };
+			return {
+				...(row as unknown as PrcExecution),
+				operationStatus: parsePrcExecutionOperationStatusList(legacy.operation_status ?? legacy.operationStatus)
+			};
+		});
+
+	const rawPagination = root?.pagination;
+	if (rawPagination === null || typeof rawPagination !== 'object' || Array.isArray(rawPagination)) {
+		console.warn('Missing pagination on PRC execution list response', response);
+		return {
+			data,
+			pagination: { page: 1, pageSize: data.length, totalCount: data.length, totalPages: 1 }
+		};
+	}
+	const p = rawPagination as Record<string, unknown>;
+	const pageSize = toFiniteNumber(p.pageSize, data.length);
+	const totalCount = toFiniteNumber(p.totalCount, data.length);
+	return {
+		data,
+		pagination: {
+			page: toFiniteNumber(p.page, 1),
+			pageSize,
+			totalCount,
+			totalPages: toFiniteNumber(p.totalPages, pageSize > 0 ? Math.ceil(totalCount / pageSize) : 1)
+		}
+	};
 }
 
 /** GET /web/combo?type=... — comboFormatter formatComboData */

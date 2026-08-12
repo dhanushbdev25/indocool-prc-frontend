@@ -102,10 +102,12 @@ export const useDashboardDateRange = () => {
 		setDraftCustomTo(to);
 	}, []);
 
-	const applyDraft = useCallback(() => {
+	/** Commits draft → applied. Returns the newly-applied range so callers can use it immediately (applied state updates async). */
+	const applyDraft = useCallback((): DashboardDateRange | null => {
 		setAppliedPreset(draftPreset);
 		setAppliedCustomFrom(draftCustomFrom);
 		setAppliedCustomTo(draftCustomTo);
+		return resolveRange(draftPreset, draftCustomFrom, draftCustomTo);
 	}, [draftPreset, draftCustomFrom, draftCustomTo]);
 
 	const resetDraft = useCallback(() => {

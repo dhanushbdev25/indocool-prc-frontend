@@ -4,15 +4,37 @@ import {
 	useFetchAvailableReportsQuery,
 	useLazyFetchReportQuery
 } from '../../store/api/business/reports/reports.api';
+import type { ReportRequest } from '../../store/api/business/reports/reports.validators';
+import { useFetchPlantsQuery } from '../../store/api/business/prc-execution/prc-execution.api';
+import { PRC_EXECUTION_STATUSES } from '../../store/api/business/prc-execution/prc-execution.validators';
+import { useFetchSapComboQuery, useFetchCustomersQuery } from '../../store/api/business/part-master/part.api';
+import {
+	useFetchReservationComboQuery,
+	useFetchPrcSetIdComboQuery,
+	useFetchSapSetIdComboQuery,
+	useFetchOrderIdComboQuery
+} from '../../store/api/business/customer/customer.api';
+import { uniqueSorted, plantCodeOptions } from '../../utils/comboOptionHelpers';
 import { useDashboardDateRange } from '../dashboard/hooks/useDashboardDateRange';
 import { DashboardErrorBanner } from '../dashboard/components/DashboardErrorBanner';
 import { ReportsPageHeader } from './components/ReportsPageHeader';
 import { ReportsTabStrip } from './components/ReportsTabStrip';
-import { ReportsFilterBar } from './components/ReportsFilterBar';
+import { ReportsFilterBar, type ReportFilterKey, type ReportFilters } from './components/ReportsFilterBar';
 import { ReportTable } from './components/ReportTable';
 import { ReportEmptyPrompt } from './components/ReportEmptyPrompt';
 import { ReportsAvailableSkeleton } from './components/ReportsAvailableSkeleton';
 import { ReportTableSkeleton } from './components/ReportTableSkeleton';
+
+const EMPTY_REPORT_FILTERS: ReportFilters = {
+	plantCode: [],
+	customer: [],
+	sapReferenceNumber: [],
+	status: [],
+	orderId: [],
+	reservation: [],
+	prcSetId: [],
+	productionSetId: []
+};
 
 const Reports = () => {
 	const availableQuery = useFetchAvailableReportsQuery();
@@ -28,8 +50,6 @@ const Reports = () => {
 	}, [reports, userPickedCode]);
 
 	const {
-		from,
-		to,
 		isReady,
 		draftPreset,
 		draftPresetLabel,
@@ -43,11 +63,72 @@ const Reports = () => {
 
 	const [triggerFetchReport, reportQuery] = useLazyFetchReportQuery();
 
+	// Entity filters (multi-select). Generate is the explicit apply, so plain local state suffices.
+	const [filters, setFilters] = useState<ReportFilters>(EMPTY_REPORT_FILTERS);
+	const handleFilterChange = useCallback((key: ReportFilterKey, values: string[]) => {
+		setFilters(prev => ({ ...prev, [key]: values }));
+	}, []);
+	const handleClearFilters = useCallback(() => {
+		setFilters(EMPTY_REPORT_FILTERS);
+	}, []);
+
+	// Combo-backed filter options
+	const { data: plantsData, isLoading: isPlantsLoading } = useFetchPlantsQuery();
+	const { data: customersData, isLoading: isCustomersLoading } = useFetchCustomersQuery();
+	const { data: sapComboData, isLoading: isSapComboLoading } = useFetchSapComboQuery();
+	const { data: orderIdComboData, isLoading: isOrderIdComboLoading } = useFetchOrderIdComboQuery();
+	const { data: reservationComboData, isLoading: isReservationComboLoading } = useFetchReservationComboQuery();
+	const { data: prcSetIdComboData, isLoading: isPrcSetIdComboLoading } = useFetchPrcSetIdComboQuery();
+	const { data: sapSetIdComboData, isLoading: isSapSetIdComboLoading } = useFetchSapSetIdComboQuery();
+
+	const filterOptions = useMemo<Record<ReportFilterKey, string[]>>(
+		() => ({
+			plantCode: plantCodeOptions(plantsData),
+			// Server filters customers with ILIKE on customerName, so options are the names (labels), not codes.
+			customer: uniqueSorted((customersData?.data ?? []).map(r => r.label)),
+			sapReferenceNumber: uniqueSorted((sapComboData?.data ?? []).map(r => r.value)),
+			status: [...PRC_EXECUTION_STATUSES],
+			orderId: uniqueSorted((orderIdComboData?.data ?? []).map(r => r.value)),
+			reservation: uniqueSorted((reservationComboData?.data ?? []).map(r => r.value)),
+			prcSetId: uniqueSorted((prcSetIdComboData?.data ?? []).map(r => r.value)),
+			productionSetId: uniqueSorted((sapSetIdComboData?.data ?? []).map(r => r.value))
+		}),
+		[plantsData, customersData, sapComboData, orderIdComboData, reservationComboData, prcSetIdComboData, sapSetIdComboData]
+	);
+
+	const optionsLoading = useMemo<Partial<Record<ReportFilterKey, boolean>>>(
+		() => ({
+			plantCode: isPlantsLoading,
+			customer: isCustomersLoading,
+			sapReferenceNumber: isSapComboLoading,
+			orderId: isOrderIdComboLoading,
+			reservation: isReservationComboLoading,
+			prcSetId: isPrcSetIdComboLoading,
+			productionSetId: isSapSetIdComboLoading
+		}),
+		[
+			isPlantsLoading,
+			isCustomersLoading,
+			isSapComboLoading,
+			isOrderIdComboLoading,
+			isReservationComboLoading,
+			isPrcSetIdComboLoading,
+			isSapSetIdComboLoading
+		]
+	);
+
 	const handleGenerate = useCallback(() => {
 		if (!selectedCode || !isReady) return;
-		applyDateRangeDraft();
-		triggerFetchReport({ reportType: selectedCode, from, to });
-	}, [selectedCode, isReady, applyDateRangeDraft, triggerFetchReport, from, to]);
+		// Use the freshly-applied range — the `from`/`to` in this closure are one apply behind.
+		const range = applyDateRangeDraft();
+		if (!range) return;
+		const request: ReportRequest = { reportType: selectedCode, from: range.from, to: range.to };
+		for (const key of Object.keys(filters) as ReportFilterKey[]) {
+			const values = filters[key].map(v => v.trim()).filter(Boolean);
+			if (values.length) request[key] = values;
+		}
+		triggerFetchReport(request);
+	}, [selectedCode, isReady, applyDateRangeDraft, triggerFetchReport, filters]);
 
 	// The lazy query result represents the most recent trigger. Only render its
 	// data when it matches the active tab — otherwise the user is looking at a
@@ -59,7 +140,9 @@ const Reports = () => {
 	const isRefetching = isActiveTabResult && reportQuery.isFetching && !!data;
 	const isError = isActiveTabResult && reportQuery.isError;
 
-	const canGenerate = Boolean(selectedCode) && isReady && !reportQuery.isFetching;
+	// Block Generate while a custom draft range is incomplete — committing it would flip isReady off with no recovery path.
+	const isDraftRangeReady = draftPreset !== 'custom' || Boolean(draftCustomFrom && draftCustomTo);
+	const canGenerate = Boolean(selectedCode) && isReady && isDraftRangeReady && !reportQuery.isFetching;
 
 	const renderContent = () => {
 		if (!selectedCode) {
@@ -135,6 +218,11 @@ const Reports = () => {
 							customTo={draftCustomTo}
 							onPresetChange={setDraftPreset}
 							onCustomRangeChange={setDraftCustomRange}
+							filters={filters}
+							onFilterChange={handleFilterChange}
+							filterOptions={filterOptions}
+							optionsLoading={optionsLoading}
+							onClearFilters={handleClearFilters}
 							onGenerate={handleGenerate}
 							canGenerate={canGenerate}
 							isFetching={!!isActiveTabResult && reportQuery.isFetching}

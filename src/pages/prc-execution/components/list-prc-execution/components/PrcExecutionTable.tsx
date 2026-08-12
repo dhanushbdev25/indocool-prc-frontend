@@ -31,6 +31,12 @@ interface PrcExecutionTableProps {
 	onScanQr?: () => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
+	/** Total row count across all server pages (`pagination.totalCount`). */
+	totalCount: number;
+	/** Exports the full filtered dataset (all server pages). */
+	onExportAll: () => void;
+	/** True while the export-all fetch loop runs. */
+	isExporting: boolean;
 }
 
 const getDescription = (row: PrcExecutionData): string => row.partDescription ?? '';
@@ -44,7 +50,10 @@ const PrcExecutionTable = memo(({
 	onBulkGenerateQr,
 	onScanQr,
 	pagination,
-	onPaginationChange
+	onPaginationChange,
+	totalCount,
+	onExportAll,
+	isExporting
 }: PrcExecutionTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canExecute = hasPermission('PRC_EXECUTION_EDIT');
@@ -351,7 +360,7 @@ const PrcExecutionTable = memo(({
 		[onExecute, onView, onOpenReport, onGenerateQr, canExecute, canView]
 	);
 
-	if (safeData.length === 0) {
+	if (totalCount === 0) {
 		return (
 			<Box sx={{ textAlign: 'center', py: 8 }}>
 				<PlayArrowIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
@@ -371,6 +380,10 @@ const PrcExecutionTable = memo(({
 			data={safeData}
 			pagination={pagination}
 			onPaginationChange={onPaginationChange}
+			manualPagination
+			rowCount={totalCount}
+			onExportOverride={onExportAll}
+			isExporting={isExporting}
 			exportTitle="prc-execution"
 			pinnedColumnsLeft={['orderId', 'status', 'execute']}
 			toolbarActions={
@@ -393,7 +406,6 @@ const PrcExecutionTable = memo(({
 								variant="contained"
 								startIcon={<QrCode2Icon fontSize="small" />}
 								onClick={onBulkGenerateQr}
-								disabled={safeData.length === 0}
 								sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
 							>
 								Generate QR Codes

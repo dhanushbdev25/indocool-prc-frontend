@@ -2,8 +2,33 @@ import { Box, Button, Stack } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { DashboardDateRangeField } from '../../dashboard/components/DashboardDateRangeField';
 import type { DateRangePreset } from '../../dashboard/hooks/useDashboardDateRange';
+import FilterAutocomplete from '../../../components/masters/filters/FilterAutocomplete';
+import { dashboardFilterField } from '../../dashboard/constants/dashboardTokens';
 
 const CONTROL_HEIGHT = 40;
+
+export type ReportFilterKey =
+	| 'plantCode'
+	| 'customer'
+	| 'sapReferenceNumber'
+	| 'status'
+	| 'orderId'
+	| 'reservation'
+	| 'prcSetId'
+	| 'productionSetId';
+
+export type ReportFilters = Record<ReportFilterKey, string[]>;
+
+const FILTER_FIELDS: { key: ReportFilterKey; label: string }[] = [
+	{ key: 'plantCode', label: 'Plant Code' },
+	{ key: 'customer', label: 'Customer' },
+	{ key: 'sapReferenceNumber', label: 'SAP Number' },
+	{ key: 'status', label: 'Status' },
+	{ key: 'orderId', label: 'Order No' },
+	{ key: 'reservation', label: 'Reservation' },
+	{ key: 'prcSetId', label: 'Prc Set Id' },
+	{ key: 'productionSetId', label: 'Serial Number' }
+];
 
 interface ReportsFilterBarProps {
 	preset: DateRangePreset;
@@ -13,6 +38,11 @@ interface ReportsFilterBarProps {
 	customTo: string | null;
 	onPresetChange: (preset: DateRangePreset) => void;
 	onCustomRangeChange: (from: string | null, to: string | null) => void;
+	filters: ReportFilters;
+	onFilterChange: (key: ReportFilterKey, values: string[]) => void;
+	filterOptions: Record<ReportFilterKey, string[]>;
+	optionsLoading?: Partial<Record<ReportFilterKey, boolean>>;
+	onClearFilters: () => void;
 	onGenerate: () => void;
 	canGenerate: boolean;
 	isFetching: boolean;
@@ -27,6 +57,11 @@ export const ReportsFilterBar = ({
 	customTo,
 	onPresetChange,
 	onCustomRangeChange,
+	filters,
+	onFilterChange,
+	filterOptions,
+	optionsLoading,
+	onClearFilters,
 	onGenerate,
 	canGenerate,
 	isFetching,
@@ -43,6 +78,8 @@ export const ReportsFilterBar = ({
 				: `0 1px 0 ${alpha(theme.palette.common.black, 0.04)}, 0 1px 3px ${alpha(theme.palette.common.black, 0.05)}`,
 		mb: 3
 	};
+
+	const hasActiveFilters = FILTER_FIELDS.some(({ key }) => filters[key].length > 0);
 
 	return (
 		<Box sx={panelSx}>
@@ -74,6 +111,23 @@ export const ReportsFilterBar = ({
 							/>
 						</Box>
 						<Box sx={{ flex: 1 }} />
+						{hasActiveFilters ? (
+							<Button
+								size="small"
+								variant="text"
+								color="inherit"
+								onClick={onClearFilters}
+								disabled={disabled}
+								sx={{
+									textTransform: 'none',
+									fontWeight: 600,
+									color: theme.palette.text.secondary,
+									alignSelf: { xs: 'stretch', sm: 'center' }
+								}}
+							>
+								Clear filters
+							</Button>
+						) : null}
 						<Button
 							type="submit"
 							size="small"
@@ -97,6 +151,32 @@ export const ReportsFilterBar = ({
 							{isFetching ? 'Generating…' : 'Generate report'}
 						</Button>
 					</Stack>
+					<Box
+						sx={{
+							mt: 1.5,
+							display: 'grid',
+							gap: { xs: 1.25, sm: 1.5 },
+							gridTemplateColumns: {
+								xs: '1fr',
+								sm: 'repeat(2, minmax(0, 1fr))',
+								md: 'repeat(4, minmax(0, 1fr))'
+							}
+						}}
+					>
+						{FILTER_FIELDS.map(({ key, label }) => (
+							<FilterAutocomplete
+								key={key}
+								label={label}
+								placeholder={optionsLoading?.[key] ? 'Loading…' : undefined}
+								options={filterOptions[key]}
+								value={filters[key]}
+								onChange={next => onFilterChange(key, next)}
+								disabled={disabled}
+								compactDisplay
+								sx={dashboardFilterField}
+							/>
+						))}
+					</Box>
 				</Box>
 			</form>
 		</Box>

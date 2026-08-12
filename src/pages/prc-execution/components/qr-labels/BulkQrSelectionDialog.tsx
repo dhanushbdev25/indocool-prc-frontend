@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent, type KeyboardEvent } from
 import {
 	Box,
 	Button,
+	CircularProgress,
 	Dialog,
 	DialogActions,
 	DialogContent,
@@ -22,13 +23,17 @@ import {
 	QrCode2 as QrCode2Icon,
 	Search as SearchIcon
 } from '@mui/icons-material';
+import dayjs from '../../../../utils/dayjsSetup';
+import { APP_TIMEZONE } from '../../../../utils/dateConfig';
 import type { PrcExecution } from '../../../../store/api/business/prc-execution/prc-execution.validators';
+import {
+	useLazyFetchPrcExecutionsQuery,
+	type PrcExecutionsListArgs
+} from '../../../../store/api/business/prc-execution/prc-execution.api';
 
 type BulkQrSelectionDialogProps = {
 	open: boolean;
 	onClose: () => void;
-	/** Pool of PRC executions available to search/add. */
-	executions: PrcExecution[];
 	onConfirm: (executionIds: number[]) => void;
 };
 
@@ -37,92 +42,105 @@ const asKey = (value: unknown): string => {
 	return String(value).trim();
 };
 
-const normalize = (value: unknown): string => asKey(value).toLowerCase();
+/** Server forces a last-80-days window when dates are absent, so search all-time explicitly. */
+const LOOKUP_FROM_DATE = '2000-01-01';
 
-/** Prefer exact unique-key match, then unique substring match on order / reservation only. */
-function findExecutionBySearch(executions: PrcExecution[], query: string): PrcExecution | null {
-	const q = query.trim();
-	if (!q) return null;
-	const qNorm = q.toLowerCase();
-
-	const exact = executions.filter(row => {
-		const order = normalize(row.orderId);
-		const reservation = normalize(row.reservation);
-		return order === qNorm || reservation === qNorm;
-	});
-	if (exact.length === 1) return exact[0];
-	if (exact.length > 1) return null;
-
-	const partial = executions.filter(row => {
-		const order = normalize(row.orderId);
-		const reservation = normalize(row.reservation);
-		return (order && order.includes(qNorm)) || (reservation && reservation.includes(qNorm));
-	});
-	return partial.length === 1 ? partial[0] : null;
-}
-
-const BulkQrSelectionDialog = ({ open, onClose, executions, onConfirm }: BulkQrSelectionDialogProps) => {
+const BulkQrSelectionDialog = ({ open, onClose, onConfirm }: BulkQrSelectionDialogProps) => {
 	const [search, setSearch] = useState('');
 	const [selected, setSelected] = useState<PrcExecution[]>([]);
 	const [message, setMessage] = useState<string | null>(null);
+	const [isSearching, setIsSearching] = useState(false);
+	const [triggerFetchPrcExecutions] = useLazyFetchPrcExecutionsQuery();
 
 	useEffect(() => {
 		if (!open) {
 			setSearch('');
 			setSelected([]);
 			setMessage(null);
+			setIsSearching(false);
 		}
 	}, [open]);
 
 	const selectedIds = useMemo(() => new Set(selected.map(row => row.id)), [selected]);
 
-	const addFromSearch = () => {
+	const addFromSearch = async () => {
 		const q = search.trim();
 		if (!q) {
 			setMessage('Enter an Order No or Reservation.');
 			return;
 		}
+		if (isSearching) return;
 
-		const match = findExecutionBySearch(executions, q);
-		if (!match) {
-			const qNorm = q.toLowerCase();
-			const ambiguous = executions.filter(row => {
-				const order = normalize(row.orderId);
-				const reservation = normalize(row.reservation);
-				return (
-					order === qNorm ||
-					reservation === qNorm ||
-					(order && order.includes(qNorm)) ||
-					(reservation && reservation.includes(qNorm))
-				);
-			});
-			setMessage(
-				ambiguous.length > 1
-					? 'Multiple PRCs match that search. Use a more specific Order No or Reservation.'
-					: 'No PRC found for that Order No or Reservation.'
-			);
-			return;
-		}
-
-		if (selectedIds.has(match.id)) {
-			setMessage('That PRC is already in the list.');
-			return;
-		}
-
-		setSelected(prev => [...prev, match]);
-		setSearch('');
+		setIsSearching(true);
 		setMessage(null);
+		try {
+			const runLookup = async (term: string) => {
+				const base: PrcExecutionsListArgs = {
+					page: 1,
+					pageSize: 2,
+					fromDate: LOOKUP_FROM_DATE,
+					// Server bounds the range in APP_TIMEZONE, so resolve "today" there, not in the browser's zone.
+					toDate: dayjs.tz(undefined, APP_TIMEZONE).format('YYYY-MM-DD')
+				};
+				const [byOrder, byReservation] = await Promise.all([
+					triggerFetchPrcExecutions({ ...base, orderId: term }, true).unwrap(),
+					triggerFetchPrcExecutions({ ...base, reservation: [term] }, true).unwrap()
+				]);
+				return {
+					byOrder,
+					byReservation,
+					totalMatches: byOrder.pagination.totalCount + byReservation.pagination.totalCount
+				};
+			};
+
+			// Server matching is case-sensitive; retry uppercased (SAP identifiers are stored uppercase).
+			let lookup = await runLookup(q);
+			const qUpper = q.toUpperCase();
+			if (lookup.totalMatches === 0 && qUpper !== q) {
+				lookup = await runLookup(qUpper);
+			}
+			const { byOrder, byReservation, totalMatches } = lookup;
+
+			const merged = new Map<number, PrcExecution>();
+			for (const row of [...byOrder.data, ...byReservation.data]) merged.set(row.id, row);
+
+			if (totalMatches === 0) {
+				setMessage('No PRC found for that Order No or Reservation.');
+				return;
+			}
+			if (
+				merged.size > 1 ||
+				byOrder.pagination.totalCount > 1 ||
+				byReservation.pagination.totalCount > 1
+			) {
+				setMessage('Multiple PRCs match that search. Use the exact Order No or Reservation.');
+				return;
+			}
+
+			const [match] = merged.values();
+			if (selectedIds.has(match.id)) {
+				setMessage('That PRC is already in the list.');
+				return;
+			}
+
+			setSelected(prev => [...prev, match]);
+			setSearch('');
+		} catch {
+			setMessage('Search failed. Try again.');
+		} finally {
+			setIsSearching(false);
+		}
 	};
 
 	const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (event.key !== 'Enter') return;
 		event.preventDefault();
-		addFromSearch();
+		void addFromSearch();
 	};
 
 	const handleSearchSubmit = (event: FormEvent) => {
 		event.preventDefault();
-		addFromSearch();
+		void addFromSearch();
 	};
 
 	const handleRemove = (id: number) => {
@@ -140,7 +158,7 @@ const BulkQrSelectionDialog = ({ open, onClose, executions, onConfirm }: BulkQrS
 			<DialogTitle id="bulk-qr-select-title">Generate QR Codes</DialogTitle>
 			<DialogContent dividers>
 				<Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-					Search by Order No or Reservation and press Enter to add that PRC. Generate when the list is ready.
+					Search by exact Order No or Reservation and press Enter to add that PRC. Generate when the list is ready.
 				</Typography>
 
 				<Box component="form" onSubmit={handleSearchSubmit} sx={{ mb: 2 }}>
@@ -149,6 +167,7 @@ const BulkQrSelectionDialog = ({ open, onClose, executions, onConfirm }: BulkQrS
 						autoFocus
 						size="small"
 						value={search}
+						disabled={isSearching}
 						onChange={e => {
 							setSearch(e.target.value);
 							if (message) setMessage(null);
@@ -160,7 +179,12 @@ const BulkQrSelectionDialog = ({ open, onClose, executions, onConfirm }: BulkQrS
 								<InputAdornment position="start">
 									<SearchIcon fontSize="small" color="action" />
 								</InputAdornment>
-							)
+							),
+							endAdornment: isSearching ? (
+								<InputAdornment position="end">
+									<CircularProgress size={16} />
+								</InputAdornment>
+							) : null
 						}}
 					/>
 				</Box>

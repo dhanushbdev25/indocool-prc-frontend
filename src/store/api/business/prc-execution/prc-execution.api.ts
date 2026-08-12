@@ -3,58 +3,79 @@ import { baseQuery } from '../../baseApi';
 import {
 	isOperationDelayReasonComboResponse,
 	isWebComboResponse,
+	parsePrcExecutionListResponse,
 	type OperationDelayReasonComboItem,
+	type PrcExecutionListResponse,
 	type WebComboItem
 } from './prc-execution.validators';
 
 export interface PrcExecutionsListArgs {
-	/** Inclusive lower bound, `YYYY-MM-DD`. */
+	/** 1-based server page. */
+	page: number;
+	/** Rows per page; server clamps to 1..100. */
+	pageSize: number;
+	/** Inclusive lower bound on `updatedAt`, `YYYY-MM-DD`. Server forces a last-80-days window when absent. */
 	fromDate?: string;
-	/** Inclusive upper bound, `YYYY-MM-DD`. */
+	/** Inclusive upper bound on `updatedAt`, `YYYY-MM-DD`. */
 	toDate?: string;
 	/** Exact match, case-sensitive. */
 	orderId?: string;
-	/** Multi-select; serialized as comma-separated list. */
+	/** Customer names; server does partial match (ILIKE) on customerName. */
 	customer?: string[];
-	/** Multi-select; serialized as comma-separated list. */
+	/** Exact match. */
 	plantCode?: string[];
-	/** Multi-select; serialized as comma-separated list. */
+	/** Partial match (ILIKE). */
 	sapReferenceNumber?: string[];
+	/** Exact match: ACTIVE | IN_PROGRESS | COMPLETED. */
+	status?: string[];
+	/** Exact match. */
+	reservation?: string[];
+	/** Exact match. */
+	prcSetId?: string[];
+	/** Exact match. */
+	productionSetId?: string[];
 }
+
+const LIST_ARRAY_FILTER_KEYS = [
+	'customer',
+	'plantCode',
+	'sapReferenceNumber',
+	'status',
+	'reservation',
+	'prcSetId',
+	'productionSetId'
+] as const;
 
 export const prcExecutionApi = createApi({
 	reducerPath: 'prcExecutionApi',
 	baseQuery,
 	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant', 'OperationDelayReasonCombo', 'WorkstationsCombo'],
 	endpoints: builder => ({
-		// Fetch all PRC executions (server-side filtered)
-		fetchPrcExecutions: builder.query<unknown, PrcExecutionsListArgs | void>({
-			query: (args) => {
-				const a: PrcExecutionsListArgs = args ?? {};
-				const params: Record<string, string> = {};
-				const trim = (s?: string) => s?.trim();
-				const csv = (xs?: string[]) => {
-					const cleaned = (xs ?? []).map(s => s.trim()).filter(Boolean);
-					return cleaned.length ? cleaned.join(',') : undefined;
+		// Paginated PRC execution list (server-side filters; POST body, not a create)
+		fetchPrcExecutions: builder.query<PrcExecutionListResponse, PrcExecutionsListArgs>({
+			query: args => {
+				const body: Record<string, unknown> = {
+					page: args.page,
+					pageSize: args.pageSize
 				};
-				const fromDate = trim(a.fromDate);
-				if (fromDate) params.fromDate = fromDate;
-				const toDate = trim(a.toDate);
-				if (toDate) params.toDate = toDate;
-				const orderId = trim(a.orderId);
-				if (orderId) params.orderId = orderId;
-				const customer = csv(a.customer);
-				if (customer) params.customer = customer;
-				const plantCode = csv(a.plantCode);
-				if (plantCode) params.plantCode = plantCode;
-				const sap = csv(a.sapReferenceNumber);
-				if (sap) params.sapReferenceNumber = sap;
+				const trim = (s?: string) => s?.trim();
+				const fromDate = trim(args.fromDate);
+				if (fromDate) body.fromDate = fromDate;
+				const toDate = trim(args.toDate);
+				if (toDate) body.toDate = toDate;
+				const orderId = trim(args.orderId);
+				if (orderId) body.orderId = orderId;
+				for (const key of LIST_ARRAY_FILTER_KEYS) {
+					const cleaned = (args[key] ?? []).map(s => s.trim()).filter(Boolean);
+					if (cleaned.length) body[key] = cleaned;
+				}
 				return {
-					url: '/prcExecution',
-					method: 'GET',
-					params
+					url: '/prcExecution/list',
+					method: 'POST',
+					body
 				};
 			},
+			transformResponse: (response: unknown) => parsePrcExecutionListResponse(response),
 			providesTags: ['PrcExecution']
 		}),
 
@@ -191,6 +212,7 @@ export const prcExecutionApi = createApi({
 
 export const {
 	useFetchPrcExecutionsQuery,
+	useLazyFetchPrcExecutionsQuery,
 	useFetchPrcExecutionByIdQuery,
 	useCreatePrcExecutionMutation,
 	useFetchPartsByCustomerQuery,
