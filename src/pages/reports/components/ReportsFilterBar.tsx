@@ -2,7 +2,9 @@ import { Box, Button, Stack } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { DashboardDateRangeField } from '../../dashboard/components/DashboardDateRangeField';
 import type { DateRangePreset } from '../../dashboard/hooks/useDashboardDateRange';
-import FilterAutocomplete from '../../../components/masters/filters/FilterAutocomplete';
+import FilterAutocomplete, { type FilterComboOption } from '../../../components/masters/filters/FilterAutocomplete';
+import FilterDateRange from '../../../components/masters/filters/FilterDateRange';
+import type { DateRangeFilterValue } from '../../../components/masters/filters/types';
 import { dashboardFilterField } from '../../dashboard/constants/dashboardTokens';
 
 const CONTROL_HEIGHT = 40;
@@ -10,6 +12,7 @@ const CONTROL_HEIGHT = 40;
 export type ReportFilterKey =
 	| 'plantCode'
 	| 'customer'
+	| 'customerVariantId'
 	| 'sapReferenceNumber'
 	| 'status'
 	| 'orderId'
@@ -22,6 +25,7 @@ export type ReportFilters = Record<ReportFilterKey, string[]>;
 const FILTER_FIELDS: { key: ReportFilterKey; label: string }[] = [
 	{ key: 'plantCode', label: 'Plant Code' },
 	{ key: 'customer', label: 'Customer' },
+	{ key: 'customerVariantId', label: 'Variant' },
 	{ key: 'sapReferenceNumber', label: 'SAP Number' },
 	{ key: 'status', label: 'Status' },
 	{ key: 'orderId', label: 'Order No' },
@@ -38,10 +42,15 @@ interface ReportsFilterBarProps {
 	customTo: string | null;
 	onPresetChange: (preset: DateRangePreset) => void;
 	onCustomRangeChange: (from: string | null, to: string | null) => void;
+	/** SAP date range — optional filter, empty by default. */
+	sapDateRange: DateRangeFilterValue;
+	onSapDateRangeChange: (next: DateRangeFilterValue) => void;
 	filters: ReportFilters;
 	onFilterChange: (key: ReportFilterKey, values: string[]) => void;
-	filterOptions: Record<ReportFilterKey, string[]>;
+	filterOptions: Record<ReportFilterKey, string[] | FilterComboOption[]>;
 	optionsLoading?: Partial<Record<ReportFilterKey, boolean>>;
+	optionsDisabled?: Partial<Record<ReportFilterKey, boolean>>;
+	optionsPlaceholder?: Partial<Record<ReportFilterKey, string | undefined>>;
 	onClearFilters: () => void;
 	onGenerate: () => void;
 	canGenerate: boolean;
@@ -57,10 +66,14 @@ export const ReportsFilterBar = ({
 	customTo,
 	onPresetChange,
 	onCustomRangeChange,
+	sapDateRange,
+	onSapDateRangeChange,
 	filters,
 	onFilterChange,
 	filterOptions,
 	optionsLoading,
+	optionsDisabled,
+	optionsPlaceholder,
 	onClearFilters,
 	onGenerate,
 	canGenerate,
@@ -79,7 +92,8 @@ export const ReportsFilterBar = ({
 		mb: 3
 	};
 
-	const hasActiveFilters = FILTER_FIELDS.some(({ key }) => filters[key].length > 0);
+	const hasActiveFilters =
+		FILTER_FIELDS.some(({ key }) => filters[key].length > 0) || Boolean(sapDateRange.from || sapDateRange.to);
 
 	return (
 		<Box sx={panelSx}>
@@ -108,7 +122,11 @@ export const ReportsFilterBar = ({
 								onPresetChange={onPresetChange}
 								onCustomRangeChange={onCustomRangeChange}
 								disabled={disabled}
+								fieldLabel="PRC Date"
 							/>
+						</Box>
+						<Box sx={{ flex: 1, minWidth: 0, maxWidth: { sm: 320 } }}>
+							<FilterDateRange label="SAP Date" value={sapDateRange} onChange={onSapDateRangeChange} />
 						</Box>
 						<Box sx={{ flex: 1 }} />
 						{hasActiveFilters ? (
@@ -167,11 +185,11 @@ export const ReportsFilterBar = ({
 							<FilterAutocomplete
 								key={key}
 								label={label}
-								placeholder={optionsLoading?.[key] ? 'Loading…' : undefined}
+								placeholder={optionsPlaceholder?.[key] ?? (optionsLoading?.[key] ? 'Loading…' : undefined)}
 								options={filterOptions[key]}
 								value={filters[key]}
 								onChange={next => onFilterChange(key, next)}
-								disabled={disabled}
+								disabled={disabled || optionsDisabled?.[key]}
 								compactDisplay
 								sx={dashboardFilterField}
 							/>

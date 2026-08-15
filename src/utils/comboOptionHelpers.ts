@@ -1,6 +1,28 @@
 /** Shared helpers to turn combo API responses into filter option string lists. */
 
+import type { FilterComboOption } from '../components/masters/filters/FilterAutocomplete';
+import type { SapComboRow } from '../store/api/business/part-master/part.validators';
+
 const isRecord = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * SAP products combo → label/value options. The label surfaces the part code and
+ * description carried in the combo row's detail; the value stays the bare SAP number
+ * so the server contract is unchanged.
+ */
+export const sapComboOptions = (rows: SapComboRow[] | undefined): FilterComboOption[] => {
+	const byValue = new Map<string, FilterComboOption>();
+	for (const row of rows ?? []) {
+		const value = String(row.value).trim();
+		if (!value || byValue.has(value)) continue;
+		const detail = [row.data?.partNumber, row.data?.description]
+			.map(part => (part ?? '').trim())
+			.filter(Boolean)
+			.join(' · ');
+		byValue.set(value, { label: detail ? `${value} — ${detail}` : value, value });
+	}
+	return [...byValue.values()].sort((a, b) => a.label.localeCompare(b.label));
+};
 
 /** De-duplicate, trim, drop empties and sort locale-aware. */
 export const uniqueSorted = (values: string[]): string[] =>

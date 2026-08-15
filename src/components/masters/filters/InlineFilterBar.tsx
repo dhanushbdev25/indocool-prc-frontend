@@ -139,6 +139,7 @@ const InlineFilterBar = ({
 					options={field.options}
 					value={value}
 					onChange={next => setDraftValues(prev => ({ ...prev, [field.key]: next }))}
+					disabled={field.disabled}
 					compactDisplay
 					sx={dashboardFilterField}
 				/>

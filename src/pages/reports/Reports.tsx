@@ -4,9 +4,9 @@ import {
 	useFetchAvailableReportsQuery,
 	useLazyFetchReportQuery
 } from '../../store/api/business/reports/reports.api';
+import dayjs from 'dayjs';
 import type { ReportRequest } from '../../store/api/business/reports/reports.validators';
-import { useFetchPlantsQuery } from '../../store/api/business/prc-execution/prc-execution.api';
-import { PRC_EXECUTION_STATUSES } from '../../store/api/business/prc-execution/prc-execution.validators';
+import { useFetchPlantsQuery, useFetchPrcStatusComboQuery } from '../../store/api/business/prc-execution/prc-execution.api';
 import { useFetchSapComboQuery, useFetchCustomersQuery } from '../../store/api/business/part-master/part.api';
 import {
 	useFetchReservationComboQuery,
@@ -14,7 +14,13 @@ import {
 	useFetchSapSetIdComboQuery,
 	useFetchOrderIdComboQuery
 } from '../../store/api/business/customer/customer.api';
-import { uniqueSorted, plantCodeOptions } from '../../utils/comboOptionHelpers';
+import { useCustomerVariantOptions } from '../../hooks/useCustomerVariantOptions';
+import { uniqueSorted, plantCodeOptions, sapComboOptions } from '../../utils/comboOptionHelpers';
+import {
+	EMPTY_DATE_RANGE,
+	type DateRangeFilterValue,
+	type FilterComboOption
+} from '../../components/masters/filters/types';
 import { useDashboardDateRange } from '../dashboard/hooks/useDashboardDateRange';
 import { DashboardErrorBanner } from '../dashboard/components/DashboardErrorBanner';
 import { ReportsPageHeader } from './components/ReportsPageHeader';
@@ -28,12 +34,20 @@ import { ReportTableSkeleton } from './components/ReportTableSkeleton';
 const EMPTY_REPORT_FILTERS: ReportFilters = {
 	plantCode: [],
 	customer: [],
+	customerVariantId: [],
 	sapReferenceNumber: [],
 	status: [],
 	orderId: [],
 	reservation: [],
 	prcSetId: [],
 	productionSetId: []
+};
+
+/** FilterDateRange stores full ISO strings; the API expects YYYY-MM-DD. */
+const toIsoDate = (value: string | null): string | null => {
+	if (!value) return null;
+	const d = dayjs(value);
+	return d.isValid() ? d.format('YYYY-MM-DD') : null;
 };
 
 const Reports = () => {
@@ -65,11 +79,18 @@ const Reports = () => {
 
 	// Entity filters (multi-select). Generate is the explicit apply, so plain local state suffices.
 	const [filters, setFilters] = useState<ReportFilters>(EMPTY_REPORT_FILTERS);
+	// SAP date range — optional second date filter (sapFrom/sapTo, backend support pending).
+	const [sapDateRange, setSapDateRange] = useState<DateRangeFilterValue>(EMPTY_DATE_RANGE);
 	const handleFilterChange = useCallback((key: ReportFilterKey, values: string[]) => {
-		setFilters(prev => ({ ...prev, [key]: values }));
+		setFilters(prev => {
+			// A variant selection only makes sense for the customer it was loaded for.
+			if (key === 'customer') return { ...prev, customer: values, customerVariantId: [] };
+			return { ...prev, [key]: values };
+		});
 	}, []);
 	const handleClearFilters = useCallback(() => {
 		setFilters(EMPTY_REPORT_FILTERS);
+		setSapDateRange(EMPTY_DATE_RANGE);
 	}, []);
 
 	// Combo-backed filter options
@@ -80,20 +101,39 @@ const Reports = () => {
 	const { data: reservationComboData, isLoading: isReservationComboLoading } = useFetchReservationComboQuery();
 	const { data: prcSetIdComboData, isLoading: isPrcSetIdComboLoading } = useFetchPrcSetIdComboQuery();
 	const { data: sapSetIdComboData, isLoading: isSapSetIdComboLoading } = useFetchSapSetIdComboQuery();
+	const { data: statusComboData, isLoading: isStatusComboLoading } = useFetchPrcStatusComboQuery();
 
-	const filterOptions = useMemo<Record<ReportFilterKey, string[]>>(
+	// Variant depends on exactly one selected customer (variantCombo takes a single customerCode).
+	const {
+		options: variantOptions,
+		disabled: isVariantDisabled,
+		placeholder: variantPlaceholder
+	} = useCustomerVariantOptions({ selectedCustomers: filters.customer, mode: 'name' });
+
+	const filterOptions = useMemo<Record<ReportFilterKey, string[] | FilterComboOption[]>>(
 		() => ({
 			plantCode: plantCodeOptions(plantsData),
 			// Server filters customers with ILIKE on customerName, so options are the names (labels), not codes.
 			customer: uniqueSorted((customersData?.data ?? []).map(r => r.label)),
-			sapReferenceNumber: uniqueSorted((sapComboData?.data ?? []).map(r => r.value)),
-			status: [...PRC_EXECUTION_STATUSES],
+			customerVariantId: variantOptions,
+			sapReferenceNumber: sapComboOptions(sapComboData?.data),
+			status: (statusComboData ?? []).map(item => ({ label: item.label, value: String(item.value) })),
 			orderId: uniqueSorted((orderIdComboData?.data ?? []).map(r => r.value)),
 			reservation: uniqueSorted((reservationComboData?.data ?? []).map(r => r.value)),
 			prcSetId: uniqueSorted((prcSetIdComboData?.data ?? []).map(r => r.value)),
 			productionSetId: uniqueSorted((sapSetIdComboData?.data ?? []).map(r => r.value))
 		}),
-		[plantsData, customersData, sapComboData, orderIdComboData, reservationComboData, prcSetIdComboData, sapSetIdComboData]
+		[
+			plantsData,
+			customersData,
+			variantOptions,
+			sapComboData,
+			statusComboData,
+			orderIdComboData,
+			reservationComboData,
+			prcSetIdComboData,
+			sapSetIdComboData
+		]
 	);
 
 	const optionsLoading = useMemo<Partial<Record<ReportFilterKey, boolean>>>(
@@ -101,6 +141,7 @@ const Reports = () => {
 			plantCode: isPlantsLoading,
 			customer: isCustomersLoading,
 			sapReferenceNumber: isSapComboLoading,
+			status: isStatusComboLoading,
 			orderId: isOrderIdComboLoading,
 			reservation: isReservationComboLoading,
 			prcSetId: isPrcSetIdComboLoading,
@@ -110,11 +151,21 @@ const Reports = () => {
 			isPlantsLoading,
 			isCustomersLoading,
 			isSapComboLoading,
+			isStatusComboLoading,
 			isOrderIdComboLoading,
 			isReservationComboLoading,
 			isPrcSetIdComboLoading,
 			isSapSetIdComboLoading
 		]
+	);
+
+	const optionsDisabled = useMemo<Partial<Record<ReportFilterKey, boolean>>>(
+		() => ({ customerVariantId: isVariantDisabled }),
+		[isVariantDisabled]
+	);
+	const optionsPlaceholder = useMemo<Partial<Record<ReportFilterKey, string | undefined>>>(
+		() => ({ customerVariantId: variantPlaceholder }),
+		[variantPlaceholder]
 	);
 
 	const handleGenerate = useCallback(() => {
@@ -127,8 +178,15 @@ const Reports = () => {
 			const values = filters[key].map(v => v.trim()).filter(Boolean);
 			if (values.length) request[key] = values;
 		}
+		// SAP date is applied only when the range is complete (server requires both bounds).
+		const sapFrom = toIsoDate(sapDateRange.from);
+		const sapTo = toIsoDate(sapDateRange.to);
+		if (sapFrom && sapTo) {
+			request.sapFrom = sapFrom;
+			request.sapTo = sapTo;
+		}
 		triggerFetchReport(request);
-	}, [selectedCode, isReady, applyDateRangeDraft, triggerFetchReport, filters]);
+	}, [selectedCode, isReady, applyDateRangeDraft, triggerFetchReport, filters, sapDateRange]);
 
 	// The lazy query result represents the most recent trigger. Only render its
 	// data when it matches the active tab — otherwise the user is looking at a
@@ -218,10 +276,14 @@ const Reports = () => {
 							customTo={draftCustomTo}
 							onPresetChange={setDraftPreset}
 							onCustomRangeChange={setDraftCustomRange}
+							sapDateRange={sapDateRange}
+							onSapDateRangeChange={setSapDateRange}
 							filters={filters}
 							onFilterChange={handleFilterChange}
 							filterOptions={filterOptions}
 							optionsLoading={optionsLoading}
+							optionsDisabled={optionsDisabled}
+							optionsPlaceholder={optionsPlaceholder}
 							onClearFilters={handleClearFilters}
 							onGenerate={handleGenerate}
 							canGenerate={canGenerate}

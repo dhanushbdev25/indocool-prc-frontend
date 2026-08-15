@@ -32,6 +32,10 @@ interface DashboardFilterBarProps {
 	workstationOptions: string[];
 	shiftOptions: string[];
 	projectOptions: FilterComboOption[];
+	sapProductOptions: FilterComboOption[];
+	variantOptions: FilterComboOption[];
+	variantDisabled?: boolean;
+	variantPlaceholder?: string;
 	disabled?: boolean;
 }
 
@@ -55,6 +59,10 @@ export const DashboardFilterBar = ({
 	workstationOptions,
 	shiftOptions,
 	projectOptions,
+	sapProductOptions,
+	variantOptions,
+	variantDisabled = false,
+	variantPlaceholder,
 	disabled = false
 }: DashboardFilterBarProps) => {
 	const theme = useTheme();
@@ -68,6 +76,8 @@ export const DashboardFilterBar = ({
 		(draftFilters.workstation.length > 0 ? 1 : 0) +
 		(draftFilters.shift.length > 0 ? 1 : 0) +
 		(draftFilters.projects.length > 0 ? 1 : 0) +
+		(draftFilters.sapReferenceNumber.length > 0 ? 1 : 0) +
+		(draftFilters.customerVariantId.length > 0 ? 1 : 0) +
 		(draftPreset !== 'last30' || draftCustomFrom || draftCustomTo ? 1 : 0);
 
 	const panelSx = {
@@ -151,7 +161,7 @@ export const DashboardFilterBar = ({
 								xs: '1fr',
 								sm: 'repeat(2, minmax(0, 1fr))',
 								md: 'repeat(3, minmax(0, 1fr))',
-								lg: 'repeat(5, minmax(0, 1fr))'
+								lg: 'repeat(4, minmax(0, 1fr))'
 							},
 							gap: { xs: 1.25, sm: 1.5 }
 						}}
@@ -168,8 +178,8 @@ export const DashboardFilterBar = ({
 						/>
 
 						<FilterAutocomplete
-							label="Units"
-							placeholder="All units"
+							label="Plant"
+							placeholder="All plants"
 							options={unitOptions}
 							value={draftFilters.units}
 							onChange={value => onDraftFilterChange('units', value)}
@@ -198,11 +208,31 @@ export const DashboardFilterBar = ({
 							sx={dashboardFilterField}
 						/>
 						<FilterAutocomplete
-							label="Projects"
-							placeholder="All projects"
+							label="Customer"
+							placeholder="All customers"
 							options={projectOptions}
 							value={draftFilters.projects}
 							onChange={value => onDraftFilterChange('projects', value)}
+							disabled={disabled}
+							compactDisplay
+							sx={dashboardFilterField}
+						/>
+						<FilterAutocomplete
+							label="Variant"
+							placeholder={variantPlaceholder}
+							options={variantOptions}
+							value={draftFilters.customerVariantId}
+							onChange={value => onDraftFilterChange('customerVariantId', value)}
+							disabled={disabled || variantDisabled}
+							compactDisplay
+							sx={dashboardFilterField}
+						/>
+						<FilterAutocomplete
+							label="SAP Product"
+							placeholder="All SAP products"
+							options={sapProductOptions}
+							value={draftFilters.sapReferenceNumber}
+							onChange={value => onDraftFilterChange('sapReferenceNumber', value)}
 							disabled={disabled}
 							compactDisplay
 							sx={dashboardFilterField}

@@ -18,13 +18,11 @@ import {
 	useFetchPrcExecutionsQuery,
 	useLazyFetchPrcExecutionsQuery,
 	useFetchPlantsQuery,
+	useFetchPrcStatusComboQuery,
 	useLazyFetchPrcExecutionDetailsQuery,
 	type PrcExecutionsListArgs
 } from '../../../../store/api/business/prc-execution/prc-execution.api';
-import {
-	PRC_EXECUTION_STATUSES,
-	type PrcExecution
-} from '../../../../store/api/business/prc-execution/prc-execution.validators';
+import type { PrcExecution } from '../../../../store/api/business/prc-execution/prc-execution.validators';
 import { useFetchSapComboQuery, useFetchCustomersQuery } from '../../../../store/api/business/part-master/part.api';
 import {
 	useFetchReservationComboQuery,
@@ -32,12 +30,15 @@ import {
 	useFetchSapSetIdComboQuery
 } from '../../../../store/api/business/customer/customer.api';
 import { useListView } from '../../../../hooks/useListView';
+import { useCustomerVariantOptions } from '../../../../hooks/useCustomerVariantOptions';
 import {
 	InlineFilterBar,
 	MasterListLandingPage,
 	masterListTableFrame,
+	deriveOptions,
 	isDateRangeValue,
 	isStringArrayValue,
+	isFilterValueEmpty,
 	type FilterFieldConfig,
 	type FilterValue
 } from '../../../../components/masters';
@@ -50,7 +51,7 @@ import {
 	unwrapExecutionDetail,
 	type PrcQrLabelFields
 } from '../qr-labels';
-import { uniqueSorted, plantCodeOptions } from '../../../../utils/comboOptionHelpers';
+import { uniqueSorted, plantCodeOptions, sapComboOptions } from '../../../../utils/comboOptionHelpers';
 import { exportRowsToExcel, type ExportColumn } from '../../../../utils/exportTableToExcel';
 import { DATE_PICKER_FORMAT } from '../../../../utils/dateConfig';
 
@@ -117,14 +118,30 @@ const ListPrcExecution = () => {
 	const { data: reservationComboData, isLoading: isReservationComboLoading } = useFetchReservationComboQuery();
 	const { data: prcSetIdComboData, isLoading: isPrcSetIdComboLoading } = useFetchPrcSetIdComboQuery();
 	const { data: sapSetIdComboData, isLoading: isSapSetIdComboLoading } = useFetchSapSetIdComboQuery();
+	const { data: statusComboData, isLoading: isStatusComboLoading } = useFetchPrcStatusComboQuery();
 
-	const sapOptions = useMemo(() => uniqueSorted((sapComboData?.data ?? []).map(r => r.value)), [sapComboData]);
+	const sapOptions = useMemo(() => sapComboOptions(sapComboData?.data), [sapComboData]);
 	// Server filters customers with ILIKE on customerName, so options must be the names (labels), not codes.
 	const customerOptions = useMemo(
 		() => uniqueSorted((customersData?.data ?? []).map(r => r.label)),
 		[customersData]
 	);
 	const plantOptions = useMemo(() => plantCodeOptions(plantsData), [plantsData]);
+	const statusOptions = useMemo(
+		() => (statusComboData ?? []).map(item => ({ label: item.label, value: String(item.value) })),
+		[statusComboData]
+	);
+
+	// Variant depends on exactly one APPLIED customer (variantCombo takes a single customerCode).
+	const appliedCustomers = useMemo(
+		() => (isStringArrayValue(filters.customer) ? filters.customer : []),
+		[filters.customer]
+	);
+	const {
+		options: variantOptions,
+		disabled: isVariantDisabled,
+		placeholder: variantPlaceholder
+	} = useCustomerVariantOptions({ selectedCustomers: appliedCustomers, mode: 'name' });
 	const reservationOptions = useMemo(
 		() => uniqueSorted((reservationComboData?.data ?? []).map(r => r.value)),
 		[reservationComboData]
@@ -151,6 +168,7 @@ const ListPrcExecution = () => {
 			plantCode: sortedArrayFilter(filters.plantCode),
 			sapReferenceNumber: sortedArrayFilter(filters.sapReferenceNumber),
 			status: sortedArrayFilter(filters.status),
+			customerVariantId: sortedArrayFilter(filters.customerVariantId),
 			reservation: sortedArrayFilter(filters.reservation),
 			prcSetId: sortedArrayFilter(filters.prcSetId),
 			productionSetId: sortedArrayFilter(filters.productionSetId)
@@ -161,6 +179,7 @@ const ListPrcExecution = () => {
 		filters.plantCode,
 		filters.sapReferenceNumber,
 		filters.status,
+		filters.customerVariantId,
 		filters.reservation,
 		filters.prcSetId,
 		filters.productionSetId,
@@ -175,8 +194,31 @@ const ListPrcExecution = () => {
 		isFetching: isPrcExecutionDataFetching
 	} = useFetchPrcExecutionsQuery(queryArgs);
 
-	const rows: PrcExecutionData[] = prcExecutionData?.data ?? [];
+	const rows: PrcExecutionData[] = useMemo(() => prcExecutionData?.data ?? [], [prcExecutionData]);
 	const totalCount = prcExecutionData?.pagination.totalCount ?? 0;
+
+	// Operation filter is client-side only (no server support): it narrows the CURRENT page.
+	// Options come from the loaded rows; pagination/totalCount stay server-driven.
+	const matchesOperationFilter = useCallback(
+		(row: PrcExecutionData): boolean => {
+			const opFilter = filters.operation;
+			if (isFilterValueEmpty(opFilter)) return true;
+			const selected = isStringArrayValue(opFilter) ? opFilter : [];
+			if (selected.length === 0) return true;
+			const ops = (row.operationStatus ?? []).map(op => (op.operationText ?? '').trim()).filter(Boolean);
+			return ops.some(o => selected.includes(o));
+		},
+		[filters.operation]
+	);
+	const visibleRows = useMemo(() => rows.filter(matchesOperationFilter), [rows, matchesOperationFilter]);
+	const operationOptions = useMemo(
+		() =>
+			deriveOptions(
+				rows.flatMap(e => (e.operationStatus ?? []).map(op => ({ text: (op.operationText ?? '').trim() }))),
+				r => r.text
+			),
+		[rows]
+	);
 
 	// Clamp a stale/persisted page index back into range when the result set shrinks.
 	const responseTotalPages = prcExecutionData?.pagination.totalPages;
@@ -209,13 +251,15 @@ const ListPrcExecution = () => {
 				const next = await triggerFetchPrcExecutions({ ...base, page }, true).unwrap();
 				for (const row of next.data) byId.set(row.id, row);
 			}
-			exportRowsToExcel(PRC_EXPORT_COLUMNS, [...byId.values()], 'prc-execution');
+			// Apply the client-side operation filter so the export matches what the table shows.
+			const exportRows = [...byId.values()].filter(matchesOperationFilter);
+			exportRowsToExcel(PRC_EXPORT_COLUMNS, exportRows, 'prc-execution');
 		} catch {
 			setExportError('Export failed. Try again.');
 		} finally {
 			setIsExporting(false);
 		}
-	}, [queryArgs, triggerFetchPrcExecutions]);
+	}, [queryArgs, triggerFetchPrcExecutions, matchesOperationFilter]);
 
 	const fields = useMemo<FilterFieldConfig[]>(
 		() => [
@@ -241,6 +285,14 @@ const ListPrcExecution = () => {
 				label: 'Customer',
 				options: customerOptions,
 				placeholder: isCustomersLoading ? 'Loading…' : undefined
+			},
+			{
+				kind: 'autocomplete',
+				key: 'customerVariantId',
+				label: 'Variant',
+				options: variantOptions,
+				disabled: isVariantDisabled,
+				placeholder: variantPlaceholder
 			},
 			{
 				kind: 'autocomplete',
@@ -272,15 +324,28 @@ const ListPrcExecution = () => {
 			},
 			{
 				kind: 'autocomplete',
+				key: 'operation',
+				label: 'Operation',
+				options: operationOptions,
+				placeholder: 'Filters the current page'
+			},
+			{
+				kind: 'autocomplete',
 				key: 'status',
 				label: 'Status',
-				options: [...PRC_EXECUTION_STATUSES]
+				options: statusOptions,
+				placeholder: isStatusComboLoading ? 'Loading…' : undefined
 			}
 		],
 		[
 			sapOptions,
 			customerOptions,
 			plantOptions,
+			variantOptions,
+			isVariantDisabled,
+			variantPlaceholder,
+			operationOptions,
+			statusOptions,
 			reservationOptions,
 			prcSetIdOptions,
 			productionSetIdOptions,
@@ -289,16 +354,21 @@ const ListPrcExecution = () => {
 			isPlantsLoading,
 			isReservationComboLoading,
 			isPrcSetIdComboLoading,
-			isSapSetIdComboLoading
+			isSapSetIdComboLoading,
+			isStatusComboLoading
 		]
 	);
 
 	const handleFiltersChange = useCallback(
 		(next: Record<string, FilterValue>) => {
-			setFilters(next);
+			// A variant selection only makes sense for the customer it was loaded for.
+			const prevCustomer = JSON.stringify(filters.customer ?? []);
+			const nextCustomer = JSON.stringify(next.customer ?? []);
+			const sanitized = prevCustomer === nextCustomer ? next : { ...next, customerVariantId: [] };
+			setFilters(sanitized);
 			setPagination(prev => ({ ...prev, pageIndex: 0 }));
 		},
-		[setFilters, setPagination]
+		[filters.customer, setFilters, setPagination]
 	);
 
 	const handleSearchChange = useCallback(
@@ -436,7 +506,7 @@ const ListPrcExecution = () => {
 						) : null}
 						<Box sx={{ opacity: isPrcExecutionDataFetching && !isPrcExecutionDataLoading ? 0.6 : 1 }}>
 							<PrcExecutionTable
-								data={rows}
+								data={visibleRows}
 								totalCount={totalCount}
 								onExportAll={handleExportAll}
 								isExporting={isExporting}

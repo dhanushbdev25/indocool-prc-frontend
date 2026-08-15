@@ -28,6 +28,8 @@ export interface PrcExecutionsListArgs {
 	sapReferenceNumber?: string[];
 	/** Exact match: ACTIVE | IN_PROGRESS | COMPLETED. */
 	status?: string[];
+	/** Customer variant ids (numeric strings; server coerces with Number). */
+	customerVariantId?: string[];
 	/** Exact match. */
 	reservation?: string[];
 	/** Exact match. */
@@ -41,6 +43,7 @@ const LIST_ARRAY_FILTER_KEYS = [
 	'plantCode',
 	'sapReferenceNumber',
 	'status',
+	'customerVariantId',
 	'reservation',
 	'prcSetId',
 	'productionSetId'
@@ -49,7 +52,7 @@ const LIST_ARRAY_FILTER_KEYS = [
 export const prcExecutionApi = createApi({
 	reducerPath: 'prcExecutionApi',
 	baseQuery,
-	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant', 'OperationDelayReasonCombo', 'WorkstationsCombo'],
+	tagTypes: ['PrcExecution', 'PartsCombo', 'Plant', 'OperationDelayReasonCombo', 'WorkstationsCombo', 'PrcStatusCombo'],
 	endpoints: builder => ({
 		// Paginated PRC execution list (server-side filters; POST body, not a create)
 		fetchPrcExecutions: builder.query<PrcExecutionListResponse, PrcExecutionsListArgs>({
@@ -166,6 +169,34 @@ export const prcExecutionApi = createApi({
 			providesTags: ['OperationDelayReasonCombo']
 		}),
 
+		/** GET /web/combo?type=PRCSTATUS — execution status options (label for display, value sent as filter) */
+		fetchPrcStatusCombo: builder.query<WebComboItem[], void>({
+			query: () => ({
+				url: '/combo',
+				method: 'GET',
+				params: { type: 'PRCSTATUS' }
+			}),
+			transformResponse: (response: unknown) => {
+				if (!isWebComboResponse(response)) {
+					console.warn('Invalid PRCSTATUS combo response structure', response);
+					if (Array.isArray(response)) {
+						return response as WebComboItem[];
+					}
+					if (
+						typeof response === 'object' &&
+						response !== null &&
+						'data' in response &&
+						Array.isArray((response as { data?: unknown }).data)
+					) {
+						return (response as { data: WebComboItem[] }).data;
+					}
+					return [];
+				}
+				return response.data;
+			},
+			providesTags: ['PrcStatusCombo']
+		}),
+
 		/** GET /web/combo/workstations?plantCode=&plantCode= — workstations for one or more plants */
 		fetchWorkstationsCombo: builder.query<WebComboItem[], { plantCodes: (string | number)[] }>({
 			query: ({ plantCodes }) => {
@@ -221,5 +252,6 @@ export const {
 	useUpdatePrcExecutionProgressMutation,
 	useFetchPlantsQuery,
 	useFetchOperationDelayReasonComboQuery,
-	useFetchWorkstationsComboQuery
+	useFetchWorkstationsComboQuery,
+	useFetchPrcStatusComboQuery
 } = prcExecutionApi;

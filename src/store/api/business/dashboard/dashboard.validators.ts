@@ -10,6 +10,10 @@ export interface DashboardEntityFilterParams {
 	workstation?: string[];
 	shift?: string[];
 	projects?: string[];
+	/** SAP reference numbers — proposed param, backend support pending. */
+	sapReferenceNumber?: string[];
+	/** Customer variant ids (numeric strings) — proposed param, backend support pending. */
+	customerVariantId?: string[];
 }
 
 export interface DashboardQueryParams extends DashboardDateRangeParams, DashboardEntityFilterParams {}
@@ -19,6 +23,8 @@ export interface DashboardQueryWireParams extends DashboardDateRangeParams {
 	workstation?: string;
 	shift?: string;
 	projects?: string;
+	sapReferenceNumber?: string;
+	customerVariantId?: string;
 }
 
 const joinFilterValues = (values: string[] | undefined): string | undefined => {
@@ -33,10 +39,14 @@ export const buildDashboardQueryParams = (args: DashboardQueryParams): Dashboard
 	const workstation = joinFilterValues(args.workstation);
 	const shift = joinFilterValues(args.shift);
 	const projects = joinFilterValues(args.projects);
+	const sapReferenceNumber = joinFilterValues(args.sapReferenceNumber);
+	const customerVariantId = joinFilterValues(args.customerVariantId);
 	if (units) params.units = units;
 	if (workstation) params.workstation = workstation;
 	if (shift) params.shift = shift;
 	if (projects) params.projects = projects;
+	if (sapReferenceNumber) params.sapReferenceNumber = sapReferenceNumber;
+	if (customerVariantId) params.customerVariantId = customerVariantId;
 	return params;
 };
 

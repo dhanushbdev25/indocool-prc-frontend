@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Box, Grid, Stack } from '@mui/material';
 import {
 	useFetchMetricsQuery,
@@ -10,6 +10,9 @@ import { DATEWISE_STAGE_CONFIG } from './constants/stageConfig';
 import { useDashboardDateRange } from './hooks/useDashboardDateRange';
 import { useDashboardEntityFilters } from './hooks/useDashboardEntityFilters';
 import { useDashboardFilterOptions } from './hooks/useDashboardFilterOptions';
+import { useCustomerVariantOptions } from '../../hooks/useCustomerVariantOptions';
+import { useFetchSapComboQuery } from '../../store/api/business/part-master/part.api';
+import { sapComboOptions } from '../../utils/comboOptionHelpers';
 import { DashboardPageHeader } from './components/DashboardPageHeader';
 import { DashboardSection } from './components/DashboardSection';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
@@ -54,13 +57,25 @@ const Dashboard = () => {
 		selectedUnits: draftFilters.units
 	});
 
+	// SAP product + variant options are dashboard-only — fetched here rather than in the
+	// shared useDashboardFilterOptions so the DPMO tabs don't fire these queries.
+	const { data: sapComboData } = useFetchSapComboQuery();
+	const sapProductOptions = useMemo(() => sapComboOptions(sapComboData?.data), [sapComboData]);
+	const {
+		options: variantOptions,
+		disabled: variantDisabled,
+		placeholder: variantPlaceholder
+	} = useCustomerVariantOptions({ selectedCustomers: draftFilters.projects, mode: 'code' });
+
 	const queryArgs = {
 		from,
 		to,
 		units: appliedFilters.units,
 		workstation: appliedFilters.workstation,
 		shift: appliedFilters.shift,
-		projects: appliedFilters.projects
+		projects: appliedFilters.projects,
+		sapReferenceNumber: appliedFilters.sapReferenceNumber,
+		customerVariantId: appliedFilters.customerVariantId
 	};
 	const skip = !isReady;
 
@@ -118,6 +133,10 @@ const Dashboard = () => {
 				workstationOptions={workstationOptions}
 				shiftOptions={shiftOptions}
 				projectOptions={projectOptions}
+				sapProductOptions={sapProductOptions}
+				variantOptions={variantOptions}
+				variantDisabled={variantDisabled}
+				variantPlaceholder={variantPlaceholder}
 				filtersDisabled={!isReady}
 			/>
 

@@ -22,6 +22,10 @@ interface DashboardPageHeaderProps {
 	workstationOptions: string[];
 	shiftOptions: string[];
 	projectOptions: FilterComboOption[];
+	sapProductOptions: FilterComboOption[];
+	variantOptions: FilterComboOption[];
+	variantDisabled?: boolean;
+	variantPlaceholder?: string;
 	filtersDisabled?: boolean;
 }
 
@@ -43,6 +47,10 @@ export const DashboardPageHeader = ({
 	workstationOptions,
 	shiftOptions,
 	projectOptions,
+	sapProductOptions,
+	variantOptions,
+	variantDisabled,
+	variantPlaceholder,
 	filtersDisabled = false
 }: DashboardPageHeaderProps) => (
 	<Box sx={{ pb: 2.5, mb: 0.5 }}>
@@ -78,6 +86,10 @@ export const DashboardPageHeader = ({
 				workstationOptions={workstationOptions}
 				shiftOptions={shiftOptions}
 				projectOptions={projectOptions}
+				sapProductOptions={sapProductOptions}
+				variantOptions={variantOptions}
+				variantDisabled={variantDisabled}
+				variantPlaceholder={variantPlaceholder}
 				disabled={filtersDisabled}
 			/>
 		</Stack>

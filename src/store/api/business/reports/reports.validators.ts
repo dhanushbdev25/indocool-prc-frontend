@@ -19,8 +19,14 @@ export interface ReportData {
 
 export interface ReportRequest {
 	reportType: string;
+	/** PRC date range (server currently filters updatedAt). */
 	from?: string;
 	to?: string;
+	/** SAP date range — proposed contract, backend support pending. Sent only when both are set. */
+	sapFrom?: string;
+	sapTo?: string;
+	/** Customer variant ids (numeric strings; server coerces with Number). */
+	customerVariantId?: string[];
 	/** Exact match. */
 	plantCode?: string[];
 	/** Customer names; server does partial match (ILIKE) on customerName. */

@@ -1,6 +1,8 @@
 import type { DateRangeFilterValue, FilterValue } from '../../../store/slices/listView';
+import type { FilterComboOption } from './FilterAutocomplete';
 
 export type { DateRangeFilterValue, FilterValue };
+export type { FilterComboOption };
 
 export type FilterFieldKind = 'autocomplete' | 'dateRange' | 'search';
 
@@ -11,8 +13,10 @@ interface BaseFieldConfig {
 
 export interface AutocompleteFieldConfig extends BaseFieldConfig {
 	kind: 'autocomplete';
-	options: string[];
+	/** Plain values, or label/value pairs when the displayed label differs from the sent value. */
+	options: string[] | FilterComboOption[];
 	placeholder?: string;
+	disabled?: boolean;
 }
 
 export interface DateRangeFieldConfig extends BaseFieldConfig {

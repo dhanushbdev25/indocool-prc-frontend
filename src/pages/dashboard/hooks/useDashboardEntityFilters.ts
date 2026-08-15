@@ -7,7 +7,9 @@ const EMPTY_FILTERS: DashboardEntityFilters = {
 	units: [],
 	workstation: [],
 	shift: [],
-	projects: []
+	projects: [],
+	sapReferenceNumber: [],
+	customerVariantId: []
 };
 
 export type DashboardEntityFilterKey = keyof DashboardEntityFilters;
@@ -23,7 +25,9 @@ const areFilterMapsEqual = (a: DashboardEntityFilters, b: DashboardEntityFilters
 	areArraysEqual(a.units, b.units) &&
 	areArraysEqual(a.workstation, b.workstation) &&
 	areArraysEqual(a.shift, b.shift) &&
-	areArraysEqual(a.projects, b.projects);
+	areArraysEqual(a.projects, b.projects) &&
+	areArraysEqual(a.sapReferenceNumber, b.sapReferenceNumber) &&
+	areArraysEqual(a.customerVariantId, b.customerVariantId);
 
 /**
  * Dashboard entity filters with a draft/applied split.
@@ -42,6 +46,10 @@ export const useDashboardEntityFilters = () => {
 		setDraftFilters(prev => {
 			if (key === 'units') {
 				return { ...prev, units: value, workstation: [] };
+			}
+			if (key === 'projects') {
+				// Variant options are loaded for a single customer — a customer change invalidates them.
+				return { ...prev, projects: value, customerVariantId: [] };
 			}
 			return { ...prev, [key]: value };
 		});
@@ -67,7 +75,9 @@ export const useDashboardEntityFilters = () => {
 			appliedFilters.units.length > 0 ||
 			appliedFilters.workstation.length > 0 ||
 			appliedFilters.shift.length > 0 ||
-			appliedFilters.projects.length > 0,
+			appliedFilters.projects.length > 0 ||
+			appliedFilters.sapReferenceNumber.length > 0 ||
+			appliedFilters.customerVariantId.length > 0,
 		[appliedFilters]
 	);
 

@@ -26,6 +26,8 @@ interface DashboardDateRangeFieldProps {
 	onPresetChange: (preset: DateRangePreset) => void;
 	onCustomRangeChange: (from: string | null, to: string | null) => void;
 	disabled?: boolean;
+	/** Floating field label (defaults to "Date Range"). */
+	fieldLabel?: string;
 }
 
 const toDayjs = (iso: string | null): Dayjs | null => {
@@ -48,7 +50,8 @@ export const DashboardDateRangeField = ({
 	customTo,
 	onPresetChange,
 	onCustomRangeChange,
-	disabled = false
+	disabled = false,
+	fieldLabel = 'Date Range'
 }: DashboardDateRangeFieldProps) => {
 	const theme = useTheme();
 	const anchorRef = useRef<HTMLButtonElement>(null);
@@ -87,7 +90,7 @@ export const DashboardDateRangeField = ({
 						pointerEvents: 'none'
 					}}
 				>
-					Date Range
+					{fieldLabel}
 				</Typography>
 
 				<ButtonBase
