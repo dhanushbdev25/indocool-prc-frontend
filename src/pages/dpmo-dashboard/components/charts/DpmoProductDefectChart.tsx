@@ -16,7 +16,6 @@ export const DpmoProductDefectChart = ({
 }: DpmoProductDefectChartProps) => (
 	<DashboardChartCard title={title} height={360}>
 		<DashboardChart
-			type="bar"
 			data={toProductDefectChartData(data)}
 			height={360}
 			valueFormatter={v => v.toLocaleString('en-IN')}

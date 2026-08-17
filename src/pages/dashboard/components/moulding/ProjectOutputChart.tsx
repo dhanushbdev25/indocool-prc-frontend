@@ -11,6 +11,6 @@ interface ProjectOutputChartProps {
 
 export const ProjectOutputChart = ({ data }: ProjectOutputChartProps) => (
 	<DashboardChartCard title="Project-wise Moulding Output (%)">
-		<DashboardChart type="line" data={toProjectChartData(data)} xAxisAngle={-35} />
+		<DashboardChart data={toProjectChartData(data)} xAxisAngle={-35} />
 	</DashboardChartCard>
 );

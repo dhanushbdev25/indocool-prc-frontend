@@ -9,6 +9,6 @@ interface DpmoFpyLineChartProps {
 
 export const DpmoFpyLineChart = ({ data, title = 'First Pass Yield (%)' }: DpmoFpyLineChartProps) => (
 	<DashboardChartCard title={title}>
-		<DashboardChart type="line" data={toFpyChartData(data)} valueFormatter={v => `${v.toFixed(2)}%`} />
+		<DashboardChart data={toFpyChartData(data)} valueFormatter={v => `${v.toFixed(2)}%`} />
 	</DashboardChartCard>
 );

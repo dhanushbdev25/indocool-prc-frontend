@@ -173,7 +173,6 @@ const Dashboard = () => {
 									title={`${stage.label} output (%)`}
 									data={datewiseData ?? []}
 									stageKey={stage.key}
-									chartType={stage.datewiseChartType!}
 								/>
 							</Grid>
 						))}

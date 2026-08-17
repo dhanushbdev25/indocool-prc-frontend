@@ -29,7 +29,7 @@ export const DpmoDefectDonut = ({ title, data }: DpmoDefectDonutProps) => {
 	if (total <= 0) {
 		return (
 			<DashboardChartCard title={title}>
-				<DashboardChartEmptyState chartType="bar" />
+				<DashboardChartEmptyState />
 			</DashboardChartCard>
 		);
 	}

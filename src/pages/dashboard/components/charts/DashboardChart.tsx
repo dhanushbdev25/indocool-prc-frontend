@@ -1,8 +1,6 @@
 import { Box } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import {
-	Bar,
-	BarChart,
 	CartesianGrid,
 	LabelList,
 	Line,
@@ -15,32 +13,32 @@ import {
 import { analyticsChartHeight } from '../../constants/dashboardTokens';
 import { hasChartData } from '../../utils/chartHelpers';
 import { DashboardChartEmptyState } from './DashboardChartEmptyState';
-import type { DashboardChartType, ChartDataPoint } from './chartTypes';
+import type { ChartDataPoint } from './chartTypes';
 
-export type { DashboardChartType, ChartDataPoint } from './chartTypes';
+export type { ChartDataPoint } from './chartTypes';
 
 interface DashboardChartProps {
-	type: DashboardChartType;
 	data: ChartDataPoint[];
 	height?: number;
 	valueFormatter?: (value: number) => string;
 	xAxisAngle?: number;
+	/** Shortens long category labels (e.g. workstation names) on the X axis. */
+	xTickFormatter?: (value: string) => string;
 }
 
 const defaultMargin = { top: 28, right: 8, left: 0, bottom: 0 };
 
 export const DashboardChart = ({
-	type,
 	data,
 	height = analyticsChartHeight,
 	valueFormatter = v => v.toFixed(2),
-	xAxisAngle = -40
+	xAxisAngle = -40,
+	xTickFormatter
 }: DashboardChartProps) => {
 	const theme = useTheme();
 	const chartColor = theme.palette.primary.main;
-
 	if (!hasChartData(data)) {
-		return <DashboardChartEmptyState chartType={type} height={height} />;
+		return <DashboardChartEmptyState height={height} />;
 	}
 
 	const xAxisProps = {
@@ -52,7 +50,8 @@ export const DashboardChart = ({
 		interval: 0 as const,
 		axisLine: false,
 		tickLine: false,
-		dy: 8
+		dy: 8,
+		...(xTickFormatter ? { tickFormatter: (value: string) => xTickFormatter(String(value)) } : {})
 	};
 
 	const yAxisProps = {
@@ -85,17 +84,7 @@ export const DashboardChart = ({
 
 	const gridStroke = alpha(theme.palette.divider, 0.8);
 
-	const chart = type === 'bar' ? (
-		<BarChart data={data} margin={defaultMargin} barCategoryGap="18%">
-			<CartesianGrid strokeDasharray="4 4" stroke={gridStroke} vertical={false} />
-			<XAxis {...xAxisProps} />
-			<YAxis {...yAxisProps} />
-			<Tooltip {...tooltipStyle} formatter={(v: number) => [valueFormatter(v), 'Value']} cursor={{ fill: alpha(chartColor, 0.06) }} />
-			<Bar dataKey="value" fill={chartColor} radius={[6, 6, 0, 0]} maxBarSize={40}>
-				<LabelList dataKey="value" {...labelProps} />
-			</Bar>
-		</BarChart>
-	) : (
+	const chart = (
 		<LineChart data={data} margin={defaultMargin}>
 			<CartesianGrid strokeDasharray="4 4" stroke={gridStroke} vertical={false} />
 			<XAxis {...xAxisProps} />

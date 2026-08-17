@@ -12,7 +12,6 @@ interface ProjectLossChartProps {
 export const ProjectLossChart = ({ data }: ProjectLossChartProps) => (
 	<DashboardChartCard title="Loss (Mins)">
 		<DashboardChart
-			type="bar"
 			data={toProjectLossChartData(data)}
 			valueFormatter={v => String(Math.round(v))}
 			xAxisAngle={-35}

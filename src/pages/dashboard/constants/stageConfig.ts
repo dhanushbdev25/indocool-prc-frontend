@@ -1,24 +1,21 @@
 import type { StageKey } from '../../../store/api/business/dashboard/dashboard.validators';
 
-export type DatewiseChartType = 'bar' | 'line';
-
 export interface StageConfig {
 	key: StageKey;
 	label: string;
-	datewiseChartType?: DatewiseChartType;
+	/** Stages with a daily trend chart. Top Coat and Anti-skid have none. */
+	hasDatewiseChart?: boolean;
 }
 
 export const STAGE_CONFIG: StageConfig[] = [
-	{ key: 'moulding', label: 'Moulding', datewiseChartType: 'bar' },
-	{ key: 'drilling', label: 'Drilling', datewiseChartType: 'bar' },
-	{ key: 'cutting', label: 'Cutting', datewiseChartType: 'bar' },
-	{ key: 'subAssembly', label: 'Sub-assembly', datewiseChartType: 'line' },
-	{ key: 'assembly', label: 'Assembly', datewiseChartType: 'line' },
+	{ key: 'moulding', label: 'Moulding', hasDatewiseChart: true },
+	{ key: 'drilling', label: 'Drilling', hasDatewiseChart: true },
+	{ key: 'cutting', label: 'Cutting', hasDatewiseChart: true },
+	{ key: 'subAssembly', label: 'Sub-assembly', hasDatewiseChart: true },
+	{ key: 'assembly', label: 'Assembly', hasDatewiseChart: true },
 	{ key: 'topCoat', label: 'Top Coat' },
 	{ key: 'antiskid', label: 'Anti-skid' },
-	{ key: 'packaging', label: 'Packing', datewiseChartType: 'bar' }
+	{ key: 'packaging', label: 'Packing', hasDatewiseChart: true }
 ];
 
-export const DATEWISE_STAGE_CONFIG = STAGE_CONFIG.filter(s => s.datewiseChartType != null);
-
-export const CHART_HEIGHT = 280;
+export const DATEWISE_STAGE_CONFIG = STAGE_CONFIG.filter(s => s.hasDatewiseChart);
