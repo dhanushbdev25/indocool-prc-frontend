@@ -30,10 +30,10 @@ export const analyticsPanelBody: SxProps<Theme> = {
 export const analyticsMetricGrid: SxProps<Theme> = {
 	display: 'grid',
 	gridTemplateColumns: {
-		xs: 'repeat(2, minmax(0, 1fr))',
-		sm: 'repeat(4, minmax(0, 1fr))',
-		md: 'repeat(4, minmax(0, 1fr))',
-		lg: 'repeat(8, minmax(0, 1fr))'
+		xs: 'repeat(1, minmax(0, 1fr))',
+		sm: 'repeat(2, minmax(0, 1fr))',
+		md: 'repeat(2, minmax(0, 1fr))',
+		lg: 'repeat(4, minmax(0, 1fr))'
 	},
 	gap: { xs: 1.25, sm: 1.5 }
 };

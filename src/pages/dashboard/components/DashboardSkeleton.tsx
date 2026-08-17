@@ -23,8 +23,14 @@ const KpiCardSkeleton = () => (
 		}}
 	>
 		<Skeleton variant="text" width="80%" height={14} />
-		<Skeleton variant="circular" width={72} height={72} />
-		<Skeleton variant="text" width="50%" height={12} />
+		<Box sx={{ display: 'flex', width: '100%', gap: 1, justifyContent: 'center' }}>
+			{Array.from({ length: 2 }).map((_, i) => (
+				<Box key={i} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75 }}>
+					<Skeleton variant="circular" width={64} height={64} />
+					<Skeleton variant="text" width="70%" height={12} />
+				</Box>
+			))}
+		</Box>
 	</Box>
 );
 
