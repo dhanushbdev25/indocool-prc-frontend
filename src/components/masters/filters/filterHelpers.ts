@@ -2,6 +2,17 @@ import dayjs from 'dayjs';
 import type { FilterFieldConfig, FilterValue } from './types';
 import { EMPTY_DATE_RANGE, isDateRangeValue, isStringArrayValue, isFilterValueEmpty } from './types';
 
+/**
+ * Stores a picked calendar date as `YYYY-MM-DD`.
+ *
+ * Date-range filters are date-only, so they must never be stored as a UTC instant:
+ * `toISOString()` on a local midnight shifts the calendar day backwards for any timezone
+ * ahead of UTC (IST is UTC+5:30), which made picked dates arrive at the server a day early.
+ */
+export function toIsoDateOnly(value: dayjs.Dayjs | null): string | null {
+	return value && value.isValid() ? value.format('YYYY-MM-DD') : null;
+}
+
 /** Distinct, sorted, trimmed string list from an array of records — for autocomplete options. */
 export function deriveOptions<T>(rows: readonly T[], accessor: (row: T) => string | null | undefined): string[] {
 	const set = new Set<string>();

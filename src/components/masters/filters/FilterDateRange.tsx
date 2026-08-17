@@ -5,6 +5,7 @@ import { CalendarMonth, KeyboardArrowDown } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import dayjs, { type Dayjs } from 'dayjs';
 import { DATE_PICKER_FORMAT } from '../../../utils/dateConfig';
+import { toIsoDateOnly } from './filterHelpers';
 import type { DateRangeFilterValue } from './types';
 
 interface FilterDateRangeProps {
@@ -19,7 +20,6 @@ const toDayjs = (iso: string | null): Dayjs | null => {
 	return d.isValid() ? d : null;
 };
 
-const toIso = (d: Dayjs | null): string | null => (d && d.isValid() ? d.toISOString() : null);
 
 const formatChip = (iso: string | null): string => {
 	const d = toDayjs(iso);
@@ -173,7 +173,7 @@ const FilterDateRange = ({ label, value, onChange }: FilterDateRangeProps) => {
 					<DatePicker
 						label="From"
 						value={from}
-						onChange={d => onChange({ from: toIso(d), to: value.to })}
+						onChange={d => onChange({ from: toIsoDateOnly(d), to: value.to })}
 						slotProps={{
 							textField: { size: 'small', fullWidth: true },
 							field: { clearable: true }
@@ -184,7 +184,7 @@ const FilterDateRange = ({ label, value, onChange }: FilterDateRangeProps) => {
 					<DatePicker
 						label="To"
 						value={to}
-						onChange={d => onChange({ from: value.from, to: toIso(d) })}
+						onChange={d => onChange({ from: value.from, to: toIsoDateOnly(d) })}
 						slotProps={{
 							textField: { size: 'small', fullWidth: true },
 							field: { clearable: true }
