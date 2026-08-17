@@ -6,23 +6,25 @@ export interface DashboardDateRangeParams {
 }
 
 export interface DashboardEntityFilterParams {
+	/** Plant codes — sent to the backend as `plantCode`. */
 	units?: string[];
 	workstation?: string[];
+	/** Backend does not yet read `shift` (buildReportFilters never destructures it) — sent for when it does. */
 	shift?: string[];
+	/** Customer names — sent to the backend as `customer`. */
 	projects?: string[];
-	/** SAP reference numbers — proposed param, backend support pending. */
 	sapReferenceNumber?: string[];
-	/** Customer variant ids (numeric strings) — proposed param, backend support pending. */
+	/** Customer variant ids (numeric strings). */
 	customerVariantId?: string[];
 }
 
 export interface DashboardQueryParams extends DashboardDateRangeParams, DashboardEntityFilterParams {}
 
 export interface DashboardQueryWireParams extends DashboardDateRangeParams {
-	units?: string;
+	plantCode?: string;
 	workstation?: string;
 	shift?: string;
-	projects?: string;
+	customer?: string;
 	sapReferenceNumber?: string;
 	customerVariantId?: string;
 }
@@ -35,16 +37,16 @@ const joinFilterValues = (values: string[] | undefined): string | undefined => {
 
 export const buildDashboardQueryParams = (args: DashboardQueryParams): DashboardQueryWireParams => {
 	const params: DashboardQueryWireParams = { from: args.from, to: args.to };
-	const units = joinFilterValues(args.units);
+	const plantCode = joinFilterValues(args.units);
 	const workstation = joinFilterValues(args.workstation);
 	const shift = joinFilterValues(args.shift);
-	const projects = joinFilterValues(args.projects);
+	const customer = joinFilterValues(args.projects);
 	const sapReferenceNumber = joinFilterValues(args.sapReferenceNumber);
 	const customerVariantId = joinFilterValues(args.customerVariantId);
-	if (units) params.units = units;
+	if (plantCode) params.plantCode = plantCode;
 	if (workstation) params.workstation = workstation;
 	if (shift) params.shift = shift;
-	if (projects) params.projects = projects;
+	if (customer) params.customer = customer;
 	if (sapReferenceNumber) params.sapReferenceNumber = sapReferenceNumber;
 	if (customerVariantId) params.customerVariantId = customerVariantId;
 	return params;
