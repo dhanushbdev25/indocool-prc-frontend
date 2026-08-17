@@ -5,14 +5,7 @@ import { type MRT_ColumnDef, type MRT_PaginationState, type MRT_Updater } from '
 import TableComponent from '../../../../../components/table/TableComponent';
 import type { SapJobConfigItem } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
-
-const formatDt = (iso: string): string => {
-	try {
-		return new Date(iso).toLocaleString();
-	} catch {
-		return iso;
-	}
-};
+import { formatDisplayDateTime } from '../../../../../utils/formatDisplayDate';
 
 interface SapJobConfigsTableProps {
 	data: SapJobConfigItem[];
@@ -53,7 +46,7 @@ const SapJobConfigsTable = memo(({ data, onViewHistory, pagination, onPagination
 				id: 'updatedAt',
 				header: 'Last updated',
 				size: 180,
-				accessorFn: row => formatDt(row.updatedAt),
+				accessorFn: row => formatDisplayDateTime(row.updatedAt),
 				enableColumnFilter: false,
 				sortingFn: (rowA, rowB) =>
 					new Date(rowA.original.updatedAt).getTime() - new Date(rowB.original.updatedAt).getTime()

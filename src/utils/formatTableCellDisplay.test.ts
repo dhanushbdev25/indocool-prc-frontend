@@ -17,7 +17,7 @@ describe('formatDateColumnStorageValue', () => {
 
 describe('formatTableCellDisplay', () => {
 	it('formats date column values for display', () => {
-		expect(formatTableCellDisplay('date', '2026-06-17')).toBe('17 Jun 2026');
+		expect(formatTableCellDisplay('date', '2026-06-17')).toBe('17/06/2026');
 	});
 
 	it('returns em dash for empty date values', () => {

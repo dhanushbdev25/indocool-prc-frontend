@@ -27,6 +27,7 @@ import BomStep from '../execute-prc/components/steps/BomStep';
 import SapConfirmationStep from '../execute-prc/components/steps/SapConfirmationStep';
 import StepPreview from '../execute-prc/components/StepPreview';
 import StepExecutionMetaSummary from '../StepExecutionMetaSummary';
+import { formatDisplayDateTime } from '../../../../utils/formatDisplayDate';
 import './prcExecutionReportPrint.css';
 
 const noopForm = (_fd: FormData) => {
@@ -39,12 +40,7 @@ const noop = () => {};
 const noopProceed = () => {};
 
 function formatWhenKnown(iso?: string | null): string {
-	if (!iso) return '—';
-	try {
-		return new Date(iso).toLocaleString();
-	} catch {
-		return String(iso);
-	}
+	return formatDisplayDateTime(iso);
 }
 
 function formatOrderId(orderId?: string | number | null): string {

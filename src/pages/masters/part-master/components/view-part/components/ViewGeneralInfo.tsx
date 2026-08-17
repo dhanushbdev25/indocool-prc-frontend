@@ -2,6 +2,7 @@ import { Box, Grid, Typography, Chip, Paper } from '@mui/material';
 import { PartMaster, PartDrawing } from '../../../../../../store/api/business/part-master/part.validators';
 import PartImageUpload from '../../create-part/components/PartImageUpload';
 import { toFileRenderUrl } from '../../../../../../utils/fileUrl';
+import { formatDisplayDateTime } from '../../../../../../utils/formatDisplayDate';
 
 interface ViewGeneralInfoProps {
 	partMaster: PartMaster;
@@ -247,7 +248,7 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 							Created At
 						</Typography>
 						<Typography variant="body1" sx={{ color: '#333' }}>
-							{new Date(partMaster.createdAt || '').toLocaleString()}
+							{formatDisplayDateTime(partMaster.createdAt)}
 						</Typography>
 					</Box>
 				</Grid>
@@ -258,7 +259,7 @@ const ViewGeneralInfo = ({ partMaster, files = [] }: ViewGeneralInfoProps) => {
 							Updated At
 						</Typography>
 						<Typography variant="body1" sx={{ color: '#333' }}>
-							{new Date(partMaster.updatedAt || '').toLocaleString()}
+							{formatDisplayDateTime(partMaster.updatedAt)}
 						</Typography>
 					</Box>
 				</Grid>

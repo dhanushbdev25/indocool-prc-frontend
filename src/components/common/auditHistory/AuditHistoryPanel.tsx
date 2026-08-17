@@ -15,6 +15,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import ArrowForwardRounded from '@mui/icons-material/ArrowForwardRounded';
 import PersonOutline from '@mui/icons-material/PersonOutline';
 import Schedule from '@mui/icons-material/Schedule';
+import { formatDisplayDateTime } from '../../../utils/formatDisplayDate';
 import {
 	AuditFieldChange,
 	AuditHistoryEntry,
@@ -93,8 +94,7 @@ function formatValue(value: unknown): string {
 }
 
 function formatDate(value: string) {
-	const date = new Date(value);
-	return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
+	return formatDisplayDateTime(value, value);
 }
 
 function ValueBlock({ label, value, tone }: { label: string; value: unknown; tone: 'before' | 'after' }) {

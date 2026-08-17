@@ -6,6 +6,7 @@ import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
 import { type Catalyst } from '../../../../../../store/api/business/catalyst-master/catalyst.validators';
 import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
+import { formatDisplayDate } from '../../../../../../utils/formatDisplayDate';
 
 // Use the Zod-validated type from the API
 export type CatalystData = Catalyst;
@@ -36,14 +37,6 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView, onAuditLogs, 
 			default:
 				return '#9e9e9e';
 		}
-	};
-
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
 	};
 
 	const handleMenuClick = (event: React.MouseEvent<HTMLElement>, row: CatalystData) => {
@@ -111,7 +104,7 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView, onAuditLogs, 
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{formatDate(row.original.createdAt)}
+						{formatDisplayDate(row.original.createdAt)}
 					</Typography>
 				)
 			},

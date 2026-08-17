@@ -1,5 +1,6 @@
 import { Box, Grid, Typography, Chip, Paper } from '@mui/material';
 import { PrcTemplate } from '../../../../../../store/api/business/prc-template/prc-template.validators';
+import { formatDisplayDateTime } from '../../../../../../utils/formatDisplayDate';
 
 interface ViewPrcTemplateBasicInfoProps {
 	template: PrcTemplate;
@@ -129,7 +130,7 @@ const ViewPrcTemplateBasicInfo = ({ template }: ViewPrcTemplateBasicInfoProps) =
 							Created At
 						</Typography>
 						<Typography variant="body1" sx={{ color: '#333' }}>
-							{new Date(template.createdAt || '').toLocaleString()}
+							{formatDisplayDateTime(template.createdAt)}
 						</Typography>
 					</Box>
 				</Grid>
@@ -140,7 +141,7 @@ const ViewPrcTemplateBasicInfo = ({ template }: ViewPrcTemplateBasicInfoProps) =
 							Updated At
 						</Typography>
 						<Typography variant="body1" sx={{ color: '#333' }}>
-							{new Date(template.updatedAt || '').toLocaleString()}
+							{formatDisplayDateTime(template.updatedAt)}
 						</Typography>
 					</Box>
 				</Grid>

@@ -10,6 +10,7 @@ import {
 } from '@mui/icons-material';
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
+import { formatDisplayDate } from '../../../../../../utils/formatDisplayDate';
 
 export interface PrcTemplateData {
 	id: number;
@@ -84,14 +85,6 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView, pagination
 		}
 	};
 
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
-	};
-
 	const columns = useMemo<MRT_ColumnDef<PrcTemplateData>[]>(
 		() => [
 			{
@@ -135,7 +128,7 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView, pagination
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-						{row.original.createdAt ? formatDate(row.original.createdAt) : '—'}
+						{formatDisplayDate(row.original.createdAt)}
 					</Typography>
 				)
 			},

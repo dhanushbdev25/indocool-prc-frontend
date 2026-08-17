@@ -3,6 +3,7 @@ import Grid from '@mui/material/Grid';
 import { CheckCircle, Cancel, Image } from '@mui/icons-material';
 import { Inspection } from '../../../../../../store/api/business/inspection-master/inspection.validators';
 import Pictures from '../../../../../../components/common/imageGallery/Pictures';
+import { formatDisplayDateTime } from '../../../../../../utils/formatDisplayDate';
 
 interface ViewInspectionBasicInfoProps {
 	inspection: Inspection;
@@ -141,7 +142,7 @@ const ViewInspectionBasicInfo = ({ inspection }: ViewInspectionBasicInfoProps) =
 								Created At
 							</Typography>
 							<Typography variant="body1" sx={{ fontWeight: 500, mb: 2 }}>
-								{new Date(inspection.createdAt).toLocaleString()}
+								{formatDisplayDateTime(inspection.createdAt)}
 							</Typography>
 						</Grid>
 					)}
@@ -152,7 +153,7 @@ const ViewInspectionBasicInfo = ({ inspection }: ViewInspectionBasicInfoProps) =
 								Updated At
 							</Typography>
 							<Typography variant="body1" sx={{ fontWeight: 500, mb: 2 }}>
-								{new Date(inspection.updatedAt).toLocaleString()}
+								{formatDisplayDateTime(inspection.updatedAt)}
 							</Typography>
 						</Grid>
 					)}

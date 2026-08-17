@@ -4,9 +4,12 @@ import type {
 	ReportHeader,
 	ReportRow
 } from '../../../store/api/business/reports/reports.validators';
+import { formatDisplayDate, isIsoDateOnly } from '../../../utils/formatDisplayDate';
 
 export const formatReportCell = (value: unknown): string => {
 	if (value === null || value === undefined) return '';
+	// Report headers carry no type info, so date columns are recognised by their value shape.
+	if (isIsoDateOnly(value)) return formatDisplayDate(value, '');
 	if (typeof value === 'string') return value;
 	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 	if (Array.isArray(value)) return value.map(v => (v == null ? '' : String(v))).join(', ');

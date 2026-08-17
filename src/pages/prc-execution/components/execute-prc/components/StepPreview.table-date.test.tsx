@@ -119,7 +119,7 @@ describe('StepPreview table date display', () => {
 			/>
 		);
 
-		expect(screen.getByText('17 Jun 2026')).toBeInTheDocument();
+		expect(screen.getByText('17/06/2026')).toBeInTheDocument();
 	});
 
 	it('renders inspection rows by metadata order and appends orphan data', () => {

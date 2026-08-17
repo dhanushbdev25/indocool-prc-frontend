@@ -1,6 +1,7 @@
 import { Box, Paper, Typography, Grid, Chip, Divider } from '@mui/material';
 import { Info as InfoIcon, CheckCircle as CheckCircleIcon, Category as CategoryIcon } from '@mui/icons-material';
 import { type ProcessSequence } from '../../../../../../store/api/business/sequence-master/sequence.validators';
+import { formatDisplayDateTime } from '../../../../../../utils/formatDisplayDate';
 
 interface ViewSequenceBasicInfoProps {
 	sequence: ProcessSequence;
@@ -27,16 +28,6 @@ const ViewSequenceBasicInfo = ({ sequence }: ViewSequenceBasicInfoProps) => {
 			default:
 				return '#9e9e9e';
 		}
-	};
-
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
 	};
 
 	return (
@@ -244,7 +235,7 @@ const ViewSequenceBasicInfo = ({ sequence }: ViewSequenceBasicInfoProps) => {
 										Created At
 									</Typography>
 									<Typography variant="body2" sx={{ color: '#666' }}>
-										{formatDate(sequence.createdAt)}
+										{formatDisplayDateTime(sequence.createdAt)}
 									</Typography>
 								</Box>
 							</Grid>
@@ -254,7 +245,7 @@ const ViewSequenceBasicInfo = ({ sequence }: ViewSequenceBasicInfoProps) => {
 										Last Updated
 									</Typography>
 									<Typography variant="body2" sx={{ color: '#666' }}>
-										{formatDate(sequence.updatedAt)}
+										{formatDisplayDateTime(sequence.updatedAt)}
 									</Typography>
 								</Box>
 							</Grid>

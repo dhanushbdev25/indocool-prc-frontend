@@ -4,15 +4,7 @@ import { History as HistoryIcon } from '@mui/icons-material';
 import { type MRT_ColumnDef } from 'material-react-table';
 import TableComponent from '../../../../../components/table/TableComponent';
 import type { SapJobRunItem } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
-
-const formatDt = (iso: string | null): string => {
-	if (iso === null || iso === '') return '—';
-	try {
-		return new Date(iso).toLocaleString();
-	} catch {
-		return iso;
-	}
-};
+import { formatDisplayDateTime } from '../../../../../utils/formatDisplayDate';
 
 const statusChipColor = (
 	status: string
@@ -40,7 +32,7 @@ const SapJobRunsTable = memo(({ data }: SapJobRunsTableProps) => {
 				id: 'runStart',
 				header: 'Run start',
 				size: 168,
-				accessorFn: row => formatDt(row.runStart),
+				accessorFn: row => formatDisplayDateTime(row.runStart),
 				enableColumnFilter: false,
 				sortingFn: (rowA, rowB) =>
 					new Date(rowA.original.runStart).getTime() - new Date(rowB.original.runStart).getTime()
@@ -49,7 +41,7 @@ const SapJobRunsTable = memo(({ data }: SapJobRunsTableProps) => {
 				id: 'runEnd',
 				header: 'Run end',
 				size: 168,
-				accessorFn: row => formatDt(row.runEnd),
+				accessorFn: row => formatDisplayDateTime(row.runEnd),
 				enableColumnFilter: false,
 				sortingFn: (rowA, rowB) => {
 					const tA = rowA.original.runEnd ? new Date(rowA.original.runEnd).getTime() : 0;

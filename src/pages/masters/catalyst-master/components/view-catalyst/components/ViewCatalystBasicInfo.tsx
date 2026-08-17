@@ -1,6 +1,7 @@
 import { Box, Paper, Typography, Grid, Chip, Divider } from '@mui/material';
 import { Info as InfoIcon, CheckCircle as CheckCircleIcon, Business as BusinessIcon } from '@mui/icons-material';
 import { type Catalyst } from '../../../../../../store/api/business/catalyst-master/catalyst.validators';
+import { formatDisplayDateTime } from '../../../../../../utils/formatDisplayDate';
 
 interface ViewCatalystBasicInfoProps {
 	catalyst: Catalyst;
@@ -18,16 +19,6 @@ const ViewCatalystBasicInfo = ({ catalyst }: ViewCatalystBasicInfoProps) => {
 			default:
 				return '#9e9e9e';
 		}
-	};
-
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric',
-			hour: '2-digit',
-			minute: '2-digit'
-		});
 	};
 
 	return (
@@ -125,7 +116,7 @@ const ViewCatalystBasicInfo = ({ catalyst }: ViewCatalystBasicInfoProps) => {
 										Created At
 									</Typography>
 									<Typography variant="body2" sx={{ color: '#666' }}>
-										{formatDate(catalyst.createdAt)}
+										{formatDisplayDateTime(catalyst.createdAt)}
 									</Typography>
 								</Box>
 							</Grid>
@@ -135,7 +126,7 @@ const ViewCatalystBasicInfo = ({ catalyst }: ViewCatalystBasicInfoProps) => {
 										Last Updated
 									</Typography>
 									<Typography variant="body2" sx={{ color: '#666' }}>
-										{formatDate(catalyst.updatedAt)}
+										{formatDisplayDateTime(catalyst.updatedAt)}
 									</Typography>
 								</Box>
 							</Grid>

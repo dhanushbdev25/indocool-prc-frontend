@@ -19,6 +19,7 @@ import { formatExecutionDuration } from '../../../utils/formatExecutionDuration'
 import { useFetchSapConfirmationLogsQuery } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.api';
 import { type SapConfirmationLogItem } from '../../../../../store/api/business/sap-job-runs/sap-job-runs.validators';
 import { parsePrcExecutionOperationStatusList } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
+import { formatDisplayDateTime } from '../../../../../utils/formatDisplayDate';
 
 function operationStatusChipBorderColor(prcStatus: boolean, sapStatus: boolean) {
 	if (prcStatus && sapStatus) return '#2e7d32';
@@ -224,7 +225,7 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 					<ListItem sx={{ px: 0 }}>
 						<ListItemText
 							primary="Started"
-							secondary={new Date(executionData.createdAt).toLocaleString()}
+							secondary={formatDisplayDateTime(executionData.createdAt)}
 							primaryTypographyProps={{ fontSize: '0.875rem' }}
 							secondaryTypographyProps={{ fontSize: '0.75rem' }}
 						/>
@@ -233,7 +234,7 @@ const ExecutionQuickStats = ({ executionData, currentStep }: ExecutionQuickStats
 						<ListItem sx={{ px: 0 }}>
 							<ListItemText
 								primary="Updated"
-								secondary={new Date(executionData.updatedAt).toLocaleString()}
+								secondary={formatDisplayDateTime(executionData.updatedAt)}
 								primaryTypographyProps={{ fontSize: '0.875rem' }}
 								secondaryTypographyProps={{ fontSize: '0.75rem' }}
 							/>

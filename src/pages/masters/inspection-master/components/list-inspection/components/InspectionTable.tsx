@@ -13,6 +13,7 @@ import {
 import { useState } from 'react';
 import TableComponent from '../../../../../../components/table/TableComponent';
 import { useCurrentRole } from '../../../../../../hooks/useCurrentRole';
+import { formatDisplayDate } from '../../../../../../utils/formatDisplayDate';
 
 // Use the Zod-validated type from the API
 export interface InspectionData {
@@ -60,14 +61,6 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, on
 			default:
 				return '#9e9e9e';
 		}
-	};
-
-	const formatDate = (dateString: string) => {
-		return new Date(dateString).toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'short',
-			day: 'numeric'
-		});
 	};
 
 	const handleMenuClick = (event: React.MouseEvent<HTMLElement>, row: InspectionData) => {
@@ -175,7 +168,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, on
 				enableColumnFilter: false,
 				Cell: ({ row }) => (
 					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.createdAt ? formatDate(row.original.createdAt) : '—'}
+						{formatDisplayDate(row.original.createdAt)}
 					</Typography>
 				)
 			},
