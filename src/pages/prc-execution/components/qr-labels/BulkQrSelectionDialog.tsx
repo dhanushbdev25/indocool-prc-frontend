@@ -83,7 +83,7 @@ const BulkQrSelectionDialog = ({ open, onClose, onConfirm }: BulkQrSelectionDial
 					toDate: dayjs.tz(undefined, APP_TIMEZONE).format('YYYY-MM-DD')
 				};
 				const [byOrder, byReservation] = await Promise.all([
-					triggerFetchPrcExecutions({ ...base, orderId: term }, true).unwrap(),
+					triggerFetchPrcExecutions({ ...base, orderId: [term] }, true).unwrap(),
 					triggerFetchPrcExecutions({ ...base, reservation: [term] }, true).unwrap()
 				]);
 				return {

@@ -5,6 +5,7 @@ import {
 	TextField,
 	Tooltip,
 	Typography,
+	createFilterOptions,
 	type SxProps,
 	type Theme
 } from '@mui/material';
@@ -28,6 +29,18 @@ interface FilterAutocompleteProps {
 }
 
 const COMPACT_SUMMARY_MAX_CHARS = 44;
+
+/**
+ * MUI's Autocomplete listbox is not virtualised — it renders every matching option into the DOM.
+ * Some combos are very large (the order-id list is ~29k values), which locks up the browser when
+ * the dropdown opens. Capping the rendered matches keeps it responsive; the user types to narrow.
+ */
+const RENDERED_OPTIONS_LIMIT = 100;
+
+const limitRenderedOptions = createFilterOptions<FilterComboOption>({
+	limit: RENDERED_OPTIONS_LIMIT,
+	stringify: option => option.label
+});
 
 const formatCompactSummary = (labels: string[]): { display: string; full: string; truncated: boolean } => {
 	if (labels.length === 0) return { display: '', full: '', truncated: false };
@@ -78,6 +91,7 @@ const FilterAutocomplete = ({
 		<Autocomplete
 			multiple
 			disableCloseOnSelect
+			filterOptions={limitRenderedOptions}
 			size="small"
 			options={normalizedOptions}
 			value={selectedOptions}

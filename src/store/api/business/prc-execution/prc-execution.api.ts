@@ -18,8 +18,8 @@ export interface PrcExecutionsListArgs {
 	fromDate?: string;
 	/** Inclusive upper bound on `updatedAt`, `YYYY-MM-DD`. */
 	toDate?: string;
-	/** Exact match, case-sensitive. */
-	orderId?: string;
+	/** Manufacturing order IDs. Exact match; the server uses `eq` for one and `inArray` for many. */
+	orderId?: string[];
 	/** Customer names; server does partial match (ILIKE) on customerName. */
 	customer?: string[];
 	/** Exact match. */
@@ -39,6 +39,7 @@ export interface PrcExecutionsListArgs {
 }
 
 const LIST_ARRAY_FILTER_KEYS = [
+	'orderId',
 	'customer',
 	'plantCode',
 	'sapReferenceNumber',
@@ -66,8 +67,6 @@ export const prcExecutionApi = createApi({
 				if (fromDate) body.fromDate = fromDate;
 				const toDate = trim(args.toDate);
 				if (toDate) body.toDate = toDate;
-				const orderId = trim(args.orderId);
-				if (orderId) body.orderId = orderId;
 				for (const key of LIST_ARRAY_FILTER_KEYS) {
 					const cleaned = (args[key] ?? []).map(s => s.trim()).filter(Boolean);
 					if (cleaned.length) body[key] = cleaned;

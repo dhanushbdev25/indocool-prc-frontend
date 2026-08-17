@@ -27,7 +27,8 @@ import { useFetchSapComboQuery, useFetchCustomersQuery } from '../../../../store
 import {
 	useFetchReservationComboQuery,
 	useFetchPrcSetIdComboQuery,
-	useFetchSapSetIdComboQuery
+	useFetchSapSetIdComboQuery,
+	useFetchOrderIdComboQuery
 } from '../../../../store/api/business/customer/customer.api';
 import { useListView } from '../../../../hooks/useListView';
 import { useCustomerVariantOptions } from '../../../../hooks/useCustomerVariantOptions';
@@ -55,7 +56,8 @@ import { uniqueSorted, plantCodeOptions, sapComboOptions } from '../../../../uti
 import { exportRowsToExcel, type ExportColumn } from '../../../../utils/exportTableToExcel';
 import { DATE_PICKER_FORMAT } from '../../../../utils/dateConfig';
 
-const SEARCH_PLACEHOLDER = 'Order ID';
+/** InlineFilterBar requires the handler even with the search field hidden. */
+const noop = () => {};
 
 /** Server clamp on POST /prcExecution/list pageSize. */
 const EXPORT_PAGE_SIZE = 100;
@@ -100,7 +102,9 @@ const sortedArrayFilter = (value: FilterValue | undefined): string[] | undefined
 
 const ListPrcExecution = () => {
 	const navigate = useNavigate();
-	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('prcExecution');
+	// `searchTerm` is no longer read — Order No moved into `filters`. `setSearchTerm` stays so Reset
+	// clears any term persisted by an earlier session.
+	const { filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('prcExecution');
 	const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 	const [executionToDelete, setExecutionToDelete] = useState<PrcExecutionData | null>(null);
 	const [bulkQrSelectOpen, setBulkQrSelectOpen] = useState(false);
@@ -118,6 +122,7 @@ const ListPrcExecution = () => {
 	const { data: reservationComboData, isLoading: isReservationComboLoading } = useFetchReservationComboQuery();
 	const { data: prcSetIdComboData, isLoading: isPrcSetIdComboLoading } = useFetchPrcSetIdComboQuery();
 	const { data: sapSetIdComboData, isLoading: isSapSetIdComboLoading } = useFetchSapSetIdComboQuery();
+	const { data: orderIdComboData, isLoading: isOrderIdComboLoading } = useFetchOrderIdComboQuery();
 	const { data: statusComboData, isLoading: isStatusComboLoading } = useFetchPrcStatusComboQuery();
 
 	const sapOptions = useMemo(() => sapComboOptions(sapComboData?.data), [sapComboData]);
@@ -154,6 +159,10 @@ const ListPrcExecution = () => {
 		() => uniqueSorted((sapSetIdComboData?.data ?? []).map(r => r.value)),
 		[sapSetIdComboData]
 	);
+	const orderIdOptions = useMemo(
+		() => uniqueSorted((orderIdComboData?.data ?? []).map(r => r.value)),
+		[orderIdComboData]
+	);
 
 	// Resolve filter state → API args (sent only when Apply commits to `filters`)
 	const queryArgs = useMemo<PrcExecutionsListArgs>(() => {
@@ -163,7 +172,7 @@ const ListPrcExecution = () => {
 			pageSize: pagination.pageSize,
 			fromDate: dateRange?.from ?? undefined,
 			toDate: dateRange?.to ?? undefined,
-			orderId: searchTerm.trim() || undefined,
+			orderId: sortedArrayFilter(filters.orderId),
 			customer: sortedArrayFilter(filters.customer),
 			plantCode: sortedArrayFilter(filters.plantCode),
 			sapReferenceNumber: sortedArrayFilter(filters.sapReferenceNumber),
@@ -183,7 +192,7 @@ const ListPrcExecution = () => {
 		filters.reservation,
 		filters.prcSetId,
 		filters.productionSetId,
-		searchTerm,
+		filters.orderId,
 		pagination.pageIndex,
 		pagination.pageSize
 	]);
@@ -274,6 +283,13 @@ const ListPrcExecution = () => {
 			},
 			{
 				kind: 'autocomplete',
+				key: 'orderId',
+				label: 'Order No',
+				options: orderIdOptions,
+				placeholder: isOrderIdComboLoading ? 'Loading…' : undefined
+			},
+			{
+				kind: 'autocomplete',
 				key: 'sapReferenceNumber',
 				label: 'SAP Number',
 				options: sapOptions,
@@ -338,6 +354,8 @@ const ListPrcExecution = () => {
 			}
 		],
 		[
+			orderIdOptions,
+			isOrderIdComboLoading,
 			sapOptions,
 			customerOptions,
 			plantOptions,
@@ -369,14 +387,6 @@ const ListPrcExecution = () => {
 			setPagination(prev => ({ ...prev, pageIndex: 0 }));
 		},
 		[filters.customer, setFilters, setPagination]
-	);
-
-	const handleSearchChange = useCallback(
-		(term: string) => {
-			setSearchTerm(term);
-			setPagination(prev => ({ ...prev, pageIndex: 0 }));
-		},
-		[setSearchTerm, setPagination]
 	);
 
 	const handleExecute = (executionId: number) => {
@@ -483,11 +493,14 @@ const ListPrcExecution = () => {
 				toolbar={
 					<InlineFilterBar
 						title="Filter"
-						searchPlaceholder={SEARCH_PLACEHOLDER}
-						searchTerm={searchTerm}
+						hideSearch
+						searchPlaceholder=""
+						// Order No is a filter field now, so the bar has no free-text search.
+						// Passing "" (not the persisted term) keeps the active-filter badge honest.
+						searchTerm=""
 						fields={fields}
 						values={filters}
-						onSearchChange={handleSearchChange}
+						onSearchChange={noop}
 						onApply={({ values }) => handleFiltersChange(values)}
 						onReset={handleResetAll}
 					/>
