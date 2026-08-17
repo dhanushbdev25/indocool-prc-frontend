@@ -102,8 +102,11 @@ export interface MetricsData {
 	delayReasons: StageDelayReasons;
 }
 
-export interface MetricsResponse {
-	data: MetricsData;
+export interface RangedMetricsData {
+	/** Metrics for exactly the applied date range. */
+	selectedRange: MetricsData;
+	/** Same filters over the applied range widened 90 days into the past — a superset of selectedRange. */
+	extendedRange: MetricsData;
 }
 
 export interface ProjectWiseItem {
@@ -199,25 +202,30 @@ export const coerceStageDelayReasons = (raw: unknown): StageDelayReasons => {
 	}, {} as StageDelayReasons);
 };
 
-export const isMetricsResponse = (response: unknown): response is MetricsResponse => {
-	if (!isRecord(response) || !isRecord(response.data)) return false;
-	const { output, manpower } = response.data;
-	return isRecord(output) && isRecord(manpower);
+export const coerceMetricsData = (raw: unknown): MetricsData => {
+	const o = isRecord(raw) ? raw : {};
+	return {
+		output: coerceStageMetrics(o.output),
+		manpower: coerceStageMetrics(o.manpower),
+		delayReasons: coerceStageDelayReasons(o.delayReasons)
+	};
 };
 
-export const parseMetricsResponse = (response: unknown): MetricsData => {
-	if (!isMetricsResponse(response)) {
+const isRangedMetricsResponse = (
+	response: unknown
+): response is { data: { selectedRange: unknown; extendedRange: unknown } } => {
+	if (!isRecord(response) || !isRecord(response.data)) return false;
+	return isRecord(response.data.selectedRange) && isRecord(response.data.extendedRange);
+};
+
+export const parseMetricsResponse = (response: unknown): RangedMetricsData => {
+	if (!isRangedMetricsResponse(response)) {
 		console.warn('Invalid metrics response structure', response);
-		return {
-			output: coerceStageMetrics(null),
-			manpower: coerceStageMetrics(null),
-			delayReasons: coerceStageDelayReasons(null)
-		};
+		return { selectedRange: coerceMetricsData(null), extendedRange: coerceMetricsData(null) };
 	}
 	return {
-		output: coerceStageMetrics(response.data.output),
-		manpower: coerceStageMetrics(response.data.manpower),
-		delayReasons: coerceStageDelayReasons(response.data.delayReasons)
+		selectedRange: coerceMetricsData(response.data.selectedRange),
+		extendedRange: coerceMetricsData(response.data.extendedRange)
 	};
 };
 

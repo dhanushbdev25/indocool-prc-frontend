@@ -185,7 +185,7 @@ const Dashboard = () => {
 						title="Delay reasons"
 						subtitle="Reported reasons for production delays by manufacturing stage"
 					>
-						<DelayReasonsSection data={metricsQuery.data.delayReasons} />
+						<DelayReasonsSection data={metricsQuery.data.selectedRange.delayReasons} />
 					</DashboardSection>
 				) : null}
 			</Stack>

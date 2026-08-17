@@ -6,7 +6,7 @@ import {
 	parseMouldingAnalysisResponse,
 	parseDatewiseMetricsResponse,
 	type DashboardQueryParams,
-	type MetricsData,
+	type RangedMetricsData,
 	type MouldingAnalysisData,
 	type DatewiseMetricsItem
 } from './dashboard.validators';
@@ -16,7 +16,7 @@ export const dashboardApi = createApi({
 	baseQuery,
 	tagTypes: ['DashboardMetrics', 'DashboardDatewise', 'DashboardMouldingAnalysis'],
 	endpoints: builder => ({
-		fetchMetrics: builder.query<MetricsData, DashboardQueryParams>({
+		fetchMetrics: builder.query<RangedMetricsData, DashboardQueryParams>({
 			query: args => ({
 				url: 'dashboard/metrics',
 				method: 'GET',
