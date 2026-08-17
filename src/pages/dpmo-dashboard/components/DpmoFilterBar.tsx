@@ -21,7 +21,7 @@ import { DpmoSingleProjectField } from './DpmoSingleProjectField';
 const CONTROL_HEIGHT = 40;
 
 interface DateRangeDraft {
-	preset: DateRangePreset;
+	preset: DateRangePreset | null;
 	presetLabel: string;
 	displayLabel: string;
 	customFrom: string | null;

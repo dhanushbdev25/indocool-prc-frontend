@@ -17,7 +17,7 @@ import { DashboardDateRangeField } from './DashboardDateRangeField';
 interface DashboardFilterBarProps {
 	draftFilters: DashboardEntityFilters;
 	onDraftFilterChange: (key: DashboardEntityFilterKey, value: string[]) => void;
-	draftPreset: DateRangePreset;
+	draftPreset: DateRangePreset | null;
 	draftPresetLabel: string;
 	draftDisplayLabel: string;
 	draftCustomFrom: string | null;

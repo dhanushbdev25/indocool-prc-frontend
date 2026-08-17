@@ -5,7 +5,7 @@ import type { FilterComboOption } from '../../../components/masters/filters/Filt
 import type { DashboardEntityFilters, DashboardEntityFilterKey } from '../hooks/useDashboardEntityFilters';
 
 interface DashboardPageHeaderProps {
-	draftPreset: DateRangePreset;
+	draftPreset: DateRangePreset | null;
 	draftPresetLabel: string;
 	draftDisplayLabel: string;
 	onDraftPresetChange: (preset: DateRangePreset) => void;

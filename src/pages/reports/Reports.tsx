@@ -63,8 +63,8 @@ const Reports = () => {
 		return reports[0]?.code ?? '';
 	}, [reports, userPickedCode]);
 
+	// PRC date starts empty: a report needs either a PRC range or a complete SAP range, not both.
 	const {
-		isReady,
 		draftPreset,
 		draftPresetLabel,
 		draftDisplayLabel,
@@ -72,8 +72,9 @@ const Reports = () => {
 		draftCustomTo,
 		setDraftPreset,
 		setDraftCustomRange,
-		applyDraft: applyDateRangeDraft
-	} = useDashboardDateRange();
+		applyDraft: applyDateRangeDraft,
+		clearAll: clearAllDateRange
+	} = useDashboardDateRange({ initialPreset: null });
 
 	const [triggerFetchReport, reportQuery] = useLazyFetchReportQuery();
 
@@ -91,7 +92,8 @@ const Reports = () => {
 	const handleClearFilters = useCallback(() => {
 		setFilters(EMPTY_REPORT_FILTERS);
 		setSapDateRange(EMPTY_DATE_RANGE);
-	}, []);
+		clearAllDateRange();
+	}, [clearAllDateRange]);
 
 	// Combo-backed filter options
 	const { data: plantsData, isLoading: isPlantsLoading } = useFetchPlantsQuery();
@@ -168,25 +170,42 @@ const Reports = () => {
 		[variantPlaceholder]
 	);
 
+	const sapFromIso = toIsoDate(sapDateRange.from);
+	const sapToIso = toIsoDate(sapDateRange.to);
+	/** Server needs both SAP bounds; one alone is not a usable range. */
+	const hasSapRange = Boolean(sapFromIso && sapToIso);
+	/** A custom PRC preset is only usable once both ends are picked. */
+	const hasPrcRange = draftPreset !== null && (draftPreset !== 'custom' || Boolean(draftCustomFrom && draftCustomTo));
+
 	const handleGenerate = useCallback(() => {
-		if (!selectedCode || !isReady) return;
-		// Use the freshly-applied range — the `from`/`to` in this closure are one apply behind.
+		if (!selectedCode || (!hasPrcRange && !hasSapRange)) return;
+		const request: ReportRequest = { reportType: selectedCode };
+		// Commit the draft range so applied state matches what was sent. Returns null when no PRC range is set,
+		// which is valid here — the SAP range alone is enough for the server.
 		const range = applyDateRangeDraft();
-		if (!range) return;
-		const request: ReportRequest = { reportType: selectedCode, from: range.from, to: range.to };
+		if (range) {
+			request.from = range.from;
+			request.to = range.to;
+		}
 		for (const key of Object.keys(filters) as ReportFilterKey[]) {
 			const values = filters[key].map(v => v.trim()).filter(Boolean);
 			if (values.length) request[key] = values;
 		}
-		// SAP date is applied only when the range is complete (server requires both bounds).
-		const sapFrom = toIsoDate(sapDateRange.from);
-		const sapTo = toIsoDate(sapDateRange.to);
-		if (sapFrom && sapTo) {
-			request.sapFrom = sapFrom;
-			request.sapTo = sapTo;
+		if (sapFromIso && sapToIso) {
+			request.sapFrom = sapFromIso;
+			request.sapTo = sapToIso;
 		}
 		triggerFetchReport(request);
-	}, [selectedCode, isReady, applyDateRangeDraft, triggerFetchReport, filters, sapDateRange]);
+	}, [
+		selectedCode,
+		hasPrcRange,
+		hasSapRange,
+		applyDateRangeDraft,
+		triggerFetchReport,
+		filters,
+		sapFromIso,
+		sapToIso
+	]);
 
 	// The lazy query result represents the most recent trigger. Only render its
 	// data when it matches the active tab — otherwise the user is looking at a
@@ -198,9 +217,12 @@ const Reports = () => {
 	const isRefetching = isActiveTabResult && reportQuery.isFetching && !!data;
 	const isError = isActiveTabResult && reportQuery.isError;
 
-	// Block Generate while a custom draft range is incomplete — committing it would flip isReady off with no recovery path.
-	const isDraftRangeReady = draftPreset !== 'custom' || Boolean(draftCustomFrom && draftCustomTo);
-	const canGenerate = Boolean(selectedCode) && isReady && isDraftRangeReady && !reportQuery.isFetching;
+	// A report needs at least one usable date range before it can run.
+	const canGenerate = Boolean(selectedCode) && (hasPrcRange || hasSapRange) && !reportQuery.isFetching;
+	const validationMessage =
+		hasPrcRange || hasSapRange
+			? undefined
+			: 'Select a PRC date range or a complete SAP date range to run this report.';
 
 	const renderContent = () => {
 		if (!selectedCode) {
@@ -287,6 +309,7 @@ const Reports = () => {
 							onClearFilters={handleClearFilters}
 							onGenerate={handleGenerate}
 							canGenerate={canGenerate}
+							validationMessage={validationMessage}
 							isFetching={!!isActiveTabResult && reportQuery.isFetching}
 						/>
 						{renderContent()}

@@ -47,7 +47,12 @@ export const PRESET_OPTIONS: { id: DateRangePreset; label: string; description: 
 export const getPresetLabel = (preset: DateRangePreset): string =>
 	PRESET_OPTIONS.find(p => p.id === preset)?.label ?? 'Custom range';
 
-const resolveRange = (preset: DateRangePreset, customFrom: string | null, customTo: string | null): DashboardDateRange | null => {
+const resolveRange = (
+	preset: DateRangePreset | null,
+	customFrom: string | null,
+	customTo: string | null
+): DashboardDateRange | null => {
+	if (preset === null) return null;
 	if (preset === 'custom') {
 		if (!customFrom || !customTo) return null;
 		return { from: customFrom, to: customTo };
@@ -70,12 +75,17 @@ const labelForRange = (range: DashboardDateRange | null): string => {
  * - Applied state drives the queries via `from`, `to`, `isReady`.
  * - `applyDraft()` commits draft → applied (call from the global Apply button).
  */
-export const useDashboardDateRange = () => {
-	const [appliedPreset, setAppliedPreset] = useState<DateRangePreset>('last30');
+export interface UseDashboardDateRangeOptions {
+	/** Starting preset. Pass `null` for screens where a date range is optional until the user picks one. */
+	initialPreset?: DateRangePreset | null;
+}
+
+export const useDashboardDateRange = ({ initialPreset = 'last30' }: UseDashboardDateRangeOptions = {}) => {
+	const [appliedPreset, setAppliedPreset] = useState<DateRangePreset | null>(initialPreset);
 	const [appliedCustomFrom, setAppliedCustomFrom] = useState<string | null>(null);
 	const [appliedCustomTo, setAppliedCustomTo] = useState<string | null>(null);
 
-	const [draftPreset, setDraftPresetState] = useState<DateRangePreset>('last30');
+	const [draftPreset, setDraftPresetState] = useState<DateRangePreset | null>(initialPreset);
 	const [draftCustomFrom, setDraftCustomFrom] = useState<string | null>(null);
 	const [draftCustomTo, setDraftCustomTo] = useState<string | null>(null);
 
@@ -117,13 +127,13 @@ export const useDashboardDateRange = () => {
 	}, [appliedPreset, appliedCustomFrom, appliedCustomTo]);
 
 	const clearAll = useCallback(() => {
-		setAppliedPreset('last30');
+		setAppliedPreset(initialPreset);
 		setAppliedCustomFrom(null);
 		setAppliedCustomTo(null);
-		setDraftPresetState('last30');
+		setDraftPresetState(initialPreset);
 		setDraftCustomFrom(null);
 		setDraftCustomTo(null);
-	}, []);
+	}, [initialPreset]);
 
 	const isDirty =
 		draftPreset !== appliedPreset || draftCustomFrom !== appliedCustomFrom || draftCustomTo !== appliedCustomTo;
@@ -131,7 +141,7 @@ export const useDashboardDateRange = () => {
 	const appliedDisplayLabel = useMemo(() => labelForRange(appliedRange), [appliedRange]);
 	const draftDisplayLabel = useMemo(() => labelForRange(draftRange), [draftRange]);
 
-	const draftPresetLabel = getPresetLabel(draftPreset);
+	const draftPresetLabel = draftPreset === null ? 'Select dates' : getPresetLabel(draftPreset);
 
 	return {
 		// Applied (queries read these)

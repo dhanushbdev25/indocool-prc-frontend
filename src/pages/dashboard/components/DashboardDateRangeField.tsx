@@ -18,7 +18,7 @@ import { DATE_PICKER_FORMAT } from '../../../utils/dateConfig';
 import { PRESET_OPTIONS, type DateRangePreset } from '../hooks/useDashboardDateRange';
 
 interface DashboardDateRangeFieldProps {
-	preset: DateRangePreset;
+	preset: DateRangePreset | null;
 	presetLabel: string;
 	displayLabel: string;
 	customFrom: string | null;

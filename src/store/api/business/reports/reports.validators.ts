@@ -22,7 +22,7 @@ export interface ReportRequest {
 	/** PRC date range (server currently filters updatedAt). */
 	from?: string;
 	to?: string;
-	/** SAP date range — proposed contract, backend support pending. Sent only when both are set. */
+	/** SAP date range, filtered on mfgOrderPlannedStartDate. Sent only when both are set. */
 	sapFrom?: string;
 	sapTo?: string;
 	/** Customer variant ids (numeric strings; server coerces with Number). */

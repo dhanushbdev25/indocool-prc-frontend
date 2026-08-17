@@ -1,4 +1,4 @@
-import { Box, Button, Stack } from '@mui/material';
+import { Box, Button, Stack, Typography } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import { DashboardDateRangeField } from '../../dashboard/components/DashboardDateRangeField';
 import type { DateRangePreset } from '../../dashboard/hooks/useDashboardDateRange';
@@ -35,7 +35,7 @@ const FILTER_FIELDS: { key: ReportFilterKey; label: string }[] = [
 ];
 
 interface ReportsFilterBarProps {
-	preset: DateRangePreset;
+	preset: DateRangePreset | null;
 	presetLabel: string;
 	displayLabel: string;
 	customFrom: string | null;
@@ -54,6 +54,8 @@ interface ReportsFilterBarProps {
 	onClearFilters: () => void;
 	onGenerate: () => void;
 	canGenerate: boolean;
+	/** Shown when no usable date range is selected yet. */
+	validationMessage?: string;
 	isFetching: boolean;
 	disabled?: boolean;
 }
@@ -77,6 +79,7 @@ export const ReportsFilterBar = ({
 	onClearFilters,
 	onGenerate,
 	canGenerate,
+	validationMessage,
 	isFetching,
 	disabled
 }: ReportsFilterBarProps) => {
@@ -93,7 +96,9 @@ export const ReportsFilterBar = ({
 	};
 
 	const hasActiveFilters =
-		FILTER_FIELDS.some(({ key }) => filters[key].length > 0) || Boolean(sapDateRange.from || sapDateRange.to);
+		FILTER_FIELDS.some(({ key }) => filters[key].length > 0) ||
+		Boolean(sapDateRange.from || sapDateRange.to) ||
+		preset !== null;
 
 	return (
 		<Box sx={panelSx}>
@@ -195,6 +200,11 @@ export const ReportsFilterBar = ({
 							/>
 						))}
 					</Box>
+					{validationMessage ? (
+						<Typography variant="caption" sx={{ display: 'block', mt: 1.25, color: 'text.secondary' }}>
+							{validationMessage}
+						</Typography>
+					) : null}
 				</Box>
 			</form>
 		</Box>
