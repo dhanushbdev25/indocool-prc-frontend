@@ -48,6 +48,43 @@ const nestedChangeConfig = {
 	REORDERED: { label: 'Reordered', color: '#a16207', background: '#fef3c7' }
 } as const;
 
+/**
+ * Used whenever the server sends a change type outside the known set. Response validation
+ * only warns, so unknown values still reach render and must not break the whole panel.
+ */
+const unknownChangeConfig = { label: 'Changed', color: '#475569', background: '#e2e8f0' } as const;
+
+type ChangeChipConfig = { label: string; color: string; background: string };
+
+function resolveActionConfig(changeType: string): ChangeChipConfig {
+	return actionConfig[changeType as keyof typeof actionConfig] ?? unknownChangeConfig;
+}
+
+function resolveNestedConfig(changeType: unknown): ChangeChipConfig {
+	return nestedChangeConfig[changeType as keyof typeof nestedChangeConfig] ?? unknownChangeConfig;
+}
+
+/**
+ * Keeps only well-formed change records. Legacy audit rows store the raw jsondiffpatch delta
+ * (an array whose entries are themselves arrays of rows), which has no change metadata at all.
+ */
+function usableStructuredChanges(changes?: AuditStructuredChange[] | null): AuditStructuredChange[] {
+	if (!Array.isArray(changes)) return [];
+	return changes.filter(
+		(change): change is AuditStructuredChange => change !== null && typeof change === 'object' && !Array.isArray(change)
+	);
+}
+
+function usableFieldChanges(
+	changes?: Array<AuditFieldChange | AuditNestedFieldChange> | null
+): Array<AuditFieldChange | AuditNestedFieldChange> {
+	if (!Array.isArray(changes)) return [];
+	return changes.filter(
+		(change): change is AuditFieldChange | AuditNestedFieldChange =>
+			change !== null && typeof change === 'object' && !Array.isArray(change) && typeof change.field === 'string'
+	);
+}
+
 const domainCopy: Record<AuditHistoryDomain, { title: string; subtitle: string }> = {
 	part: {
 		title: 'Part history',
@@ -148,7 +185,7 @@ function ChangeList({ changes }: { changes: Array<AuditFieldChange | AuditNested
 		<Stack gap={1.5}>
 			{changes.map((change, index) => {
 				const fieldChange = 'type' in change ? change.type : 'MODIFIED';
-				const config = nestedChangeConfig[fieldChange];
+				const config = resolveNestedConfig(fieldChange);
 				return (
 					<Box
 						key={`${change.field}-${index}`}
@@ -197,6 +234,8 @@ function ChangeList({ changes }: { changes: Array<AuditFieldChange | AuditNested
 function StructuredChange({ change }: { change: AuditStructuredChange }) {
 	const title =
 		change.stepName ?? change.processName ?? change.parameterName ?? change.parameterDescription ?? 'Changed item';
+	const details = usableFieldChanges(change.details);
+	const nestedStepChanges = usableStructuredChanges(change.stepChanges);
 	const metadata = Object.entries(change).filter(
 		([key]) =>
 			![
@@ -209,7 +248,7 @@ function StructuredChange({ change }: { change: AuditStructuredChange }) {
 				'parameterDescription'
 			].includes(key)
 	);
-	const config = nestedChangeConfig[change.changeType];
+	const config = resolveNestedConfig(change.changeType);
 
 	return (
 		<Box
@@ -250,14 +289,14 @@ function StructuredChange({ change }: { change: AuditStructuredChange }) {
 					))}
 				</Stack>
 			)}
-			{change.details && change.details.length > 0 && (
+			{details.length > 0 && (
 				<Box sx={{ mt: 1.5 }}>
-					<ChangeList changes={change.details} />
+					<ChangeList changes={details} />
 				</Box>
 			)}
-			{change.stepChanges && change.stepChanges.length > 0 && (
+			{nestedStepChanges.length > 0 && (
 				<Stack gap={1} sx={{ mt: 1.5, pl: { sm: 2 }, borderLeft: { sm: '2px solid #dbeafe' } }}>
-					{change.stepChanges.map((stepChange, index) => (
+					{nestedStepChanges.map((stepChange, index) => (
 						<StructuredChange key={index} change={stepChange} />
 					))}
 				</Stack>
@@ -290,7 +329,16 @@ export function AuditHistoryPanel({
 	domain
 }: AuditHistoryPanelProps) {
 	const isPrcTemplate = domain === 'prcTemplate';
-	const visibleHistory = isPrcTemplate ? history?.filter(entry => entry.stepChanges?.length) : history;
+	const normalizedHistory = history?.map(entry => ({
+		...entry,
+		changes: usableFieldChanges(entry.changes),
+		stepChanges: usableStructuredChanges(entry.stepChanges),
+		stepGroupChanges: usableStructuredChanges(entry.stepGroupChanges),
+		parameterChanges: usableStructuredChanges(entry.parameterChanges)
+	}));
+	const visibleHistory = isPrcTemplate
+		? normalizedHistory?.filter(entry => entry.stepChanges.length > 0)
+		: normalizedHistory;
 	const copy = domain ? domainCopy[domain] : null;
 	const resolvedTitle = title ?? copy?.title ?? 'Change history';
 	const subtitle = copy?.subtitle ?? 'See what changed, when it changed, and who made the update.';
@@ -369,21 +417,17 @@ export function AuditHistoryPanel({
 				{!isLoading &&
 					!isError &&
 					visibleHistory?.map((entry, index) => {
-						const hasStepChanges = Boolean(entry.stepChanges?.length);
-						const hasGroupChanges = Boolean(entry.stepGroupChanges?.length);
-						const hasParamChanges = Boolean(entry.parameterChanges?.length);
+						const hasStepChanges = entry.stepChanges.length > 0;
+						const hasGroupChanges = entry.stepGroupChanges.length > 0;
+						const hasParamChanges = entry.parameterChanges.length > 0;
 						const hasFieldChanges = !isPrcTemplate && entry.changes.length > 0;
 						const hasAnyChanges = isPrcTemplate
 							? hasStepChanges
 							: hasFieldChanges || hasStepChanges || hasGroupChanges || hasParamChanges;
 						const structuredCount =
-							(entry.stepChanges?.length ?? 0) +
-							(entry.stepGroupChanges?.length ?? 0) +
-							(entry.parameterChanges?.length ?? 0);
-						const changeCount = isPrcTemplate
-							? (entry.stepChanges?.length ?? 0)
-							: entry.changes.length + structuredCount;
-						const action = actionConfig[entry.changeType];
+							entry.stepChanges.length + entry.stepGroupChanges.length + entry.parameterChanges.length;
+						const changeCount = isPrcTemplate ? entry.stepChanges.length : entry.changes.length + structuredCount;
+						const action = resolveActionConfig(entry.changeType);
 						const isLast = index === visibleHistory.length - 1;
 
 						return (

@@ -99,4 +99,43 @@ describe('AuditHistoryPanel', () => {
 		expect(screen.getByText('No revisions recorded yet')).toBeInTheDocument();
 		expect(screen.queryByText('Version 3')).not.toBeInTheDocument();
 	});
+
+	// Legacy prcTemplate audit rows (written before the semantic step diff landed) store
+	// `diffData.prcTemplateSteps` as a raw jsondiffpatch delta — an array whose element is
+	// itself an array of step rows — and the backend forwards it as `stepChanges` verbatim.
+	it('ignores legacy jsondiffpatch step deltas instead of crashing', () => {
+		const legacyEntry = {
+			id: 405,
+			version: 1,
+			changeType: 'CREATE',
+			changedAt: '2026-06-02T02:13:31.984Z',
+			changedBy: 1,
+			changedByName: 'Dev Admin',
+			changes: [],
+			stepChanges: [[{ id: 846, type: 'sequence', sequenceId: 781, sequence: 3 }]]
+		} as unknown as AuditHistoryEntry;
+
+		render(<AuditHistoryPanel history={[legacyEntry]} domain="prcTemplate" />);
+
+		expect(screen.getByText('No revisions recorded yet')).toBeInTheDocument();
+	});
+
+	it('falls back to a neutral chip for unrecognised change types', () => {
+		const unknownEntry = {
+			id: 12,
+			version: 5,
+			changeType: 'ARCHIVED',
+			changedAt: '2026-07-24T20:00:00.000Z',
+			changedBy: 1,
+			changedByName: 'Dev Admin',
+			changes: [{ field: 'inspection.notes', type: 'RENAMED', oldValue: 'a', newValue: 'b' }],
+			parameterChanges: [{ changeType: 'SPLIT', parameterName: 'Pressure' }]
+		} as unknown as AuditHistoryEntry;
+
+		render(<AuditHistoryPanel history={[unknownEntry]} />);
+		fireEvent.click(screen.getByText('Version 5'));
+
+		expect(screen.getByText('Pressure')).toBeInTheDocument();
+		expect(screen.getByText('Inspection / Notes')).toBeInTheDocument();
+	});
 });
