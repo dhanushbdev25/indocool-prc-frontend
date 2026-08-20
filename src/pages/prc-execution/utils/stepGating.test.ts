@@ -3,6 +3,7 @@ import type { ExecutionData, TimelineStep } from '../types/execution.types';
 import { buildTimelineSteps } from './buildTimelineSteps';
 import { extractSequenceStepGroupsFromExecution } from './operationWiseMerge';
 import {
+	areNonSapStepsComplete,
 	canAccessStepIndex,
 	getExecutionFrontierIndex,
 	hasInspectionParameterData,
@@ -110,6 +111,71 @@ describe('PRC execution step gating', () => {
 		expect(frontier).toBe(1);
 		expect(canAccessStepIndex(1, frontier)).toBe(true);
 		expect(canAccessStepIndex(2, frontier)).toBe(false);
+	});
+});
+
+describe('SAP confirmations step gating', () => {
+	const sapStep: TimelineStep = {
+		stepNumber: 3,
+		type: 'sapConfirmations',
+		title: 'SAP confirmations',
+		description: 'Review SAP API confirmation calls and retry failures',
+		status: 'pending',
+		ctq: false
+	};
+	const setupStep: TimelineStep = {
+		stepNumber: 1,
+		type: 'setup',
+		title: 'Setup',
+		description: 'Setup',
+		status: 'completed',
+		ctq: false
+	};
+
+	it('keeps the SAP step reachable past the frontier while an earlier step is open', () => {
+		const steps = [setupStep, inspectionStep(), sapStep];
+		const aggregated = {
+			prcmetadata: { shift: 'A' },
+			20: { 201: { value: 'OK' }, productionApproved: true }
+		};
+
+		const frontier = getExecutionFrontierIndex(steps, aggregated);
+		expect(frontier).toBe(1);
+		// Other steps stay locked behind the frontier...
+		expect(canAccessStepIndex(2, frontier, inspectionStep())).toBe(false);
+		// ...but SAP confirmations is always reachable.
+		expect(canAccessStepIndex(2, frontier, sapStep)).toBe(true);
+	});
+
+	it('reports other steps incomplete while an earlier step is open', () => {
+		const steps = [setupStep, inspectionStep(), sapStep];
+		const aggregated = {
+			prcmetadata: { shift: 'A' },
+			20: { 201: { value: 'OK' }, productionApproved: true }
+		};
+
+		expect(areNonSapStepsComplete(steps, aggregated)).toBe(false);
+	});
+
+	it('reports other steps complete once every non-SAP step is done', () => {
+		const steps = [setupStep, inspectionStep(), sapStep];
+		const aggregated = {
+			prcmetadata: { shift: 'A' },
+			20: { 201: { value: 'OK' }, productionApproved: true, stepCompleted: true }
+		};
+
+		expect(areNonSapStepsComplete(steps, aggregated)).toBe(true);
+	});
+
+	it('ignores the SAP step’s own completion when judging the other steps', () => {
+		const steps = [setupStep, sapStep];
+		const aggregated = {
+			prcmetadata: { shift: 'A' }
+		};
+
+		// SAP itself is not complete, but that must not block its own Complete PRC gate.
+		expect(isTimelineStepComplete(sapStep, aggregated)).toBe(false);
+		expect(areNonSapStepsComplete(steps, aggregated)).toBe(true);
 	});
 });
 

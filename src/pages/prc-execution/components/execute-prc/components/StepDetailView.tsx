@@ -23,6 +23,8 @@ interface StepDetailViewProps {
 	canGoNext: boolean;
 	/** Browse-only mode: same step UI as execution, inputs disabled, Prev/Next navigate without completing. */
 	readOnly?: boolean;
+	/** False while any non-SAP step is still open; gates Complete PRC on the SAP confirmations step. */
+	allOtherStepsComplete?: boolean;
 }
 
 const StepDetailView = ({
@@ -35,7 +37,8 @@ const StepDetailView = ({
 	onStepComplete,
 	canGoPrevious,
 	canGoNext,
-	readOnly = false
+	readOnly = false,
+	allOtherStepsComplete = true
 }: StepDetailViewProps) => {
 	// For sequence step groups, we need to handle sub-steps
 	const isSequenceGroup = step.type === 'sequence' && step.stepGroup;
@@ -289,6 +292,7 @@ const StepDetailView = ({
 						executionData={executionData}
 						onStepComplete={handleSubStepComplete}
 						readOnlyOverride={readOnly}
+						allOtherStepsComplete={allOtherStepsComplete}
 					/>
 				);
 			default:

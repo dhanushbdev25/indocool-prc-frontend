@@ -3,6 +3,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { ArrowForward, PictureAsPdf } from '@mui/icons-material';
 import { useEffect, useRef } from 'react';
 import { type TimelineStep } from '../../../types/execution.types';
+import { isAlwaysAccessibleStep } from '../../../utils/stepGating';
 import StepExecutionMetaSummary from '../../StepExecutionMetaSummary';
 
 interface StepListProps {
@@ -96,6 +97,7 @@ const StepList = ({
 
 	const isStepClickable = (step: TimelineStep, index: number) => {
 		if (previewMode) return true;
+		if (isAlwaysAccessibleStep(step)) return true;
 		return step.status === 'completed' || index === frontierIndex;
 	};
 

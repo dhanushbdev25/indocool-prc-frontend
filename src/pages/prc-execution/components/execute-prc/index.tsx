@@ -30,9 +30,11 @@ import { canEditStepForRole } from '../../utils/roleStepAccess';
 import { collectUniqueExecutionInspectionImages } from '../../utils/executionInspectionImages';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
+	areNonSapStepsComplete,
 	canAccessStepIndex,
 	getExecutionFrontierIndex,
 	hasInspectionParameterData,
+	isAlwaysAccessibleStep,
 	isTimelineStepComplete
 } from '../../utils/stepGating';
 import {
@@ -183,6 +185,10 @@ const ExecutePrc = () => {
 							initializedExecutionIdRef.current = executionId;
 							return frontierIndex;
 						}
+						// Don't pull the user off an always-accessible step (SAP confirmations) on refetch.
+						if (isAlwaysAccessibleStep(steps[previousIndex])) {
+							return previousIndex;
+						}
 						return Math.min(previousIndex, frontierIndex);
 					});
 				}
@@ -215,6 +221,8 @@ const ExecutePrc = () => {
 		getCurrentAggregatedData(),
 		actualExecutionData
 	);
+	// Gates Complete PRC on the SAP step; the SAP card itself stays reachable at all times.
+	const nonSapStepsComplete = areNonSapStepsComplete(timelineSteps, getCurrentAggregatedData(), actualExecutionData);
 
 	// The step whose completion starts the delay clock of the step at `index` (setup for the
 	// first template step; undefined for the first timeline entry).
@@ -1473,7 +1481,7 @@ const ExecutePrc = () => {
 		const targetStep = timelineSteps[stepIndex];
 		if (!targetStep) return;
 
-		if (!isViewOnlyMode && !canAccessStepIndex(stepIndex, executionFrontierIndex)) {
+		if (!isViewOnlyMode && !canAccessStepIndex(stepIndex, executionFrontierIndex, targetStep)) {
 			setCurrentStepIndex(executionFrontierIndex);
 			setCurrentView('detail');
 			return;
@@ -1637,9 +1645,11 @@ const ExecutePrc = () => {
 			}
 		}
 
-		// For other step types, allow navigation to completed steps or current step
+		// For other step types, allow navigation to completed steps, the current step, or steps
+		// that are always accessible (SAP confirmations, which stays open for review and retry).
 		if (
 			isViewOnlyMode ||
+			isAlwaysAccessibleStep(targetStep) ||
 			targetStep.status === 'completed' ||
 			targetStep.status === 'in-progress' ||
 			stepIndex === currentStepIndex
@@ -1798,14 +1808,22 @@ const ExecutePrc = () => {
 							onBackToList={handleBackToList}
 							onPreviousStep={() => {
 								if (currentStepIndex > 0) {
-									setCurrentStepIndex(prev => prev - 1);
+									const previousStepIndex = currentStepIndex - 1;
+									// Stepping back out of the always-accessible SAP card must still respect the frontier.
+									setCurrentStepIndex(
+										isViewOnlyMode ||
+											canAccessStepIndex(previousStepIndex, executionFrontierIndex, timelineSteps[previousStepIndex])
+											? previousStepIndex
+											: executionFrontierIndex
+									);
 								}
 							}}
 							onNextStep={() => {
 								const nextStepIndex = currentStepIndex + 1;
 								if (
 									nextStepIndex < timelineSteps.length &&
-									(isViewOnlyMode || canAccessStepIndex(nextStepIndex, executionFrontierIndex))
+									(isViewOnlyMode ||
+										canAccessStepIndex(nextStepIndex, executionFrontierIndex, timelineSteps[nextStepIndex]))
 								) {
 									setCurrentStepIndex(prev => prev + 1);
 								}
@@ -1814,8 +1832,10 @@ const ExecutePrc = () => {
 							canGoPrevious={currentStepIndex > 0}
 							canGoNext={
 								currentStepIndex < timelineSteps.length - 1 &&
-								(isViewOnlyMode || canAccessStepIndex(currentStepIndex + 1, executionFrontierIndex))
+								(isViewOnlyMode ||
+									canAccessStepIndex(currentStepIndex + 1, executionFrontierIndex, timelineSteps[currentStepIndex + 1]))
 							}
+							allOtherStepsComplete={nonSapStepsComplete}
 						/>
 					)}
 

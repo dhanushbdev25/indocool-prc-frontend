@@ -85,6 +85,31 @@ export function getExecutionFrontierIndex(
 	return firstIncompleteIndex === -1 ? steps.length - 1 : firstIncompleteIndex;
 }
 
-export function canAccessStepIndex(targetIndex: number, frontierIndex: number): boolean {
-	return targetIndex >= 0 && targetIndex <= frontierIndex;
+/**
+ * SAP confirmations stays reachable at every point in an execution so operators can review
+ * postings and retry failures while earlier steps are still open. The all-steps-complete
+ * requirement lives on its Complete PRC action instead — see `areNonSapStepsComplete`.
+ */
+export function isAlwaysAccessibleStep(step: TimelineStep | undefined): boolean {
+	return step?.type === 'sapConfirmations';
+}
+
+/**
+ * True when every step other than SAP confirmations is complete. This gates the Complete PRC
+ * action, which is why the SAP card itself is exempt from the navigation frontier.
+ */
+export function areNonSapStepsComplete(
+	steps: TimelineStep[],
+	prcAggregatedSteps: Record<string, unknown> | undefined,
+	executionData?: ExecutionData
+): boolean {
+	return steps
+		.filter(step => !isAlwaysAccessibleStep(step))
+		.every(step => isTimelineStepComplete(step, prcAggregatedSteps, executionData));
+}
+
+export function canAccessStepIndex(targetIndex: number, frontierIndex: number, step?: TimelineStep): boolean {
+	if (targetIndex < 0) return false;
+	if (isAlwaysAccessibleStep(step)) return true;
+	return targetIndex <= frontierIndex;
 }

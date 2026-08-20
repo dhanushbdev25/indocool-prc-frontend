@@ -28,6 +28,11 @@ interface SapConfirmationStepProps {
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => Promise<void>;
 	readOnlyOverride?: boolean;
+	/**
+	 * False while any other execution step is still open. The card stays reachable regardless —
+	 * only the Complete PRC action waits for the rest of the execution.
+	 */
+	allOtherStepsComplete?: boolean;
 }
 
 function LogRow({
@@ -205,7 +210,12 @@ function LogRow({
 	);
 }
 
-const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }: SapConfirmationStepProps) => {
+const SapConfirmationStep = ({
+	executionData,
+	onStepComplete,
+	readOnlyOverride,
+	allOtherStepsComplete = true
+}: SapConfirmationStepProps) => {
 	const prcExecutionId = executionData.id;
 	const [expandedId, setExpandedId] = useState<number | null>(null);
 	const [completeLoading, setCompleteLoading] = useState(false);
@@ -220,7 +230,8 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 	const [retrigger, { isLoading: isRetriggering }] = useRetriggerSapConfirmationsMutation();
 
 	const grLog = logs.find(l => l.operationId === 'GR');
-	const canComplete = Boolean(grLog?.success);
+	const grSucceeded = Boolean(grLog?.success);
+	const canComplete = grSucceeded && allOtherStepsComplete;
 
 	const handleRetrigger = async () => {
 		if (!prcExecutionId) return;
@@ -279,7 +290,14 @@ const SapConfirmationStep = ({ executionData, onStepComplete, readOnlyOverride }
 				</Box>
 			)}
 
-			{!archivePresentation && !canComplete && logs.length > 0 && (
+			{!archivePresentation && !allOtherStepsComplete && (
+				<Alert severity="info" sx={{ mb: 2 }}>
+					All other execution steps must be completed before you can complete this PRC. Confirmations remain available
+					for review and retry in the meantime.
+				</Alert>
+			)}
+
+			{!archivePresentation && allOtherStepsComplete && !grSucceeded && logs.length > 0 && (
 				<Alert severity="warning" sx={{ mb: 2 }}>
 					Goods Receipt (GR) posting must succeed before you can complete this execution. Use retry for failed rows,
 					then refresh if needed.

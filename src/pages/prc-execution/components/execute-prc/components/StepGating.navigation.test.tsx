@@ -79,6 +79,36 @@ describe('PRC execution navigation gating', () => {
 		expect(onStepClick).toHaveBeenCalledWith(1);
 	});
 
+	it('keeps the SAP confirmations card clickable while an earlier step is incomplete', () => {
+		const onStepClick = vi.fn();
+		const steps: TimelineStep[] = [
+			{
+				stepNumber: 1,
+				type: 'setup',
+				title: 'Setup',
+				description: 'Setup',
+				status: 'completed',
+				ctq: false
+			},
+			demouldingStep,
+			{
+				stepNumber: 3,
+				type: 'sapConfirmations',
+				title: 'SAP confirmations',
+				description: 'Review SAP API confirmation calls and retry failures',
+				status: 'pending',
+				ctq: false
+			}
+		];
+
+		render(
+			<StepList steps={steps} currentStepIndex={1} frontierIndex={1} onStepClick={onStepClick} stepStartEndTime={{}} />
+		);
+
+		fireEvent.click(screen.getByText('SAP confirmations'));
+		expect(onStepClick).toHaveBeenCalledWith(2);
+	});
+
 	it('keeps detail Next disabled until Demoulding has stepCompleted', () => {
 		const onNextStep = vi.fn();
 		const incompleteAggregated = {
