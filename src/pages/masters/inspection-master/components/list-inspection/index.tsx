@@ -23,7 +23,10 @@ import { FullScreenFormSavingOverlay } from '../../../../../components/common/Fu
 import { type DeleteInspectionTaskRequest } from '../../../../../store/api/business/inspection-master/inspection.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { MasterAuditHistoryDialog, type MasterAuditTarget } from '../../../../../components/common/auditHistory';
-import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
+import {
+	toInspectionParameterFormValues,
+	toInspectionParameterRequests
+} from '../../utils/inspectionParameterPayload';
 
 const SEARCH_PLACEHOLDER = 'Inspection ID, name, or type';
 
@@ -163,24 +166,12 @@ const ListInspection = () => {
 						createdBy: fullInspectionDetail.inspection.createdBy,
 						updatedBy: fullInspectionDetail.inspection.updatedBy
 					},
-					inspectionParameters: sortByNumericOrder(fullInspectionDetail.inspectionParameters).map((param, index) => ({
-						order: index + 1,
-						parameterName: param.parameterName,
-						specification: param.specification,
-						minimumAcceptanceValue: param.minimumAcceptanceValue,
-						maximumAcceptanceValue: param.maximumAcceptanceValue,
-						type: param.type,
-						files: param.files || {},
-						columns: param.columns.map(col => ({
-							name: col.name,
-							type: col.type,
-							defaultValue: col.defaultValue || '',
-							minimumAcceptanceValue: col.minimumAcceptanceValue || '',
-							maximumAcceptanceValue: col.maximumAcceptanceValue || ''
-						})),
-						role: param.role,
-						ctq: param.ctq
-					}))
+					// Deactivating reuses the update endpoint, which re-inserts every parameter
+					// row. Go through the shared mapping so the ids (and tableConfig /
+					// getInstrumentId) survive a status change.
+					inspectionParameters: toInspectionParameterRequests(
+						toInspectionParameterFormValues(fullInspectionDetail.inspectionParameters)
+					)
 				};
 
 				await deleteInspectionTask(deleteRequest).unwrap();

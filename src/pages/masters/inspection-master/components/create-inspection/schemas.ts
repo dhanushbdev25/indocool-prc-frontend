@@ -71,6 +71,10 @@ export const filesSchema = yup.object().test('valid-files', 'Files must be valid
 
 // Inspection parameter validation schema
 export const inspectionParameterSchema = yup.object({
+	// Database id of an existing parameter row. Absent for newly added parameters.
+	// It must survive the edit round-trip: the backend re-inserts parameters on
+	// update, so an omitted id makes it mint a new one and orphan every reference.
+	id: yup.number().optional(),
 	order: yup
 		.number()
 		.required('Order is required')

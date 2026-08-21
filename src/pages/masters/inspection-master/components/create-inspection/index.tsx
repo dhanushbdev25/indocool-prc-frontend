@@ -26,7 +26,11 @@ import {
 	useCreateInspectionMutation,
 	useUpdateInspectionMutation
 } from '../../../../../store/api/business/inspection-master/inspection.api';
-import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
+import {
+	stripInspectionParameterIds,
+	toInspectionParameterFormValues,
+	toInspectionParameterRequests
+} from '../../utils/inspectionParameterPayload';
 import { MasterAuditHistoryButton } from '../../../../../components/common/auditHistory';
 
 const steps = ['Basic Information', 'Inspection Parameters', 'Review & Submit'];
@@ -117,26 +121,7 @@ const CreateInspection = () => {
 	useEffect(() => {
 		if (!isFetchSuccess || !inspectionData) return;
 
-		const inspectionParameters = sortByNumericOrder(inspectionData.detail.inspectionParameters).map((param, index) => ({
-			order: index + 1,
-			parameterName: param.parameterName,
-			specification: param.specification ?? '',
-			minimumAcceptanceValue: param.minimumAcceptanceValue ?? '',
-			maximumAcceptanceValue: param.maximumAcceptanceValue ?? '',
-			type: param.type,
-			files: param.files || {},
-			columns: param.columns.map(col => ({
-				name: col.name,
-				type: col.type,
-				defaultValue: col.defaultValue ?? '',
-				minimumAcceptanceValue: col.minimumAcceptanceValue ?? '',
-				maximumAcceptanceValue: col.maximumAcceptanceValue ?? ''
-			})),
-			tableConfig: param.tableConfig || undefined,
-			role: param.role,
-			ctq: param.ctq,
-			getInstrumentId: param.getInstrumentId ?? false
-		}));
+		const inspectionParameters = toInspectionParameterFormValues(inspectionData.detail.inspectionParameters);
 
 		if (isEditMode) {
 			const formData: InspectionFormData = {
@@ -170,7 +155,8 @@ const CreateInspection = () => {
 				approveByProduction: inspectionData.detail.inspection.approveByProduction ?? false,
 				approveByQuality: inspectionData.detail.inspection.approveByQuality ?? false,
 				inspectionTiming: convertSecondsToTime(inspectionData.detail.inspection.inspectionTiming || 60),
-				inspectionParameters
+				// A clone inserts new parameter rows, so the source ids must not travel with it.
+				inspectionParameters: stripInspectionParameterIds(inspectionParameters)
 			};
 			reset(formData);
 		}
@@ -246,38 +232,7 @@ const CreateInspection = () => {
 				inspectionTiming: convertTimeToSeconds(data.inspectionTiming)
 			};
 
-		const inspectionParameters = (data.inspectionParameters || []).map((param, parameterIndex) => ({
-			order: parameterIndex + 1,
-			parameterName: param.parameterName,
-			specification: param.specification,
-			minimumAcceptanceValue:
-				param.minimumAcceptanceValue != null && param.minimumAcceptanceValue !== ''
-					? String(param.minimumAcceptanceValue)
-					: undefined,
-			maximumAcceptanceValue:
-				param.maximumAcceptanceValue != null && param.maximumAcceptanceValue !== ''
-					? String(param.maximumAcceptanceValue)
-					: undefined,
-			type: param.type,
-			files: param.files || {},
-			columns: (param.columns || []).map(col => ({
-				name: col.name,
-				type: col.type,
-				defaultValue: col.defaultValue ? String(col.defaultValue) : undefined,
-				minimumAcceptanceValue:
-					col.minimumAcceptanceValue != null && col.minimumAcceptanceValue !== ''
-						? String(col.minimumAcceptanceValue)
-						: undefined,
-				maximumAcceptanceValue:
-					col.maximumAcceptanceValue != null && col.maximumAcceptanceValue !== ''
-						? String(col.maximumAcceptanceValue)
-						: undefined
-			})),
-			tableConfig: param.tableConfig || undefined,
-			role: param.role,
-			ctq: param.ctq ?? false,
-			getInstrumentId: param.getInstrumentId ?? false
-		}));
+		const inspectionParameters = toInspectionParameterRequests(data.inspectionParameters || []);
 
 			console.log('Saving inspection data:', { inspectionRequestData, inspectionParameters });
 

@@ -104,6 +104,11 @@ export interface ColumnRequest {
 }
 
 export interface InspectionParameterRequest {
+	// Send the existing row id on update so the backend reuses it. Update deletes
+	// and re-inserts the parameter rows, so omitting the id reassigns every
+	// primary key and breaks references held elsewhere (execution answers,
+	// snapshot templates, diagram mappings). Omit it for new parameters.
+	id?: number;
 	order: number;
 	parameterName: string;
 	specification?: string;
