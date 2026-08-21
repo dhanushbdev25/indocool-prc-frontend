@@ -23,10 +23,7 @@ import { FullScreenFormSavingOverlay } from '../../../../../components/common/Fu
 import { type DeleteInspectionTaskRequest } from '../../../../../store/api/business/inspection-master/inspection.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { MasterAuditHistoryDialog, type MasterAuditTarget } from '../../../../../components/common/auditHistory';
-import {
-	toInspectionParameterFormValues,
-	toInspectionParameterRequests
-} from '../../utils/inspectionParameterPayload';
+import { toInspectionParameterFormValues, toInspectionParameterRequests } from '../../utils/inspectionParameterPayload';
 
 const SEARCH_PLACEHOLDER = 'Inspection ID, name, or type';
 

@@ -2,17 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import {
-	Box,
-	Paper,
-	Typography,
-	Button,
-	Stepper,
-	Step,
-	StepLabel,
-	Alert,
-	Skeleton
-} from '@mui/material';
+import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
 import InspectionBasicInfo from './components/InspectionBasicInfo';
@@ -232,7 +222,7 @@ const CreateInspection = () => {
 				inspectionTiming: convertTimeToSeconds(data.inspectionTiming)
 			};
 
-		const inspectionParameters = toInspectionParameterRequests(data.inspectionParameters || []);
+			const inspectionParameters = toInspectionParameterRequests(data.inspectionParameters || []);
 
 			console.log('Saving inspection data:', { inspectionRequestData, inspectionParameters });
 
@@ -349,92 +339,92 @@ const CreateInspection = () => {
 	return (
 		<FormProvider {...methods}>
 			<>
-			<Box sx={{ minHeight: '100vh' }}>
-				<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-					{/* Header */}
-					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 4 }}>
-						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
-							{isEditMode ? 'Edit Inspection' : 'Create New Inspection'}
-						</Typography>
-						<MasterAuditHistoryButton
-							target={
-								isEditMode && id
-									? {
-											domain: 'inspection',
-											id: Number(id),
-											label: inspectionData?.detail.inspection.inspectionId ?? `Inspection ${id}`
-										}
-									: null
-							}
-						/>
-					</Box>
+				<Box sx={{ minHeight: '100vh' }}>
+					<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+						{/* Header */}
+						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 4 }}>
+							<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
+								{isEditMode ? 'Edit Inspection' : 'Create New Inspection'}
+							</Typography>
+							<MasterAuditHistoryButton
+								target={
+									isEditMode && id
+										? {
+												domain: 'inspection',
+												id: Number(id),
+												label: inspectionData?.detail.inspection.inspectionId ?? `Inspection ${id}`
+											}
+										: null
+								}
+							/>
+						</Box>
 
-					{/* Error Alert */}
-					{error && (
-						<Alert severity="error" sx={{ mb: 3 }}>
-							{error}
-						</Alert>
-					)}
+						{/* Error Alert */}
+						{error && (
+							<Alert severity="error" sx={{ mb: 3 }}>
+								{error}
+							</Alert>
+						)}
 
-					{/* Stepper */}
-					<Box sx={{ mb: 4 }}>
-						<Stepper activeStep={activeStep} alternativeLabel>
-							{steps.map(label => (
-								<Step key={label}>
-									<StepLabel>{label}</StepLabel>
-								</Step>
-							))}
-						</Stepper>
-					</Box>
+						{/* Stepper */}
+						<Box sx={{ mb: 4 }}>
+							<Stepper activeStep={activeStep} alternativeLabel>
+								{steps.map(label => (
+									<Step key={label}>
+										<StepLabel>{label}</StepLabel>
+									</Step>
+								))}
+							</Stepper>
+						</Box>
 
-					{/* Step Content */}
-					<Box sx={{ mb: 4 }}>{renderStepContent(activeStep)}</Box>
+						{/* Step Content */}
+						<Box sx={{ mb: 4 }}>{renderStepContent(activeStep)}</Box>
 
-					{/* Navigation Buttons */}
-					<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
-						<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
-							Back
-						</Button>
-
-						<Box sx={{ display: 'flex', gap: 2 }}>
-							<Button variant="outlined" startIcon={<Cancel />} onClick={handleCancel} sx={{ textTransform: 'none' }}>
-								Cancel
+						{/* Navigation Buttons */}
+						<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
+							<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
+								Back
 							</Button>
 
-							{activeStep === steps.length - 1 ? (
-								<Button
-									variant="contained"
-									startIcon={<Save />}
-									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-									onClick={handleSubmit(onSubmit as any)}
-									disabled={isCreating || isUpdating}
-									sx={{
-										textTransform: 'none',
-										backgroundColor: '#1976d2',
-										'&:hover': { backgroundColor: '#1565c0' }
-									}}
-								>
-									{isEditMode ? 'Update Inspection' : 'Create Inspection'}
+							<Box sx={{ display: 'flex', gap: 2 }}>
+								<Button variant="outlined" startIcon={<Cancel />} onClick={handleCancel} sx={{ textTransform: 'none' }}>
+									Cancel
 								</Button>
-							) : (
-								<Button
-									variant="contained"
-									onClick={handleNext}
-									sx={{
-										textTransform: 'none',
-										backgroundColor: '#1976d2',
-										'&:hover': { backgroundColor: '#1565c0' }
-									}}
-								>
-									Next
-								</Button>
-							)}
-						</Box>
-					</Box>
-				</Paper>
-			</Box>
 
-			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+								{activeStep === steps.length - 1 ? (
+									<Button
+										variant="contained"
+										startIcon={<Save />}
+										// eslint-disable-next-line @typescript-eslint/no-explicit-any
+										onClick={handleSubmit(onSubmit as any)}
+										disabled={isCreating || isUpdating}
+										sx={{
+											textTransform: 'none',
+											backgroundColor: '#1976d2',
+											'&:hover': { backgroundColor: '#1565c0' }
+										}}
+									>
+										{isEditMode ? 'Update Inspection' : 'Create Inspection'}
+									</Button>
+								) : (
+									<Button
+										variant="contained"
+										onClick={handleNext}
+										sx={{
+											textTransform: 'none',
+											backgroundColor: '#1976d2',
+											'&:hover': { backgroundColor: '#1565c0' }
+										}}
+									>
+										Next
+									</Button>
+								)}
+							</Box>
+						</Box>
+					</Paper>
+				</Box>
+
+				<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
 			</>
 		</FormProvider>
 	);

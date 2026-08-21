@@ -24,6 +24,7 @@ import { FullScreenFormSavingOverlay } from '../../../../../components/common/Fu
 import { type DeleteSequenceTaskRequest } from '../../../../../store/api/business/sequence-master/sequence.validators';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { MasterAuditHistoryDialog, type MasterAuditTarget } from '../../../../../components/common/auditHistory';
+import { toProcessStepGroupRequestsFromDetail } from '../../utils/processStepGroupPayload';
 
 const SEARCH_PLACEHOLDER = 'Sequence ID, name, category, item, type, or notes';
 
@@ -142,28 +143,10 @@ const ListSequence = () => {
 							totalSteps: fullSequenceDetail.totalSteps,
 							ctqSteps: fullSequenceDetail.ctqSteps
 						},
-						processStepGroups: fullSequenceDetail.stepGroups.map(stepGroup => ({
-							sequence: stepGroup.sequence,
-							processName: stepGroup.processName,
-							processDescription: stepGroup.processDescription,
-							sequenceTiming: stepGroup.sequenceTiming || 0,
-							processSteps: stepGroup.steps.map(step => ({
-								parameterDescription: step.parameterDescription,
-								stepNumber: step.stepNumber,
-								evaluationMethod: step.evaluationMethod,
-								targetValueType: step.targetValueType,
-								minimumAcceptanceValue: step.minimumAcceptanceValue ? parseFloat(step.minimumAcceptanceValue) : null,
-								maximumAcceptanceValue: step.maximumAcceptanceValue ? parseFloat(step.maximumAcceptanceValue) : null,
-								multipleMeasurements: step.multipleMeasurements,
-								multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
-								uom: step.uom,
-								ctq: step.ctq,
-								allowAttachments: step.allowAttachments,
-								responsiblePerson: step.responsiblePerson || false,
-								getInstrumentId: step.getInstrumentId || false,
-								notes: step.notes
-							}))
-						}))
+						// Deactivating reuses the update endpoint, which re-inserts every group
+						// and step. Go through the shared mapping so the ids (and shift,
+						// pfdNumber, tableConfig) survive a status change.
+						processStepGroups: toProcessStepGroupRequestsFromDetail(fullSequenceDetail.stepGroups)
 					}
 				};
 
@@ -212,10 +195,7 @@ const ListSequence = () => {
 					<SequenceHeader
 						action={
 							canCreate ? (
-								<ToolbarAddButton
-									label="Add Sequence"
-									onClick={() => navigate('/sequence-master/create-sequence')}
-								/>
+								<ToolbarAddButton label="Add Sequence" onClick={() => navigate('/sequence-master/create-sequence')} />
 							) : null
 						}
 					/>

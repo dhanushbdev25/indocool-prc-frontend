@@ -239,7 +239,11 @@ function isInspectionDetail(value: unknown): value is InspectionDetail {
 		return false;
 	}
 	const d = value as Record<string, unknown>;
-	return isInspection(d.inspection) && Array.isArray(d.inspectionParameters) && d.inspectionParameters.every(isInspectionParameter);
+	return (
+		isInspection(d.inspection) &&
+		Array.isArray(d.inspectionParameters) &&
+		d.inspectionParameters.every(isInspectionParameter)
+	);
 }
 
 function isInspectionHeader(value: unknown): value is InspectionHeader {
@@ -248,9 +252,7 @@ function isInspectionHeader(value: unknown): value is InspectionHeader {
 	}
 	const h = value as Record<string, unknown>;
 	return (
-		typeof h.ACTIVE === 'number' &&
-		typeof h.INACTIVE === 'number' &&
-		(h.NEW === undefined || typeof h.NEW === 'number')
+		typeof h.ACTIVE === 'number' && typeof h.INACTIVE === 'number' && (h.NEW === undefined || typeof h.NEW === 'number')
 	);
 }
 

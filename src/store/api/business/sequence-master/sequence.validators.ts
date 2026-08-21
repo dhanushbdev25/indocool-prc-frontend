@@ -80,6 +80,11 @@ export interface SequenceByIdResponse {
 }
 
 export interface ProcessStepRequest {
+	// Send the existing row id on update so the backend reuses it. Update deletes
+	// and re-inserts every group and step, so omitting the id reassigns the primary
+	// keys that execution answers in prcAggregatedSteps are keyed by. Omit it for
+	// newly added steps.
+	id?: number;
 	parameterDescription: string;
 	stepNumber: number;
 	evaluationMethod: string;
@@ -98,6 +103,8 @@ export interface ProcessStepRequest {
 }
 
 export interface ProcessStepGroupRequest {
+	// See the note on ProcessStepRequest — omit for newly added groups.
+	id?: number;
 	sequence: number;
 	processName: string;
 	processDescription: string;

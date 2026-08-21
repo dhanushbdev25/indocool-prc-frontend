@@ -35,6 +35,10 @@ const tableConfigSchema = yup
 // Process Step validation schema
 export const processStepSchema = yup
 	.object({
+		// Database id of an existing step row. Absent for newly added steps. Update
+		// deletes and re-inserts every step, so an omitted id makes the backend mint
+		// a new one and orphans execution answers keyed by it.
+		id: yup.number().optional(),
 		parameterDescription: yup.string().required('Parameter description is required'),
 		stepNumber: yup
 			.number()
@@ -112,6 +116,8 @@ export const processStepSchema = yup
 
 // Process Step Group validation schema
 export const processStepGroupSchema = yup.object({
+	// Database id of an existing group row — see the note on processStepSchema.
+	id: yup.number().optional(),
 	sequence: yup.number().required().min(1).integer(),
 	processName: yup.string().required('Process ID is required'),
 	processDescription: yup.string().required('Process description is required'),

@@ -2,17 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm, FormProvider, type FieldErrors } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
-import {
-	Box,
-	Paper,
-	Typography,
-	Button,
-	Stepper,
-	Step,
-	StepLabel,
-	Alert,
-	Skeleton
-} from '@mui/material';
+import { Box, Paper, Typography, Button, Stepper, Step, StepLabel, Alert, Skeleton } from '@mui/material';
 import { Save, Cancel } from '@mui/icons-material';
 import Swal from 'sweetalert2';
 import { flattenRhfFieldErrorsToHtml } from '../../../../../utils/flattenRhfFieldErrors';
@@ -21,8 +11,11 @@ import SequenceStepGroups from './components/SequenceStepGroups';
 import SequenceReview from './components/SequenceReview';
 import { sequenceFormSchema, defaultSequenceFormData } from './schemas';
 import { SequenceFormData } from './schemas';
-import { normalizeTableConfig } from './table-config.utils';
-import type { TableConfig } from '../../../../../types/table-config.types';
+import {
+	stripProcessStepGroupIds,
+	toProcessStepGroupFormValues,
+	toProcessStepGroupRequests
+} from '../../utils/processStepGroupPayload';
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 import {
 	useFetchProcessSequenceByIdQuery,
@@ -50,22 +43,6 @@ const cloneSequenceName = (name: string): string => {
 	if (combined.length <= MAX_SEQUENCE_NAME_LEN) return combined;
 	const maxBase = MAX_SEQUENCE_NAME_LEN - suffix.length;
 	return (maxBase > 0 ? name.slice(0, maxBase) : '') + suffix;
-};
-
-// Helper function to convert time string (HH:MM) to seconds
-const convertTimeToSeconds = (timeString: string): number => {
-	if (!timeString) return 0;
-	const [hours, minutes] = timeString.split(':').map(Number);
-	return (hours * 60 + minutes) * 60; // Convert to seconds
-};
-
-// Helper function to convert seconds to time string (HH:MM)
-const convertSecondsToTime = (seconds: number): string => {
-	if (!seconds || seconds === 0) return '00:01'; // Default to 1 minute
-	const totalMinutes = Math.floor(seconds / 60);
-	const hours = Math.floor(totalMinutes / 60);
-	const minutes = totalMinutes % 60;
-	return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 };
 
 const CreateSequence = () => {
@@ -164,53 +141,7 @@ const CreateSequence = () => {
 	useEffect(() => {
 		if (!isFetchSuccess || !sequenceData) return;
 
-		const processStepGroups = (sequenceData.detail.stepGroups ?? [])
-			.filter((group): group is NonNullable<typeof group> => group != null)
-			.sort((a, b) => a.sequence - b.sequence)
-			.map(group => ({
-				sequence: group.sequence,
-				processName: group.processName,
-				processDescription: group.processDescription,
-				sequenceTiming: convertSecondsToTime(group.sequenceTiming || 60),
-				shift: group.shift || '',
-				pfdNumber: group.pfdNumber || '',
-				processSteps: (group.steps ?? [])
-					.filter((step): step is NonNullable<typeof step> => step != null)
-					.map(step => {
-						const stepRec = step as Record<string, unknown>;
-						const rawTable = (step.tableConfig ?? stepRec.table_config) as Parameters<typeof normalizeTableConfig>[0];
-						const tableConfig =
-							step.targetValueType === 'table' ? normalizeTableConfig(rawTable ?? null) : null;
-
-						const minNum = step.minimumAcceptanceValue ? Number(step.minimumAcceptanceValue) : null;
-						const maxNum = step.maximumAcceptanceValue ? Number(step.maximumAcceptanceValue) : null;
-						let minimumAcceptanceValue = minNum;
-						let maximumAcceptanceValue = maxNum;
-						if (step.targetValueType === 'exact value') {
-							const target = minNum ?? maxNum;
-							minimumAcceptanceValue = target;
-							maximumAcceptanceValue = target;
-						}
-
-						return {
-							parameterDescription: step.parameterDescription,
-							stepNumber: step.stepNumber,
-							evaluationMethod: step.evaluationMethod,
-							targetValueType: step.targetValueType,
-							minimumAcceptanceValue,
-							maximumAcceptanceValue,
-							multipleMeasurements: step.multipleMeasurements ?? false,
-							multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
-							tableConfig,
-							uom: step.uom,
-							ctq: step.ctq ?? false,
-							allowAttachments: step.allowAttachments ?? false,
-							responsiblePerson: step.responsiblePerson ?? false,
-							getInstrumentId: step.getInstrumentId ?? false,
-							notes: step.notes
-						};
-					})
-			}));
+		const processStepGroups = toProcessStepGroupFormValues(sequenceData.detail.stepGroups ?? []);
 
 		if (isEditMode) {
 			const formData: SequenceFormData = {
@@ -238,7 +169,8 @@ const CreateSequence = () => {
 				notes: sequenceData.detail.notes || '',
 				totalSteps: sequenceData.detail.totalSteps,
 				ctqSteps: sequenceData.detail.ctqSteps,
-				processStepGroups
+				// A clone inserts new group and step rows, so the source ids must not travel with it.
+				processStepGroups: stripProcessStepGroupIds(processStepGroups)
 			};
 			reset(formData);
 		}
@@ -308,40 +240,7 @@ const CreateSequence = () => {
 						totalSteps: data.totalSteps || 0,
 						ctqSteps: data.ctqSteps || 0
 					},
-					processStepGroups: (data.processStepGroups || []).map((group, groupIndex) => ({
-						sequence: groupIndex + 1,
-						processName: group.processName,
-						processDescription: group.processDescription,
-						sequenceTiming: convertTimeToSeconds(group.sequenceTiming),
-						shift: group.shift || null,
-						pfdNumber: group.pfdNumber || null,
-					processSteps: (group.processSteps || []).map((step, stepIndex) => {
-						const isExact = step.targetValueType === 'exact value';
-						const minVal = step.minimumAcceptanceValue ?? null;
-						const maxVal = isExact ? minVal : step.maximumAcceptanceValue ?? null;
-
-						return {
-						parameterDescription: step.parameterDescription,
-						stepNumber: stepIndex + 1,
-						evaluationMethod: step.evaluationMethod,
-						targetValueType: step.targetValueType,
-						minimumAcceptanceValue: minVal,
-						maximumAcceptanceValue: maxVal,
-						multipleMeasurements: step.multipleMeasurements ?? false,
-						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
-						tableConfig:
-							step.targetValueType === 'table'
-								? ((step.tableConfig ?? null) as TableConfig | null)
-								: null,
-						uom: step.uom,
-						ctq: step.ctq ?? false,
-						allowAttachments: step.allowAttachments ?? false,
-						responsiblePerson: step.responsiblePerson ?? false,
-						getInstrumentId: step.getInstrumentId ?? false,
-						notes: step.notes || ''
-					};
-					})
-					}))
+					processStepGroups: toProcessStepGroupRequests(data.processStepGroups || [])
 				}
 			};
 
@@ -442,90 +341,90 @@ const CreateSequence = () => {
 			<>
 				<Box sx={{ minHeight: '100vh' }}>
 					<Paper sx={{ p: 4, borderRadius: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-					{/* Header */}
-					<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 4 }}>
-						<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
-							{isEditMode ? 'Edit Process Sequence' : 'Create New Process Sequence'}
-						</Typography>
-						<MasterAuditHistoryButton
-							target={
-								isEditMode && id
-									? {
-											domain: 'sequence',
-											id: Number(id),
-											label: sequenceData?.detail.sequenceId ?? `Sequence ${id}`
-										}
-									: null
-							}
-						/>
-					</Box>
+						{/* Header */}
+						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 4 }}>
+							<Typography variant="h4" sx={{ fontWeight: 600, color: '#333' }}>
+								{isEditMode ? 'Edit Process Sequence' : 'Create New Process Sequence'}
+							</Typography>
+							<MasterAuditHistoryButton
+								target={
+									isEditMode && id
+										? {
+												domain: 'sequence',
+												id: Number(id),
+												label: sequenceData?.detail.sequenceId ?? `Sequence ${id}`
+											}
+										: null
+								}
+							/>
+						</Box>
 
-					{/* Error Alert */}
-					{error && (
-						<Alert severity="error" sx={{ mb: 3 }}>
-							{error}
-						</Alert>
-					)}
+						{/* Error Alert */}
+						{error && (
+							<Alert severity="error" sx={{ mb: 3 }}>
+								{error}
+							</Alert>
+						)}
 
-					{/* Stepper */}
-					<Box sx={{ mb: 4 }}>
-						<Stepper activeStep={activeStep} alternativeLabel>
-							{steps.map(label => (
-								<Step key={label}>
-									<StepLabel>{label}</StepLabel>
-								</Step>
-							))}
-						</Stepper>
-					</Box>
+						{/* Stepper */}
+						<Box sx={{ mb: 4 }}>
+							<Stepper activeStep={activeStep} alternativeLabel>
+								{steps.map(label => (
+									<Step key={label}>
+										<StepLabel>{label}</StepLabel>
+									</Step>
+								))}
+							</Stepper>
+						</Box>
 
-					{/* Step Content */}
-					<Box sx={{ mb: 4 }}>{renderStepContent(activeStep)}</Box>
+						{/* Step Content */}
+						<Box sx={{ mb: 4 }}>{renderStepContent(activeStep)}</Box>
 
-					{/* Navigation Buttons */}
-					<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
-						<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
-							Back
-						</Button>
-
-						<Box sx={{ display: 'flex', gap: 2 }}>
-							<Button variant="outlined" startIcon={<Cancel />} onClick={handleCancel} sx={{ textTransform: 'none' }}>
-								Cancel
+						{/* Navigation Buttons */}
+						<Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 3, borderTop: '1px solid #e0e0e0' }}>
+							<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
+								Back
 							</Button>
 
-							{activeStep === steps.length - 1 ? (
-								<Button
-									variant="contained"
-									startIcon={<Save />}
-									// eslint-disable-next-line @typescript-eslint/no-explicit-any
-									onClick={handleSubmit(onSubmit as any, onInvalid)}
-									disabled={isCreating || isUpdating}
-									sx={{
-										textTransform: 'none',
-										backgroundColor: '#1976d2',
-										'&:hover': { backgroundColor: '#1565c0' }
-									}}
-								>
-									{isEditMode ? 'Update Sequence' : 'Create Sequence'}
+							<Box sx={{ display: 'flex', gap: 2 }}>
+								<Button variant="outlined" startIcon={<Cancel />} onClick={handleCancel} sx={{ textTransform: 'none' }}>
+									Cancel
 								</Button>
-							) : (
-								<Button
-									variant="contained"
-									onClick={handleNext}
-									sx={{
-										textTransform: 'none',
-										backgroundColor: '#1976d2',
-										'&:hover': { backgroundColor: '#1565c0' }
-									}}
-								>
-									Next
-								</Button>
-							)}
-						</Box>
-					</Box>
-				</Paper>
-			</Box>
 
-			<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
+								{activeStep === steps.length - 1 ? (
+									<Button
+										variant="contained"
+										startIcon={<Save />}
+										// eslint-disable-next-line @typescript-eslint/no-explicit-any
+										onClick={handleSubmit(onSubmit as any, onInvalid)}
+										disabled={isCreating || isUpdating}
+										sx={{
+											textTransform: 'none',
+											backgroundColor: '#1976d2',
+											'&:hover': { backgroundColor: '#1565c0' }
+										}}
+									>
+										{isEditMode ? 'Update Sequence' : 'Create Sequence'}
+									</Button>
+								) : (
+									<Button
+										variant="contained"
+										onClick={handleNext}
+										sx={{
+											textTransform: 'none',
+											backgroundColor: '#1976d2',
+											'&:hover': { backgroundColor: '#1565c0' }
+										}}
+									>
+										Next
+									</Button>
+								)}
+							</Box>
+						</Box>
+					</Paper>
+				</Box>
+
+				<FullScreenFormSavingOverlay open={isCreating || isUpdating} />
 			</>
 		</FormProvider>
 	);

@@ -4,44 +4,44 @@ import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/o
 // Column validation schema
 export const columnSchema = yup
 	.object({
-	name: yup.string().required('Column name is required'),
-	type: yup
-		.string()
-		.required('Column type is required')
-		.oneOf(['text', 'number', 'boolean', 'ok/not ok', 'date', 'datetime', 'shift'], 'Invalid column type'),
-	defaultValue: yup.mixed().when('type', {
-		is: (val: string) => val === 'number' || val === 'datetime',
-		then: (schema: yup.MixedSchema) => {
-			return schema
-				.transform((value: unknown) => {
-					if (value === '' || value === null || value === undefined) return undefined;
-					const num = Number(value);
-					return isNaN(num) ? undefined : num;
-				})
-				.test('is-number', 'Default value must be a valid number', (value: unknown) => {
-					return value === undefined || typeof value === 'number';
-				});
-		},
-		otherwise: () => yup.string().nullable().optional()
-	}),
-	minimumAcceptanceValue: yup
-		.mixed()
-		.nullable()
-		.optional()
-		.transform(value => {
-			if (value === '' || value === null || value === undefined) return undefined;
-			const num = Number(value);
-			return isNaN(num) ? value : num;
+		name: yup.string().required('Column name is required'),
+		type: yup
+			.string()
+			.required('Column type is required')
+			.oneOf(['text', 'number', 'boolean', 'ok/not ok', 'date', 'datetime', 'shift'], 'Invalid column type'),
+		defaultValue: yup.mixed().when('type', {
+			is: (val: string) => val === 'number' || val === 'datetime',
+			then: (schema: yup.MixedSchema) => {
+				return schema
+					.transform((value: unknown) => {
+						if (value === '' || value === null || value === undefined) return undefined;
+						const num = Number(value);
+						return isNaN(num) ? undefined : num;
+					})
+					.test('is-number', 'Default value must be a valid number', (value: unknown) => {
+						return value === undefined || typeof value === 'number';
+					});
+			},
+			otherwise: () => yup.string().nullable().optional()
 		}),
-	maximumAcceptanceValue: yup
-		.mixed()
-		.nullable()
-		.optional()
-		.transform(value => {
-			if (value === '' || value === null || value === undefined) return undefined;
-			const num = Number(value);
-			return isNaN(num) ? value : num;
-		})
+		minimumAcceptanceValue: yup
+			.mixed()
+			.nullable()
+			.optional()
+			.transform(value => {
+				if (value === '' || value === null || value === undefined) return undefined;
+				const num = Number(value);
+				return isNaN(num) ? value : num;
+			}),
+		maximumAcceptanceValue: yup
+			.mixed()
+			.nullable()
+			.optional()
+			.transform(value => {
+				if (value === '' || value === null || value === undefined) return undefined;
+				const num = Number(value);
+				return isNaN(num) ? value : num;
+			})
 	})
 	.test('column-min-max-range', 'Minimum value cannot be greater than maximum value', value => {
 		if (!value || value.type !== 'number') return true;
@@ -70,111 +70,106 @@ export const filesSchema = yup.object().test('valid-files', 'Files must be valid
 });
 
 // Inspection parameter validation schema
-export const inspectionParameterSchema = yup.object({
-	// Database id of an existing parameter row. Absent for newly added parameters.
-	// It must survive the edit round-trip: the backend re-inserts parameters on
-	// update, so an omitted id makes it mint a new one and orphan every reference.
-	id: yup.number().optional(),
-	order: yup
-		.number()
-		.required('Order is required')
-		.min(1, 'Order must be at least 1')
-		.integer('Order must be a whole number'),
-	parameterName: yup.string().required('Parameter name is required'),
-	specification: yup.string().nullable().optional(),
-	minimumAcceptanceValue: yup
-		.mixed()
-		.nullable()
-		.optional()
-		.transform(value => {
-			if (value === '' || value === null || value === undefined) return undefined;
-			const num = Number(value);
-			return isNaN(num) ? value : num;
-		}),
-	maximumAcceptanceValue: yup
-		.mixed()
-		.nullable()
-		.optional()
-		.transform(value => {
-			if (value === '' || value === null || value === undefined) return undefined;
-			const num = Number(value);
-			return isNaN(num) ? value : num;
-		}),
-	type: yup
-		.string()
-		.required('Parameter type is required')
-		.oneOf(
-			['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime', 'fixed-table', 'shift'],
-			'Invalid parameter type'
-		),
-	files: filesSchema.optional(),
-	columns: yup.array(columnSchema).min(0, 'Columns array cannot be negative'),
-	tableConfig: yup
-		.object({
-			columns: yup
-				.array(
-					yup.object({
-						name: yup.string().required('Column name is required'),
-						type: yup
-							.string()
-							.required('Column type is required')
-							.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift'])
-					})
-				)
-				.min(1, 'At least one column is required'),
-			rows: yup
-				.array(
-					yup.object({
-						cells: yup.lazy(() =>
-							yup.object().test('valid-cells', 'Each cell must have value and readOnly fields', value => {
-								if (!value || typeof value !== 'object') return true;
-								return Object.values(value).every(
-									cell =>
-										cell !== null &&
-										typeof cell === 'object' &&
-										'readOnly' in (cell as Record<string, unknown>) &&
-										'value' in (cell as Record<string, unknown>)
-								);
-							})
-						)
-					})
-				)
-				.min(1, 'At least one row is required')
-		})
-		.nullable()
-		.default(undefined)
-		.when('type', {
-			is: 'fixed-table',
-			then: schema =>
-				schema
-					.nonNullable()
-					.required('Table configuration is required for fixed-table type')
-					.test('has-columns', 'At least one column is required', value => {
-						return (
-							value !== null &&
-							value !== undefined &&
-							Array.isArray(value.columns) &&
-							value.columns.length > 0
-						);
-					})
-					.test('has-rows', 'At least one row is required', value => {
-						return (
-							value !== null && value !== undefined && Array.isArray(value.rows) && value.rows.length > 0
-						);
-					}),
-			otherwise: schema => schema.nullable().optional()
-		}),
-	role: yup
-		.string()
-		.required('Role is required')
-		.oneOf(['QUALITY_ENGINEER', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'OPERATOR', 'MANAGER'], 'Invalid role'),
-	ctq: yup.boolean(),
-	getInstrumentId: yup.boolean()
-}).test('min-max-range', 'Minimum value cannot be greater than maximum value', value => {
-	if (!value || value.type !== 'number') return true;
-	if (value.minimumAcceptanceValue === undefined || value.maximumAcceptanceValue === undefined) return true;
-	return Number(value.minimumAcceptanceValue) <= Number(value.maximumAcceptanceValue);
-});
+export const inspectionParameterSchema = yup
+	.object({
+		// Database id of an existing parameter row. Absent for newly added parameters.
+		// It must survive the edit round-trip: the backend re-inserts parameters on
+		// update, so an omitted id makes it mint a new one and orphan every reference.
+		id: yup.number().optional(),
+		order: yup
+			.number()
+			.required('Order is required')
+			.min(1, 'Order must be at least 1')
+			.integer('Order must be a whole number'),
+		parameterName: yup.string().required('Parameter name is required'),
+		specification: yup.string().nullable().optional(),
+		minimumAcceptanceValue: yup
+			.mixed()
+			.nullable()
+			.optional()
+			.transform(value => {
+				if (value === '' || value === null || value === undefined) return undefined;
+				const num = Number(value);
+				return isNaN(num) ? value : num;
+			}),
+		maximumAcceptanceValue: yup
+			.mixed()
+			.nullable()
+			.optional()
+			.transform(value => {
+				if (value === '' || value === null || value === undefined) return undefined;
+				const num = Number(value);
+				return isNaN(num) ? value : num;
+			}),
+		type: yup
+			.string()
+			.required('Parameter type is required')
+			.oneOf(
+				['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime', 'fixed-table', 'shift'],
+				'Invalid parameter type'
+			),
+		files: filesSchema.optional(),
+		columns: yup.array(columnSchema).min(0, 'Columns array cannot be negative'),
+		tableConfig: yup
+			.object({
+				columns: yup
+					.array(
+						yup.object({
+							name: yup.string().required('Column name is required'),
+							type: yup
+								.string()
+								.required('Column type is required')
+								.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift'])
+						})
+					)
+					.min(1, 'At least one column is required'),
+				rows: yup
+					.array(
+						yup.object({
+							cells: yup.lazy(() =>
+								yup.object().test('valid-cells', 'Each cell must have value and readOnly fields', value => {
+									if (!value || typeof value !== 'object') return true;
+									return Object.values(value).every(
+										cell =>
+											cell !== null &&
+											typeof cell === 'object' &&
+											'readOnly' in (cell as Record<string, unknown>) &&
+											'value' in (cell as Record<string, unknown>)
+									);
+								})
+							)
+						})
+					)
+					.min(1, 'At least one row is required')
+			})
+			.nullable()
+			.default(undefined)
+			.when('type', {
+				is: 'fixed-table',
+				then: schema =>
+					schema
+						.nonNullable()
+						.required('Table configuration is required for fixed-table type')
+						.test('has-columns', 'At least one column is required', value => {
+							return value !== null && value !== undefined && Array.isArray(value.columns) && value.columns.length > 0;
+						})
+						.test('has-rows', 'At least one row is required', value => {
+							return value !== null && value !== undefined && Array.isArray(value.rows) && value.rows.length > 0;
+						}),
+				otherwise: schema => schema.nullable().optional()
+			}),
+		role: yup
+			.string()
+			.required('Role is required')
+			.oneOf(['QUALITY_ENGINEER', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'OPERATOR', 'MANAGER'], 'Invalid role'),
+		ctq: yup.boolean(),
+		getInstrumentId: yup.boolean()
+	})
+	.test('min-max-range', 'Minimum value cannot be greater than maximum value', value => {
+		if (!value || value.type !== 'number') return true;
+		if (value.minimumAcceptanceValue === undefined || value.maximumAcceptanceValue === undefined) return true;
+		return Number(value.minimumAcceptanceValue) <= Number(value.maximumAcceptanceValue);
+	});
 
 // Expected duration (HH:MM) — mirrors sequenceTiming in sequence-master
 const inspectionTimingSchema = yup
