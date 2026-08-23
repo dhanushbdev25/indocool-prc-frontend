@@ -111,9 +111,10 @@ const ListSequence = () => {
 		[setSearchTerm, setPagination]
 	);
 
-	const handleActionClick = (sequenceId: string, action: string) => {
+	// Match on the row's own id, never on sequenceId — see the note in list-inspection.
+	const handleActionClick = (id: number, action: string) => {
 		if (action === 'delete') {
-			const sequence = allSequenceData.find(s => s.sequenceId === sequenceId);
+			const sequence = allSequenceData.find(s => s.id === id);
 			if (sequence) {
 				setSequenceToDelete(sequence);
 				setDeleteDialogOpen(true);

@@ -28,7 +28,7 @@ export interface PrcTemplateData {
 
 interface PrcTemplateTableProps {
 	data: PrcTemplateData[];
-	onActionClick: (templateId: string, action: string) => void;
+	onActionClick: (id: number, action: string) => void;
 	onEdit: (templateId: number) => void;
 	onView: (templateId: number) => void;
 	pagination?: MRT_PaginationState;
@@ -67,7 +67,7 @@ const PrcTemplateTable = memo(({ data, onActionClick, onEdit, onView, pagination
 
 	const handleDelete = () => {
 		if (selectedRow && onActionClick) {
-			onActionClick(selectedRow.templateId, 'delete');
+			onActionClick(selectedRow.id, 'delete');
 		}
 		handleMenuClose();
 	};

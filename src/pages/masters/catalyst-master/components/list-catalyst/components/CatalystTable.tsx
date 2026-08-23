@@ -13,7 +13,7 @@ export type CatalystData = Catalyst;
 
 interface CatalystTableProps {
 	data: CatalystData[];
-	onActionClick?: (chartId: string, action: string) => void;
+	onActionClick?: (id: number, action: string) => void;
 	onEdit?: (catalystId: number) => void;
 	onView?: (catalystId: number) => void;
 	onAuditLogs?: (catalyst: CatalystData) => void;
@@ -65,7 +65,7 @@ const CatalystTable = memo(({ data, onActionClick, onEdit, onView, onAuditLogs, 
 
 	const handleDelete = () => {
 		if (selectedRow && onActionClick) {
-			onActionClick(selectedRow.chartId, 'delete');
+			onActionClick(selectedRow.id, 'delete');
 		}
 		handleMenuClose();
 	};

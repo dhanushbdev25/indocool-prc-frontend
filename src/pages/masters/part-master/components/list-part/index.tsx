@@ -206,9 +206,10 @@ const ListPart = () => {
 		[setSearchTerm, setPagination]
 	);
 
-	const handleActionClick = (partId: string, action: string) => {
+	// Match on the row's own id, never on partNumber — see the note in list-inspection.
+	const handleActionClick = (id: number, action: string) => {
 		if (action === 'delete') {
-			const part = allPartData.find(p => p.partNumber === partId);
+			const part = allPartData.find(p => p.id === id);
 			if (part) {
 				setPartToDelete(part);
 				setDeleteDialogOpen(true);

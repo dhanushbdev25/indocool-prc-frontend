@@ -125,9 +125,10 @@ const ListPrcTemplate = () => {
 		[setSearchTerm, setPagination]
 	);
 
-	const handleActionClick = (templateId: string, action: string) => {
+	// Match on the row's own id, never on templateId — see the note in list-inspection.
+	const handleActionClick = (id: number, action: string) => {
 		if (action === 'delete') {
-			const template = allTemplateData.find(t => t.templateId === templateId);
+			const template = allTemplateData.find(t => t.id === id);
 			if (template) {
 				setTemplateToDelete(template);
 				setDeleteDialogOpen(true);

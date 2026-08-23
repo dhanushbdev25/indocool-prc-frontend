@@ -110,9 +110,10 @@ const ListCatalyst = () => {
 		[setSearchTerm, setPagination]
 	);
 
-	const handleActionClick = (chartId: string, action: string) => {
+	// Match on the row's own id, never on chartId — see the note in list-inspection.
+	const handleActionClick = (id: number, action: string) => {
 		if (action === 'delete') {
-			const catalyst = allCatalystData.find(c => c.chartId === chartId);
+			const catalyst = allCatalystData.find(c => c.id === id);
 			if (catalyst) {
 				setCatalystToDelete(catalyst);
 				setDeleteDialogOpen(true);

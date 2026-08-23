@@ -34,7 +34,7 @@ const approveLabel = (v: boolean | undefined) => (v === true ? 'Yes' : 'No');
 
 interface InspectionTableProps {
 	data: InspectionData[];
-	onActionClick?: (inspectionId: string, action: string) => void;
+	onActionClick?: (id: number, action: string) => void;
 	onEdit?: (inspectionId: number) => void;
 	onView?: (inspectionId: number) => void;
 	onClone?: (inspectionId: number) => void;
@@ -96,7 +96,7 @@ const InspectionTable = memo(({ data, onActionClick, onEdit, onView, onClone, on
 
 	const handleDelete = () => {
 		if (selectedRow && onActionClick) {
-			onActionClick(selectedRow.inspectionId, 'delete');
+			onActionClick(selectedRow.id, 'delete');
 		}
 		handleMenuClose();
 	};

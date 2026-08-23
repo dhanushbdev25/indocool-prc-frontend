@@ -41,7 +41,7 @@ export interface PartData {
 
 interface PartTableProps {
 	data: PartData[];
-	onActionClick: (partId: string, action: string) => void;
+	onActionClick: (id: number, action: string) => void;
 	onEdit: (partId: number) => void;
 	onView: (partId: number) => void;
 	onAuditLogs: (part: PartData) => void;
@@ -99,7 +99,7 @@ const PartTable = memo(
 
 		const handleDelete = () => {
 			if (selectedRow && onActionClick) {
-				onActionClick(selectedRow.partNumber, 'delete');
+				onActionClick(selectedRow.id, 'delete');
 			}
 			handleMenuClose();
 		};

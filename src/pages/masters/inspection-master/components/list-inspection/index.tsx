@@ -132,9 +132,12 @@ const ListInspection = () => {
 		[setSearchTerm, setPagination]
 	);
 
-	const handleActionClick = (inspectionId: string, action: string) => {
+	// Match on the row's own id, never on inspectionId: the list returns every row for a
+	// business code, so matching on the code always resolves to the newest one and deletes
+	// a record the user did not pick.
+	const handleActionClick = (id: number, action: string) => {
 		if (action === 'delete') {
-			const inspection = allInspectionData.find(i => i.inspectionId === inspectionId);
+			const inspection = allInspectionData.find(i => i.id === id);
 			if (inspection) {
 				setInspectionToDelete(inspection);
 				setDeleteDialogOpen(true);

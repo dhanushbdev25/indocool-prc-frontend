@@ -21,7 +21,7 @@ export type SequenceData = ProcessSequence;
 
 interface SequenceTableProps {
 	data: SequenceData[];
-	onActionClick?: (sequenceId: string, action: string) => void;
+	onActionClick?: (id: number, action: string) => void;
 	onEdit?: (sequenceId: number) => void;
 	onView?: (sequenceId: number) => void;
 	onClone?: (sequenceId: number) => void;
@@ -81,7 +81,7 @@ const SequenceTable = memo(({ data, onActionClick, onEdit, onView, onClone, onAu
 
 	const handleDelete = () => {
 		if (selectedRow && onActionClick) {
-			onActionClick(selectedRow.sequenceId, 'delete');
+			onActionClick(selectedRow.id, 'delete');
 		}
 		handleMenuClose();
 	};
