@@ -113,3 +113,21 @@ export function canAccessStepIndex(targetIndex: number, frontierIndex: number, s
 	if (isAlwaysAccessibleStep(step)) return true;
 	return targetIndex <= frontierIndex;
 }
+
+/** Permission a user must hold to enter data on a sequence sub-step marked CTQ. */
+export const CTQ_FILL_PERMISSION = 'PRC_APPROVE_QUALITY';
+
+/**
+ * True when a sequence sub-step is CTQ and the current user may not fill it.
+ *
+ * The lock is a hard stop: the sub-step's inputs are disabled and it cannot be completed,
+ * so the group stalls there until someone with the quality permission takes over. That is
+ * deliberate — sub-steps are navigated in order and `canGoNextSubStep` already refuses to
+ * advance past an unfilled one, so there is nothing extra to block.
+ *
+ * Only CTQ gates. CTA and CTP are classification tags with no execution behaviour, and
+ * inspection parameters are out of scope — this applies to sequence sub-steps alone.
+ */
+export function isCtqFillLocked(subStep: { ctq?: boolean } | null | undefined, hasQualityPermission: boolean): boolean {
+	return Boolean(subStep?.ctq) && !hasQualityPermission;
+}

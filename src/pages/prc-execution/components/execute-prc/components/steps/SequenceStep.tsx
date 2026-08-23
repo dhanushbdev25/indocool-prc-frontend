@@ -19,7 +19,7 @@ import {
 	Checkbox,
 	Paper
 } from '@mui/material';
-import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon } from '@mui/icons-material';
+import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon, Lock as LockIcon } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import {
 	OperationalDatePicker,
@@ -43,6 +43,12 @@ interface SequenceStepProps {
 	onStepComplete: (formData: FormData) => void;
 	/** When true, all inputs are disabled (e.g. part master template preview). */
 	readOnlyOverride?: boolean;
+	/**
+	 * True when this is a CTQ sub-step and the user lacks the quality permission. Locks the
+	 * step and explains why, rather than leaving the form looking broken — see
+	 * `isCtqFillLocked` in `utils/stepGating.ts`.
+	 */
+	ctqRoleLocked?: boolean;
 }
 
 // Helper function to validate measurement value against acceptance range
@@ -133,7 +139,13 @@ const normalizeMeasurementsToCount = (
 	return out;
 };
 
-const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }: SequenceStepProps) => {
+const SequenceStep = ({
+	step,
+	executionData,
+	onStepComplete,
+	readOnlyOverride,
+	ctqRoleLocked = false
+}: SequenceStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 
@@ -384,7 +396,9 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 							)
 					: initialData.formData && Object.keys(initialData.formData).length > 0))
 	);
-	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed' || isSubStepFilled;
+	// ctqRoleLocked is folded in as well as being passed via readOnlyOverride, so the lock
+	// holds even if this component is rendered without the wrapper setting both.
+	const isReadOnly = Boolean(readOnlyOverride) || ctqRoleLocked || step.status === 'completed' || isSubStepFilled;
 
 	// Debug logging
 	console.log('SequenceStep Debug:', {
@@ -694,6 +708,8 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 	};
 
 	const handleSubmit = () => {
+		// The button is hidden while locked; this stops any other path from submitting.
+		if (ctqRoleLocked) return;
 		if (validateForm()) {
 			if (stepData.targetValueType === 'table' && tableData) {
 				const formDataToSubmit: FormData = {
@@ -1333,6 +1349,12 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 					</Typography>
 				)}
 			</Box>
+
+			{ctqRoleLocked && (
+				<Alert severity="info" icon={<LockIcon fontSize="inherit" />} sx={{ mb: 2 }}>
+					This is a CTQ step. Only a user with quality approval permission can enter its values.
+				</Alert>
+			)}
 
 			{/* Enhanced Step Details */}
 			<Box sx={{ mb: 2, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
