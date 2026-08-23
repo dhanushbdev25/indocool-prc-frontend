@@ -1,48 +1,5 @@
 import type { ImageAnnotation } from '../../../types/execution.types';
 
-/** Defect categories for annotations (single source of truth for selects + color seeding) */
-export const DEFECT_CATEGORIES = [
-	'Air Bubbles',
-	'Wrinkles',
-	'Pin Holes',
-	'Black Mark',
-	'Bristles',
-	'Mould Damage',
-	'Mould Scratches',
-	'Handling Scratches',
-	'Air Lock',
-	'Air Leak',
-	'Insect on Gelcoat',
-	'DRILL CHIP',
-	'Hole Missing',
-	'Slot Missing',
-	'Wheel Mark',
-	'Dull Polish',
-	'Crack on Gelcoat(Sun Crack)',
-	'Mould Impression',
-	'Dent',
-	'Debonding',
-	'Under Cut',
-	'Spiral Hose Impression',
-	'Colour Variation',
-	'Topcoat Spillage',
-	'Pinhole in Topcoat',
-	'Black Mark in Topcoat',
-	'Mat Impression',
-	'Insects on Topcoat',
-	'Low Topcoat',
-	'Burr Sharp Edge',
-	'Resin Runner Sharp Edge',
-	'Omega Profile Impression',
-	'Center Line / Line Impression',
-	'Surface Roughness',
-	'Foreign Particles',
-	'Putty Colour Variation',
-	'Counter Sunk Oval & Holes Oval',
-	'Mat Fold Resin Surface',
-	'Air Leak in Resin Surface'
-] as const;
-
 const PALETTE_STROKE = [
 	'#d32f2f',
 	'#1976d2',
@@ -74,7 +31,12 @@ export interface DefectStyle {
 	label: string;
 }
 
-/** Stroke, fills, and label color for Konva / MUI based on defect category */
+/**
+ * Stroke, fills, and label color for Konva / MUI based on defect category.
+ *
+ * The colour is hashed from the name, so it is stable for a given defect without needing a
+ * list of known categories — the categories now come from the demould inspection master.
+ */
 export function getDefectStyle(category: string | undefined): DefectStyle {
 	const trimmed = category?.trim();
 	if (!trimmed) {
@@ -85,9 +47,7 @@ export function getDefectStyle(category: string | undefined): DefectStyle {
 			label: '#616161'
 		};
 	}
-	const idx = DEFECT_CATEGORIES.indexOf(trimmed as (typeof DEFECT_CATEGORIES)[number]);
-	const stroke =
-		idx >= 0 ? PALETTE_STROKE[idx % PALETTE_STROKE.length] : PALETTE_STROKE[hashString(trimmed) % PALETTE_STROKE.length];
+	const stroke = PALETTE_STROKE[hashString(trimmed) % PALETTE_STROKE.length];
 
 	const r = parseInt(stroke.slice(1, 3), 16);
 	const g = parseInt(stroke.slice(3, 5), 16);

@@ -30,6 +30,8 @@ interface StepDetailViewProps {
 	 * fails visibly rather than silently dropping the gate.
 	 */
 	canFillCtqSteps?: boolean;
+	/** Defect categories offered by the image annotator — see `utils/demouldDefects.ts`. */
+	defectCategories?: string[];
 	/** False while any non-SAP step is still open; gates Complete PRC on the SAP confirmations step. */
 	allOtherStepsComplete?: boolean;
 }
@@ -46,6 +48,7 @@ const StepDetailView = ({
 	canGoNext,
 	readOnly = false,
 	canFillCtqSteps = false,
+	defectCategories = [],
 	allOtherStepsComplete = true
 }: StepDetailViewProps) => {
 	// For sequence step groups, we need to handle sub-steps
@@ -300,6 +303,7 @@ const StepDetailView = ({
 						executionData={executionData}
 						onStepComplete={handleSubStepComplete}
 						readOnlyOverride={readOnly}
+						defectCategories={defectCategories}
 					/>
 				);
 			case 'sapConfirmations':

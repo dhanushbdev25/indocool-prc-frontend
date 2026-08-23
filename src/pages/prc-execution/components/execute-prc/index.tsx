@@ -28,6 +28,11 @@ import {
 import { buildCatalystMixingTimelineStep, buildTimelineSteps } from '../../utils/buildTimelineSteps';
 import { canEditStepForRole } from '../../utils/roleStepAccess';
 import { collectUniqueExecutionInspectionImages } from '../../utils/executionInspectionImages';
+import {
+	applyDemouldStatusDeviation,
+	collectDemouldDefectCategories,
+	findDemouldStep
+} from '../../utils/demouldDefects';
 import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
 import {
 	areNonSapStepsComplete,
@@ -217,6 +222,14 @@ const ExecutePrc = () => {
 		const actualData = (executionData as { data: ExecutionData })?.data;
 		return actualData?.prcAggregatedSteps || {};
 	}, [currentAggregatedData, executionData]);
+
+	// Image annotation usually happens on a FIR/AFIR step, but the defect names come from the
+	// demould inspection's recorded counts, so they are resolved here where both are in scope.
+	const demouldStep = useMemo(() => findDemouldStep(timelineSteps), [timelineSteps]);
+	const defectCategories = useMemo(
+		() => collectDemouldDefectCategories(demouldStep, getCurrentAggregatedData()),
+		[demouldStep, getCurrentAggregatedData]
+	);
 
 	const actualExecutionData = (executionData as { data: ExecutionData })?.data;
 	const executionFrontierIndex = getExecutionFrontierIndex(
@@ -408,11 +421,18 @@ const ExecutePrc = () => {
 
 			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
 			const previousAggregatedData = getCurrentAggregatedData();
-			const mergedAggregatedData = stampEditedAfterSubmit(
-				stepToProcess,
-				previousAggregatedData,
-				mergeAggregatedData(previousAggregatedData, stepAggregatedData),
-				userInfo.id
+			// Any defect marked on an image flips the demould Status to OK with deviation. It runs
+			// over the whole merged tree rather than being wired to the annotator, so it catches a
+			// defect marked from any step and self-corrects if an earlier save missed it. One-way:
+			// it never writes back to OK, so clearing the defects or overriding by hand both stick.
+			const mergedAggregatedData = applyDemouldStatusDeviation(
+				stampEditedAfterSubmit(
+					stepToProcess,
+					previousAggregatedData,
+					mergeAggregatedData(previousAggregatedData, stepAggregatedData),
+					userInfo.id
+				),
+				demouldStep
 			);
 			const actualData = (executionData as { data: ExecutionData }).data;
 			let mergedTimingData = mergeTimingData(actualData.stepStartEndTime as Record<string, unknown>, stepTimingData);
@@ -454,7 +474,15 @@ const ExecutePrc = () => {
 
 			return { mergedAggregatedData, mergedTimingData };
 		},
-		[executionData, executionId, getCurrentAggregatedData, hasExistingTimingData, updateProgress, userInfo.id]
+		[
+			demouldStep,
+			executionData,
+			executionId,
+			getCurrentAggregatedData,
+			hasExistingTimingData,
+			updateProgress,
+			userInfo.id
+		]
 	);
 
 	// Update preview data timing when execution data changes (after API refetch)
@@ -1809,6 +1837,7 @@ const ExecutePrc = () => {
 							aggregatedStepsSnapshot={getCurrentAggregatedData()}
 							readOnly={isViewOnlyMode || roleReadOnly}
 							canFillCtqSteps={canFillCtqSteps}
+							defectCategories={defectCategories}
 							onBackToList={handleBackToList}
 							onPreviousStep={() => {
 								if (currentStepIndex > 0) {

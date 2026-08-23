@@ -41,6 +41,7 @@ import {
 import ImageAnnotator from '../ImageAnnotator';
 import { countAnnotationsByCategory } from '../defectAnnotationStyles';
 import { transformPrcAggregatedData, debugDataTransformation } from '../../../../utils/dataTransformers';
+import { isDemouldInspectionStep } from '../../../../utils/demouldDefects';
 import {
 	OK_NOT_OK_CHOICE_LIST_LABEL,
 	OK_NOT_OK_NEGATIVE_LABEL,
@@ -65,11 +66,19 @@ interface InspectionStepProps {
 	executionData: ExecutionData;
 	onStepComplete: (formData: FormData) => void;
 	readOnlyOverride?: boolean;
+	/** Defect categories for image annotation — see `utils/demouldDefects.ts`. */
+	defectCategories?: string[];
 }
 
 const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
 
-const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride }: InspectionStepProps) => {
+const InspectionStep = ({
+	step,
+	executionData,
+	onStepComplete,
+	readOnlyOverride,
+	defectCategories = []
+}: InspectionStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [annotations, setAnnotations] = useState<ImageAnnotation[]>([]);
 	const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
@@ -335,6 +344,10 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 
 	const [formData, setFormData] = useState<FormData>(initialFormData);
 
+	// Hoisted so the effect below depends on this boolean rather than the whole `step`, which
+	// would widen when it re-runs.
+	const isDemould = isDemouldInspectionStep(step);
+
 	// Update form data when initial data changes
 	useEffect(() => {
 		console.log('Initializing form data and annotations:', initialFormData);
@@ -389,12 +402,13 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 			}
 		});
 
-		// Inspection 378: default blank numeric parameter values to '0' so the saved
+		// Demould inspection: default blank numeric parameter values to '0' so the saved
 		// payload carries a numeric 0 (backend stores inspection_issues.count = 0).
 		// Existing non-blank values (e.g. superadmin edits) are preserved.
 		// If param.defaultValue ever becomes a fallback for rendered value, apply the
 		// same isBlank -> '0' coercion below.
-		if (step.inspectionMetadata?.id === 378) {
+		// Matched on type rather than id — see the note in dataBuilders.
+		if (isDemould) {
 			const isBlank = (v: unknown) => v === undefined || v === null || v === '';
 			step.inspectionParameters?.forEach(param => {
 				if (param.type !== 'number') return;
@@ -433,7 +447,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 			console.log('Total extracted annotations:', extractedAnnotations);
 			setAnnotations(extractedAnnotations);
 		}
-	}, [initialFormData, step.inspectionParameters, step.inspectionMetadata?.id]);
+	}, [initialFormData, step.inspectionParameters, isDemould]);
 
 	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 
@@ -1783,6 +1797,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																									handleFixedTableRowAnnotationSave(param.id, rowIdx, newAnnotations)
 																								}
 																								readOnly={isReadOnly}
+																								defectCategories={defectCategories}
 																								parameterContext={{
 																									parameterName: param.parameterName,
 																									specification: param.specification,
@@ -2357,6 +2372,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 															})()}
 															onSave={newAnnotations => handleAnnotationSave(param.id, newAnnotations)}
 															readOnly={isReadOnly}
+															defectCategories={defectCategories}
 															parameterContext={{
 																parameterName: param.parameterName,
 																specification: param.specification,

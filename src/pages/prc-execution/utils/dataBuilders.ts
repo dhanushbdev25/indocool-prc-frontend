@@ -1,4 +1,5 @@
 import { type TimelineStep, type FormData, type OperationWiseExecutionRow } from '../types/execution.types';
+import { isDemouldInspectionStep } from './demouldDefects';
 import { mergeOperationWiseExecutionArrays, normalizeOperationWiseToArray } from './operationWiseMerge';
 
 export function buildAggregatedData(step: TimelineStep, formData: FormData): Record<string, unknown> {
@@ -244,9 +245,11 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 			}
 		}
 
-		// Inspection 378: coerce blank numeric values to '0' at save time so the PUT
-		// payload never carries null/empty for count fields (backend stores 0).
-		if (step.inspectionMetadata?.id === 378) {
+		// Demould inspection: coerce blank numeric values to '0' at save time so the PUT
+		// payload never carries null/empty for count fields (backend stores 0). Matched on
+		// type rather than id — two Demould Inspection rows are live and their ids differ
+		// per environment, so an id check silently skips one.
+		if (isDemouldInspectionStep(step)) {
 			const isBlank = (v: unknown) => v === undefined || v === null || v === '';
 			for (const param of step.inspectionParameters) {
 				if (param.type !== 'number') continue;

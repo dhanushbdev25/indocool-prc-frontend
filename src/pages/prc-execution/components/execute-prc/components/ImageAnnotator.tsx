@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Stage, Layer, Image as KonvaImage, Circle, Line, Text, Group } from 'react-konva';
 import type Konva from 'konva';
 import {
@@ -40,7 +40,6 @@ import {
 import { toFileRenderUrl } from '../../../../../utils/fileUrl';
 import { useAuthenticatedFileUrl } from '../../../../../hooks/useAuthenticatedFileUrl';
 import {
-	DEFECT_CATEGORIES,
 	getDefectStyle,
 	countAnnotationsByCategory
 } from './defectAnnotationStyles';
@@ -70,6 +69,12 @@ interface ImageAnnotatorProps {
 	onSave: (annotations: ImageAnnotation[]) => void;
 	readOnly?: boolean;
 	parameterContext?: ImageAnnotatorParameterContext;
+	/**
+	 * Defect categories to offer, sourced from the demould inspection's recorded counts — see
+	 * `collectDemouldDefectCategories`. Empty (a PRC with no demould inspection) falls back to
+	 * a free-text field.
+	 */
+	defectCategories?: string[];
 }
 
 type AnnotationMode = 'none' | 'pan' | 'point' | 'polygon' | 'circle';
@@ -114,7 +119,8 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	existingAnnotations = [],
 	onSave,
 	readOnly = false,
-	parameterContext
+	parameterContext,
+	defectCategories = []
 }) => {
 	const [currentImageIndex, setCurrentImageIndex] = useState(0);
 	const [annotations, setAnnotations] = useState<ImageAnnotation[]>(existingAnnotations);
@@ -133,6 +139,14 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	const [commentDialog, setCommentDialog] = useState(false);
 	const [comment, setComment] = useState('');
 	const [category, setCategory] = useState('');
+
+	// Keep whatever this annotation already carries selectable, so editing one whose defect
+	// count has since been lowered to zero cannot silently clear its category on save.
+	const categoryOptions = useMemo(() => {
+		if (defectCategories.length === 0) return [];
+		const trimmed = category.trim();
+		return trimmed && !defectCategories.includes(trimmed) ? [...defectCategories, trimmed] : defectCategories;
+	}, [defectCategories, category]);
 	const [imageLoaded, setImageLoaded] = useState(false);
 	const [imageError, setImageError] = useState(false);
 	const [_imageSize, setImageSize] = useState({ width: 0, height: 0 });
@@ -1070,21 +1084,36 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 			<Dialog open={commentDialog} onClose={() => setCommentDialog(false)} maxWidth="sm" fullWidth>
 				<DialogTitle>Add Details to Annotation</DialogTitle>
 				<DialogContent>
-					<FormControl fullWidth margin="dense" required>
-						<InputLabel>Defect Category</InputLabel>
-						<Select
+					{/* The choices are the demould defects the operator actually recorded a count for.
+					    With no demould inspection in the PRC there is nothing to choose from, so the
+					    field falls back to free text rather than an empty dropdown. */}
+					{categoryOptions.length > 0 ? (
+						<FormControl fullWidth margin="dense" required>
+							<InputLabel>Defect Category</InputLabel>
+							<Select
+								value={category}
+								onChange={e => setCategory(e.target.value)}
+								label="Defect Category"
+								variant="outlined"
+							>
+								{categoryOptions.map(cat => (
+									<MenuItem key={cat} value={cat}>
+										{cat}
+									</MenuItem>
+								))}
+							</Select>
+						</FormControl>
+					) : (
+						<TextField
+							margin="dense"
+							label="Defect Category"
+							fullWidth
+							required
 							value={category}
 							onChange={e => setCategory(e.target.value)}
-							label="Defect Category"
 							variant="outlined"
-						>
-							{DEFECT_CATEGORIES.map(cat => (
-								<MenuItem key={cat} value={cat}>
-									{cat}
-								</MenuItem>
-							))}
-						</Select>
-					</FormControl>
+						/>
+					)}
 					<TextField
 						margin="dense"
 						label="Description"
