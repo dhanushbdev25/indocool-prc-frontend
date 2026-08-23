@@ -42,8 +42,15 @@ import ImageAnnotator from '../ImageAnnotator';
 import { countAnnotationsByCategory } from '../defectAnnotationStyles';
 import { transformPrcAggregatedData, debugDataTransformation } from '../../../../utils/dataTransformers';
 import {
+	OK_NOT_OK_CHOICE_LIST_LABEL,
 	OK_NOT_OK_NEGATIVE_LABEL,
-	OK_NOT_OK_POSITIVE_LABEL
+	OK_NOT_OK_OPTIONS,
+	OK_NOT_OK_SELECTED_COLORS,
+	OK_NOT_OK_TYPE_KEY,
+	acceptsOkNotOkComment,
+	formatOkNotOkValueForDisplay,
+	isValidOkNotOkValue,
+	requiresOkNotOkComment
 } from '../../../../../../utils/okNotOkLabels';
 import { GATE_FIELD_LABEL } from '../../../../../../utils/gateLabels';
 import {
@@ -458,7 +465,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 						...existingValue,
 						value: value
 					};
-					if (value !== 'not ok') {
+					if (!acceptsOkNotOkComment(value)) {
 						const entry = newFormData[parameterId.toString()] as Record<string, unknown>;
 						delete entry.notOkComment;
 						delete entry.comments;
@@ -469,14 +476,14 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 					newFormData[parameterId.toString()] = {
 						value: value
 					};
-					if (value !== 'not ok') {
+					if (!acceptsOkNotOkComment(value)) {
 						delete newFormData[getNotOkCommentKey(parameterId.toString())];
 					}
 				}
 			} else {
 				// For multi-column parameters, use the flat structure
 				newFormData[key] = value;
-				if (value !== 'not ok') {
+				if (!acceptsOkNotOkComment(value)) {
 					delete newFormData[getNotOkCommentKey(key)];
 				}
 			}
@@ -491,7 +498,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 				[key]: ''
 			}));
 		}
-		if (value !== 'not ok' && errors[getNotOkCommentKey(key)]) {
+		if (!acceptsOkNotOkComment(value) && errors[getNotOkCommentKey(key)]) {
 			setErrors(prev => ({
 				...prev,
 				[getNotOkCommentKey(key)]: ''
@@ -617,7 +624,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 		setFormData(prev => {
 			const newFormData = { ...prev };
 			newFormData[key] = value;
-			if (value !== 'not ok') {
+			if (!acceptsOkNotOkComment(value)) {
 				delete newFormData[getNotOkCommentKey(key)];
 			}
 			return newFormData;
@@ -630,7 +637,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 				[key]: ''
 			}));
 		}
-		if (value !== 'not ok' && errors[getNotOkCommentKey(key)]) {
+		if (!acceptsOkNotOkComment(value) && errors[getNotOkCommentKey(key)]) {
 			setErrors(prev => ({
 				...prev,
 				[getNotOkCommentKey(key)]: ''
@@ -851,9 +858,9 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 								}
 							}
 						} else if (column.type === 'ok/not ok') {
-							if (value !== 'ok' && value !== 'not ok') {
-								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be either ${OK_NOT_OK_POSITIVE_LABEL} or ${OK_NOT_OK_NEGATIVE_LABEL}`;
-							} else if (value === 'not ok') {
+							if (!isValidOkNotOkValue(value)) {
+								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be one of: ${OK_NOT_OK_CHOICE_LIST_LABEL}`;
+							} else if (requiresOkNotOkComment(value)) {
 								const commentKey = getNotOkCommentKey(key);
 								const commentValue = formData[commentKey];
 								if (!commentValue || (typeof commentValue === 'string' && commentValue.trim() === '')) {
@@ -893,9 +900,9 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 							}
 						}
 					} else if (column.type === 'ok/not ok') {
-						if (value !== 'ok' && value !== 'not ok') {
-							newErrors[key] = `${column.name} must be either ${OK_NOT_OK_POSITIVE_LABEL} or ${OK_NOT_OK_NEGATIVE_LABEL}`;
-						} else if (value === 'not ok') {
+						if (!isValidOkNotOkValue(value)) {
+							newErrors[key] = `${column.name} must be one of: ${OK_NOT_OK_CHOICE_LIST_LABEL}`;
+						} else if (requiresOkNotOkComment(value)) {
 							const commentKey = getNotOkCommentKey(key);
 							const commentValue = formData[commentKey];
 							if (!commentValue || (typeof commentValue === 'string' && commentValue.trim() === '')) {
@@ -943,9 +950,9 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 						}
 					}
 				} else if (param.type === 'ok/not ok') {
-					if (value !== 'ok' && value !== 'not ok') {
-						newErrors[key] = `Value must be either ${OK_NOT_OK_POSITIVE_LABEL} or ${OK_NOT_OK_NEGATIVE_LABEL}`;
-					} else if (value === 'not ok') {
+					if (!isValidOkNotOkValue(value)) {
+						newErrors[key] = `Value must be one of: ${OK_NOT_OK_CHOICE_LIST_LABEL}`;
+					} else if (requiresOkNotOkComment(value)) {
 						const fromObject =
 							typeof paramData === 'object' && paramData !== null
 								? readApiCommentField(paramData as Record<string, unknown>)
@@ -1131,7 +1138,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 								paramData.acknowledged = acknowledgments[key] || false;
 							}
 						}
-						if (param.type === 'ok/not ok' && formValue === 'not ok') {
+						if (param.type === OK_NOT_OK_TYPE_KEY && acceptsOkNotOkComment(String(formValue))) {
 							const commentValue = formData[getNotOkCommentKey(key)];
 							paramData.comments = typeof commentValue === 'string' ? commentValue.trim() : '';
 						}
@@ -1361,36 +1368,28 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																	onChange={e => handleParameterChange(param.id, 'value', e.target.value)}
 																	sx={{ gap: 2 }}
 																>
-																	<FormControlLabel
-																		value="ok"
-																		control={<Radio size="small" color="success" />}
-																		label="OK"
-																		sx={{
-																			'& .MuiFormControlLabel-label': {
-																				fontSize: '0.875rem',
-																				color: currentValue === 'ok' ? '#2e7d32' : '#666'
-																			}
-																		}}
-																	/>
-																	<FormControlLabel
-																		value="not ok"
-																		control={<Radio size="small" color="warning" />}
-																		label={OK_NOT_OK_NEGATIVE_LABEL}
-																		sx={{
-																			'& .MuiFormControlLabel-label': {
-																				fontSize: '0.875rem',
-																				color: currentValue === 'not ok' ? '#ed6c02' : '#666'
-																			}
-																		}}
-																	/>
+																	{OK_NOT_OK_OPTIONS.map(option => (
+																		<FormControlLabel
+																			key={option.value}
+																			value={option.value}
+																			control={<Radio size="small" color={option.color} />}
+																			label={option.label}
+																			sx={{
+																				'& .MuiFormControlLabel-label': {
+																					fontSize: '0.875rem',
+																					color: currentValue === option.value ? OK_NOT_OK_SELECTED_COLORS[option.value] : '#666'
+																				}
+																			}}
+																		/>
+																	))}
 																</RadioGroup>
-																{currentValue === 'not ok' && (
+																{acceptsOkNotOkComment(currentValue) && (
 																	<TextField
 																		fullWidth
 																		multiline
 																		rows={2}
-																		label="Comments"
-																		placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+																		label={requiresOkNotOkComment(currentValue) ? 'Comments' : 'Comments (optional)'}
+																		placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(currentValue)}`}
 																		value={String(
 																			formData[commentKey] ||
 																				(typeof paramData === 'object' && paramData !== null
@@ -1399,9 +1398,14 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																		)}
 																		onChange={e => handleNotOkCommentChange(param.id.toString(), e.target.value)}
 																		error={!!errors[commentKey]}
-																		helperText={errors[commentKey] || `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`}
+																		helperText={
+																			errors[commentKey] ||
+																			(requiresOkNotOkComment(currentValue)
+																				? `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+																				: 'Optional')
+																		}
 																		disabled={isReadOnly}
-																		required
+																		required={requiresOkNotOkComment(currentValue)}
 																		sx={{ mt: 1 }}
 																	/>
 																)}
@@ -1635,8 +1639,14 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																								onChange={e => handleFixedTableCellChange(param.id, rowIdx, col.name, e.target.value)}
 																								sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
 																							>
-																								<FormControlLabel value="ok" control={<Radio size="small" color="success" />} label="OK" />
-																								<FormControlLabel value="not ok" control={<Radio size="small" color="warning" />} label={OK_NOT_OK_NEGATIVE_LABEL} />
+																								{OK_NOT_OK_OPTIONS.map(option => (
+																									<FormControlLabel
+																										key={option.value}
+																										value={option.value}
+																										control={<Radio size="small" color={option.color} />}
+																										label={option.label}
+																									/>
+																								))}
 																							</RadioGroup>
 																							{errors[errKey] && (
 																								<Typography variant="caption" color="error">{errors[errKey]}</Typography>
@@ -1888,47 +1898,40 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																										}
 																										sx={{ gap: 0.5, m: 0 }}
 																									>
-																										<FormControlLabel
-																											value="ok"
-																											control={<Radio size="small" color="success" />}
-																											label="OK"
-																											sx={{
+																										{OK_NOT_OK_OPTIONS.map(option => (
+																											<FormControlLabel
+																												key={option.value}
+																												value={option.value}
+																												control={<Radio size="small" color={option.color} />}
+																												label={option.label}
+																												sx={{
 																												m: 0,
-																												'& .MuiFormControlLabel-label': {
-																													fontSize: '0.75rem',
-																													color: currentValue === 'ok' ? '#2e7d32' : '#666'
-																												}
-																											}}
-																										/>
-																										<FormControlLabel
-																											value="not ok"
-																											control={<Radio size="small" color="warning" />}
-																											label={OK_NOT_OK_NEGATIVE_LABEL}
-																											sx={{
-																												m: 0,
-																												'& .MuiFormControlLabel-label': {
-																													fontSize: '0.75rem',
-																													color: currentValue === 'not ok' ? '#ed6c02' : '#666'
-																												}
-																											}}
-																										/>
+																													'& .MuiFormControlLabel-label': {
+																														fontSize: '0.75rem',
+																														color: currentValue === option.value ? OK_NOT_OK_SELECTED_COLORS[option.value] : '#666'
+																													}
+																												}}
+																											/>
+																										))}
 																									</RadioGroup>
-																									{currentValue === 'not ok' && (
+																									{acceptsOkNotOkComment(currentValue) && (
 																										<TextField
 																											fullWidth
 																											multiline
 																											rows={2}
-																											label="Comments"
-																											placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+																											label={requiresOkNotOkComment(currentValue) ? 'Comments' : 'Comments (optional)'}
+																											placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(currentValue)}`}
 																											value={String(formData[getNotOkCommentKey(key)] || '')}
 																											onChange={e => handleNotOkCommentChange(key, e.target.value)}
 																											error={!!errors[getNotOkCommentKey(key)]}
 																											helperText={
 																												errors[getNotOkCommentKey(key)] ||
-																												`Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+																												(requiresOkNotOkComment(currentValue)
+																													? `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+																													: 'Optional')
 																											}
 																											disabled={isReadOnly}
-																											required
+																											required={requiresOkNotOkComment(currentValue)}
 																											size="small"
 																											sx={{ mt: 1 }}
 																										/>
@@ -2093,28 +2096,20 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																						onChange={e => handleParameterChange(param.id, column.name, e.target.value)}
 																						sx={{ gap: 1 }}
 																					>
-																						<FormControlLabel
-																							value="ok"
-																							control={<Radio size="small" color="success" />}
-																							label="OK"
-																							sx={{
-																								'& .MuiFormControlLabel-label': {
-																									fontSize: '0.75rem',
-																									color: currentValue === 'ok' ? '#2e7d32' : '#666'
-																								}
-																							}}
-																						/>
-																						<FormControlLabel
-																							value="not ok"
-																							control={<Radio size="small" color="warning" />}
-																							label={OK_NOT_OK_NEGATIVE_LABEL}
-																							sx={{
-																								'& .MuiFormControlLabel-label': {
-																									fontSize: '0.75rem',
-																									color: currentValue === 'not ok' ? '#ed6c02' : '#666'
-																								}
-																							}}
-																						/>
+																						{OK_NOT_OK_OPTIONS.map(option => (
+																							<FormControlLabel
+																								key={option.value}
+																								value={option.value}
+																								control={<Radio size="small" color={option.color} />}
+																								label={option.label}
+																								sx={{
+																									'& .MuiFormControlLabel-label': {
+																										fontSize: '0.75rem',
+																										color: currentValue === option.value ? OK_NOT_OK_SELECTED_COLORS[option.value] : '#666'
+																									}
+																								}}
+																							/>
+																						))}
 																					</RadioGroup>
 																				</FormControl>
 																				{errors[key] && (
@@ -2126,19 +2121,24 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																						{errors[key]}
 																					</Typography>
 																				)}
-																				{currentValue === 'not ok' && (
+																				{acceptsOkNotOkComment(currentValue) && (
 																					<TextField
 																						fullWidth
 																						multiline
 																						rows={2}
-																						label="Comments"
-																						placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+																						label={requiresOkNotOkComment(currentValue) ? 'Comments' : 'Comments (optional)'}
+																						placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(currentValue)}`}
 																						value={String(formData[commentKey] || '')}
 																						onChange={e => handleNotOkCommentChange(key, e.target.value)}
 																						error={!!errors[commentKey]}
-																						helperText={errors[commentKey] || `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`}
+																						helperText={
+																							errors[commentKey] ||
+																							(requiresOkNotOkComment(currentValue)
+																								? `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+																								: 'Optional')
+																						}
 																						disabled={isReadOnly}
-																						required
+																						required={requiresOkNotOkComment(currentValue)}
 																						size="small"
 																						sx={{ mt: 1 }}
 																					/>

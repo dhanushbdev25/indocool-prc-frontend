@@ -42,7 +42,14 @@ import {
 	type CatalystMixingEntry,
 	type CatalystMixingFormData
 } from '../../../../types/execution.types';
-import { OK_NOT_OK_NEGATIVE_LABEL, OK_NOT_OK_POSITIVE_LABEL } from '../../../../../../utils/okNotOkLabels';
+import {
+	OK_NOT_OK_NEGATIVE_LABEL,
+	OK_NOT_OK_OPTIONS,
+	acceptsOkNotOkComment,
+	formatOkNotOkValueForDisplay,
+	isValidOkNotOkValue,
+	requiresOkNotOkComment
+} from '../../../../../../utils/okNotOkLabels';
 
 interface BomStepProps {
 	step: TimelineStep;
@@ -280,10 +287,7 @@ const BomStep = ({
 									: String(savedEntry.weighingMachineInstrumentId),
 							actualQuantity: savedEntry.actualQuantity || 0,
 							temperature: savedEntry.temperature || '',
-							fodCheckpoint:
-								savedEntry.fodCheckpoint === 'ok' || savedEntry.fodCheckpoint === 'not ok'
-									? savedEntry.fodCheckpoint
-									: '',
+							fodCheckpoint: isValidOkNotOkValue(savedEntry.fodCheckpoint) ? savedEntry.fodCheckpoint : '',
 							fodDeviationComment: savedEntry.fodDeviationComment || '',
 							employeeName: savedEntry.employeeName || '',
 							employeeCode: savedEntry.employeeCode || '',
@@ -486,9 +490,9 @@ const BomStep = ({
 				if (!entry.role) {
 					newErrors[`${entry.id}_role`] = 'Skill level is required';
 				}
-				if (entry.fodCheckpoint !== 'ok' && entry.fodCheckpoint !== 'not ok') {
+				if (!isValidOkNotOkValue(entry.fodCheckpoint)) {
 					newErrors[`${entry.id}_fod`] = 'FOD checkpoint is required';
-				} else if (entry.fodCheckpoint === 'not ok' && !entry.fodDeviationComment.trim()) {
+				} else if (requiresOkNotOkComment(entry.fodCheckpoint) && !entry.fodDeviationComment.trim()) {
 					newErrors[`${entry.id}_fodComment`] = `Comments are required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
 				}
 			}
@@ -921,29 +925,31 @@ const BomStep = ({
 													value={entry.fodCheckpoint}
 													onChange={e => handleInputChange(entry.id, 'fodCheckpoint', e.target.value)}
 												>
-													<FormControlLabel
-														value="ok"
-														control={<Radio size="small" color="success" />}
-														label={OK_NOT_OK_POSITIVE_LABEL}
-													/>
-													<FormControlLabel
-														value="not ok"
-														control={<Radio size="small" color="warning" />}
-														label={OK_NOT_OK_NEGATIVE_LABEL}
-													/>
+													{OK_NOT_OK_OPTIONS.map(option => (
+														<FormControlLabel
+															key={option.value}
+															value={option.value}
+															control={<Radio size="small" color={option.color} />}
+															label={option.label}
+														/>
+													))}
 												</RadioGroup>
 												{errors[`${entry.id}_fod`] && (
 													<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
 														{errors[`${entry.id}_fod`]}
 													</Typography>
 												)}
-												{entry.fodCheckpoint === 'not ok' && (
+												{acceptsOkNotOkComment(entry.fodCheckpoint) && (
 													<TextField
 														fullWidth
 														multiline
 														rows={2}
-														label="Deviation comments"
-														placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+														label={
+															requiresOkNotOkComment(entry.fodCheckpoint)
+																? 'Deviation comments'
+																: 'Comments (optional)'
+														}
+														placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(entry.fodCheckpoint)}`}
 														value={entry.fodDeviationComment}
 														onChange={e =>
 															handleInputChange(entry.id, 'fodDeviationComment', e.target.value)
@@ -951,10 +957,12 @@ const BomStep = ({
 														error={!!errors[`${entry.id}_fodComment`]}
 														helperText={
 															errors[`${entry.id}_fodComment`] ||
-															`Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+															(requiresOkNotOkComment(entry.fodCheckpoint)
+																? `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+																: 'Optional')
 														}
 														disabled={isReadOnly || entry.blocked || entry.savedEntry}
-														required
+														required={requiresOkNotOkComment(entry.fodCheckpoint)}
 														sx={{ mt: 1.5 }}
 													/>
 												)}

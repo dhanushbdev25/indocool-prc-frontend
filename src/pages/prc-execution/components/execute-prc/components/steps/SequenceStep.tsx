@@ -27,7 +27,15 @@ import {
 } from '../../../../../../components/common/OperationalDatePicker';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
-import { OK_NOT_OK_NEGATIVE_LABEL } from '../../../../../../utils/okNotOkLabels';
+import {
+	OK_NOT_OK_NEGATIVE_LABEL,
+	OK_NOT_OK_OPTIONS,
+	OK_NOT_OK_SELECTED_COLORS,
+	acceptsOkNotOkComment,
+	formatOkNotOkValueForDisplay,
+	isValidOkNotOkValue,
+	requiresOkNotOkComment
+} from '../../../../../../utils/okNotOkLabels';
 import {
 	CRITICALITY_CHIP_TINT,
 	formatSequenceCriticality,
@@ -413,7 +421,9 @@ const SequenceStep = ({
 		setFormData(prev => ({
 			...prev,
 			value: value,
-			...(value !== 'not ok' ? { notOkComment: '' } : {})
+			// Keep the text when moving between the two values that take a comment, so
+			// switching deviation <-> Not Applicable does not silently wipe what was typed.
+			...(acceptsOkNotOkComment(value) ? {} : { notOkComment: '' })
 		}));
 
 		// Clear error when user starts typing
@@ -593,9 +603,9 @@ const SequenceStep = ({
 				const selectedValue = getOkNotOkValue(formData.value);
 				const notOkComment = typeof formData.notOkComment === 'string' ? formData.notOkComment.trim() : '';
 
-				if (!selectedValue) {
+				if (!isValidOkNotOkValue(selectedValue)) {
 					newErrors.value = 'Please select an option';
-				} else if (selectedValue === 'not ok' && !notOkComment) {
+				} else if (requiresOkNotOkComment(selectedValue) && !notOkComment) {
 					newErrors.notOkComment = `Comment is required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`;
 				}
 			} else {
@@ -866,8 +876,14 @@ const SequenceStep = ({
 														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
 														sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
 													>
-														<FormControlLabel value="ok" control={<Radio size="small" />} label="OK" />
-														<FormControlLabel value="not ok" control={<Radio size="small" color="warning" />} label={OK_NOT_OK_NEGATIVE_LABEL} />
+														{OK_NOT_OK_OPTIONS.map(option => (
+															<FormControlLabel
+																key={option.value}
+																value={option.value}
+																control={<Radio size="small" color={option.color} />}
+																label={option.label}
+															/>
+														))}
 													</RadioGroup>
 													{errors[`table_${rowIdx}_${col.name}`] && (
 														<Typography variant="caption" color="error">
@@ -1012,43 +1028,40 @@ const SequenceStep = ({
 						onChange={e => handleValueChange(e.target.value)}
 						sx={{ gap: 2 }}
 					>
-						<FormControlLabel
-							value="ok"
-							control={<Radio size="small" color="success" />}
-							label="OK"
-							sx={{
-								'& .MuiFormControlLabel-label': {
-									fontSize: '0.875rem',
-									color: selectedValue === 'ok' ? '#2e7d32' : '#666'
-								}
-							}}
-						/>
-						<FormControlLabel
-							value="not ok"
-							control={<Radio size="small" color="warning" />}
-							label={OK_NOT_OK_NEGATIVE_LABEL}
-							sx={{
-								'& .MuiFormControlLabel-label': {
-									fontSize: '0.875rem',
-									color: selectedValue === 'not ok' ? '#ed6c02' : '#666'
-								}
-							}}
-						/>
+						{OK_NOT_OK_OPTIONS.map(option => (
+							<FormControlLabel
+								key={option.value}
+								value={option.value}
+								control={<Radio size="small" color={option.color} />}
+								label={option.label}
+								sx={{
+									'& .MuiFormControlLabel-label': {
+										fontSize: '0.875rem',
+										color: selectedValue === option.value ? OK_NOT_OK_SELECTED_COLORS[option.value] : '#666'
+									}
+								}}
+							/>
+						))}
 					</RadioGroup>
-					{selectedValue === 'not ok' && (
+					{acceptsOkNotOkComment(selectedValue) && (
 						<TextField
 							fullWidth
 							multiline
 							rows={3}
-							label="Comments"
-							placeholder={`Enter comments for ${OK_NOT_OK_NEGATIVE_LABEL}`}
+							label={requiresOkNotOkComment(selectedValue) ? 'Comments' : 'Comments (optional)'}
+							placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(selectedValue)}`}
 							value={typeof formData.notOkComment === 'string' ? formData.notOkComment : ''}
 							onChange={e => handleNotOkCommentChange(e.target.value)}
 							error={!!errors.notOkComment}
-							helperText={errors.notOkComment || `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`}
+							helperText={
+								errors.notOkComment ||
+								(requiresOkNotOkComment(selectedValue)
+									? `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+									: 'Optional')
+							}
 							sx={{ mt: 1.5 }}
 							disabled={isReadOnly}
-							required
+							required={requiresOkNotOkComment(selectedValue)}
 						/>
 					)}
 				</FormControl>

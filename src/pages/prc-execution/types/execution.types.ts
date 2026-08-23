@@ -554,8 +554,8 @@ export interface CatalystMixingEntry {
 	blocked: boolean;
 	requiresSupervisorApproval: boolean;
 	/** FOD checkpoint selection — '' means not yet answered */
-	fodCheckpoint: 'ok' | 'not ok' | '';
-	/** Required when fodCheckpoint === 'not ok' */
+	fodCheckpoint: 'ok' | 'not ok' | 'not applicable' | '';
+	/** Required for 'not ok'; offered but optional for 'not applicable'. */
 	fodDeviationComment: string;
 	employeeName: string;
 	employeeCode: string;

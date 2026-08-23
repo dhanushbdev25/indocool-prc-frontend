@@ -37,7 +37,8 @@ import {
 	ExpandMore,
 	ExpandLess,
 	Warning,
-	Error as ErrorIcon
+	Error as ErrorIcon,
+	RemoveCircleOutline
 } from '@mui/icons-material';
 import { type StepPreviewData, type ProceedFromPreviewPayload } from '../../../types/execution.types';
 import { formatExecutionDuration } from '../../../utils/timelineCardTiming';
@@ -48,9 +49,13 @@ import { debugDataTransformation } from '../../../utils/dataTransformers';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { toFileRenderUrl } from '../../../../../utils/fileUrl';
 import {
+	OK_NOT_OK_POSITIVE_VALUE,
+	OK_NOT_OK_TYPE_KEY,
 	formatOkNotOkTypeForDisplay,
 	formatOkNotOkValueForDisplay,
-	isNegativeOkNotOk
+	isNegativeOkNotOk,
+	isNotApplicableOkNotOk,
+	isValidOkNotOkValue
 } from '../../../../../utils/okNotOkLabels';
 import { GATE_FIELD_LABEL } from '../../../../../utils/gateLabels';
 import {
@@ -423,7 +428,11 @@ const StepPreview = ({
 		return { value: '', notOkComment: '' };
 	};
 
-	/** Green check for OK, warning for OK with deviation, neutral circle when indeterminate (sequence / inspection status column). */
+	/**
+	 * Status icon for the sequence / inspection column: green check for OK, warning for OK with
+	 * deviation, a struck-through circle for Not Applicable, and a neutral circle when the value
+	 * is indeterminate. Not Applicable gets its own mark so it does not read as a pass.
+	 */
 	const renderOkNotOkResultStatusIcon = (parsed: { value: string; notOkComment: string }) => {
 		if (isNegativeOkNotOk(parsed.value)) {
 			return (
@@ -442,7 +451,7 @@ const StepPreview = ({
 				</Box>
 			);
 		}
-		if (parsed.value === 'ok') {
+		if (parsed.value === OK_NOT_OK_POSITIVE_VALUE) {
 			return (
 				<Box
 					sx={{
@@ -456,6 +465,24 @@ const StepPreview = ({
 					}}
 				>
 					<CheckCircle sx={{ color: '#4caf50', fontSize: 16 }} />
+				</Box>
+			);
+		}
+		// Not Applicable gets its own mark — a grey tick would read as a pass.
+		if (isNotApplicableOkNotOk(parsed.value)) {
+			return (
+				<Box
+					sx={{
+						display: 'flex',
+						alignItems: 'center',
+						justifyContent: 'center',
+						width: 24,
+						height: 24,
+						borderRadius: '50%',
+						backgroundColor: '#f5f5f5'
+					}}
+				>
+					<RemoveCircleOutline sx={{ color: '#616161', fontSize: 16 }} />
 				</Box>
 			);
 		}
@@ -857,9 +884,9 @@ const StepPreview = ({
 													if (!hasTarget || !measurement.validationStatus) {
 														const parsed = parseOkNotOkValue(measurement.value);
 														const isOkNotOkRow =
-															measurement.targetValueType === 'ok/not ok' ||
-															(measurement.targetValueType === 'ok/not ok' &&
-																(parsed.value === 'ok' || parsed.value === 'not ok'));
+															measurement.targetValueType === OK_NOT_OK_TYPE_KEY ||
+															(measurement.targetValueType === OK_NOT_OK_TYPE_KEY &&
+																isValidOkNotOkValue(parsed.value));
 														if (isOkNotOkRow) {
 															return renderOkNotOkResultStatusIcon(parsed);
 														}
