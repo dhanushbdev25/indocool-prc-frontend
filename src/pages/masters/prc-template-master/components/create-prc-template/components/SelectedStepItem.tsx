@@ -1,6 +1,7 @@
 import { Box, Typography, IconButton, Checkbox, FormControlLabel, Chip } from '@mui/material';
-import { KeyboardArrowUp as UpIcon, KeyboardArrowDown as DownIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon } from '@mui/icons-material';
 import { Controller, Control } from 'react-hook-form';
+import { ReorderControls } from '../../../../../../components/masters';
 import { SelectedStepItemProps } from '../types';
 import { PrcTemplateFormData } from '../schemas';
 
@@ -92,32 +93,14 @@ const SelectedStepItem = ({
 				</Box>
 
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-					<IconButton
-						size="small"
-						onClick={handleMoveUp}
-						disabled={!canMoveUp}
-						sx={{
-							color: canMoveUp ? '#666' : '#ccc',
-							'&:hover': {
-								backgroundColor: canMoveUp ? '#f5f5f5' : 'transparent'
-							}
-						}}
-					>
-						<UpIcon />
-					</IconButton>
-					<IconButton
-						size="small"
-						onClick={handleMoveDown}
-						disabled={!canMoveDown}
-						sx={{
-							color: canMoveDown ? '#666' : '#ccc',
-							'&:hover': {
-								backgroundColor: canMoveDown ? '#f5f5f5' : 'transparent'
-							}
-						}}
-					>
-						<DownIcon />
-					</IconButton>
+					<ReorderControls
+						itemLabel="step"
+						position={index + 1}
+						canMoveUp={canMoveUp}
+						canMoveDown={canMoveDown}
+						onMoveUp={handleMoveUp}
+						onMoveDown={handleMoveDown}
+					/>
 					<IconButton
 						size="small"
 						onClick={handleRemove}

@@ -31,8 +31,6 @@ import {
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
-	KeyboardArrowUp as UpIcon,
-	KeyboardArrowDown as DownIcon,
 	ExpandMore as ExpandMoreIcon,
 	PlaylistAdd as StepIcon,
 	Group as GroupIcon,
@@ -49,7 +47,7 @@ import {
 } from 'react-hook-form';
 import { SequenceStepGroupsProps, targetValueTypeOptions, tableColumnTypeOptions, uomOptions } from '../types';
 import { SequenceFormData } from '../schemas';
-import { CriticalityField } from '../../../../../../components/masters';
+import { CriticalityField, ReorderControls } from '../../../../../../components/masters';
 import { CRITICALITY_FIELD_LABEL, SEQUENCE_CRITICALITY_OPTIONS } from '../../../../../../utils/criticality';
 
 interface StepGroupAccordionBlockProps {
@@ -133,34 +131,14 @@ const StepGroupAccordionBlock = ({
 							<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', flex: 1, minWidth: 0 }}>
 								Step Group {groupIndex + 1}
 							</Typography>
-							<Tooltip title="Move group up">
-								<span>
-									<IconButton
-										size="small"
-										disabled={!canMoveUp}
-										onClick={e => {
-											e.stopPropagation();
-											onMoveUp();
-										}}
-									>
-										<UpIcon />
-									</IconButton>
-								</span>
-							</Tooltip>
-							<Tooltip title="Move group down">
-								<span>
-									<IconButton
-										size="small"
-										disabled={!canMoveDown}
-										onClick={e => {
-											e.stopPropagation();
-											onMoveDown();
-										}}
-									>
-										<DownIcon />
-									</IconButton>
-								</span>
-							</Tooltip>
+							<ReorderControls
+								itemLabel="group"
+								position={groupIndex + 1}
+								canMoveUp={canMoveUp}
+								canMoveDown={canMoveDown}
+								onMoveUp={onMoveUp}
+								onMoveDown={onMoveDown}
+							/>
 							<IconButton
 								size="small"
 								data-delete-button
@@ -602,22 +580,14 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 										<MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
 									))}
 								</Select>
-								<IconButton
-									size="small"
-									onClick={() => moveColumn(colIndex, colIndex - 1)}
-									disabled={colIndex === 0}
-									sx={{ color: colIndex === 0 ? '#ccc' : '#666' }}
-								>
-									<UpIcon sx={{ fontSize: 18 }} />
-								</IconButton>
-								<IconButton
-									size="small"
-									onClick={() => moveColumn(colIndex, colIndex + 1)}
-									disabled={colIndex >= columns.length - 1}
-									sx={{ color: colIndex >= columns.length - 1 ? '#ccc' : '#666' }}
-								>
-									<DownIcon sx={{ fontSize: 18 }} />
-								</IconButton>
+								<ReorderControls
+									itemLabel="column"
+									position={colIndex + 1}
+									canMoveUp={colIndex > 0}
+									canMoveDown={colIndex < columns.length - 1}
+									onMoveUp={() => moveColumn(colIndex, colIndex - 1)}
+									onMoveDown={() => moveColumn(colIndex, colIndex + 1)}
+								/>
 								<IconButton size="small" onClick={() => removeColumn(colIndex)} sx={{ color: '#bbb', '&:hover': { color: '#f44336' } }}>
 									<DeleteIcon sx={{ fontSize: 18 }} />
 								</IconButton>
@@ -1007,28 +977,14 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 								</Typography>
 							</Box>
 							<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-								<IconButton
-									size="small"
-									onClick={() => {
-										if (stepIndex <= 0) return;
-										moveStep(stepIndex, stepIndex - 1);
-									}}
-									disabled={stepIndex <= 0}
-									sx={{ color: stepIndex <= 0 ? 'action.disabled' : '#666' }}
-								>
-									<UpIcon fontSize="small" />
-								</IconButton>
-								<IconButton
-									size="small"
-									onClick={() => {
-										if (stepIndex >= stepFields.length - 1) return;
-										moveStep(stepIndex, stepIndex + 1);
-									}}
-									disabled={stepIndex >= stepFields.length - 1}
-									sx={{ color: stepIndex >= stepFields.length - 1 ? 'action.disabled' : '#666' }}
-								>
-									<DownIcon fontSize="small" />
-								</IconButton>
+								<ReorderControls
+									itemLabel="step"
+									position={stepIndex + 1}
+									canMoveUp={stepIndex > 0}
+									canMoveDown={stepIndex < stepFields.length - 1}
+									onMoveUp={() => moveStep(stepIndex, stepIndex - 1)}
+									onMoveDown={() => moveStep(stepIndex, stepIndex + 1)}
+								/>
 								<IconButton
 									size="small"
 									onClick={() => removeStep(stepIndex)}

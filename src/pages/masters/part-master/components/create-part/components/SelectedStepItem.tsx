@@ -1,6 +1,7 @@
 import { Box, Typography, IconButton, Checkbox, FormControlLabel, Chip } from '@mui/material';
-import { KeyboardArrowUp as UpIcon, KeyboardArrowDown as DownIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Delete as DeleteIcon } from '@mui/icons-material';
 import { Controller, Control } from 'react-hook-form';
+import { ReorderControls } from '../../../../../../components/masters';
 import { PartMasterFormData } from '../schemas';
 import { ExtendedPrcTemplateStep } from '../types';
 
@@ -81,22 +82,14 @@ const SelectedStepItem = ({
 				</Box>
 
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-					<IconButton
-						size="small"
-						onClick={() => hasValidIndex && canMoveUp && onReorder(index, index - 1)}
-						disabled={!hasValidIndex || !canMoveUp}
-						sx={{ color: canMoveUp ? '#666' : '#ccc' }}
-					>
-						<UpIcon />
-					</IconButton>
-					<IconButton
-						size="small"
-						onClick={() => hasValidIndex && canMoveDown && onReorder(index, index + 1)}
-						disabled={!hasValidIndex || !canMoveDown}
-						sx={{ color: canMoveDown ? '#666' : '#ccc' }}
-					>
-						<DownIcon />
-					</IconButton>
+					<ReorderControls
+						itemLabel="step"
+						position={index + 1}
+						canMoveUp={hasValidIndex && canMoveUp}
+						canMoveDown={hasValidIndex && canMoveDown}
+						onMoveUp={() => onReorder(index, index - 1)}
+						onMoveDown={() => onReorder(index, index + 1)}
+					/>
 					<IconButton
 						size="small"
 						onClick={() => hasValidIndex && onRemove(index)}

@@ -8,6 +8,8 @@ export { default as MasterListLandingPage } from './MasterListLandingPage';
 export type { MasterListLandingPageProps } from './MasterListLandingPage';
 export { default as CriticalityField } from './CriticalityField';
 export type { CriticalityFieldProps } from './CriticalityField';
+export { default as ReorderControls } from './ReorderControls';
+export type { ReorderControlsProps } from './ReorderControls';
 export { formatFilteredListSummary } from './listSummaryHelpers';
 export {
 	masterListSectionGap,

@@ -8,8 +8,8 @@ import InspectionParameters from './InspectionParameters';
 vi.mock('@mui/icons-material', () => ({
 	Add: () => null,
 	Delete: () => null,
-	KeyboardArrowUp: () => null,
-	KeyboardArrowDown: () => null,
+	ArrowUpward: () => null,
+	ArrowDownward: () => null,
 	Settings: () => null,
 	ExpandMore: () => null,
 	ExpandLess: () => null,

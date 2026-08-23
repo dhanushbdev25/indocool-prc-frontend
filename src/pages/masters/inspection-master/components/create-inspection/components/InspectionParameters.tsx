@@ -37,8 +37,6 @@ import {
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
-	KeyboardArrowUp as UpIcon,
-	KeyboardArrowDown as DownIcon,
 	Settings as SettingsIcon,
 	ExpandMore as ExpandMoreIcon,
 	ExpandLess as ExpandLessIcon,
@@ -55,6 +53,7 @@ import {
 	UseFormGetValues,
 	UseFormSetValue
 } from 'react-hook-form';
+import { ReorderControls } from '../../../../../../components/masters';
 import { InspectionParametersProps } from '../types';
 import { InspectionFormData } from '../schemas';
 import { OK_NOT_OK_NEGATIVE_LABEL, OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../../utils/okNotOkLabels';
@@ -269,30 +268,14 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 					</Box>
 
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-						<Tooltip title="Move parameter up">
-							<span>
-								<IconButton
-									aria-label={`Move parameter ${index + 1} up`}
-									disabled={index === 0}
-									onClick={() => moveParameterTo(index, index - 1)}
-									sx={{ color: '#666' }}
-								>
-									<UpIcon />
-								</IconButton>
-							</span>
-						</Tooltip>
-						<Tooltip title="Move parameter down">
-							<span>
-								<IconButton
-									aria-label={`Move parameter ${index + 1} down`}
-									disabled={index === parameterFields.length - 1}
-									onClick={() => moveParameterTo(index, index + 1)}
-									sx={{ color: '#666' }}
-								>
-									<DownIcon />
-								</IconButton>
-							</span>
-						</Tooltip>
+						<ReorderControls
+							itemLabel="parameter"
+							position={index + 1}
+							canMoveUp={index > 0}
+							canMoveDown={index < parameterFields.length - 1}
+							onMoveUp={() => moveParameterTo(index, index - 1)}
+							onMoveDown={() => moveParameterTo(index, index + 1)}
+						/>
 						<IconButton
 							onClick={() => toggleCardExpansion(index)}
 							sx={{
@@ -832,22 +815,14 @@ const FixedTableConfigEditor = ({
 										<MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
 									))}
 								</Select>
-								<IconButton
-									size="small"
-									onClick={() => moveColumn(colIndex, colIndex - 1)}
-									disabled={colIndex === 0}
-									sx={{ color: colIndex === 0 ? '#ccc' : '#666' }}
-								>
-									<UpIcon sx={{ fontSize: 18 }} />
-								</IconButton>
-								<IconButton
-									size="small"
-									onClick={() => moveColumn(colIndex, colIndex + 1)}
-									disabled={colIndex >= columns.length - 1}
-									sx={{ color: colIndex >= columns.length - 1 ? '#ccc' : '#666' }}
-								>
-									<DownIcon sx={{ fontSize: 18 }} />
-								</IconButton>
+								<ReorderControls
+									itemLabel="column"
+									position={colIndex + 1}
+									canMoveUp={colIndex > 0}
+									canMoveDown={colIndex < columns.length - 1}
+									onMoveUp={() => moveColumn(colIndex, colIndex - 1)}
+									onMoveDown={() => moveColumn(colIndex, colIndex + 1)}
+								/>
 								<IconButton size="small" onClick={() => removeColumn(colIndex)} sx={{ color: '#bbb', '&:hover': { color: '#f44336' } }}>
 									<DeleteIcon sx={{ fontSize: 18 }} />
 								</IconButton>
@@ -1364,22 +1339,14 @@ const ParameterColumns = memo(
 											gap: 0.5
 										}}
 									>
-										<IconButton
-											size="small"
-											onClick={() => handleMoveColumn(columnIndex, 'up')}
-											disabled={columnIndex === 0}
-											sx={{ color: columnIndex === 0 ? '#ccc' : '#666' }}
-										>
-											<UpIcon fontSize="small" />
-										</IconButton>
-										<IconButton
-											size="small"
-											onClick={() => handleMoveColumn(columnIndex, 'down')}
-											disabled={columnIndex >= columnFields.length - 1}
-											sx={{ color: columnIndex >= columnFields.length - 1 ? '#ccc' : '#666' }}
-										>
-											<DownIcon fontSize="small" />
-										</IconButton>
+										<ReorderControls
+											itemLabel="column"
+											position={columnIndex + 1}
+											canMoveUp={columnIndex > 0}
+											canMoveDown={columnIndex < columnFields.length - 1}
+											onMoveUp={() => handleMoveColumn(columnIndex, 'up')}
+											onMoveDown={() => handleMoveColumn(columnIndex, 'down')}
+										/>
 										<IconButton
 											color="error"
 											onClick={() => handleRemoveColumn(columnIndex)}
