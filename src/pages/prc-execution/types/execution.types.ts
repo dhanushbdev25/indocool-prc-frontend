@@ -58,6 +58,8 @@ export interface StepGroup {
 	steps: Array<{
 		id: number;
 		ctq: boolean;
+		/** Non-gating tag ('CTA' | 'CTP' | null) from the master — see `utils/criticality.ts`. */
+		criticalityTag?: string | null;
 		targetValueType: string;
 		uom: string;
 		minValue?: string;
@@ -124,6 +126,8 @@ export interface StepPreviewData {
 		parameterName: string;
 		type: string;
 		ctq: boolean;
+		/** Non-gating tag ('CTA' | 'CTP' | null) from the master — see `utils/criticality.ts`. */
+		criticalityTag?: string | null;
 		role: string;
 		columns: Array<{
 			name: string;
@@ -182,6 +186,12 @@ export interface TimelineStep {
 	description: string;
 	status: 'completed' | 'in-progress' | 'pending';
 	ctq: boolean;
+	/**
+	 * Non-gating tag ('CTA' | 'CTP' | null). Only meaningful on the per-sub-step wrapper
+	 * StepDetailView builds for a sequence step — at the group level `ctq` is an aggregate
+	 * ("contains a gating step") and there is no equivalent aggregate for tags.
+	 */
+	criticalityTag?: string | null;
 	productionApproved?: boolean;
 	ctqApproved?: boolean;
 	partialCtqApprove?: boolean;
@@ -242,6 +252,8 @@ export interface TimelineStep {
 		parameterName: string;
 		type: string;
 		ctq: boolean;
+		/** Non-gating tag ('CTA' | 'CTP' | null) from the master — see `utils/criticality.ts`. */
+		criticalityTag?: string | null;
 		role: string;
 		getInstrumentId?: boolean;
 		columns: Array<{

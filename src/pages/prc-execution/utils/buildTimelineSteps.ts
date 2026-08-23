@@ -130,6 +130,7 @@ export function buildTimelineSteps(
 						steps: Array<{
 							id: number;
 							ctq: boolean;
+							criticalityTag?: string | null;
 							targetValueType: string;
 							uom: string;
 							minValue?: string;
@@ -210,6 +211,7 @@ export function buildTimelineSteps(
 						parameterName: string;
 						type: string;
 						ctq: boolean;
+						criticalityTag?: string | null;
 						role: string;
 						columns: Array<{
 							name: string;
@@ -280,6 +282,7 @@ export function buildTimelineSteps(
 							parameterName: param.parameterName,
 							type: param.type,
 							ctq: param.ctq,
+							criticalityTag: param.criticalityTag ?? null,
 							role: param.role,
 							columns: param.columns || [],
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any

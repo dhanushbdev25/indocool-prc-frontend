@@ -1,4 +1,5 @@
 import { normalizeTableConfig } from '../components/create-sequence/table-config.utils';
+import { normalizeCriticalityTag, resolveCriticality, toCriticalityFields } from '../../../../utils/criticality';
 import type { SequenceFormData } from '../components/create-sequence/schemas';
 import type { TableConfig } from '../../../../types/table-config.types';
 import type {
@@ -84,6 +85,7 @@ export const toProcessStepGroupFormValues = (groups: readonly ProcessStepGroup[]
 						tableConfig: stepTableConfig(step),
 						uom: step.uom,
 						ctq: step.ctq ?? false,
+						criticalityTag: normalizeCriticalityTag(step.criticalityTag),
 						allowAttachments: step.allowAttachments ?? false,
 						responsiblePerson: step.responsiblePerson ?? false,
 						getInstrumentId: step.getInstrumentId ?? false,
@@ -135,7 +137,8 @@ export const toProcessStepGroupRequests = (groups: readonly ProcessStepGroupForm
 				multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
 				tableConfig: step.targetValueType === 'table' ? ((step.tableConfig ?? null) as TableConfig | null) : null,
 				uom: step.uom,
-				ctq: step.ctq ?? false,
+				// Sent as an explicit null (not omitted) so clearing a tag actually clears the column.
+				...toCriticalityFields(resolveCriticality(step)),
 				allowAttachments: step.allowAttachments ?? false,
 				responsiblePerson: step.responsiblePerson ?? false,
 				getInstrumentId: step.getInstrumentId ?? false,
@@ -179,6 +182,7 @@ export const toProcessStepGroupRequestsFromDetail = (groups: readonly ProcessSte
 					tableConfig: stepTableConfig(step),
 					uom: step.uom,
 					ctq: step.ctq,
+					criticalityTag: normalizeCriticalityTag(step.criticalityTag),
 					allowAttachments: step.allowAttachments,
 					responsiblePerson: step.responsiblePerson || false,
 					getInstrumentId: step.getInstrumentId || false,

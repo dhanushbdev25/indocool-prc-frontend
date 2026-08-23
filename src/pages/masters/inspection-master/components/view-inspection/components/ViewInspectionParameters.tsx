@@ -21,7 +21,13 @@ import { ExpandMore, Warning, Link, Lock as LockIcon } from '@mui/icons-material
 import { InspectionParameter } from '../../../../../../store/api/business/inspection-master/inspection.validators';
 import { roleOptions } from '../../create-inspection/schemas';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
-import { GATE_FIELD_LABEL, GATE_POSITIVE_LABEL, formatGateValueForDisplay } from '../../../../../../utils/gateLabels';
+import { GATE_FIELD_LABEL } from '../../../../../../utils/gateLabels';
+import {
+	CRITICALITY_CHIP_HEX,
+	formatInspectionCriticality,
+	getCriticalityChipColor,
+	resolveCriticality
+} from '../../../../../../utils/criticality';
 import { sortByNumericOrder } from '../../../../../../utils/orderedRecords';
 
 interface ViewInspectionParametersProps {
@@ -107,12 +113,12 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 												fontWeight: 500
 											}}
 										/>
-										{parameter.ctq && (
+										{resolveCriticality(parameter) !== 'NONE' && (
 											<Chip
-												icon={<Warning />}
-												label={GATE_POSITIVE_LABEL}
+												icon={parameter.ctq ? <Warning /> : undefined}
+												label={formatInspectionCriticality(parameter)}
 												size="small"
-												color="warning"
+												color={getCriticalityChipColor(resolveCriticality(parameter))}
 												variant="outlined"
 											/>
 										)}
@@ -162,10 +168,10 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 											</Typography>
 											<Chip
 												icon={parameter.ctq ? <Warning /> : undefined}
-												label={formatGateValueForDisplay(parameter.ctq)}
+												label={formatInspectionCriticality(parameter)}
 												size="small"
 												sx={{
-													backgroundColor: parameter.ctq ? '#ff9800' : '#9e9e9e',
+													backgroundColor: CRITICALITY_CHIP_HEX[resolveCriticality(parameter)].background,
 													color: 'white',
 													fontWeight: 500,
 													mb: 2

@@ -67,6 +67,14 @@ describe('stripInspectionParameterIds', () => {
 		expect(cloned[0]).not.toHaveProperty('id');
 		expect(cloned[0].parameterName).toBe('Diameter');
 	});
+
+	it('keeps the criticality tag on a clone', () => {
+		const cloned = stripInspectionParameterIds(
+			toInspectionParameterFormValues([apiParameter({ id: 4210, criticalityTag: 'CTA' })])
+		);
+
+		expect(cloned[0].criticalityTag).toBe('CTA');
+	});
 });
 
 describe('toInspectionParameterRequests', () => {
@@ -96,6 +104,39 @@ describe('toInspectionParameterRequests', () => {
 
 		expect(request.tableConfig).toEqual(tableConfig);
 		expect(request.getInstrumentId).toBe(true);
+	});
+
+	it('sends a Gate parameter as ctq with no tag', () => {
+		const [request] = toInspectionParameterRequests(
+			toInspectionParameterFormValues([apiParameter({ ctq: true, criticalityTag: null })])
+		);
+
+		expect(request.ctq).toBe(true);
+		expect(request.criticalityTag).toBeNull();
+	});
+
+	it('sends a CTA parameter as a tag with ctq off, so it never gates execution', () => {
+		const [request] = toInspectionParameterRequests(
+			toInspectionParameterFormValues([apiParameter({ ctq: false, criticalityTag: 'CTA' })])
+		);
+
+		expect(request.ctq).toBe(false);
+		expect(request.criticalityTag).toBe('CTA');
+	});
+
+	it('clears the tag rather than omitting it, so switching CTA back to Not Gate sticks', () => {
+		const [request] = toInspectionParameterRequests([formValue({ ctq: false, criticalityTag: null })]);
+
+		expect(request).toHaveProperty('criticalityTag');
+		expect(request.criticalityTag).toBeNull();
+	});
+
+	it('drops an unrecognised tag instead of forwarding it', () => {
+		const [request] = toInspectionParameterRequests(
+			toInspectionParameterFormValues([apiParameter({ criticalityTag: 'NOT_A_TAG' })])
+		);
+
+		expect(request.criticalityTag).toBeNull();
 	});
 
 	it('renumbers order from the array position', () => {

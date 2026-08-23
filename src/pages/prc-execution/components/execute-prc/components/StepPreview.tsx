@@ -52,7 +52,13 @@ import {
 	formatOkNotOkValueForDisplay,
 	isNegativeOkNotOk
 } from '../../../../../utils/okNotOkLabels';
-import { GATE_FIELD_LABEL, formatGateValueForDisplay } from '../../../../../utils/gateLabels';
+import { GATE_FIELD_LABEL } from '../../../../../utils/gateLabels';
+import {
+	CRITICALITY_CHIP_TINT,
+	formatInspectionCriticality,
+	formatSequenceCriticality,
+	resolveCriticality
+} from '../../../../../utils/criticality';
 import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
 import { formatTableCellDisplay } from '../../../../../utils/formatTableCellDisplay';
 
@@ -672,13 +678,13 @@ const StepPreview = ({
 													<Typography variant="body2" sx={{ fontWeight: 500 }}>
 														{measurement.stepNumber || index + 1}
 													</Typography>
-													{measurement.ctq && (
+													{resolveCriticality(measurement) !== 'NONE' && (
 														<Chip
-															label="CTQ"
+															label={formatSequenceCriticality(measurement)}
 															size="small"
 															sx={{
-																backgroundColor: '#fff3e0',
-																color: '#f57c00',
+																backgroundColor: CRITICALITY_CHIP_TINT[resolveCriticality(measurement)].background,
+																color: CRITICALITY_CHIP_TINT[resolveCriticality(measurement)].color,
 																fontSize: '0.6rem',
 																height: 16,
 																'& .MuiChip-label': { px: 0.5 }
@@ -1264,7 +1270,7 @@ const StepPreview = ({
 									let isTableType = false;
 									let isFixedTableType = false;
 									let tableRowCount = 0;
-									let ctqStatus = paramMeta?.ctq || false;
+									const criticality = resolveCriticality(paramMeta);
 									let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
 									let parameterType = paramMeta?.type || 'text';
 									let specification = paramMeta?.specification || 'N/A';
@@ -1497,11 +1503,11 @@ const StepPreview = ({
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 														<Chip
-															label={formatGateValueForDisplay(ctqStatus)}
+															label={formatInspectionCriticality(paramMeta)}
 															size="small"
 															sx={{
-																backgroundColor: ctqStatus ? '#fff3e0' : '#f5f5f5',
-																color: ctqStatus ? '#f57c00' : '#666',
+																backgroundColor: CRITICALITY_CHIP_TINT[criticality].background,
+																color: CRITICALITY_CHIP_TINT[criticality].color,
 																fontSize: '0.7rem',
 																height: 20
 															}}

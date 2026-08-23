@@ -6,6 +6,8 @@ export { default as MasterListPageTitle } from './MasterListPageTitle';
 export type { MasterListPageTitleProps } from './MasterListPageTitle';
 export { default as MasterListLandingPage } from './MasterListLandingPage';
 export type { MasterListLandingPageProps } from './MasterListLandingPage';
+export { default as CriticalityField } from './CriticalityField';
+export type { CriticalityFieldProps } from './CriticalityField';
 export { formatFilteredListSummary } from './listSummaryHelpers';
 export {
 	masterListSectionGap,

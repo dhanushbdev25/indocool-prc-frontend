@@ -25,6 +25,11 @@ import {
 	type ProcessStep
 } from '../../../../../../store/api/business/sequence-master/sequence.validators';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
+import {
+	CRITICALITY_CHIP_HEX,
+	formatSequenceCriticality,
+	resolveCriticality
+} from '../../../../../../utils/criticality';
 
 interface ViewSequenceStepGroupsProps {
 	stepGroups: ProcessStepGroup[];
@@ -77,13 +82,14 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 							<Typography variant="h6" sx={{ fontWeight: 600 }}>
 								Step {step.stepNumber}
 							</Typography>
-							{step.ctq && (
+							{resolveCriticality(step) !== 'NONE' && (
 								<Chip
-									label="CTQ"
+									label={formatSequenceCriticality(step)}
 									size="small"
 									sx={{
 										ml: 1,
-										backgroundColor: '#f44336',
+										// CTQ keeps the red it has always had; tags take their own colour.
+										backgroundColor: step.ctq ? '#f44336' : CRITICALITY_CHIP_HEX[resolveCriticality(step)].background,
 										color: 'white',
 										fontSize: '0.75rem',
 										height: '24px',

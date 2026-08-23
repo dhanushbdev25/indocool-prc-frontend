@@ -17,6 +17,11 @@ export interface ProcessStep {
 	tableConfig?: TableConfig | null;
 	uom?: string;
 	ctq: boolean;
+	/**
+	 * Non-gating classification tag ('CTA' | 'CTP' | null). Mutually exclusive with `ctq`,
+	 * which stays the only value that gates execution — see `utils/criticality.ts`.
+	 */
+	criticalityTag?: string | null;
 	allowAttachments: boolean;
 	responsiblePerson?: boolean | null;
 	getInstrumentId?: boolean | null;
@@ -96,6 +101,8 @@ export interface ProcessStepRequest {
 	tableConfig?: TableConfig | null;
 	uom?: string;
 	ctq: boolean;
+	/** See the note on ProcessStep — send null rather than omitting so a tag can be cleared. */
+	criticalityTag?: string | null;
 	allowAttachments: boolean;
 	responsiblePerson?: boolean | null;
 	getInstrumentId?: boolean | null;

@@ -49,6 +49,8 @@ import {
 } from 'react-hook-form';
 import { SequenceStepGroupsProps, targetValueTypeOptions, tableColumnTypeOptions, uomOptions } from '../types';
 import { SequenceFormData } from '../schemas';
+import { CriticalityField } from '../../../../../../components/masters';
+import { CRITICALITY_FIELD_LABEL, SEQUENCE_CRITICALITY_OPTIONS } from '../../../../../../utils/criticality';
 
 interface StepGroupAccordionBlockProps {
 	groupIndex: number;
@@ -248,6 +250,7 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 					tableConfig: null,
 					uom: '',
 					ctq: false,
+					criticalityTag: null,
 					allowAttachments: false,
 					responsiblePerson: false,
 					getInstrumentId: false,
@@ -788,6 +791,7 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 			tableConfig: null,
 			uom: '',
 			ctq: false,
+			criticalityTag: null,
 			allowAttachments: false,
 			responsiblePerson: false,
 			getInstrumentId: false,
@@ -1374,28 +1378,20 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 								/>
 							</Grid>
 
-							{/* CTQ and Responsible Person */}
+							{/* Criticality */}
+							<Grid size={{ xs: 12, md: 6 }}>
+								<CriticalityField
+									ctqName={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.ctq`}
+									tagName={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.criticalityTag`}
+									options={SEQUENCE_CRITICALITY_OPTIONS}
+									label={CRITICALITY_FIELD_LABEL}
+									helperText="Only CTQ requires quality approval during execution. CTA and CTP are labels."
+								/>
+							</Grid>
+
+							{/* Responsible Person */}
 							<Grid size={{ xs: 12, md: 6 }}>
 								<Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-									<Controller
-										name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.ctq`}
-										control={control}
-										render={({ field }) => (
-											<FormControlLabel
-												control={<Checkbox checked={field.value} onChange={field.onChange} color="primary" />}
-												label={
-													<Box>
-														<Typography variant="body1" sx={{ fontWeight: 500 }}>
-															Critical to Quality (CTQ)
-														</Typography>
-														<Typography variant="caption" sx={{ color: '#666' }}>
-															Mark this parameter as critical for quality control
-														</Typography>
-													</Box>
-												}
-											/>
-										)}
-									/>
 									<Controller
 										name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.responsiblePerson`}
 										control={control}

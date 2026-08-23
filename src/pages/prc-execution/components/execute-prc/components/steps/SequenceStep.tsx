@@ -28,6 +28,11 @@ import {
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 import { OK_NOT_OK_NEGATIVE_LABEL } from '../../../../../../utils/okNotOkLabels';
+import {
+	CRITICALITY_CHIP_TINT,
+	formatSequenceCriticality,
+	resolveCriticality
+} from '../../../../../../utils/criticality';
 import { useFetchWorkstationsComboQuery } from '../../../../../../store/api/business/prc-execution/prc-execution.api';
 
 const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
@@ -1304,9 +1309,24 @@ const SequenceStep = ({ step, executionData, onStepComplete, readOnlyOverride }:
 		<Box sx={{ p: 2, backgroundColor: 'white' }}>
 			{/* Compact Step Header */}
 			<Box sx={{ mb: 2 }}>
-				<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', mb: 0.5, lineHeight: 1.3 }}>
-					{step.title}
-				</Typography>
+				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
+					<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', lineHeight: 1.3 }}>
+						{step.title}
+					</Typography>
+					{/* Classification of the sub-step being entered. CTQ also gates approval;
+					    CTA and CTP are labels only. */}
+					{resolveCriticality(step) !== 'NONE' && (
+						<Chip
+							label={formatSequenceCriticality(step)}
+							size="small"
+							sx={{
+								backgroundColor: CRITICALITY_CHIP_TINT[resolveCriticality(step)].background,
+								color: CRITICALITY_CHIP_TINT[resolveCriticality(step)].color,
+								fontWeight: 600
+							}}
+						/>
+					)}
+				</Box>
 				{step.description && step.description !== step.title && (
 					<Typography variant="body2" sx={{ color: '#666', mb: 1.5, fontSize: '0.875rem' }}>
 						{step.description}

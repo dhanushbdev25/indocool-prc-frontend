@@ -24,6 +24,12 @@ import {
 	Lock as LockIcon
 } from '@mui/icons-material';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
+import {
+	CRITICALITY_CHIP_HEX,
+	CRITICALITY_FIELD_LABEL,
+	formatSequenceCriticality,
+	resolveCriticality
+} from '../../../../../../utils/criticality';
 import React from 'react';
 import { useWatch } from 'react-hook-form';
 import { SequenceReviewProps } from '../types';
@@ -177,7 +183,7 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 													<TableCell>Parameter</TableCell>
 													<TableCell>Target Value</TableCell>
 													<TableCell>UOM</TableCell>
-													<TableCell>CTQ</TableCell>
+													<TableCell>{CRITICALITY_FIELD_LABEL}</TableCell>
 													<TableCell>Get Responsible Person</TableCell>
 													<TableCell>Get Instrument id</TableCell>
 												</TableRow>
@@ -224,11 +230,19 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 														<TableCell>{step.uom || 'N/A'}</TableCell>
 														<TableCell>
 															<Chip
-																icon={step.ctq ? <CheckCircleIcon /> : <CancelIcon />}
-																label={step.ctq ? 'Yes' : 'No'}
+																// Only the gating value gets a tick; CTA/CTP are labels, so a cross
+																// would misread them as "not set".
+																icon={
+																	resolveCriticality(step) === 'CTQ' ? (
+																		<CheckCircleIcon />
+																	) : resolveCriticality(step) === 'NONE' ? (
+																		<CancelIcon />
+																	) : undefined
+																}
+																label={formatSequenceCriticality(step)}
 																size="small"
 																sx={{
-																	backgroundColor: step.ctq ? '#4caf50' : '#9e9e9e',
+																	backgroundColor: CRITICALITY_CHIP_HEX[resolveCriticality(step)].background,
 																	color: 'white',
 																	fontSize: '0.75rem',
 																	'& .MuiChip-icon': {

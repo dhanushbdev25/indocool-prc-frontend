@@ -29,7 +29,11 @@ import {
 import { useWatch } from 'react-hook-form';
 import { InspectionReviewProps } from '../types';
 import { roleOptions } from '../schemas';
-import { GATE_POSITIVE_LABEL } from '../../../../../../utils/gateLabels';
+import {
+	formatInspectionCriticality,
+	getCriticalityChipColor,
+	resolveCriticality
+} from '../../../../../../utils/criticality';
 
 const InspectionReview = ({ control }: InspectionReviewProps) => {
 	const watchedData = useWatch({ control });
@@ -236,11 +240,11 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 										variant="outlined"
 										sx={{ mr: 1, fontSize: '0.75rem' }}
 									/>
-									{Boolean(parameter.ctq) && (
+									{resolveCriticality(parameter) !== 'NONE' && (
 										<Chip
-											label={GATE_POSITIVE_LABEL}
+											label={formatInspectionCriticality(parameter)}
 											size="small"
-											color="warning"
+											color={getCriticalityChipColor(resolveCriticality(parameter))}
 											variant="outlined"
 											sx={{ mr: 1, fontSize: '0.75rem' }}
 										/>

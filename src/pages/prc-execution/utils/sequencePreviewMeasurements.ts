@@ -41,6 +41,7 @@ export function buildSequenceDetailedMeasurements(
 				uom: stepDefinition.uom || '',
 				notes: stepDefinition.notes || '',
 				ctq: stepDefinition.ctq || false,
+				criticalityTag: stepDefinition.criticalityTag ?? null,
 				stepNumber: stepDefinition.stepNumber || 0,
 				instrumentId: (stepData.instrumentId || (stepData.data as Record<string, unknown>)?.instrumentId || '') as string,
 				responsiblePersons: [] as Array<{ role: string; employeeName: string; employeeCode: string }>
@@ -62,6 +63,7 @@ export function buildSequenceDetailedMeasurements(
 				uom: stepDefinition.uom || '',
 				notes: stepDefinition.notes || '',
 				ctq: stepDefinition.ctq || false,
+				criticalityTag: stepDefinition.criticalityTag ?? null,
 				stepNumber: stepDefinition.stepNumber || 0,
 				instrumentId: (stepData.instrumentId || (stepData.data as Record<string, unknown>)?.instrumentId || '') as string,
 				responsiblePersons: [] as Array<{ role: string; employeeName: string; employeeCode: string }>
@@ -118,6 +120,7 @@ export function buildSequenceDetailedMeasurements(
 			uom: stepDefinition?.uom || '',
 			notes: stepDefinition?.notes || '',
 			ctq: stepDefinition?.ctq || false,
+			criticalityTag: stepDefinition?.criticalityTag ?? null,
 			stepNumber: stepDefinition?.stepNumber || 0,
 			instrumentId: (stepData.instrumentId || (stepData.data as Record<string, unknown>)?.instrumentId || '') as string,
 			minimumAcceptanceValue: extractedMinimumAcceptanceValue ?? stepDefinition?.minimumAcceptanceValue,

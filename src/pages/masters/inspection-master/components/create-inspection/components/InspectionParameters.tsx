@@ -58,7 +58,9 @@ import {
 import { InspectionParametersProps } from '../types';
 import { InspectionFormData } from '../schemas';
 import { OK_NOT_OK_NEGATIVE_LABEL, OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../../utils/okNotOkLabels';
-import { GATE_FIELD_LABEL, GATE_NEGATIVE_LABEL, GATE_POSITIVE_LABEL } from '../../../../../../utils/gateLabels';
+import { GATE_FIELD_LABEL } from '../../../../../../utils/gateLabels';
+import { INSPECTION_CRITICALITY_OPTIONS } from '../../../../../../utils/criticality';
+import { CriticalityField } from '../../../../../../components/masters';
 import {
 	remapIndexSetAfterMove,
 	remapIndexSetAfterRemove
@@ -500,27 +502,14 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 								/>
 							</Grid>
 
-							{/* Gate / Not Gate */}
+							{/* Gate / Not Gate / CTA */}
 							<Grid size={{ xs: 12, sm: 6 }}>
-								<Controller
-									name={`inspectionParameters.${index}.ctq`}
-									control={control as Control<InspectionFormData>}
-									render={({ field }) => (
-										<FormControl fullWidth>
-											<InputLabel>{GATE_FIELD_LABEL}</InputLabel>
-											<Select
-												label={GATE_FIELD_LABEL}
-												value={field.value ? 'gate' : 'not_gate'}
-												onChange={e => field.onChange(e.target.value === 'gate')}
-											>
-												<MenuItem value="gate">{GATE_POSITIVE_LABEL}</MenuItem>
-												<MenuItem value="not_gate">{GATE_NEGATIVE_LABEL}</MenuItem>
-											</Select>
-											<Typography variant="caption" sx={{ color: '#666', mt: 0.5, ml: 1.5 }}>
-												Select whether this parameter is a quality gate
-											</Typography>
-										</FormControl>
-									)}
+								<CriticalityField
+									ctqName={`inspectionParameters.${index}.ctq`}
+									tagName={`inspectionParameters.${index}.criticalityTag`}
+									options={INSPECTION_CRITICALITY_OPTIONS}
+									label={GATE_FIELD_LABEL}
+									helperText="Only Gate requires quality approval during execution. CTA is a label."
 								/>
 							</Grid>
 

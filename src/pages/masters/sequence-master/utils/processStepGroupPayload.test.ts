@@ -163,3 +163,54 @@ describe('toProcessStepGroupRequestsFromDetail', () => {
 		expect(request.processSteps[0].maximumAcceptanceValue).toBeNull();
 	});
 });
+
+describe('criticality round-trip', () => {
+	it('sends a CTQ step as ctq with no tag', () => {
+		const [group] = toProcessStepGroupRequests(
+			toProcessStepGroupFormValues([apiGroup({ steps: [apiStep({ ctq: true, criticalityTag: null })] })])
+		);
+
+		expect(group.processSteps[0].ctq).toBe(true);
+		expect(group.processSteps[0].criticalityTag).toBeNull();
+	});
+
+	it.each(['CTA', 'CTP'])('sends a %s step as a tag with ctq off, so it never gates execution', tag => {
+		const [group] = toProcessStepGroupRequests(
+			toProcessStepGroupFormValues([apiGroup({ steps: [apiStep({ ctq: false, criticalityTag: tag })] })])
+		);
+
+		expect(group.processSteps[0].ctq).toBe(false);
+		expect(group.processSteps[0].criticalityTag).toBe(tag);
+	});
+
+	it('clears the tag rather than omitting it, so switching a tag back to None sticks', () => {
+		const [group] = toProcessStepGroupRequests(
+			toProcessStepGroupFormValues([apiGroup({ steps: [apiStep({ ctq: false, criticalityTag: null })] })])
+		);
+
+		expect(group.processSteps[0]).toHaveProperty('criticalityTag');
+		expect(group.processSteps[0].criticalityTag).toBeNull();
+	});
+
+	it('drops an unrecognised tag instead of forwarding it', () => {
+		const [group] = toProcessStepGroupRequests(
+			toProcessStepGroupFormValues([apiGroup({ steps: [apiStep({ criticalityTag: 'NOT_A_TAG' })] })])
+		);
+
+		expect(group.processSteps[0].criticalityTag).toBeNull();
+	});
+
+	it('keeps the tag on a clone', () => {
+		const [group] = stripProcessStepGroupIds(
+			toProcessStepGroupFormValues([apiGroup({ steps: [apiStep({ criticalityTag: 'CTP' })] })])
+		);
+
+		expect(group.processSteps?.[0]?.criticalityTag).toBe('CTP');
+	});
+
+	it('carries the tag through the deactivate path, which resends children untouched', () => {
+		const [group] = toProcessStepGroupRequestsFromDetail([apiGroup({ steps: [apiStep({ criticalityTag: 'CTA' })] })]);
+
+		expect(group.processSteps[0].criticalityTag).toBe('CTA');
+	});
+});

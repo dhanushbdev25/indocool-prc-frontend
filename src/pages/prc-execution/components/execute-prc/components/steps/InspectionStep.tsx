@@ -45,10 +45,12 @@ import {
 	OK_NOT_OK_NEGATIVE_LABEL,
 	OK_NOT_OK_POSITIVE_LABEL
 } from '../../../../../../utils/okNotOkLabels';
+import { GATE_FIELD_LABEL } from '../../../../../../utils/gateLabels';
 import {
-	GATE_FIELD_LABEL,
-	formatGateValueForDisplay
-} from '../../../../../../utils/gateLabels';
+	formatInspectionCriticality,
+	getCriticalityChipColor,
+	resolveCriticality
+} from '../../../../../../utils/criticality';
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 
 interface InspectionStepProps {
@@ -1285,10 +1287,10 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 										</TableCell>
 										<TableCell>
 											<Chip
-												label={formatGateValueForDisplay(!!param.ctq)}
+												label={formatInspectionCriticality(param)}
 												size="small"
-												color={param.ctq ? 'warning' : 'default'}
-												variant={param.ctq ? 'filled' : 'outlined'}
+												color={getCriticalityChipColor(resolveCriticality(param))}
+												variant={resolveCriticality(param) === 'NONE' ? 'outlined' : 'filled'}
 												sx={{ fontSize: '0.75rem' }}
 											/>
 										</TableCell>
@@ -1775,6 +1777,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																									parameterName: param.parameterName,
 																									specification: param.specification,
 																									ctq: param.ctq,
+																									criticalityTag: param.criticalityTag,
 																									minimumAcceptanceValue: param.minimumAcceptanceValue,
 																									maximumAcceptanceValue: param.maximumAcceptanceValue,
 																									parameterType: param.type,
@@ -2358,6 +2361,7 @@ const InspectionStep = ({ step, executionData, onStepComplete, readOnlyOverride 
 																parameterName: param.parameterName,
 																specification: param.specification,
 																ctq: param.ctq,
+																criticalityTag: param.criticalityTag,
 																minimumAcceptanceValue: param.minimumAcceptanceValue,
 																maximumAcceptanceValue: param.maximumAcceptanceValue,
 																parameterType: param.type

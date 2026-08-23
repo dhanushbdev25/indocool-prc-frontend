@@ -219,6 +219,7 @@ const StepDetailView = ({
 				description: currentSubStep.notes || step.description,
 				status: step.status,
 				ctq: currentSubStep.ctq,
+				criticalityTag: currentSubStep.criticalityTag ?? null,
 				stepData: {
 					prcTemplateStepId: step.prcTemplateStepId!,
 					stepGroupId: step.stepGroup!.id,

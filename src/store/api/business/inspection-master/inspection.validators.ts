@@ -46,6 +46,11 @@ export interface InspectionParameter {
 	tableConfig?: TableConfig | null;
 	role: string;
 	ctq: boolean;
+	/**
+	 * Non-gating classification tag ('CTA' | 'CTP' | null). Mutually exclusive with `ctq`,
+	 * which stays the only value that gates execution — see `utils/criticality.ts`.
+	 */
+	criticalityTag?: string | null;
 	getInstrumentId?: boolean | null;
 	createdAt?: string;
 	updatedAt?: string;
@@ -121,6 +126,8 @@ export interface InspectionParameterRequest {
 	tableConfig?: TableConfig | null;
 	role: string;
 	ctq: boolean;
+	/** See the note on InspectionParameter — send null rather than omitting so a tag can be cleared. */
+	criticalityTag?: string | null;
 	getInstrumentId?: boolean | null;
 }
 

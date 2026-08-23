@@ -44,12 +44,15 @@ import {
 	getDefectStyle,
 	countAnnotationsByCategory
 } from './defectAnnotationStyles';
-import { GATE_FIELD_LABEL, formatGateValueForDisplay } from '../../../../../utils/gateLabels';
+import { GATE_FIELD_LABEL } from '../../../../../utils/gateLabels';
+import { formatInspectionCriticality } from '../../../../../utils/criticality';
 
 export interface ImageAnnotatorParameterContext {
 	parameterName: string;
 	specification?: string;
 	ctq?: boolean;
+	/** Non-gating tag ('CTA' | 'CTP' | null) — see `utils/criticality.ts`. */
+	criticalityTag?: string | null;
 	minimumAcceptanceValue?: string | number;
 	maximumAcceptanceValue?: string | number;
 	parameterType?: string;
@@ -715,7 +718,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 									{GATE_FIELD_LABEL}
 								</Typography>
 								<Typography variant="body2">
-									{formatGateValueForDisplay(!!parameterContext.ctq)}
+									{formatInspectionCriticality(parameterContext)}
 								</Typography>
 							</Grid>
 						)}

@@ -1,5 +1,6 @@
 import * as yup from 'yup';
 import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/okNotOkLabels';
+import { CRITICALITY_TAGS } from '../../../../../utils/criticality';
 
 // Column validation schema
 export const columnSchema = yup
@@ -162,7 +163,15 @@ export const inspectionParameterSchema = yup
 			.string()
 			.required('Role is required')
 			.oneOf(['QUALITY_ENGINEER', 'SUPERVISOR', 'QUALITY_INSPECTOR', 'OPERATOR', 'MANAGER'], 'Invalid role'),
+		// `ctq` and `criticalityTag` together hold the single Gate / Not Gate / CTA value the
+		// user picks. Only `ctq` gates execution; CTA is a tag. Always write them through
+		// `toCriticalityFields` so the pair can never contradict itself.
 		ctq: yup.boolean(),
+		criticalityTag: yup
+			.string()
+			.nullable()
+			.optional()
+			.oneOf([...CRITICALITY_TAGS, null], 'Invalid criticality tag'),
 		getInstrumentId: yup.boolean()
 	})
 	.test('min-max-range', 'Minimum value cannot be greater than maximum value', value => {
@@ -244,6 +253,7 @@ export const defaultInspectionParameter: InspectionParameterFormData = {
 	tableConfig: undefined,
 	role: 'QUALITY_ENGINEER',
 	ctq: false,
+	criticalityTag: null,
 	getInstrumentId: false
 };
 

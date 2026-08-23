@@ -23,7 +23,11 @@ import { Control, UseFormSetValue, useWatch } from 'react-hook-form';
 import { PartMasterFormData } from '../schemas';
 import { useFetchPrcTemplateInspectionsQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
 import { ImageItem } from '../../../../../../hooks/useImageGallery';
-import { GATE_POSITIVE_LABEL } from '../../../../../../utils/gateLabels';
+import {
+	formatInspectionCriticality,
+	getCriticalityChipColor,
+	resolveCriticality
+} from '../../../../../../utils/criticality';
 import { sortByNumericOrder } from '../../../../../../utils/orderedRecords';
 
 interface InspectionParameter {
@@ -35,6 +39,8 @@ interface InspectionParameter {
 	type: string;
 	role: string;
 	ctq: boolean;
+	/** Non-gating tag ('CTA' | 'CTP' | null) — see `utils/criticality.ts`. */
+	criticalityTag?: string | null;
 	tableConfig?: {
 		rows?: Array<Record<string, unknown>>;
 		columns?: Array<Record<string, unknown>>;
@@ -90,6 +96,7 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 							type: param.type,
 							role: param.role,
 							ctq: param.ctq,
+							criticalityTag: param.criticalityTag ?? null,
 							tableConfig: param.tableConfig || undefined
 						}));
 
@@ -330,8 +337,13 @@ const InspectionImageMappingTab = ({ control, setValue, gallery }: InspectionIma
 												<Typography variant="subtitle1" sx={{ fontWeight: 600, mr: 2 }}>
 													{parameter.parameterName}
 												</Typography>
-												{parameter.ctq && (
-													<Chip label={GATE_POSITIVE_LABEL} size="small" color="error" variant="outlined" />
+												{resolveCriticality(parameter) !== 'NONE' && (
+													<Chip
+														label={formatInspectionCriticality(parameter)}
+														size="small"
+														color={parameter.ctq ? 'error' : getCriticalityChipColor(resolveCriticality(parameter))}
+														variant="outlined"
+													/>
 												)}
 												<Chip label={parameter.role} size="small" color="primary" variant="outlined" sx={{ ml: 1 }} />
 											</Box>

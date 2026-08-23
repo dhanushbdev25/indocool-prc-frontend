@@ -1,4 +1,5 @@
 import { sortByNumericOrder } from '../../../../utils/orderedRecords';
+import { normalizeCriticalityTag, resolveCriticality, toCriticalityFields } from '../../../../utils/criticality';
 import type { InspectionFormData } from '../components/create-inspection/schemas';
 import type {
 	InspectionParameter,
@@ -42,6 +43,7 @@ export const toInspectionParameterFormValues = (
 		tableConfig: param.tableConfig || undefined,
 		role: param.role,
 		ctq: param.ctq,
+		criticalityTag: normalizeCriticalityTag(param.criticalityTag),
 		getInstrumentId: param.getInstrumentId ?? false
 	})) as InspectionParameterFormValues[];
 
@@ -80,6 +82,7 @@ export const toInspectionParameterRequests = (
 		})),
 		tableConfig: param.tableConfig || undefined,
 		role: param.role,
-		ctq: param.ctq ?? false,
+		// Sent as an explicit null (not omitted) so clearing a tag actually clears the column.
+		...toCriticalityFields(resolveCriticality(param)),
 		getInstrumentId: param.getInstrumentId ?? false
 	})) as InspectionParameterRequest[];

@@ -1,4 +1,5 @@
 import * as yup from 'yup';
+import { CRITICALITY_TAGS } from '../../../../../utils/criticality';
 
 // Table configuration schemas
 const tableRowConfigSchema = yup.object({
@@ -93,7 +94,15 @@ export const processStepSchema = yup
 			otherwise: schema => schema.nullable().default(null)
 		}),
 		uom: yup.string().optional(),
+		// `ctq` and `criticalityTag` together hold the single Criticality value the user
+		// picks. Only `ctq` gates execution; CTA/CTP are tags. Always write them through
+		// `toCriticalityFields` so the pair can never contradict itself.
 		ctq: yup.boolean(),
+		criticalityTag: yup
+			.string()
+			.nullable()
+			.optional()
+			.oneOf([...CRITICALITY_TAGS, null], 'Invalid criticality tag'),
 		allowAttachments: yup.boolean(),
 		responsiblePerson: yup.boolean(),
 		getInstrumentId: yup.boolean(),
@@ -177,6 +186,7 @@ export const defaultProcessStep: ProcessStepFormData = {
 	tableConfig: null,
 	uom: '',
 	ctq: false,
+	criticalityTag: null,
 	allowAttachments: false,
 	responsiblePerson: false,
 	getInstrumentId: false,
