@@ -40,6 +40,7 @@ const ListSequence = () => {
 	const {
 		data: sequenceData,
 		isLoading: isSequenceDataLoading,
+		isFetching: isSequenceDataFetching,
 		refetch: refetchProcessSequences
 	} = useFetchProcessSequencesQuery();
 
@@ -152,10 +153,9 @@ const ListSequence = () => {
 				};
 
 				await deleteSequenceTask(deleteRequest).unwrap();
-
+				setDeleteDialogOpen(false);
 				await refetchProcessSequences();
 
-				setDeleteDialogOpen(false);
 				setSequenceToDelete(null);
 			}
 		} catch (error) {
@@ -257,7 +257,7 @@ const ListSequence = () => {
 					</Button>
 				</DialogActions>
 			</Dialog>
-			<FullScreenFormSavingOverlay open={isDeleting} message="Deleting…" />
+			<FullScreenFormSavingOverlay open={isDeleting || isSequenceDataFetching} message="Deleting…" />
 		</>
 	);
 };

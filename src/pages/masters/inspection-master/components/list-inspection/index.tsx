@@ -39,6 +39,7 @@ const ListInspection = () => {
 	const {
 		data: inspectionData,
 		isLoading: isInspectionDataLoading,
+		isFetching: isInspectionDataFetching,
 		refetch: refetchInspections
 	} = useFetchInspectionsQuery();
 
@@ -175,9 +176,9 @@ const ListInspection = () => {
 				};
 
 				await deleteInspectionTask(deleteRequest).unwrap();
+				setDeleteDialogOpen(false);
 				await refetchInspections();
 
-				setDeleteDialogOpen(false);
 				setInspectionToDelete(null);
 			}
 		} catch (error) {
@@ -282,7 +283,7 @@ const ListInspection = () => {
 					</Button>
 				</DialogActions>
 			</Dialog>
-			<FullScreenFormSavingOverlay open={isDeleting} message="Deleting…" />
+			<FullScreenFormSavingOverlay open={isDeleting || isInspectionDataFetching} message="Deleting…" />
 		</>
 	);
 };

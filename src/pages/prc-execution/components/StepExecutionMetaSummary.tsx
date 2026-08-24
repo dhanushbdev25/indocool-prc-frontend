@@ -134,7 +134,7 @@ function SidebarMetaPanel({
 	const showTiming = plannedSec !== null || actualSec !== null;
 	const timeRange = formatCompactTimeRange(approvalMeta.startTime, approvalMeta.endTime);
 	const approverRows = buildApproverRows(approvalMeta);
-	const primaryApprover = approverRows[0] ?? null;
+	const primaryApprover = approverRows ?? [];
 	const approverTooltip = approverRows.map(r => `${r.label}: ${formatApproverDisplay(r.approver)}`).join('\n');
 
 	if (!timeRange && !showTiming && !primaryApprover) return null;
@@ -202,10 +202,10 @@ function SidebarMetaPanel({
 		});
 	}
 
-	if (primaryApprover) {
+	primaryApprover.map(e =>{
 		statCells.push({
 			key: 'approver',
-			label: primaryApprover.key === 'recorded' ? 'Recorded' : primaryApprover.key === 'production' ? 'Production' : 'Quality',
+			label: e.key === 'recorded' ? 'Recorded' : e.key === 'production' ? 'Production' : 'Quality',
 			node: (
 				<Typography
 					sx={{
@@ -218,12 +218,12 @@ function SidebarMetaPanel({
 						whiteSpace: 'nowrap'
 					}}
 				>
-					{formatApproverDisplay(primaryApprover.approver)}
+					{formatApproverDisplay(e.approver)}
 				</Typography>
 			),
-			tooltip: approverRows.length > 1 ? approverTooltip : primaryApprover.label
+			tooltip: approverRows.length > 1 ? approverTooltip : e.label
 		});
-	}
+	})
 
 	return (
 		<Box
