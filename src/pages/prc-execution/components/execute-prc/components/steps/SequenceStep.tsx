@@ -576,7 +576,7 @@ const SequenceStep = ({
 		const numericBounds = getNumericMeasurementBounds(stepData);
 
 		// For multiple measurements, only validate the measurements array
-		if (stepData.multipleMeasurements) {
+		if (stepData.multipleMeasurements && (stepData.targetValueType === 'range' || stepData.targetValueType === 'exact value')) {
 			if (stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0) {
 				if (measurements.length !== stepData.multipleMeasurementMaxCount) {
 					newErrors.measurements_count = `Exactly ${stepData.multipleMeasurementMaxCount} measurements are required`;
@@ -1542,6 +1542,7 @@ const SequenceStep = ({
 				</Alert>
 			)}
 
+{JSON.stringify((errors))}
 			{/* Validation Alert */}
 			{Object.keys(errors).length > 0 && (
 				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} icon={<ErrorIcon />}>

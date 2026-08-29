@@ -399,15 +399,6 @@ const StepPreview = ({
 		!previewData.stepCompleted &&
 		delayDocumentationSatisfied;
 
-	console.log('StepPreview Debug:', {
-		previewData,
-		productionApproved,
-		ctqApproved,
-		stepCompleted: previewData.stepCompleted,
-		ctq: previewData.ctq,
-		canProceed,
-		delayDocumentationSatisfied
-	});
 
 	const parseOkNotOkValue = (rawValue: unknown): { value: string; notOkComment: string } => {
 		if (typeof rawValue === 'string') {
@@ -2228,7 +2219,7 @@ const StepPreview = ({
 						startIcon={previewData.stepCompleted ? <CheckCircle /> : <ArrowForward />}
 						size="small"
 					>
-						{previewData.stepCompleted ? 'Completed' : 'Complete Step'}
+						{previewData.stepCompleted ? 'Completed' : 'Complete Step'} 
 					</Button>
 
 					{/* Step Type Indicators */}
