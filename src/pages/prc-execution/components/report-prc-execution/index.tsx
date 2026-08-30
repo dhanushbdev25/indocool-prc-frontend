@@ -19,8 +19,6 @@ import {
 	buildInspectionStepPreviewForReport,
 	buildSequenceStepPreviewForReport
 } from '../../utils/reportStepPreviewData';
-import { getExecutionRuntimeMs } from '../../utils/timelineCardTiming';
-import { formatExecutionDuration } from '../../utils/formatExecutionDuration';
 import ExecutionSetupStep from '../execute-prc/components/steps/ExecutionSetupStep';
 import RawMaterialsStep from '../execute-prc/components/steps/RawMaterialsStep';
 import BomStep from '../execute-prc/components/steps/BomStep';
@@ -47,6 +45,12 @@ function formatOrderId(orderId?: string | number | null): string {
 	return orderId != null && String(orderId).trim() ? String(orderId) : '—';
 }
 
+function getPrcSetId(execution: ExecutionData): string {
+	const meta = (execution.prcAggregatedSteps as { prcmetadata?: { prcSetId?: unknown } } | undefined)?.prcmetadata;
+	const value = typeof meta?.prcSetId === 'string' ? meta.prcSetId.trim() : '';
+	return value || '—';
+}
+
 function ReportSummaryField({ label, children }: { label: string; children: React.ReactNode }) {
 	return (
 		<Box sx={{ minWidth: 0 }}>
@@ -65,14 +69,6 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 	const templateVersion = execution.prcCurrentTemplate?.prcTemplate?.version;
 	const mouldDisplay =
 		[execution.mouldCode, execution.mouldId].filter(Boolean).join(' · ') || '—';
-	const progressSteps =
-		execution.totalSteps != null
-			? `${execution.stepsCompleted ?? 0} / ${execution.totalSteps}`
-			: `${execution.stepsCompleted ?? 0}`;
-	const ctqSummary =
-		execution.totalCtq != null && execution.totalCtq > 0
-			? `${execution.completedCtq ?? 0} / ${execution.totalCtq} CTQ`
-			: '—';
 
 	const summaryGridSx = {
 		display: 'grid',
@@ -91,16 +87,13 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 	return (
 		<Box className="prc-report-header-summary-grid" sx={summaryGridSx}>
 			<ReportSummaryField label="Order no.">{formatOrderId(execution.orderId)}</ReportSummaryField>
+			<ReportSummaryField label="Part no.">{execution.partNumber || '—'}</ReportSummaryField>
+			<ReportSummaryField label="Customer">{execution.customer || '—'}</ReportSummaryField>
 			<ReportSummaryField label="Part description">{execution.partDescription || '—'}</ReportSummaryField>
 			<ReportSummaryField label="Drawing">{execution.drawingNumber || '—'}</ReportSummaryField>
 			<ReportSummaryField label="Variant">{execution.customerVariantName || '—'}</ReportSummaryField>
-			<ReportSummaryField label="Execution status">{execution.status || '—'}</ReportSummaryField>
-			<ReportSummaryField label="Progress (steps)">{progressSteps}</ReportSummaryField>
-			<ReportSummaryField label="CTQ">{ctqSummary}</ReportSummaryField>
-			<ReportSummaryField label="Elapsed duration">
-				{formatExecutionDuration(getExecutionRuntimeMs(execution))}
-			</ReportSummaryField>
-			<ReportSummaryField label="Current stage">{execution.currentStage ?? '—'}</ReportSummaryField>
+			<ReportSummaryField label="Date">{execution.date ?? '—'}</ReportSummaryField>
+			<ReportSummaryField label="Shift">{execution.shift ?? '—'}</ReportSummaryField>
 			<ReportSummaryField label="Mould">{mouldDisplay}</ReportSummaryField>
 			<ReportSummaryField label="PRC template">
 				{templateName ? (
@@ -112,11 +105,9 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 					'—'
 				)}
 			</ReportSummaryField>
+			<ReportSummaryField label="PRC Set">{getPrcSetId(execution)}</ReportSummaryField>
+			<ReportSummaryField label="SAP Set">{execution.productionSetId ?? '—'}</ReportSummaryField>
 			<ReportSummaryField label="Reservation">{execution.reservation || '—'}</ReportSummaryField>
-			<ReportSummaryField label="Recorded by (user id)">{execution.inCharge ?? '—'}</ReportSummaryField>
-			<ReportSummaryField label="SAP sync">
-				{execution.sapSync === undefined ? '—' : execution.sapSync ? 'Yes' : 'No'}
-			</ReportSummaryField>
 			<Box sx={{ gridColumn: '1 / -1' }}>
 				<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
 					Remarks
@@ -481,22 +472,13 @@ const PrcExecutionReport = () => {
 					{isSingleStepReport ? 'PRC step report' : 'PRC consolidated report'}
 				</Typography>
 				<Typography variant="body2" color="text.secondary">
-					Execution #{execution.id} · {execution.partNumber} · {execution.customer || '—'}
+					Execution #{execution.id}
 				</Typography>
 				{isSingleStepReport && singleTimelineStep && (
 					<Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 600 }}>
 						Step {singleTimelineStep.stepNumber}: {singleTimelineStep.title}
 					</Typography>
 				)}
-				<Typography variant="body2" color="text.secondary">
-					Date {execution.date ?? '—'} · Shift {execution.shift ?? '—'} · Order {formatOrderId(execution.orderId)} ·
-					PRC Set {(() => {
-						const meta = (execution.prcAggregatedSteps as { prcmetadata?: { prcSetId?: unknown } } | undefined)
-							?.prcmetadata;
-						const v = typeof meta?.prcSetId === 'string' ? meta.prcSetId.trim() : '';
-						return v || '—';
-					})()} · SAP Set {execution.productionSetId ?? '—'}
-				</Typography>
 				{execution.sapReferenceNumber && (
 					<Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
 						SAP reference {execution.sapReferenceNumber}

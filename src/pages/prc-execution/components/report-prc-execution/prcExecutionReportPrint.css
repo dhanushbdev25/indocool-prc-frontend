@@ -89,6 +89,24 @@
 		background: #fff !important;
 	}
 
+	.prc-report-bom-pot-life {
+		padding: 4px 8px !important;
+		margin-bottom: 6px !important;
+		font-size: 8pt !important;
+		line-height: 1.25 !important;
+	}
+
+	.prc-report-bom-pot-life .MuiAlert-icon {
+		margin-right: 8px !important;
+		padding: 0 !important;
+		font-size: 14px !important;
+	}
+
+	.prc-report-bom-pot-life .MuiTypography-root {
+		font-size: 8pt !important;
+		line-height: 1.25 !important;
+	}
+
 	/* Summary grid: one extra column vs screen for audit-style density */
 	.prc-report-header-summary-grid {
 		display: grid !important;

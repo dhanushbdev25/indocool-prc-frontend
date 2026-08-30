@@ -249,20 +249,16 @@ function SidebarMetaPanel({
 
 function ReportMetaPanel({
 	timing,
-	approvalMeta,
-	timingOverPlanned
+	approvalMeta
 }: {
 	timing: TimelineCardTiming;
 	approvalMeta: TimelineStepApprovalMeta;
-	timingOverPlanned: boolean;
 }) {
-	const { plannedSec, actualSec } = timing;
+	const { plannedSec } = timing;
 	const approverRows = buildApproverRows(approvalMeta);
 	const hasStart = Boolean(approvalMeta.startTime);
-	const hasEnd = Boolean(approvalMeta.endTime);
-	const hasTiming = plannedSec !== null || actualSec !== null;
 
-	if (!hasStart && !hasEnd && !hasTiming && approverRows.length === 0) return null;
+	if (!hasStart && plannedSec === null && approverRows.length === 0) return null;
 
 	const gridSx = {
 		display: 'grid',
@@ -289,23 +285,6 @@ function ReportMetaPanel({
 				{hasStart && (
 					<ReportMetaField label="Start time">
 						{formatStepTimestamp(approvalMeta.startTime)}
-					</ReportMetaField>
-				)}
-				{hasEnd && (
-					<ReportMetaField label="End time">
-						{formatStepTimestamp(approvalMeta.endTime)}
-					</ReportMetaField>
-				)}
-				{actualSec !== null && (
-					<ReportMetaField label="Actual duration">
-						<Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-							<Box component="span" sx={timingFontSx}>
-								{formatExecutionDuration(actualSec)}
-							</Box>
-							{timingOverPlanned && (
-								<WarningAmberRounded titleAccess="Actual time exceeds planned" sx={{ fontSize: 14, color: 'warning.main' }} />
-							)}
-						</Box>
 					</ReportMetaField>
 				)}
 				{plannedSec !== null && (
@@ -343,9 +322,7 @@ export function StepExecutionMetaSummary({
 	const timingOverPlanned = isStepLate(timing);
 
 	if (variant === 'report') {
-		return (
-			<ReportMetaPanel timing={timing} approvalMeta={approvalMeta} timingOverPlanned={timingOverPlanned} />
-		);
+		return <ReportMetaPanel timing={timing} approvalMeta={approvalMeta} />;
 	}
 
 	return (

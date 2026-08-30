@@ -1272,7 +1272,9 @@ const StepPreview = ({
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Type</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Value</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>{GATE_FIELD_LABEL}</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Specification</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.9375rem', py: 1, minWidth: 280 }}>
+										Specification
+									</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
 								</TableRow>
 							</TableHead>
@@ -1531,10 +1533,25 @@ const StepPreview = ({
 															}}
 														/>
 													</TableCell>
-													<TableCell sx={descriptionTableCellSx(embeddedReportMode, 150)}>
+													<TableCell
+														sx={{
+															...descriptionTableCellSx(embeddedReportMode, 360),
+															minWidth: 280,
+															fontSize: '1rem',
+															verticalAlign: 'top'
+														}}
+													>
 														<Typography
 															variant="body2"
-															sx={descriptionTextSx(embeddedReportMode, { fontWeight: 400 })}
+															sx={{
+																...descriptionTextSx(embeddedReportMode, { fontWeight: 400 }),
+																fontSize: '1rem',
+																lineHeight: 1.45,
+																whiteSpace: 'normal',
+																wordBreak: 'break-word',
+																overflow: 'visible',
+																textOverflow: 'unset'
+															}}
 															title={specification}
 														>
 															{specification}

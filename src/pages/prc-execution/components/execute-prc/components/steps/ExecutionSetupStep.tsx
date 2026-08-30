@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type MutableRefObject } from 'react';
 import {
 	Box,
 	Typography,
@@ -28,6 +28,7 @@ import {
 	extractSequenceStepGroupsFromExecution,
 	mergeOperationWiseForRead
 } from '../../../../utils/operationWiseMerge';
+import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
 
 const getMouldCode = (item: MouldComboItem | null): string => {
 	if (!item) return '';
@@ -47,6 +48,8 @@ interface ExecutionSetupStepProps {
 	readOnlyOverride?: boolean;
 	/** With `readOnlyOverride`, use normal-looking fields (read-only, not MUI disabled grey) — e.g. consolidated report. */
 	plainReadOnlyFields?: boolean;
+	/** Lets the owning view (e.g. the header Next arrow) trigger this step's validate-and-save. */
+	submitActionRef?: MutableRefObject<(() => void) | null>;
 }
 
 const ExecutionSetupStep = ({
@@ -55,7 +58,8 @@ const ExecutionSetupStep = ({
 	aggregatedStepsSnapshot,
 	onStepComplete,
 	readOnlyOverride,
-	plainReadOnlyFields
+	plainReadOnlyFields,
+	submitActionRef
 }: ExecutionSetupStepProps) => {
 	const { userInfo } = useCurrentRole();
 	const partId = executionData.partId;
@@ -70,6 +74,7 @@ const ExecutionSetupStep = ({
 	const [selectedMould, setSelectedMould] = useState<MouldComboItem | null>(null);
 	const [fallbackMouldId, setFallbackMouldId] = useState('');
 	const [errors, setErrors] = useState<Record<string, string>>({});
+	const { containerRef, requestScrollToError } = useScrollToFirstError();
 
 	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 	const plainLocked = Boolean(readOnlyOverride && plainReadOnlyFields);
@@ -91,7 +96,12 @@ const ExecutionSetupStep = ({
 				responsiblePersons: []
 			})
 		);
-	}, [executionData.operationWiseData, executionData.prcAggregatedSteps, executionData.prcCurrentTemplate, aggregatedStepsSnapshot]);
+	}, [
+		executionData.operationWiseData,
+		executionData.prcAggregatedSteps,
+		executionData.prcCurrentTemplate,
+		aggregatedStepsSnapshot
+	]);
 
 	useEffect(() => {
 		const saved = executionData.prcAggregatedSteps?.prcmetadata as Record<string, unknown> | undefined;
@@ -133,7 +143,10 @@ const ExecutionSetupStep = ({
 	};
 
 	const handleSubmit = () => {
-		if (!validate()) return;
+		if (!validate()) {
+			requestScrollToError();
+			return;
+		}
 		const mouldIdValue = getMouldCode(selectedMould);
 		onStepComplete({
 			productionSetId: productionSetId.trim(),
@@ -144,151 +157,156 @@ const ExecutionSetupStep = ({
 		});
 	};
 
-	return (
-		<Box sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
-				<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-					<CardContent sx={{ p: 3 }}>
-						<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-							<Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
-								<PersonIcon />
-							</Avatar>
-							<Box>
-								<Typography variant="subtitle2" color="text.secondary">
-									Logged in as
-								</Typography>
-								<Typography variant="body1" fontWeight={600}>
-									{userInfo.name}
-								</Typography>
-								<Typography variant="body2" color="text.secondary">
-									{userInfo.email}
-								</Typography>
-							</Box>
-						</Box>
-					</CardContent>
-				</Card>
+	// Re-registered on every render so the ref always holds the current closure — no dep array.
+	useEffect(() => {
+		if (!submitActionRef) return;
+		submitActionRef.current = isReadOnly ? null : handleSubmit;
+		return () => {
+			submitActionRef.current = null;
+		};
+	});
 
-				<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-					<CardContent sx={{ p: 3 }}>
-						<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-							<EngineeringIcon sx={{ color: '#666', mr: 2, fontSize: '1.25rem' }} />
-							<Box>
-								<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
-									Production setup
-								</Typography>
-								<Typography variant="body2" sx={{ color: '#666' }}>
-									Production set and mould used for this run
-								</Typography>
-							</Box>
+	return (
+		<Box ref={containerRef} sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
+			<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
+				<CardContent sx={{ p: 3 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+						<Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+							<PersonIcon />
+						</Avatar>
+						<Box>
+							<Typography variant="subtitle2" color="text.secondary">
+								Logged in as
+							</Typography>
+							<Typography variant="body1" fontWeight={600}>
+								{userInfo.name}
+							</Typography>
+							<Typography variant="body2" color="text.secondary">
+								{userInfo.email}
+							</Typography>
 						</Box>
-						<Grid container spacing={3}>
-							<Grid size={{ xs: 12, md: 4 }}>
+					</Box>
+				</CardContent>
+			</Card>
+
+			<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
+				<CardContent sx={{ p: 3 }}>
+					<Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+						<EngineeringIcon sx={{ color: '#666', mr: 2, fontSize: '1.25rem' }} />
+						<Box>
+							<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
+								Production setup
+							</Typography>
+							<Typography variant="body2" sx={{ color: '#666' }}>
+								Production set and mould used for this run
+							</Typography>
+						</Box>
+					</Box>
+					<Grid container spacing={3}>
+						<Grid size={{ xs: 12, md: 4 }}>
+							<TextField
+								fullWidth
+								label="PRC Set ID"
+								value={prcSetId}
+								onChange={e => {
+									setPrcSetId(e.target.value);
+									if (errors.prcSetId) setErrors(prev => ({ ...prev, prcSetId: '' }));
+								}}
+								error={!!errors.prcSetId}
+								helperText={errors.prcSetId}
+								disabled={greyDisabledReadOnly}
+								required
+								InputProps={plainLocked ? { readOnly: true } : undefined}
+								sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+							/>
+						</Grid>
+						<Grid size={{ xs: 12, md: 4 }}>
+							<TextField
+								fullWidth
+								label="SAP Set ID"
+								value={productionSetId}
+								disabled
+								InputProps={{ readOnly: true }}
+								helperText="Auto-populated from SAP"
+								sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+							/>
+						</Grid>
+						<Grid size={{ xs: 12, md: 4 }}>
+							{!partId ? (
+								<Alert severity="warning" sx={{ borderRadius: 2 }}>
+									Part is missing for this execution, so the mould list cannot be loaded.
+								</Alert>
+							) : isReadOnly && !selectedMould && fallbackMouldId ? (
 								<TextField
 									fullWidth
-									label="PRC Set ID"
-									value={prcSetId}
-									onChange={e => {
-										setPrcSetId(e.target.value);
-										if (errors.prcSetId) setErrors(prev => ({ ...prev, prcSetId: '' }));
-									}}
-									error={!!errors.prcSetId}
-									helperText={errors.prcSetId}
+									label="Mould ID"
+									value={fallbackMouldId}
 									disabled={greyDisabledReadOnly}
-									required
 									InputProps={plainLocked ? { readOnly: true } : undefined}
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+									helperText="Saved mould is not in the current list for this part"
 								/>
-							</Grid>
-							<Grid size={{ xs: 12, md: 4 }}>
+							) : plainLocked ? (
 								<TextField
 									fullWidth
-									label="SAP Set ID"
-									value={productionSetId}
-									disabled
+									label="Mould"
+									value={selectedMould?.label?.trim() || fallbackMouldId || '—'}
 									InputProps={{ readOnly: true }}
-									helperText="Auto-populated from SAP"
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+									helperText={mouldComboBusy ? 'Loading mould list…' : 'Mould recorded for this execution'}
 								/>
-							</Grid>
-							<Grid size={{ xs: 12, md: 4 }}>
-								{!partId ? (
-									<Alert severity="warning" sx={{ borderRadius: 2 }}>
-										Part is missing for this execution, so the mould list cannot be loaded.
-									</Alert>
-								) : isReadOnly && !selectedMould && fallbackMouldId ? (
-									<TextField
-										fullWidth
-										label="Mould ID"
-										value={fallbackMouldId}
-										disabled={greyDisabledReadOnly}
-										InputProps={plainLocked ? { readOnly: true } : undefined}
-										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-										helperText="Saved mould is not in the current list for this part"
-									/>
-								) : plainLocked ? (
-									<TextField
-										fullWidth
-										label="Mould"
-										value={selectedMould?.label?.trim() || fallbackMouldId || '—'}
-										InputProps={{ readOnly: true }}
-										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-										helperText={
-											mouldComboBusy ? 'Loading mould list…' : 'Mould recorded for this execution'
-										}
-									/>
-								) : (
-									<Autocomplete<MouldComboItem, false, false, false>
-										options={mouldOptions}
-										loading={mouldComboBusy}
-										value={selectedMould}
-										onChange={(_, value) => {
-											setSelectedMould(value);
-											setFallbackMouldId(getMouldCode(value));
-											if (errors.mouldId) setErrors(prev => ({ ...prev, mouldId: '' }));
-										}}
-										getOptionLabel={option => option.label}
-										isOptionEqualToValue={(a, b) => a.value === b.value}
-										disabled={greyDisabledReadOnly}
-										renderInput={params => (
-											<TextField
-												{...params}
-												label="Mould"
-												error={!!errors.mouldId}
-												helperText={
-													errors.mouldId ||
-													(mouldOptions.length === 0 && !mouldComboBusy
-														? 'No moulds linked to this part'
-														: 'Optional — select a mould for this part')
-												}
-												sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-												InputProps={{
-													...params.InputProps,
-													endAdornment: (
-														<>
-															{mouldComboBusy ? (
-																<CircularProgress color="inherit" size={20} sx={{ mr: 1 }} />
-															) : null}
-															{params.InputProps.endAdornment}
-														</>
-													)
-												}}
-											/>
-										)}
-									/>
-								)}
-							</Grid>
+							) : (
+								<Autocomplete<MouldComboItem, false, false, false>
+									options={mouldOptions}
+									loading={mouldComboBusy}
+									value={selectedMould}
+									onChange={(_, value) => {
+										setSelectedMould(value);
+										setFallbackMouldId(getMouldCode(value));
+										if (errors.mouldId) setErrors(prev => ({ ...prev, mouldId: '' }));
+									}}
+									getOptionLabel={option => option.label}
+									isOptionEqualToValue={(a, b) => a.value === b.value}
+									disabled={greyDisabledReadOnly}
+									renderInput={params => (
+										<TextField
+											{...params}
+											label="Mould"
+											error={!!errors.mouldId}
+											helperText={
+												errors.mouldId ||
+												(mouldOptions.length === 0 && !mouldComboBusy
+													? 'No moulds linked to this part'
+													: 'Optional — select a mould for this part')
+											}
+											sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+											InputProps={{
+												...params.InputProps,
+												endAdornment: (
+													<>
+														{mouldComboBusy ? <CircularProgress color="inherit" size={20} sx={{ mr: 1 }} /> : null}
+														{params.InputProps.endAdornment}
+													</>
+												)
+											}}
+										/>
+									)}
+								/>
+							)}
 						</Grid>
-					</CardContent>
-				</Card>
+					</Grid>
+				</CardContent>
+			</Card>
 
-				<Divider sx={{ my: 2 }} />
+			<Divider sx={{ my: 2 }} />
 
-				{!isReadOnly && (
-					<Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-						<Button variant="contained" size="large" onClick={handleSubmit} sx={{ textTransform: 'none', px: 4 }}>
-							Confirm and continue
-						</Button>
-					</Box>
-				)}
+			{!isReadOnly && (
+				<Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+					<Button variant="contained" size="large" onClick={handleSubmit} sx={{ textTransform: 'none', px: 4 }}>
+						Confirm and continue
+					</Button>
+				</Box>
+			)}
 		</Box>
 	);
 };

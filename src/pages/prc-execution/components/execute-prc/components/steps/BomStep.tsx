@@ -33,7 +33,8 @@ import {
 	Thermostat as ThermostatIcon,
 	WaterDrop as WaterDropIcon,
 	Science as ScienceIcon,
-	Check as CheckIcon
+	Check as CheckIcon,
+	AccessTime as AccessTimeIcon
 } from '@mui/icons-material';
 import {
 	type TimelineStep,
@@ -50,6 +51,8 @@ import {
 	isValidOkNotOkValue,
 	requiresOkNotOkComment
 } from '../../../../../../utils/okNotOkLabels';
+import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
+import { ERROR_ANCHOR_CLASS } from '../../../../utils/scrollToFirstError';
 
 interface BomStepProps {
 	step: TimelineStep;
@@ -192,6 +195,9 @@ const BomStep = ({
 	});
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
+	/** Material groups the operator has collapsed/expanded; groups absent here use the default. */
+	const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+	const { containerRef, requestScrollToError } = useScrollToFirstError();
 
 	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 
@@ -270,21 +276,15 @@ const BomStep = ({
 							calculatedMax: savedEntry.calculatedMax || 0,
 							calculatedMin: savedEntry.calculatedMin || 0,
 							catalystQuantity: savedEntry.catalystQuantity || '',
-							savedEntry : savedEntry.catalystQuantity ? true : false,
+							savedEntry: savedEntry.catalystQuantity ? true : false,
 							validationStatus: savedEntry.validationStatus || 'Accepted',
 							humidity: savedEntry.humidity || '',
 							canNumber:
-								savedEntry.canNumber == null || savedEntry.canNumber === ''
-									? ''
-									: String(savedEntry.canNumber),
+								savedEntry.canNumber == null || savedEntry.canNumber === '' ? '' : String(savedEntry.canNumber),
 							hygrometerInstrumentId:
-								savedEntry.hygrometerInstrumentId == null
-									? ''
-									: String(savedEntry.hygrometerInstrumentId),
+								savedEntry.hygrometerInstrumentId == null ? '' : String(savedEntry.hygrometerInstrumentId),
 							weighingMachineInstrumentId:
-								savedEntry.weighingMachineInstrumentId == null
-									? ''
-									: String(savedEntry.weighingMachineInstrumentId),
+								savedEntry.weighingMachineInstrumentId == null ? '' : String(savedEntry.weighingMachineInstrumentId),
 							actualQuantity: savedEntry.actualQuantity || 0,
 							temperature: savedEntry.temperature || '',
 							fodCheckpoint: isValidOkNotOkValue(savedEntry.fodCheckpoint) ? savedEntry.fodCheckpoint : '',
@@ -439,7 +439,7 @@ const BomStep = ({
 		}));
 	};
 
-	const validateForm = () => {
+	const computeValidationErrors = () => {
 		const newErrors: Record<string, string> = {};
 
 		formData.entries.forEach(entry => {
@@ -498,30 +498,49 @@ const BomStep = ({
 			}
 		});
 
-		setErrors(newErrors);
-		return Object.keys(newErrors).length === 0;
+		return newErrors;
+	};
+
+	/** Opens every material group holding a validation error, so the field can be scrolled to. */
+	const expandGroupsWithErrors = (errorKeys: string[]) => {
+		if (errorKeys.length === 0) return;
+		const failedEntryIds = new Set(errorKeys.map(key => key.replace(/_[^_]+$/, '')));
+		setExpandedGroups(prev => {
+			const next = { ...prev };
+			formData.entries.forEach(entry => {
+				if (failedEntryIds.has(entry.id)) next[entry.materialCode] = true;
+			});
+			return next;
+		});
 	};
 
 	const handleSubmit = () => {
-		if (validateForm()) {
-			// Include acknowledgment state in the form data for saving
-			const formDataWithAcknowledgments = {
-				...formData,
-				acknowledgments
-			};
-			onStepComplete(formDataWithAcknowledgments as unknown as FormData);
+		const validationErrors = computeValidationErrors();
+		setErrors(validationErrors);
+
+		const errorKeys = Object.keys(validationErrors);
+		if (errorKeys.length > 0) {
+			expandGroupsWithErrors(errorKeys);
+			requestScrollToError();
+			return;
 		}
+		// Include acknowledgment state in the form data for saving
+		const formDataWithAcknowledgments = {
+			...formData,
+			acknowledgments
+		};
+		onStepComplete(formDataWithAcknowledgments as unknown as FormData);
 	};
 
 	useEffect(() => {
 		if (!submitActionRef) return;
 
-		submitActionRef.current = handleSubmit;
+		submitActionRef.current = isReadOnly ? null : handleSubmit;
 
 		return () => {
 			submitActionRef.current = null;
 		};
-	}, [handleSubmit, submitActionRef]);
+	});
 
 	const getValidationIcon = (status: 'Accepted' | 'Lesser' | 'Greater') => {
 		switch (status) {
@@ -598,9 +617,32 @@ const BomStep = ({
 
 	return (
 		<Box
+			ref={containerRef}
 			className={expandAccordionsForPdf ? 'prc-report-bom-root' : undefined}
 			sx={{ p: 3, backgroundColor: '#fafafa' }}
 		>
+			<Alert
+				severity="info"
+				icon={<AccessTimeIcon />}
+				className="prc-report-bom-pot-life"
+				sx={{ mb: 2, borderRadius: 2 }}
+			>
+				<Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+					Prepared chemical mixtures shall be utilized within the specified pot life
+				</Typography>
+				<Box component="ul" sx={{ m: 0, pl: 2.25 }}>
+					<Typography component="li" variant="body2">
+						Gelcoat pot life - 15 mins
+					</Typography>
+					<Typography component="li" variant="body2">
+						Resin pot life - 30 mins
+					</Typography>
+					<Typography component="li" variant="body2">
+						Topcoat pot life - 15 mins
+					</Typography>
+				</Box>
+			</Alert>
+
 			{/* Material Groups */}
 			{Object.entries(groupedEntries).map(([materialCode, entries], groupIndex) => (
 				<Accordion
@@ -611,7 +653,9 @@ const BomStep = ({
 								onChange: () => {}
 							}
 						: {
-								defaultExpanded: groupIndex === 0
+								// Controlled so a failed submit can open the group holding the error.
+								expanded: expandedGroups[materialCode] ?? groupIndex === 0,
+								onChange: (_event, isExpanded) => setExpandedGroups(prev => ({ ...prev, [materialCode]: isExpanded }))
 							})}
 					sx={{
 						mb: 2,
@@ -832,9 +876,7 @@ const BomStep = ({
 													fullWidth
 													label="Hygrometer ID"
 													value={entry.hygrometerInstrumentId}
-													onChange={e =>
-														handleInputChange(entry.id, 'hygrometerInstrumentId', e.target.value)
-													}
+													onChange={e => handleInputChange(entry.id, 'hygrometerInstrumentId', e.target.value)}
 													helperText="Optional"
 													disabled={isReadOnly || entry.blocked || entry.savedEntry}
 												/>
@@ -845,9 +887,7 @@ const BomStep = ({
 													fullWidth
 													label="Weighing Machine ID"
 													value={entry.weighingMachineInstrumentId}
-													onChange={e =>
-														handleInputChange(entry.id, 'weighingMachineInstrumentId', e.target.value)
-													}
+													onChange={e => handleInputChange(entry.id, 'weighingMachineInstrumentId', e.target.value)}
 													helperText="Optional"
 													disabled={isReadOnly || entry.blocked || entry.savedEntry}
 												/>
@@ -860,7 +900,11 @@ const BomStep = ({
 											</Typography>
 											<Grid container spacing={2}>
 												<Grid size={{ xs: 12, md: 4 }}>
-													<FormControl fullWidth error={!!errors[`${entry.id}_role`]} disabled={isReadOnly || entry.blocked || entry.savedEntry}>
+													<FormControl
+														fullWidth
+														error={!!errors[`${entry.id}_role`]}
+														disabled={isReadOnly || entry.blocked || entry.savedEntry}
+													>
 														<InputLabel>Skill level</InputLabel>
 														<Select
 															value={entry.role}
@@ -917,8 +961,7 @@ const BomStep = ({
 													sx={{ mb: 1, fontWeight: 500 }}
 													required={entry.catalystQuantity.trim() !== ''}
 												>
-													Mixing Material is free from Foreign Object Debris (FOD) and stirred as per Work
-													Instruction
+													Mixing Material is free from Foreign Object Debris (FOD) and stirred as per Work Instruction
 												</FormLabel>
 												<RadioGroup
 													row
@@ -945,15 +988,11 @@ const BomStep = ({
 														multiline
 														rows={2}
 														label={
-															requiresOkNotOkComment(entry.fodCheckpoint)
-																? 'Deviation comments'
-																: 'Comments (optional)'
+															requiresOkNotOkComment(entry.fodCheckpoint) ? 'Deviation comments' : 'Comments (optional)'
 														}
 														placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(entry.fodCheckpoint)}`}
 														value={entry.fodDeviationComment}
-														onChange={e =>
-															handleInputChange(entry.id, 'fodDeviationComment', e.target.value)
-														}
+														onChange={e => handleInputChange(entry.id, 'fodDeviationComment', e.target.value)}
 														error={!!errors[`${entry.id}_fodComment`]}
 														helperText={
 															errors[`${entry.id}_fodComment`] ||
@@ -1017,7 +1056,12 @@ const BomStep = ({
 														}
 													/>
 													{errors[`${entry.id}_acknowledge`] && (
-														<Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+														<Typography
+															variant="caption"
+															color="error"
+															className={ERROR_ANCHOR_CLASS}
+															sx={{ display: 'block', mt: 0.5 }}
+														>
 															{errors[`${entry.id}_acknowledge`]}
 														</Typography>
 													)}

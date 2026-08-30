@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionData, TimelineStep } from '../../../types/execution.types';
 import StepDetailView from './StepDetailView';
 import StepList from './StepList';
@@ -14,7 +14,15 @@ vi.mock('@mui/icons-material', () => ({
 vi.mock('./steps/RawMaterialsStep', () => ({ default: () => <div>Raw materials form</div> }));
 vi.mock('./steps/BomStep', () => ({ default: () => <div>BOM form</div> }));
 vi.mock('./steps/SequenceStep', () => ({ default: () => <div>Sequence form</div> }));
-vi.mock('./steps/InspectionStep', () => ({ default: () => <div>Inspection form</div> }));
+// The real step registers its validate-and-save here; the mock stands in for that so we can
+// assert Next reaches for it instead of navigating.
+const { inspectionSubmit } = vi.hoisted(() => ({ inspectionSubmit: vi.fn() }));
+vi.mock('./steps/InspectionStep', () => ({
+	default: ({ submitActionRef }: { submitActionRef?: { current: (() => void) | null } }) => {
+		if (submitActionRef) submitActionRef.current = inspectionSubmit;
+		return <div>Inspection form</div>;
+	}
+}));
 vi.mock('./steps/ExecutionSetupStep', () => ({ default: () => <div>Setup form</div> }));
 vi.mock('./steps/SapConfirmationStep', () => ({ default: () => <div>SAP form</div> }));
 vi.mock('../../StepExecutionMetaSummary', () => ({ default: () => null }));
@@ -47,6 +55,10 @@ const demouldingStep: TimelineStep = {
 };
 
 describe('PRC execution navigation gating', () => {
+	beforeEach(() => {
+		inspectionSubmit.mockClear();
+	});
+
 	it('does not make a later sidebar step clickable before Demoulding is complete', () => {
 		const onStepClick = vi.fn();
 		const steps: TimelineStep[] = [
@@ -109,7 +121,7 @@ describe('PRC execution navigation gating', () => {
 		expect(onStepClick).toHaveBeenCalledWith(2);
 	});
 
-	it('keeps detail Next disabled until Demoulding has stepCompleted', () => {
+	it('runs the step validation instead of advancing until Demoulding has stepCompleted', () => {
 		const onNextStep = vi.fn();
 		const incompleteAggregated = {
 			20: {
@@ -133,7 +145,13 @@ describe('PRC execution navigation gating', () => {
 		};
 
 		const { rerender } = render(<StepDetailView {...props} />);
-		expect(screen.getByRole('button', { name: /next/i })).toBeDisabled();
+
+		// Next stays clickable so the operator gets told what is missing, but it must not advance.
+		const incompleteNext = screen.getByRole('button', { name: /next/i });
+		expect(incompleteNext).toBeEnabled();
+		fireEvent.click(incompleteNext);
+		expect(inspectionSubmit).toHaveBeenCalledOnce();
+		expect(onNextStep).not.toHaveBeenCalled();
 
 		const completedAggregated = {
 			20: {
@@ -154,5 +172,31 @@ describe('PRC execution navigation gating', () => {
 		expect(nextButton).toBeEnabled();
 		fireEvent.click(nextButton);
 		expect(onNextStep).toHaveBeenCalledOnce();
+	});
+
+	it('leaves Next disabled on a step type that has nothing to validate', () => {
+		const rawMaterialsStep: TimelineStep = {
+			stepNumber: 2,
+			type: 'rawMaterials',
+			title: 'Raw materials',
+			description: 'Raw materials',
+			status: 'in-progress',
+			ctq: false
+		};
+
+		render(
+			<StepDetailView
+				step={rawMaterialsStep}
+				executionData={{ prcAggregatedSteps: {} } as unknown as ExecutionData}
+				onBackToList={vi.fn()}
+				onPreviousStep={vi.fn()}
+				onNextStep={vi.fn()}
+				onStepComplete={vi.fn()}
+				canGoPrevious
+				canGoNext
+			/>
+		);
+
+		expect(screen.getByRole('button', { name: /next/i })).toBeDisabled();
 	});
 });

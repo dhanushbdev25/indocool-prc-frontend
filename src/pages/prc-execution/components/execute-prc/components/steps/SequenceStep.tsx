@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, type MutableRefObject } from 'react';
 import {
 	Box,
 	Typography,
@@ -42,6 +42,8 @@ import {
 	resolveCriticality
 } from '../../../../../../utils/criticality';
 import { useFetchWorkstationsComboQuery } from '../../../../../../store/api/business/prc-execution/prc-execution.api';
+import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
+import { ERROR_ANCHOR_CLASS } from '../../../../utils/scrollToFirstError';
 
 const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
 
@@ -57,6 +59,8 @@ interface SequenceStepProps {
 	 * `isCtqFillLocked` in `utils/stepGating.ts`.
 	 */
 	ctqRoleLocked?: boolean;
+	/** Lets the owning view (e.g. the header Next arrow) trigger this step's validate-and-save. */
+	submitActionRef?: MutableRefObject<(() => void) | null>;
 }
 
 // Helper function to validate measurement value against acceptance range
@@ -82,7 +86,8 @@ const parseOptionalNumber = (value: string | number | undefined | null): number 
 	return Number.isFinite(n) ? n : null;
 };
 
-const normalizeTargetValueType = (t: string | undefined): string => (typeof t === 'string' ? t.trim().toLowerCase() : '');
+const normalizeTargetValueType = (t: string | undefined): string =>
+	typeof t === 'string' ? t.trim().toLowerCase() : '';
 
 const isRangeOrExactTarget = (t: string | undefined): boolean => {
 	const n = normalizeTargetValueType(t);
@@ -133,8 +138,7 @@ const isNumericRangeStepWithBounds = (stepData: {
 	return getNumericMeasurementBounds(stepData) !== null;
 };
 
-const buildEmptyMeasurements = (n: number) =>
-	Array.from({ length: n }, (_, i) => ({ id: String(i + 1), value: '' }));
+const buildEmptyMeasurements = (n: number) => Array.from({ length: n }, (_, i) => ({ id: String(i + 1), value: '' }));
 
 const normalizeMeasurementsToCount = (
 	loaded: Array<{ id: string; value: string }>,
@@ -147,15 +151,23 @@ const normalizeMeasurementsToCount = (
 	return out;
 };
 
-const SequenceStep = ({
+/**
+ * The form itself. Split out from `SequenceStep` so the `stepData` guard lives in a wrapper
+ * with no hooks of its own — otherwise every hook below an early return is conditional, which
+ * rules out registering the Next-arrow submit action after `handleSubmit` is defined.
+ */
+const SequenceStepForm = ({
 	step,
+	stepData,
 	executionData,
 	onStepComplete,
 	readOnlyOverride,
-	ctqRoleLocked = false
-}: SequenceStepProps) => {
+	ctqRoleLocked = false,
+	submitActionRef
+}: SequenceStepProps & { stepData: NonNullable<TimelineStep['stepData']> }) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
+	const { containerRef, requestScrollToError } = useScrollToFirstError();
 
 	const plantCode = executionData.plantCode ?? '';
 	const { data: workstationOptions = [] } = useFetchWorkstationsComboQuery(
@@ -363,7 +375,7 @@ const SequenceStep = ({
 			const rowObj: Record<string, string> = {};
 			tc.columns.forEach(col => {
 				const cell = row.cells[col.name];
-				rowObj[col.name] = cell?.readOnly ? cell.value : (cell?.value || '');
+				rowObj[col.name] = cell?.readOnly ? cell.value : cell?.value || '';
 			});
 			return rowObj;
 		});
@@ -384,11 +396,6 @@ const SequenceStep = ({
 		}
 	}, [initialData, initTableData]);
 
-	const stepData = step.stepData;
-	if (!stepData) {
-		return <div>Invalid step data</div>;
-	}
-
 	// Check if this specific sub-step is already filled
 	const isSubStepFilled = Boolean(
 		initialData &&
@@ -396,12 +403,8 @@ const SequenceStep = ({
 				(stepData.multipleMeasurements && initialData.measurements
 					? stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0
 						? initialData.measurements.length === stepData.multipleMeasurementMaxCount &&
-							initialData.measurements.every(
-								m => m.value.trim() !== '' && !isNaN(parseFloat(m.value))
-							)
-						: initialData.measurements.every(
-								m => m.value.trim() !== '' && !isNaN(parseFloat(m.value))
-							)
+							initialData.measurements.every(m => m.value.trim() !== '' && !isNaN(parseFloat(m.value)))
+						: initialData.measurements.every(m => m.value.trim() !== '' && !isNaN(parseFloat(m.value)))
 					: initialData.formData && Object.keys(initialData.formData).length > 0))
 	);
 	// ctqRoleLocked is folded in as well as being passed via readOnlyOverride, so the lock
@@ -576,7 +579,10 @@ const SequenceStep = ({
 		const numericBounds = getNumericMeasurementBounds(stepData);
 
 		// For multiple measurements, only validate the measurements array
-		if (stepData.multipleMeasurements && (stepData.targetValueType === 'range' || stepData.targetValueType === 'exact value')) {
+		if (
+			stepData.multipleMeasurements &&
+			(stepData.targetValueType === 'range' || stepData.targetValueType === 'exact value')
+		) {
 			if (stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0) {
 				if (measurements.length !== stepData.multipleMeasurementMaxCount) {
 					newErrors.measurements_count = `Exactly ${stepData.multipleMeasurementMaxCount} measurements are required`;
@@ -680,9 +686,7 @@ const SequenceStep = ({
 		const color = status === 'Accepted' ? 'success' : status === 'Lesser' ? 'warning' : 'error';
 		if (ctx?.isExact) {
 			const label =
-				status === 'Accepted'
-					? 'Matches target'
-					: `Deviation: ${formatSignedDeviation(ctx.measured, ctx.target)}`;
+				status === 'Accepted' ? 'Matches target' : `Deviation: ${formatSignedDeviation(ctx.measured, ctx.target)}`;
 			return <Chip icon={getValidationIcon(status)} label={label} color={color} size="small" variant="outlined" />;
 		}
 		const label = `Range: ${status}`;
@@ -720,107 +724,120 @@ const SequenceStep = ({
 	const handleSubmit = () => {
 		// The button is hidden while locked; this stops any other path from submitting.
 		if (ctqRoleLocked) return;
-		if (validateForm()) {
-			if (stepData.targetValueType === 'table' && tableData) {
-				const formDataToSubmit: FormData = {
-					data: tableData,
-					stepId: stepData.stepId,
-					stepGroupId: stepData.stepGroupId,
-					prcTemplateStepId: stepData.prcTemplateStepId
-				};
-				if (stepData.responsiblePerson) {
-					formDataToSubmit.responsiblePersons = responsiblePersonData.map(p => ({
-						id: p.id,
-						role: p.role,
-						employeeName: p.employeeName,
-						employeeCode: p.employeeCode
-					}));
-				}
-				if (stepData.getInstrumentId) {
-					formDataToSubmit.instrumentId = instrumentId.trim();
-				}
-				onStepComplete(formDataToSubmit);
-				return;
-			}
+		if (!validateForm()) {
+			requestScrollToError();
+			return;
+		}
 
-			let submitData: string | string[] | Record<string, unknown>;
-
-			if (stepData.multipleMeasurements) {
-				// For multiple measurements, send array directly
-				submitData = measurements.map(m => m.value);
-			} else if (stepData.targetValueType === 'ok/not ok') {
-				const selectedValue = getOkNotOkValue(formData.value);
-				const notOkComment = typeof formData.notOkComment === 'string' ? formData.notOkComment.trim() : '';
-				submitData = {
-					value: selectedValue,
-					comments: notOkComment
-				};
-			} else {
-				// For single values, send string directly
-				submitData = String(formData.value);
-			}
-
-			// Prepare form data with responsible person data at the same level as data
+		if (stepData.targetValueType === 'table' && tableData) {
 			const formDataToSubmit: FormData = {
-				data: submitData,
+				data: tableData,
 				stepId: stepData.stepId,
 				stepGroupId: stepData.stepGroupId,
 				prcTemplateStepId: stepData.prcTemplateStepId
 			};
-
-			// Add responsible person data at the same level as data if required
 			if (stepData.responsiblePerson) {
-				formDataToSubmit.responsiblePersons = responsiblePersonData.map(person => ({
-					id: person.id,
-					role: person.role,
-					employeeName: person.employeeName,
-					employeeCode: person.employeeCode
+				formDataToSubmit.responsiblePersons = responsiblePersonData.map(p => ({
+					id: p.id,
+					role: p.role,
+					employeeName: p.employeeName,
+					employeeCode: p.employeeCode
 				}));
 			}
 			if (stepData.getInstrumentId) {
 				formDataToSubmit.instrumentId = instrumentId.trim();
 			}
+			onStepComplete(formDataToSubmit);
+			return;
+		}
 
-			// Numeric range/exact steps: persist acceptance fields + validation status
-			if (isNumericRangeStepWithBounds(stepData)) {
-				const bounds = getNumericMeasurementBounds(stepData);
-				if (stepData.multipleMeasurements) {
-					const valuesWithValidation = measurements.map(m => {
-						const value = parseFloat(m.value);
-						if (!isNaN(value) && bounds) {
-							const validationStatus = validateMeasurementRange(value, bounds.min, bounds.max);
-							return {
-								value: m.value,
-								minimumAcceptanceValue: stepData.minimumAcceptanceValue,
-								maximumAcceptanceValue: stepData.maximumAcceptanceValue,
-								validationStatus: validationStatus
-							};
-						}
+		let submitData: string | string[] | Record<string, unknown>;
+
+		if (stepData.multipleMeasurements) {
+			// For multiple measurements, send array directly
+			submitData = measurements.map(m => m.value);
+		} else if (stepData.targetValueType === 'ok/not ok') {
+			const selectedValue = getOkNotOkValue(formData.value);
+			const notOkComment = typeof formData.notOkComment === 'string' ? formData.notOkComment.trim() : '';
+			submitData = {
+				value: selectedValue,
+				comments: notOkComment
+			};
+		} else {
+			// For single values, send string directly
+			submitData = String(formData.value);
+		}
+
+		// Prepare form data with responsible person data at the same level as data
+		const formDataToSubmit: FormData = {
+			data: submitData,
+			stepId: stepData.stepId,
+			stepGroupId: stepData.stepGroupId,
+			prcTemplateStepId: stepData.prcTemplateStepId
+		};
+
+		// Add responsible person data at the same level as data if required
+		if (stepData.responsiblePerson) {
+			formDataToSubmit.responsiblePersons = responsiblePersonData.map(person => ({
+				id: person.id,
+				role: person.role,
+				employeeName: person.employeeName,
+				employeeCode: person.employeeCode
+			}));
+		}
+		if (stepData.getInstrumentId) {
+			formDataToSubmit.instrumentId = instrumentId.trim();
+		}
+
+		// Numeric range/exact steps: persist acceptance fields + validation status
+		if (isNumericRangeStepWithBounds(stepData)) {
+			const bounds = getNumericMeasurementBounds(stepData);
+			if (stepData.multipleMeasurements) {
+				const valuesWithValidation = measurements.map(m => {
+					const value = parseFloat(m.value);
+					if (!isNaN(value) && bounds) {
+						const validationStatus = validateMeasurementRange(value, bounds.min, bounds.max);
 						return {
 							value: m.value,
 							minimumAcceptanceValue: stepData.minimumAcceptanceValue,
-							maximumAcceptanceValue: stepData.maximumAcceptanceValue
+							maximumAcceptanceValue: stepData.maximumAcceptanceValue,
+							validationStatus: validationStatus
 						};
-					});
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
-					(formDataToSubmit as any).data = valuesWithValidation;
-				} else {
-					const value = parseFloat(String(formData.value));
-					if (!isNaN(value) && bounds) {
-						const validationStatus = validateMeasurementRange(value, bounds.min, bounds.max);
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(formDataToSubmit as any).minimumAcceptanceValue = stepData.minimumAcceptanceValue;
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(formDataToSubmit as any).maximumAcceptanceValue = stepData.maximumAcceptanceValue;
-						// eslint-disable-next-line @typescript-eslint/no-explicit-any
-						(formDataToSubmit as any).validationStatus = validationStatus;
 					}
+					return {
+						value: m.value,
+						minimumAcceptanceValue: stepData.minimumAcceptanceValue,
+						maximumAcceptanceValue: stepData.maximumAcceptanceValue
+					};
+				});
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				(formDataToSubmit as any).data = valuesWithValidation;
+			} else {
+				const value = parseFloat(String(formData.value));
+				if (!isNaN(value) && bounds) {
+					const validationStatus = validateMeasurementRange(value, bounds.min, bounds.max);
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(formDataToSubmit as any).minimumAcceptanceValue = stepData.minimumAcceptanceValue;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(formDataToSubmit as any).maximumAcceptanceValue = stepData.maximumAcceptanceValue;
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					(formDataToSubmit as any).validationStatus = validationStatus;
 				}
 			}
-
-			onStepComplete(formDataToSubmit);
 		}
+
+		onStepComplete(formDataToSubmit);
 	};
+
+	// Publishes this step's validate-and-save so the header Next arrow can run it when the step
+	// still needs input. Re-registered every render so the ref holds the current closure.
+	useEffect(() => {
+		if (!submitActionRef) return;
+		submitActionRef.current = isReadOnly || ctqRoleLocked ? null : handleSubmit;
+		return () => {
+			submitActionRef.current = null;
+		};
+	});
 
 	const renderInput = () => {
 		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
@@ -886,7 +903,7 @@ const SequenceStep = ({
 														))}
 													</RadioGroup>
 													{errors[`table_${rowIdx}_${col.name}`] && (
-														<Typography variant="caption" color="error">
+														<Typography variant="caption" color="error" className={ERROR_ANCHOR_CLASS}>
 															{errors[`table_${rowIdx}_${col.name}`]}
 														</Typography>
 													)}
@@ -976,8 +993,7 @@ const SequenceStep = ({
 														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
 														error={!!errors[`table_${rowIdx}_${col.name}`]}
 														helperText={
-															errors[`table_${rowIdx}_${col.name}`] ||
-															(!plantCode ? 'No plant configured' : undefined)
+															errors[`table_${rowIdx}_${col.name}`] || (!plantCode ? 'No plant configured' : undefined)
 														}
 														disabled={isReadOnly || !plantCode}
 														sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px' } }}
@@ -1022,12 +1038,7 @@ const SequenceStep = ({
 					<FormLabel component="legend" sx={{ fontSize: '0.875rem', color: '#666', mb: 1 }}>
 						Select Result
 					</FormLabel>
-					<RadioGroup
-						row
-						value={selectedValue}
-						onChange={e => handleValueChange(e.target.value)}
-						sx={{ gap: 2 }}
-					>
+					<RadioGroup row value={selectedValue} onChange={e => handleValueChange(e.target.value)} sx={{ gap: 2 }}>
 						{OK_NOT_OK_OPTIONS.map(option => (
 							<FormControlLabel
 								key={option.value}
@@ -1096,12 +1107,10 @@ const SequenceStep = ({
 			return (
 				<Box>
 					<Typography variant="body2" sx={{ mb: 1, fontWeight: 500, color: '#666' }}>
-						{fixedN
-							? `Multiple Measurements (${fixedN} required)`
-							: `Multiple Measurements (Max ${maxCount} allowed)`}
+						{fixedN ? `Multiple Measurements (${fixedN} required)` : `Multiple Measurements (Max ${maxCount} allowed)`}
 					</Typography>
 					{errors.measurements_count && (
-						<Alert severity="error" sx={{ mb: 1 }}>
+						<Alert severity="error" className={ERROR_ANCHOR_CLASS} sx={{ mb: 1 }}>
 							{errors.measurements_count}
 						</Alert>
 					)}
@@ -1152,10 +1161,7 @@ const SequenceStep = ({
 								</Box>
 
 								{/* Range Display and Validation */}
-								{showMeasurementBoundsUi &&
-									measurement.value &&
-									validationStatus &&
-									validationStatus !== null && (
+								{showMeasurementBoundsUi && measurement.value && validationStatus && validationStatus !== null && (
 									<Paper
 										elevation={0}
 										sx={{
@@ -1206,7 +1212,12 @@ const SequenceStep = ({
 											}
 										/>
 										{errors[`measurement_${measurement.id}_acknowledge`] && (
-											<Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+											<Typography
+												variant="caption"
+												color="error"
+												className={ERROR_ANCHOR_CLASS}
+												sx={{ display: 'block', mt: 0.5 }}
+											>
 												{errors[`measurement_${measurement.id}_acknowledge`]}
 											</Typography>
 										)}
@@ -1324,7 +1335,12 @@ const SequenceStep = ({
 							}
 						/>
 						{errors.value_acknowledge && (
-							<Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+							<Typography
+								variant="caption"
+								color="error"
+								className={ERROR_ANCHOR_CLASS}
+								sx={{ display: 'block', mt: 0.5 }}
+							>
 								{errors.value_acknowledge}
 							</Typography>
 						)}
@@ -1335,7 +1351,7 @@ const SequenceStep = ({
 	};
 
 	return (
-		<Box sx={{ p: 2, backgroundColor: 'white' }}>
+		<Box ref={containerRef} sx={{ p: 2, backgroundColor: 'white' }}>
 			{/* Compact Step Header */}
 			<Box sx={{ mb: 2 }}>
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
@@ -1542,7 +1558,7 @@ const SequenceStep = ({
 				</Alert>
 			)}
 
-{JSON.stringify((errors))}
+			{JSON.stringify(errors)}
 			{/* Validation Alert */}
 			{Object.keys(errors).length > 0 && (
 				<Alert severity="error" sx={{ mb: 3, borderRadius: 2 }} icon={<ErrorIcon />}>
@@ -1569,6 +1585,14 @@ const SequenceStep = ({
 			)}
 		</Box>
 	);
+};
+
+const SequenceStep = (props: SequenceStepProps) => {
+	const stepData = props.step.stepData;
+	if (!stepData) {
+		return <div>Invalid step data</div>;
+	}
+	return <SequenceStepForm {...props} stepData={stepData} />;
 };
 
 export default SequenceStep;

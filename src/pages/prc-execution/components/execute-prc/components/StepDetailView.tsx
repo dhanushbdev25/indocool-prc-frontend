@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Box, Typography, Button, Avatar, Chip, IconButton } from '@mui/material';
 import { ArrowBack, ArrowForward, CheckCircle, PlayArrow } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../types/execution.types';
@@ -81,6 +81,13 @@ const StepDetailView = ({
 
 	const [currentSubStepIndex, setCurrentSubStepIndex] = useState(getInitialSubStepIndex);
 	const currentSubStep = isSequenceGroup ? subSteps[currentSubStepIndex] : null;
+
+	/**
+	 * The rendered step registers its validate-and-save here. Next uses it when the step is not
+	 * yet filled: rather than sitting greyed out with no explanation, the arrow runs the step's
+	 * own validation, which surfaces the red fields and scrolls to the first one.
+	 */
+	const stepSubmitRef = useRef<(() => void) | null>(null);
 
 	// A CTQ sub-step is a hard stop for anyone without the quality permission: inputs are
 	// disabled and it cannot be completed, so the group waits here until they hand over.
@@ -180,8 +187,16 @@ const StepDetailView = ({
 			return;
 		}
 
-		if (isSequenceGroup && !isCurrentSubStepFilled()) return;
-		if (!isSequenceGroup && !isNonSequenceStepFilled()) return;
+		// Not filled in yet: hand off to the step's own validation so the operator sees *what* is
+		// missing (and gets scrolled to it) instead of the arrow silently doing nothing.
+		if (isSequenceGroup && !isCurrentSubStepFilled()) {
+			stepSubmitRef.current?.();
+			return;
+		}
+		if (!isSequenceGroup && !isNonSequenceStepFilled()) {
+			stepSubmitRef.current?.();
+			return;
+		}
 
 		if (isSequenceGroup) {
 			if (currentSubStepIndex < subSteps.length - 1) {
@@ -226,6 +241,17 @@ const StepDetailView = ({
 			? isCurrentSubStepFilled() && (currentSubStepIndex < subSteps.length - 1 || areAllStepsInGroupFilled())
 			: isNonSequenceStepFilled() && canGoNext;
 
+	/**
+	 * Next stays clickable while a step still needs input, so it can run that step's validation
+	 * and point at the missing field. Only step types that actually validate qualify — Raw
+	 * Materials has nothing to validate and SAP confirmations has its own completion gate.
+	 */
+	const stepAwaitingInput = !readOnly && (isSequenceGroup ? !isCurrentSubStepFilled() : !isNonSequenceStepFilled());
+	const canValidateOnNext =
+		stepAwaitingInput &&
+		!ctqRoleLocked &&
+		(isSequenceGroup || step.type === 'setup' || step.type === 'bom' || step.type === 'inspection');
+
 	const renderStepContent = () => {
 		if (isSequenceGroup && currentSubStep) {
 			// Create a timeline step for the current sub-step
@@ -268,6 +294,7 @@ const StepDetailView = ({
 					onStepComplete={handleSubStepComplete}
 					readOnlyOverride={readOnly || ctqRoleLocked}
 					ctqRoleLocked={ctqRoleLocked}
+					submitActionRef={stepSubmitRef}
 				/>
 			);
 		}
@@ -283,6 +310,7 @@ const StepDetailView = ({
 						onStepComplete={handleSubStepComplete}
 						readOnlyOverride={readOnly}
 						plainReadOnlyFields={readOnly}
+						submitActionRef={stepSubmitRef}
 					/>
 				);
 			case 'rawMaterials':
@@ -294,6 +322,7 @@ const StepDetailView = ({
 						executionData={executionData}
 						onStepComplete={handleSubStepComplete}
 						readOnlyOverride={readOnly}
+						submitActionRef={stepSubmitRef}
 					/>
 				);
 			case 'inspection':
@@ -304,6 +333,7 @@ const StepDetailView = ({
 						onStepComplete={handleSubStepComplete}
 						readOnlyOverride={readOnly}
 						defectCategories={defectCategories}
+						submitActionRef={stepSubmitRef}
 					/>
 				);
 			case 'sapConfirmations':
@@ -388,7 +418,7 @@ const StepDetailView = ({
 							size="small"
 							endIcon={<ArrowForward />}
 							onClick={handleNextSubStep}
-							disabled={!canGoNextSubStep}
+							disabled={!canGoNextSubStep && !canValidateOnNext}
 							sx={{ minWidth: 'auto', px: 1 }}
 						>
 							Next
