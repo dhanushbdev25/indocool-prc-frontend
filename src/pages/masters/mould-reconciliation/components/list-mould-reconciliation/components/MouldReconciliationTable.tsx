@@ -27,9 +27,14 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 	const columns = useMemo<MRT_ColumnDef<MouldReconciliationRow>[]>(
 		() => [
 			{
-				accessorKey: 'partNumber',
-				header: 'Part Number',
-				size: 180
+				accessorKey: 'sapReferenceNumber',
+				header: 'SAP Number',
+				size: 180,
+				Cell: ({ row }) => (
+					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
+					</Typography>
+				)
 			},
 			{
 				accessorKey: 'mouldCode',

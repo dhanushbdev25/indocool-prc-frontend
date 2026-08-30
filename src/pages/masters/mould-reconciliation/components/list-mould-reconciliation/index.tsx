@@ -36,7 +36,7 @@ import MouldHeader from './components/MouldHeader';
 import MouldReconciliationTable from './components/MouldReconciliationTable';
 import { FullScreenFormSavingOverlay } from '../../../../../components/common/FullScreenFormSavingOverlay';
 
-const SEARCH_PLACEHOLDER = 'Part number, mould code, SAP reference';
+const SEARCH_PLACEHOLDER = 'SAP number, mould code';
 
 const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
@@ -59,9 +59,9 @@ const ListMouldReconciliation = () => {
 		() => [
 			{
 				kind: 'autocomplete',
-				key: 'partNumber',
-				label: 'Part Number',
-				options: deriveOptions(rows, r => r.partNumber)
+				key: 'sapReferenceNumber',
+				label: 'SAP Number',
+				options: deriveOptions(rows, r => r.sapReferenceNumber)
 			},
 			{
 				kind: 'autocomplete',
@@ -82,15 +82,14 @@ const ListMouldReconciliation = () => {
 	const filteredData = useMemo(() => {
 		const term = searchTerm.trim().toLowerCase();
 		return rows.filter(r => {
-			if (!matchesMulti(r.partNumber, filters.partNumber)) return false;
+			if (!matchesMulti(r.sapReferenceNumber, filters.sapReferenceNumber)) return false;
 			if (!matchesMulti(r.mouldCode, filters.mouldCode)) return false;
 			const due = isMouldDueForReconciliation(r);
 			if (!matchesMulti(due ? 'Due' : 'Not due', filters.status)) return false;
 			if (!term) return true;
 			return (
-				r.partNumber.toLowerCase().includes(term) ||
-				r.mouldCode.toLowerCase().includes(term) ||
-				(r.sapReferenceNumber ?? '').toLowerCase().includes(term)
+				(r.sapReferenceNumber ?? '').toLowerCase().includes(term) ||
+				r.mouldCode.toLowerCase().includes(term)
 			);
 		});
 	}, [rows, filters, searchTerm]);
@@ -229,8 +228,9 @@ const ListMouldReconciliation = () => {
 						</Alert>
 					)}
 					<Typography variant="body2">
-						Reconcile mould <strong>{selectedRow?.mouldCode}</strong> for part{' '}
-						<strong>{selectedRow?.partNumber}</strong>? This should reset the current count on the server.
+						Reconcile mould <strong>{selectedRow?.mouldCode}</strong> for SAP number{' '}
+						<strong>{selectedRow?.sapReferenceNumber?.trim() || '—'}</strong>? This should reset the current
+						count on the server.
 					</Typography>
 				</DialogContent>
 				<DialogActions>

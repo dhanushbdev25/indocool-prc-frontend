@@ -71,9 +71,13 @@ export function coerceMouldApiItem(raw: unknown, fallbackIndex: number): MouldAp
 	const mouldCode = typeof o.mouldCode === 'string' ? o.mouldCode : undefined;
 	const mouldId = typeof o.mouldId === 'string' ? o.mouldId : undefined;
 	const sapReferenceNumber =
-		o.sapReferenceNumber === null || typeof o.sapReferenceNumber === 'string'
-			? (o.sapReferenceNumber as string | null)
-			: undefined;
+		o.sapReferenceNumber === null
+			? null
+			: typeof o.sapReferenceNumber === 'string'
+				? o.sapReferenceNumber
+				: typeof o.sapReferenceNumber === 'number' && Number.isFinite(o.sapReferenceNumber)
+					? String(o.sapReferenceNumber)
+					: undefined;
 	const reconciliationCount = typeof o.reconciliationCount === 'number' ? o.reconciliationCount : 0;
 	const currentCount =
 		o.currentCount === null || typeof o.currentCount === 'number' ? (o.currentCount as number | null) : null;
