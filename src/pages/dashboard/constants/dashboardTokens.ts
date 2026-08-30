@@ -72,6 +72,21 @@ export const analyticsSectionSubtitle: SxProps<Theme> = {
 
 export const analyticsChartHeight = 300;
 
+/**
+ * Line colours for multi-series charts, cycled by series index. Read off the
+ * theme rather than hardcoded so both palette modes stay in step.
+ */
+export const chartSeriesColors = (theme: Theme): string[] => [
+	theme.palette.primary.main,
+	theme.palette.success.main,
+	theme.palette.warning.main,
+	theme.palette.error.main,
+	theme.palette.info.main,
+	theme.palette.secondary.main,
+	theme.palette.primary.dark,
+	theme.palette.success.dark
+];
+
 export const dateRangeTriggerButton: SxProps<Theme> = theme => ({
 	textTransform: 'none',
 	fontWeight: 600,

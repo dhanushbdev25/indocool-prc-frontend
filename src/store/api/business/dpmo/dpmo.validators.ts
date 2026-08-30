@@ -1,100 +1,141 @@
-import dayjs from 'dayjs';
-import type { ChartDataPoint } from '../../../../pages/dashboard/components/charts/chartTypes';
+/**
+ * Response shapes for the three DPMO endpoints:
+ *   GET dashboard/metrics/dpmometrics/summary
+ *   GET dashboard/metrics/dpmometrics/breakdown
+ *   GET dashboard/metrics/dpmometrics/trends
+ *
+ * All three take the same query params as the analytics dashboard, so callers
+ * pass `DashboardQueryParams` and the api slice serialises them with
+ * `buildDashboardQueryParams`.
+ */
 
-export interface DpmoQueryParams {
-	from: string;
-	to: string;
-	/** Comma-joined on the wire; pass an array. Backend uses ILIKE for matching. */
-	customer?: string[];
-	plantCode?: string[];
-	workstation?: string[];
+/** Backend groups by nullable columns (shift, workStation, employeeCode) — nulls become this. */
+export const UNASSIGNED_LABEL = 'Unassigned';
+
+// ─── summary ────────────────────────────────────────────────────────────────
+
+export interface DpmoTopDefect {
+	issueType: string;
+	count: number;
 }
 
-interface DpmoWireParams {
-	from: string;
-	to: string;
-	customer?: string;
-	plantCode?: string;
-	workstation?: string;
+export interface DpmoTopOperator {
+	employeeName: string;
+	employeeCode: string;
+	count: number;
 }
 
-const joinFilterValues = (values: string[] | undefined): string | undefined => {
-	if (!values?.length) return undefined;
-	const joined = values.map(v => v.trim()).filter(Boolean).join(',');
-	return joined || undefined;
-};
-
-export const buildDpmoQueryParams = (args: DpmoQueryParams): DpmoWireParams => {
-	const params: DpmoWireParams = { from: args.from, to: args.to };
-	const customer = joinFilterValues(args.customer);
-	const plantCode = joinFilterValues(args.plantCode);
-	const workstation = joinFilterValues(args.workstation);
-	if (customer) params.customer = customer;
-	if (plantCode) params.plantCode = plantCode;
-	if (workstation) params.workstation = workstation;
-	return params;
-};
-
-export type KpiFormat = 'number' | 'decimal' | 'percentage' | 'currency';
-
-export type DpmoKpi =
-	| {
-			kind: 'single';
-			key: string;
-			label: string;
-			value: number | null;
-			format: KpiFormat;
-	  }
-	| {
-			kind: 'split';
-			key: string;
-			label: string;
-			items: { label: string; value: number }[];
-			format: KpiFormat;
-	  };
-
-export interface DpmoFpyPoint {
-	date: string;
-	percentage: number;
-}
-
-export interface DpmoProductDefectPoint {
-	product: string;
-	quantity: number;
-}
-
-export interface DpmoDefectGateSplit {
-	gate: number;
-	nonGate: number;
-}
-
-export interface DpmoTotals {
-	totalCount: number;
-	totalSqm: number;
-}
-
-export interface DpmoFirstPassYield {
+export interface DpmoMonthlyYield {
+	month: string;
 	total: number;
 	passed: number;
 	percentage: number;
 }
 
-export interface DpmoDefects {
-	gate: number;
-	nonGate: number;
+export interface DpmoShiftDefects {
+	shift: string;
+	gateDefects: number;
+	nonGateDefects: number;
+	totalDefects: number;
+}
+
+export interface DpmoShiftYield {
+	shift: string;
 	total: number;
+	passed: number;
+	percentage: number;
 }
 
-export interface DpmoData {
-	totals: DpmoTotals;
-	firstPassYield: DpmoFirstPassYield;
-	defects: DpmoDefects;
-	fpyByDay: DpmoFpyPoint[];
-	productDefects: DpmoProductDefectPoint[];
+export interface DpmoGateDefectDay {
+	date: string;
+	gateDefectQty: number;
 }
 
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-	v !== null && typeof v === 'object' && !Array.isArray(v);
+export interface DpmoSummaryData {
+	topDefects: DpmoTopDefect[];
+	topOperators: DpmoTopOperator[];
+	monthlyFirstPassYield: DpmoMonthlyYield[];
+	shiftWiseDefects: DpmoShiftDefects[];
+	shiftWiseFirstPassYield: DpmoShiftYield[];
+	gateDefectDatewise: DpmoGateDefectDay[];
+}
+
+// ─── breakdown ──────────────────────────────────────────────────────────────
+
+export interface DpmoProjectYield {
+	project: string;
+	total: number;
+	passed: number;
+	percentage: number;
+}
+
+export interface DpmoProjectDefects {
+	project: string;
+	gateDefects: number;
+	nonGateDefects: number;
+	totalDefects: number;
+}
+
+export interface DpmoWorkstationYield {
+	workStation: string;
+	total: number;
+	passed: number;
+	percentage: number;
+}
+
+export interface DpmoWorkstationDefects {
+	workStation: string;
+	gateDefects: number;
+	nonGateDefects: number;
+	totalDefects: number;
+}
+
+export interface DpmoDefectsPerSqmProject {
+	project: string;
+	totalDefects: number;
+	totalSqm: number;
+	defectsPerSqm: number;
+}
+
+export interface DpmoBreakdownData {
+	projectWiseFirstPassYield: DpmoProjectYield[];
+	projectWiseDefects: DpmoProjectDefects[];
+	workstationWiseFirstPassYield: DpmoWorkstationYield[];
+	workstationWiseDefects: DpmoWorkstationDefects[];
+	defectPerSqmProjectWise: DpmoDefectsPerSqmProject[];
+}
+
+// ─── trends ─────────────────────────────────────────────────────────────────
+
+export interface DpmoWorkstationDay {
+	workStation: string;
+	date: string;
+	totalDefects: number;
+}
+
+export interface DpmoOperatorDay {
+	employeeName: string;
+	employeeCode: string;
+	date: string;
+	count: number;
+}
+
+export interface DpmoDefectsPerSqmDay {
+	date: string;
+	totalDefects: number;
+	totalSqm: number;
+	defectsPerSqm: number;
+}
+
+export interface DpmoTrendsData {
+	workstationDaywiseDefects: DpmoWorkstationDay[];
+	operatorDaywiseDefects: DpmoOperatorDay[];
+	defectPerSqmDatewise: DpmoDefectsPerSqmDay[];
+}
+
+// ─── parsing helpers ────────────────────────────────────────────────────────
+
+const isRecord = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v);
 
 const coerceNumber = (v: unknown, fallback = 0): number => {
 	if (typeof v === 'number' && Number.isFinite(v)) return v;
@@ -102,146 +143,116 @@ const coerceNumber = (v: unknown, fallback = 0): number => {
 	return fallback;
 };
 
+/** Category keys can be null (unassigned shift / workstation / employee code). */
+const coerceLabel = (v: unknown, fallback = UNASSIGNED_LABEL): string =>
+	typeof v === 'string' && v.trim() ? v.trim() : fallback;
+
 const unwrapData = (response: unknown): Record<string, unknown> => {
 	if (isRecord(response) && isRecord(response.data)) return response.data;
 	if (isRecord(response)) return response;
 	return {};
 };
 
-const parseTotals = (raw: unknown): DpmoTotals => {
-	const o = isRecord(raw) ? raw : {};
-	return {
-		totalCount: coerceNumber(o.totalCount),
-		totalSqm: coerceNumber(o.totalSqm)
-	};
-};
-
-const parseFirstPassYield = (raw: unknown): DpmoFirstPassYield => {
-	const o = isRecord(raw) ? raw : {};
-	return {
-		total: coerceNumber(o.total),
-		passed: coerceNumber(o.passed),
-		percentage: coerceNumber(o.percentage)
-	};
-};
-
-interface ParsedDefects {
-	gate: number;
-	nonGate: number;
-	total: number;
-	sapWise: { sapReferenceNumber: string; totalDefects: number }[];
-}
-
-const parseDefects = (raw: unknown): ParsedDefects => {
-	const o = isRecord(raw) ? raw : {};
-	const sapWiseRaw = Array.isArray(o.sapWise) ? o.sapWise : [];
-	return {
-		gate: coerceNumber(o.gateDefects),
-		nonGate: coerceNumber(o.nonGateDefects),
-		total: coerceNumber(o.totalDefects),
-		sapWise: sapWiseRaw.map((row, index) => {
-			const r = isRecord(row) ? row : {};
-			return {
-				sapReferenceNumber:
-					typeof r.sapReferenceNumber === 'string' && r.sapReferenceNumber.trim()
-						? r.sapReferenceNumber
-						: `Item ${index + 1}`,
-				totalDefects: coerceNumber(r.totalDefects)
-			};
-		})
-	};
-};
-
-const parseDatewise = (raw: unknown): DpmoFpyPoint[] => {
+/** Maps an array field to typed rows, tolerating a missing or non-array payload. */
+const parseRows = <T>(raw: unknown, toRow: (row: Record<string, unknown>, index: number) => T): T[] => {
 	if (!Array.isArray(raw)) return [];
-	return raw.map((row, index) => {
-		const r = isRecord(row) ? row : {};
-		const fpy = isRecord(r.firstPassYield) ? r.firstPassYield : {};
-		return {
-			date: typeof r.date === 'string' ? r.date : `day-${index}`,
-			percentage: coerceNumber(fpy.percentage)
-		};
-	});
+	return raw.map((row, index) => toRow(isRecord(row) ? row : {}, index));
 };
 
-export const parseDpmoResponse = (response: unknown): DpmoData => {
-	const payload = unwrapData(response);
-	const totals = parseTotals(payload.totals);
-	const firstPassYield = parseFirstPassYield(payload.firstPassYield);
-	const defects = parseDefects(payload.defects);
-	const fpyByDay = parseDatewise(payload.datewise);
+// ─── parsers ────────────────────────────────────────────────────────────────
 
+export const parseDpmoSummary = (response: unknown): DpmoSummaryData => {
+	const payload = unwrapData(response);
 	return {
-		totals,
-		firstPassYield,
-		defects: { gate: defects.gate, nonGate: defects.nonGate, total: defects.total },
-		fpyByDay,
-		productDefects: defects.sapWise.map(item => ({
-			product: item.sapReferenceNumber,
-			quantity: item.totalDefects
+		topDefects: parseRows(payload.topDefects, (r, i) => ({
+			issueType: coerceLabel(r.issueType, `Defect ${i + 1}`),
+			count: coerceNumber(r.count)
+		})),
+		topOperators: parseRows(payload.topOperators, (r, i) => ({
+			employeeName: coerceLabel(r.employeeName, `Operator ${i + 1}`),
+			employeeCode: coerceLabel(r.employeeCode, ''),
+			count: coerceNumber(r.count)
+		})),
+		monthlyFirstPassYield: parseRows(payload.monthlyFirstPassYield, (r, i) => ({
+			month: coerceLabel(r.month, `Month ${i + 1}`),
+			total: coerceNumber(r.total),
+			passed: coerceNumber(r.passed),
+			percentage: coerceNumber(r.percentage)
+		})),
+		shiftWiseDefects: parseRows(payload.shiftWiseDefects, r => ({
+			shift: coerceLabel(r.shift),
+			gateDefects: coerceNumber(r.gateDefects),
+			nonGateDefects: coerceNumber(r.nonGateDefects),
+			totalDefects: coerceNumber(r.totalDefects)
+		})),
+		shiftWiseFirstPassYield: parseRows(payload.shiftWiseFirstPassYield, r => ({
+			shift: coerceLabel(r.shift),
+			total: coerceNumber(r.total),
+			passed: coerceNumber(r.passed),
+			percentage: coerceNumber(r.percentage)
+		})),
+		gateDefectDatewise: parseRows(payload.gateDefectDatewise, (r, i) => ({
+			date: coerceLabel(r.date, `day-${i}`),
+			gateDefectQty: coerceNumber(r.gateDefectQty)
 		}))
 	};
 };
 
-const formatDayLabel = (iso: string): string =>
-	dayjs(iso).isValid() ? dayjs(iso).format('DD-MM') : iso;
-
-export const toFpyChartData = (items: DpmoFpyPoint[]): ChartDataPoint[] =>
-	items.map(item => ({ name: formatDayLabel(item.date), value: item.percentage }));
-
-export const toProductDefectChartData = (items: DpmoProductDefectPoint[]): ChartDataPoint[] =>
-	items.map(item => ({ name: item.product, value: item.quantity }));
-
-const formatNumber = (n: number) => n.toLocaleString('en-IN');
-const formatDecimal = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-export const formatKpiNumber = (value: number, format: KpiFormat): string => {
-	switch (format) {
-		case 'percentage':
-			return `${value.toFixed(2)}%`;
-		case 'currency':
-			return `₹ ${formatNumber(value)}`;
-		case 'decimal':
-			return formatDecimal(value);
-		default:
-			return formatNumber(value);
-	}
+export const parseDpmoBreakdown = (response: unknown): DpmoBreakdownData => {
+	const payload = unwrapData(response);
+	return {
+		projectWiseFirstPassYield: parseRows(payload.projectWiseFirstPassYield, r => ({
+			project: coerceLabel(r.project),
+			total: coerceNumber(r.total),
+			passed: coerceNumber(r.passed),
+			percentage: coerceNumber(r.percentage)
+		})),
+		projectWiseDefects: parseRows(payload.projectWiseDefects, r => ({
+			project: coerceLabel(r.project),
+			gateDefects: coerceNumber(r.gateDefects),
+			nonGateDefects: coerceNumber(r.nonGateDefects),
+			totalDefects: coerceNumber(r.totalDefects)
+		})),
+		workstationWiseFirstPassYield: parseRows(payload.workstationWiseFirstPassYield, r => ({
+			workStation: coerceLabel(r.workStation),
+			total: coerceNumber(r.total),
+			passed: coerceNumber(r.passed),
+			percentage: coerceNumber(r.percentage)
+		})),
+		workstationWiseDefects: parseRows(payload.workstationWiseDefects, r => ({
+			workStation: coerceLabel(r.workStation),
+			gateDefects: coerceNumber(r.gateDefects),
+			nonGateDefects: coerceNumber(r.nonGateDefects),
+			totalDefects: coerceNumber(r.totalDefects)
+		})),
+		defectPerSqmProjectWise: parseRows(payload.defectPerSqmProjectWise, r => ({
+			project: coerceLabel(r.project),
+			totalDefects: coerceNumber(r.totalDefects),
+			totalSqm: coerceNumber(r.totalSqm),
+			defectsPerSqm: coerceNumber(r.defectsPerSqm)
+		}))
+	};
 };
 
-export const EMPTY_DPMO_DATA: DpmoData = {
-	totals: { totalCount: 0, totalSqm: 0 },
-	firstPassYield: { total: 0, passed: 0, percentage: 0 },
-	defects: { gate: 0, nonGate: 0, total: 0 },
-	fpyByDay: [],
-	productDefects: []
-};
-
-export const buildOverallKpis = (data: DpmoData | undefined): DpmoKpi[] => {
-	const d = data ?? EMPTY_DPMO_DATA;
-	return [
-		{ kind: 'single', key: 'totalPanels', label: 'Total Panels (Nos)', value: d.totals.totalCount, format: 'number' },
-		{ kind: 'single', key: 'totalPanelsSize', label: 'Total Panels Size (Sq.m)', value: d.totals.totalSqm, format: 'decimal' },
-		{ kind: 'single', key: 'totalDefects', label: 'Total Defects (Nos)', value: d.defects.total, format: 'number' },
-		{ kind: 'single', key: 'totalCoPQ', label: 'Total CoPQ (Rs.)', value: 0, format: 'currency' },
-		{ kind: 'single', key: 'firstPassYield', label: 'First Pass Yield (%)', value: d.firstPassYield.percentage, format: 'percentage' }
-	];
-};
-
-export const buildProjectWiseKpis = (data: DpmoData | undefined): DpmoKpi[] => {
-	const d = data ?? EMPTY_DPMO_DATA;
-	return [
-		{ kind: 'single', key: 'totalPanels', label: 'Total Panels (Nos)', value: d.totals.totalCount, format: 'number' },
-		{ kind: 'single', key: 'totalPanelsSize', label: 'Total Panels Size (Sq.m)', value: d.totals.totalSqm, format: 'decimal' },
-		{
-			kind: 'split',
-			key: 'defects',
-			label: 'Defects (Nos)',
-			format: 'number',
-			items: [
-				{ label: 'Gate', value: d.defects.gate },
-				{ label: 'Non-Gate', value: d.defects.nonGate }
-			]
-		},
-		{ kind: 'single', key: 'firstPassYield', label: 'First Pass Yield (%)', value: d.firstPassYield.percentage, format: 'percentage' }
-	];
+export const parseDpmoTrends = (response: unknown): DpmoTrendsData => {
+	const payload = unwrapData(response);
+	return {
+		workstationDaywiseDefects: parseRows(payload.workstationDaywiseDefects, (r, i) => ({
+			workStation: coerceLabel(r.workStation),
+			date: coerceLabel(r.date, `day-${i}`),
+			totalDefects: coerceNumber(r.totalDefects)
+		})),
+		operatorDaywiseDefects: parseRows(payload.operatorDaywiseDefects, (r, i) => ({
+			employeeName: coerceLabel(r.employeeName),
+			employeeCode: coerceLabel(r.employeeCode, ''),
+			date: coerceLabel(r.date, `day-${i}`),
+			count: coerceNumber(r.count)
+		})),
+		defectPerSqmDatewise: parseRows(payload.defectPerSqmDatewise, (r, i) => ({
+			date: coerceLabel(r.date, `day-${i}`),
+			totalDefects: coerceNumber(r.totalDefects),
+			totalSqm: coerceNumber(r.totalSqm),
+			defectsPerSqm: coerceNumber(r.defectsPerSqm)
+		}))
+	};
 };

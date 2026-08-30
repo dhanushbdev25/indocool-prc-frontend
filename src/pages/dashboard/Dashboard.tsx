@@ -57,8 +57,8 @@ const Dashboard = () => {
 		selectedUnits: draftFilters.units
 	});
 
-	// SAP product + variant options are dashboard-only — fetched here rather than in the
-	// shared useDashboardFilterOptions so the DPMO tabs don't fire these queries.
+	// SAP product + variant options are fetched per page rather than in the shared
+	// useDashboardFilterOptions; the DPMO dashboard does the same for its own filter bar.
 	const { data: sapComboData } = useFetchSapComboQuery();
 	const sapProductOptions = useMemo(() => sapComboOptions(sapComboData?.data), [sapComboData]);
 	const {

@@ -1,14 +1,63 @@
-import { Box, Tab, Tabs, Typography } from '@mui/material';
-
-export type DpmoTab = 'overall' | 'projectWise';
+import { Box, Stack, Typography } from '@mui/material';
+import { DashboardFilterBar } from '../../dashboard/components/DashboardFilterBar';
+import type { DateRangePreset } from '../../dashboard/hooks/useDashboardDateRange';
+import type { FilterComboOption } from '../../../components/masters/filters/FilterAutocomplete';
+import type { DashboardEntityFilters, DashboardEntityFilterKey } from '../../dashboard/hooks/useDashboardEntityFilters';
 
 interface DpmoPageHeaderProps {
-	tab: DpmoTab;
-	onTabChange: (next: DpmoTab) => void;
+	draftPreset: DateRangePreset | null;
+	draftPresetLabel: string;
+	draftDisplayLabel: string;
+	onDraftPresetChange: (preset: DateRangePreset) => void;
+	onDraftCustomRangeChange: (from: string | null, to: string | null) => void;
+	draftCustomFrom: string | null;
+	draftCustomTo: string | null;
+	draftFilters: DashboardEntityFilters;
+	onDraftFilterChange: (key: DashboardEntityFilterKey, value: string[]) => void;
+	onApply: () => void;
+	onReset: () => void;
+	isDirty: boolean;
+	hasActiveFilters: boolean;
+	unitOptions: FilterComboOption[];
+	workstationOptions: string[];
+	shiftOptions: string[];
+	projectOptions: FilterComboOption[];
+	sapProductOptions: FilterComboOption[];
+	variantOptions: FilterComboOption[];
+	variantDisabled?: boolean;
+	variantPlaceholder?: string;
+	filtersDisabled?: boolean;
 }
 
-export const DpmoPageHeader = ({ tab, onTabChange }: DpmoPageHeaderProps) => (
-	<Box sx={{ mb: 2.5 }}>
+/**
+ * Mirrors DashboardPageHeader — same filter bar, DPMO-specific title. Kept separate
+ * so the two pages can carry different copy without parameterising the analytics header.
+ */
+export const DpmoPageHeader = ({
+	draftPreset,
+	draftPresetLabel,
+	draftDisplayLabel,
+	onDraftPresetChange,
+	onDraftCustomRangeChange,
+	draftCustomFrom,
+	draftCustomTo,
+	draftFilters,
+	onDraftFilterChange,
+	onApply,
+	onReset,
+	isDirty,
+	hasActiveFilters,
+	unitOptions,
+	workstationOptions,
+	shiftOptions,
+	projectOptions,
+	sapProductOptions,
+	variantOptions,
+	variantDisabled,
+	variantPlaceholder,
+	filtersDisabled = false
+}: DpmoPageHeaderProps) => (
+	<Box sx={{ pb: 2.5, mb: 0.5 }}>
 		<Box sx={{ minWidth: 0, mb: 2 }}>
 			<Typography
 				component="h1"
@@ -18,30 +67,36 @@ export const DpmoPageHeader = ({ tab, onTabChange }: DpmoPageHeaderProps) => (
 				DPMO Dashboard
 			</Typography>
 			<Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, maxWidth: 560, lineHeight: 1.55 }}>
-				Quality defects and first-pass yield across projects, with per-project drill-down.
+				Defect and first pass yield analysis across shifts, projects, workstations, and operators for completed PRCs in
+				the selected period.
 			</Typography>
 		</Box>
-		<Tabs
-			value={tab}
-			onChange={(_e, next: DpmoTab) => onTabChange(next)}
-			textColor="primary"
-			indicatorColor="primary"
-			sx={{
-				minHeight: 38,
-				borderBottom: 1,
-				borderColor: 'divider',
-				'& .MuiTab-root': {
-					textTransform: 'none',
-					fontWeight: 600,
-					fontSize: '0.875rem',
-					minHeight: 38,
-					px: 2,
-					letterSpacing: '-0.005em'
-				}
-			}}
-		>
-			<Tab value="overall" label="Overall" />
-			<Tab value="projectWise" label="Project Wise" />
-		</Tabs>
+
+		<Stack>
+			<DashboardFilterBar
+				draftFilters={draftFilters}
+				onDraftFilterChange={onDraftFilterChange}
+				draftPreset={draftPreset}
+				draftPresetLabel={draftPresetLabel}
+				draftDisplayLabel={draftDisplayLabel}
+				draftCustomFrom={draftCustomFrom}
+				draftCustomTo={draftCustomTo}
+				onDraftPresetChange={onDraftPresetChange}
+				onDraftCustomRangeChange={onDraftCustomRangeChange}
+				onApply={onApply}
+				onReset={onReset}
+				isDirty={isDirty}
+				hasActiveFilters={hasActiveFilters}
+				unitOptions={unitOptions}
+				workstationOptions={workstationOptions}
+				shiftOptions={shiftOptions}
+				projectOptions={projectOptions}
+				sapProductOptions={sapProductOptions}
+				variantOptions={variantOptions}
+				variantDisabled={variantDisabled}
+				variantPlaceholder={variantPlaceholder}
+				disabled={filtersDisabled}
+			/>
+		</Stack>
 	</Box>
 );

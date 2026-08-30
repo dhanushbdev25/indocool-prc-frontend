@@ -3,6 +3,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import {
 	CartesianGrid,
 	LabelList,
+	Legend,
 	Line,
 	LineChart,
 	ResponsiveContainer,
@@ -10,15 +11,18 @@ import {
 	XAxis,
 	YAxis
 } from 'recharts';
-import { analyticsChartHeight } from '../../constants/dashboardTokens';
-import { hasChartData } from '../../utils/chartHelpers';
+import { analyticsChartHeight, chartSeriesColors } from '../../constants/dashboardTokens';
+import { hasChartData, hasMultiSeriesData } from '../../utils/chartHelpers';
 import { DashboardChartEmptyState } from './DashboardChartEmptyState';
-import type { ChartDataPoint } from './chartTypes';
+import type { ChartDataPoint, ChartSeries, MultiSeriesPoint } from './chartTypes';
 
 export type { ChartDataPoint } from './chartTypes';
 
 interface DashboardChartProps {
-	data: ChartDataPoint[];
+	/** `ChartDataPoint[]` in single-series mode, `MultiSeriesPoint[]` when `series` is set. */
+	data: ChartDataPoint[] | MultiSeriesPoint[];
+	/** Supplying this switches the chart to multi-series mode: one line per entry, plus a legend. */
+	series?: ChartSeries[];
 	height?: number;
 	valueFormatter?: (value: number) => string;
 	xAxisAngle?: number;
@@ -30,6 +34,7 @@ const defaultMargin = { top: 28, right: 8, left: 0, bottom: 0 };
 
 export const DashboardChart = ({
 	data,
+	series,
 	height = analyticsChartHeight,
 	valueFormatter = v => v.toFixed(2),
 	xAxisAngle = -40,
@@ -37,7 +42,12 @@ export const DashboardChart = ({
 }: DashboardChartProps) => {
 	const theme = useTheme();
 	const chartColor = theme.palette.primary.main;
-	if (!hasChartData(data)) {
+	const isMultiSeries = series != null && series.length > 0;
+
+	const hasData = isMultiSeries
+		? hasMultiSeriesData(data as MultiSeriesPoint[], series)
+		: hasChartData(data as ChartDataPoint[]);
+	if (!hasData) {
 		return <DashboardChartEmptyState height={height} />;
 	}
 
@@ -83,23 +93,56 @@ export const DashboardChart = ({
 	};
 
 	const gridStroke = alpha(theme.palette.divider, 0.8);
+	const seriesColors = chartSeriesColors(theme);
 
+	// Multi-series mode drops the per-point labels — several overlapping lines make them unreadable.
 	const chart = (
 		<LineChart data={data} margin={defaultMargin}>
 			<CartesianGrid strokeDasharray="4 4" stroke={gridStroke} vertical={false} />
 			<XAxis {...xAxisProps} />
 			<YAxis {...yAxisProps} />
-			<Tooltip {...tooltipStyle} formatter={(v: number) => [valueFormatter(v), 'Value']} />
-			<Line
-				type="monotone"
-				dataKey="value"
-				stroke={chartColor}
-				strokeWidth={2.5}
-				dot={{ fill: chartColor, r: 3.5, strokeWidth: 2, stroke: theme.palette.background.paper }}
-				activeDot={{ r: 5, strokeWidth: 0 }}
-			>
-				<LabelList dataKey="value" {...labelProps} />
-			</Line>
+			{isMultiSeries ? (
+				<Tooltip {...tooltipStyle} formatter={(v: number) => valueFormatter(v)} />
+			) : (
+				<Tooltip {...tooltipStyle} formatter={(v: number) => [valueFormatter(v), 'Value']} />
+			)}
+			{isMultiSeries ? (
+				<Legend
+					verticalAlign="bottom"
+					height={28}
+					iconType="plainline"
+					iconSize={14}
+					wrapperStyle={{ fontSize: 11, color: theme.palette.text.secondary }}
+				/>
+			) : null}
+			{isMultiSeries ? (
+				series.map((s, index) => {
+					const color = seriesColors[index % seriesColors.length];
+					return (
+						<Line
+							key={s.key}
+							type="monotone"
+							dataKey={s.key}
+							name={s.label}
+							stroke={color}
+							strokeWidth={2}
+							dot={{ fill: color, r: 2.5, strokeWidth: 0 }}
+							activeDot={{ r: 4.5, strokeWidth: 0 }}
+						/>
+					);
+				})
+			) : (
+				<Line
+					type="monotone"
+					dataKey="value"
+					stroke={chartColor}
+					strokeWidth={2.5}
+					dot={{ fill: chartColor, r: 3.5, strokeWidth: 2, stroke: theme.palette.background.paper }}
+					activeDot={{ r: 5, strokeWidth: 0 }}
+				>
+					<LabelList dataKey="value" {...labelProps} />
+				</Line>
+			)}
 		</LineChart>
 	);
 
