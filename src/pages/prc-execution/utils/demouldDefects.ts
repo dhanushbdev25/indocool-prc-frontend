@@ -7,7 +7,8 @@
  *
  * - the defect category list offered by the annotator is the demould defect parameters the
  *   operator actually recorded a count above zero for, and
- * - marking any defect on an image flips the demould `Status` parameter to OK with deviation.
+ * - recording any defect flips the demould `Status` parameter to OK with deviation, whether the
+ *   defect was entered as a count on the inspection sheet or marked on an image.
  *
  * The demould step is matched on `inspectionMetadata.type`, not on a hardcoded id. Two
  * separate Demould Inspection rows exist and both are live in templates, and their ids differ
@@ -97,6 +98,74 @@ export function collectDemouldDefectCategories(
 }
 
 /**
+ * True when the operator recorded a count of at least one against any demould defect parameter.
+ *
+ * Deliberately independent of the parameter's name, unlike the annotator's category list: a
+ * defect row with a blank name still means the part came out of the mould with a defect on it.
+ */
+export function hasDemouldDefectCount(
+	demouldStep: TimelineStep | null | undefined,
+	prcAggregatedSteps: AggregatedSteps | undefined
+): boolean {
+	if (!demouldStep) return false;
+	const bucket = demouldBucket(demouldStep, prcAggregatedSteps);
+	if (!bucket) return false;
+
+	return (demouldStep.inspectionParameters ?? []).some(
+		param => param.type === 'number' && isPositiveCount(readParameterValue(bucket, param.id))
+	);
+}
+
+/**
+ * Reads a parameter's value out of the in-progress form state. The step form keys answers by
+ * bare parameter id and stores either the value itself or `{ value }`, the same two shapes the
+ * saved tree uses.
+ */
+function readFormParameterValue(formData: Record<string, unknown>, parameterId: number): unknown {
+	const entry = formData[String(parameterId)];
+	if (isPlainObject(entry) && 'value' in entry) return entry.value;
+	return entry;
+}
+
+/**
+ * True when the operator has typed a count of at least one against any demould defect parameter
+ * in the form that is open right now — before anything has been saved.
+ *
+ * This is what lets the Status radio move as the count is typed. `hasDemouldDefectCount` answers
+ * the same question against the saved tree, which is what the save-time latch uses.
+ */
+export function hasDemouldDefectCountInForm(
+	step: TimelineStep | null | undefined,
+	formData: Record<string, unknown> | undefined
+): boolean {
+	if (!step || !isDemouldInspectionStep(step) || !formData) return false;
+
+	return (step.inspectionParameters ?? []).some(
+		param => param.type === 'number' && isPositiveCount(readFormParameterValue(formData, param.id))
+	);
+}
+
+/**
+ * The same list as `collectDemouldDefectCategories`, but read from the demould step's own
+ * in-progress form instead of the saved tree.
+ *
+ * Annotating on the demould sheet itself is the case this exists for: the counts the operator
+ * just typed have not been saved yet, so the saved-tree version returns nothing and the
+ * annotator would fall back to free text.
+ */
+export function collectDemouldDefectCategoriesFromForm(
+	step: TimelineStep | null | undefined,
+	formData: Record<string, unknown> | undefined
+): string[] {
+	if (!step || !isDemouldInspectionStep(step) || !formData) return [];
+
+	return (step.inspectionParameters ?? [])
+		.filter(param => param.type === 'number' && isPositiveCount(readFormParameterValue(formData, param.id)))
+		.map(param => param.parameterName)
+		.filter(name => typeof name === 'string' && name.trim() !== '');
+}
+
+/**
  * True when any image anywhere in the execution carries at least one marked region.
  *
  * Walks the saved tree rather than a specific shape: regions hang off `annotations` on a
@@ -124,18 +193,27 @@ export function hasAnyAnnotationRegion(prcAggregatedSteps: AggregatedSteps | und
 }
 
 /**
- * Flips the demould Status to OK with deviation once any defect has been marked on an image.
+ * Flips the demould Status to OK with deviation once any defect has been recorded — either as a
+ * count of one or more on the demould inspection sheet, or as a region marked on an image.
+ *
+ * Either trigger alone is enough: operators routinely enter the counts without ever opening the
+ * annotator, and an image can be marked from a later FIR/AFIR step without the counts being
+ * touched, so gating on both together would miss the common case.
  *
  * A one-way latch: it only ever writes the deviation value, never back to OK, so clearing the
- * annotations later leaves the Status where it is and a manual override is never overwritten.
- * Returns the original object untouched when there is nothing to do, so callers can use the
- * result unconditionally.
+ * counts or annotations later leaves the Status where it is and a manual override is never
+ * overwritten. Returns the original object untouched when there is nothing to do, so callers can
+ * use the result unconditionally.
  */
 export function applyDemouldStatusDeviation(
 	prcAggregatedSteps: AggregatedSteps,
 	demouldStep: TimelineStep | null | undefined
 ): AggregatedSteps {
-	if (!demouldStep || !hasAnyAnnotationRegion(prcAggregatedSteps)) return prcAggregatedSteps;
+	if (!demouldStep) return prcAggregatedSteps;
+
+	const defectRecorded =
+		hasDemouldDefectCount(demouldStep, prcAggregatedSteps) || hasAnyAnnotationRegion(prcAggregatedSteps);
+	if (!defectRecorded) return prcAggregatedSteps;
 
 	const key = demouldBucketKey(demouldStep);
 	const status = findDemouldStatusParameter(demouldStep);

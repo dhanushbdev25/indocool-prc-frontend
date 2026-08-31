@@ -41,10 +41,16 @@ import {
 import ImageAnnotator from '../ImageAnnotator';
 import { countAnnotationsByCategory } from '../defectAnnotationStyles';
 import { transformPrcAggregatedData, debugDataTransformation } from '../../../../utils/dataTransformers';
-import { isDemouldInspectionStep } from '../../../../utils/demouldDefects';
+import {
+	collectDemouldDefectCategoriesFromForm,
+	findDemouldStatusParameter,
+	hasDemouldDefectCountInForm,
+	isDemouldInspectionStep
+} from '../../../../utils/demouldDefects';
 import {
 	OK_NOT_OK_CHOICE_LIST_LABEL,
 	OK_NOT_OK_NEGATIVE_LABEL,
+	OK_NOT_OK_NEGATIVE_VALUE,
 	OK_NOT_OK_OPTIONS,
 	OK_NOT_OK_SELECTED_COLORS,
 	OK_NOT_OK_TYPE_KEY,
@@ -460,6 +466,21 @@ const InspectionStep = ({
 
 	const isReadOnly = Boolean(readOnlyOverride) || step.status === 'completed';
 
+	// The demould Status is driven by the defect counts on the same sheet: any count of one or
+	// more forces it to OK with deviation and locks it. Both are undefined/false on every other
+	// inspection, so this is inert elsewhere. See utils/demouldDefects.ts.
+	const demouldStatusParameter = isDemould ? findDemouldStatusParameter(step) : undefined;
+	const demouldDefectRecorded = hasDemouldDefectCountInForm(step, formData);
+
+	// Annotating on the demould sheet itself has to read the counts being typed right now — they
+	// are not saved yet, so the categories passed down from the execution screen (which come from
+	// the saved tree) would be empty and the annotator would drop to free text. Every other step
+	// keeps using the saved list, since it cannot see the demould step's form.
+	const annotatorDefectCategories = useMemo(
+		() => (isDemould ? collectDemouldDefectCategoriesFromForm(step, formData) : defectCategories),
+		[isDemould, step, formData, defectCategories]
+	);
+
 	// Debug logging
 	console.log('InspectionStep Debug:', {
 		stepStatus: step.status,
@@ -509,6 +530,19 @@ const InspectionStep = ({
 				if (!acceptsOkNotOkComment(value)) {
 					delete newFormData[getNotOkCommentKey(key)];
 				}
+			}
+
+			// A demould defect count of one or more forces Status to OK with deviation and locks
+			// the radio, so the counts and the Status can never disagree. Done here rather than in
+			// an effect so the radio moves in the same render as the count that caused it.
+			const demouldStatus = findDemouldStatusParameter(step);
+			if (demouldStatus && hasDemouldDefectCountInForm(step, newFormData)) {
+				const statusKey = demouldStatus.id.toString();
+				const existingStatus = newFormData[statusKey];
+				newFormData[statusKey] = {
+					...(typeof existingStatus === 'object' && existingStatus !== null ? existingStatus : {}),
+					value: OK_NOT_OK_NEGATIVE_VALUE
+				};
 			}
 
 			return newFormData;
@@ -1376,11 +1410,26 @@ const InspectionStep = ({
 													// Handle different parameter types
 													if (param.type === 'ok/not ok') {
 														const commentKey = getNotOkCommentKey(param.id.toString());
+														// The demould Status is driven by the defect counts above it, so it is locked
+														// while any count is one or more. Clearing the counts hands it back.
+														const lockedByDemouldDefects =
+															demouldStatusParameter?.id === param.id && demouldDefectRecorded;
 														return (
-															<FormControl component="fieldset" disabled={isReadOnly} fullWidth sx={{ width: '100%' }}>
+															<FormControl
+																component="fieldset"
+																disabled={isReadOnly || lockedByDemouldDefects}
+																fullWidth
+																sx={{ width: '100%' }}
+															>
 																<FormLabel component="legend" sx={{ fontSize: '0.875rem', color: '#666', mb: 1 }}>
 																	Select Result
 																</FormLabel>
+																{lockedByDemouldDefects && (
+																	<Typography variant="caption" sx={{ color: '#ed6c02', mb: 1 }}>
+																		Set automatically because a defect count above is 1 or more. Clear the counts to
+																		change it.
+																	</Typography>
+																)}
 																<RadioGroup
 																	row
 																	value={currentValue}
@@ -1830,7 +1879,7 @@ const InspectionStep = ({
 																										handleFixedTableRowAnnotationSave(param.id, rowIdx, newAnnotations)
 																									}
 																									readOnly={isReadOnly}
-																									defectCategories={defectCategories}
+																									defectCategories={annotatorDefectCategories}
 																									parameterContext={{
 																										parameterName: param.parameterName,
 																										specification: param.specification,
@@ -2462,7 +2511,7 @@ const InspectionStep = ({
 															})()}
 															onSave={newAnnotations => handleAnnotationSave(param.id, newAnnotations)}
 															readOnly={isReadOnly}
-															defectCategories={defectCategories}
+															defectCategories={annotatorDefectCategories}
 															parameterContext={{
 																parameterName: param.parameterName,
 																specification: param.specification,

@@ -421,10 +421,11 @@ const ExecutePrc = () => {
 
 			const userApprovalData = buildUserApprovalData(stepToProcess, 'dataEnteredBy', userInfo.id);
 			const previousAggregatedData = getCurrentAggregatedData();
-			// Any defect marked on an image flips the demould Status to OK with deviation. It runs
-			// over the whole merged tree rather than being wired to the annotator, so it catches a
-			// defect marked from any step and self-corrects if an earlier save missed it. One-way:
-			// it never writes back to OK, so clearing the defects or overriding by hand both stick.
+			// Any recorded defect — a count of one or more on the demould sheet, or a region marked
+			// on an image — flips the demould Status to OK with deviation. It runs over the whole
+			// merged tree rather than being wired to one input, so it catches a defect recorded from
+			// any step and self-corrects if an earlier save missed it. One-way: it never writes back
+			// to OK, so clearing the defects or overriding by hand both stick.
 			const mergedAggregatedData = applyDemouldStatusDeviation(
 				stampEditedAfterSubmit(
 					stepToProcess,
