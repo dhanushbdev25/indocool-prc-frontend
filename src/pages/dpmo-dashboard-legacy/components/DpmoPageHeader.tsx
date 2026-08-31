@@ -7,17 +7,12 @@ interface DpmoPageHeaderProps {
 	onTabChange: (next: DpmoTab) => void;
 }
 
+// The page title now lives on DpmoDashboard, which renders this dashboard as its
+// "Legacy" tab — only the subtitle and the Overall/Project Wise tabs belong here.
 export const DpmoPageHeader = ({ tab, onTabChange }: DpmoPageHeaderProps) => (
 	<Box sx={{ mb: 2.5 }}>
 		<Box sx={{ minWidth: 0, mb: 2 }}>
-			<Typography
-				component="h1"
-				variant="h5"
-				sx={{ fontWeight: 700, letterSpacing: '-0.025em', lineHeight: 1.25, color: 'text.primary' }}
-			>
-				DPMO Dashboard
-			</Typography>
-			<Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, maxWidth: 560, lineHeight: 1.55 }}>
+			<Typography variant="body2" color="text.secondary" sx={{ maxWidth: 560, lineHeight: 1.55 }}>
 				Quality defects and first-pass yield across projects, with per-project drill-down.
 			</Typography>
 		</Box>

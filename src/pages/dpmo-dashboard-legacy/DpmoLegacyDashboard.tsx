@@ -5,15 +5,15 @@ import { DpmoOverallTab } from './components/tabs/DpmoOverallTab';
 import { DpmoProjectWiseTab } from './components/tabs/DpmoProjectWiseTab';
 
 /**
- * The pre-rebuild DPMO dashboard, kept verbatim behind a hidden route
- * (`/dpmo-dashboard-legacy`) while the new three-endpoint page beds in.
- * Still reads the superseded `dashboard/metrics/dpmo` endpoint.
+ * The pre-rebuild DPMO dashboard, kept as the "Legacy" tab on DpmoDashboard
+ * while the new three-endpoint page beds in. Still reads the superseded
+ * `dashboard/metrics/dpmo` endpoint.
  */
 const DpmoLegacyDashboard = () => {
 	const [tab, setTab] = useState<DpmoTab>('overall');
 
 	return (
-		<Box component="article" sx={{ minWidth: 0, pb: { xs: 2, sm: 3 } }}>
+		<Box sx={{ minWidth: 0 }}>
 			<DpmoPageHeader tab={tab} onTabChange={setTab} />
 
 			{/* Both tabs mounted to preserve independent filter state across switches */}

@@ -18,7 +18,6 @@ import {
 export const imports = {
 	dashboard: Loadable(lazy(() => import('../pages/dashboard/Dashboard'))),
 	dpmoDashboard: Loadable(lazy(() => import('../pages/dpmo-dashboard/DpmoDashboard'))),
-	dpmoDashboardLegacy: Loadable(lazy(() => import('../pages/dpmo-dashboard-legacy/DpmoLegacyDashboard'))),
 	reports: Loadable(lazy(() => import('../pages/reports/Reports'))),
 	catalystMaster: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/list-catalyst'))),
 	createCatalyst: Loadable(lazy(() => import('../pages/masters/catalyst-master/components/create-catalyst'))),
@@ -93,16 +92,6 @@ export const mainModuleConfigs: MainModuleConfig[] = [
 				permission: 'DPMO_DASHBOARD_VIEW',
 				order: 2,
 				showInSidebar: true
-			},
-			{
-				// Pre-rebuild DPMO dashboard — reachable by URL only, deliberately not in the sidebar.
-				icon: DashboardIcon,
-				text: 'DPMO Dashboard (legacy)',
-				path: 'dpmo-dashboard-legacy',
-				element: imports.dpmoDashboardLegacy,
-				permission: 'DPMO_DASHBOARD_VIEW',
-				order: 3,
-				showInSidebar: false
 			}
 		]
 	},

@@ -24,12 +24,11 @@ const SectionSkeleton = ({ charts }: { charts: number }) => (
 	</Box>
 );
 
+// Covers the tab body only — DpmoDashboard renders the title and tab bar immediately.
 export const DpmoSkeleton = () => (
-	<Box component="article" sx={{ minWidth: 0, pb: { xs: 2, sm: 3 } }}>
-		<Box sx={{ pb: 2.5, mb: 0.5, borderBottom: 1, borderColor: 'divider' }}>
-			<Skeleton variant="text" width={260} height={36} />
-			<Skeleton variant="text" width={420} height={20} sx={{ mt: 1 }} />
-			<Skeleton variant="rounded" width="100%" height={132} sx={{ mt: 2, borderRadius: '12px' }} />
+	<Box sx={{ minWidth: 0 }}>
+		<Box sx={{ pb: 2.5, mb: 0.5 }}>
+			<Skeleton variant="rounded" width="100%" height={132} sx={{ borderRadius: '12px' }} />
 		</Box>
 
 		<Stack spacing={analyticsPageGap}>
