@@ -7,6 +7,9 @@ export interface BuildTimelineStepsOptions {
 	omitStepTypes?: TimelineStep['type'][];
 }
 
+/** Steps reached from the header rather than by walking the timeline in order. */
+const OUT_OF_FLOW_STEP_TYPES = new Set<TimelineStep['type']>(['rawMaterials', 'bom']);
+
 function isPrcMetadataComplete(prcAggregatedSteps: Record<string, unknown> | undefined): boolean {
 	const meta = prcAggregatedSteps?.prcmetadata;
 	if (!meta || typeof meta !== 'object') return false;
@@ -356,22 +359,37 @@ export function buildTimelineSteps(
 		reportStepIndex: index
 	}));
 
+	const completionStates = stepsWithReportIndex.map(step =>
+		isTimelineStepComplete(step, executionData.prcAggregatedSteps, executionData)
+	);
+	// The frontier runs over the full list rather than the caller's visible subset. The execution
+	// page hides the material steps and the report hides SAP confirmations, so deriving it from
+	// what each page happens to show gave the same step two different statuses — the report
+	// marked approved sequence groups 'pending' because Bill of Material Validation, which the
+	// execution page never counts, sat unfinished ahead of them.
+	//
+	// Those two material steps are opened from the header instead of being walked through in
+	// order, so they stay out of the frontier entirely and just report their own completion.
+	const firstIncompleteIndex = stepsWithReportIndex.findIndex(
+		(step, index) => !OUT_OF_FLOW_STEP_TYPES.has(step.type) && !completionStates[index]
+	);
+
 	const omitStepTypes = new Set(options.omitStepTypes ?? []);
 	const visibleSteps =
 		omitStepTypes.size > 0 ? stepsWithReportIndex.filter(step => !omitStepTypes.has(step.type)) : stepsWithReportIndex;
 
-	const completionStates = visibleSteps.map(step =>
-		isTimelineStepComplete(step, executionData.prcAggregatedSteps, executionData)
-	);
-	const firstIncompleteIndex = completionStates.findIndex(isComplete => !isComplete);
-
-	return visibleSteps.map((step, index) => ({
-		...step,
-		status:
-			firstIncompleteIndex === -1 || index < firstIncompleteIndex
-				? 'completed'
-				: index === firstIncompleteIndex
-					? 'in-progress'
-					: 'pending'
-	}));
+	return visibleSteps.map(step => {
+		const index = step.reportStepIndex as number;
+		let status: TimelineStep['status'];
+		if (OUT_OF_FLOW_STEP_TYPES.has(step.type)) {
+			status = completionStates[index] ? 'completed' : 'pending';
+		} else if (firstIncompleteIndex === -1 || index < firstIncompleteIndex) {
+			status = 'completed';
+		} else if (index === firstIncompleteIndex) {
+			status = 'in-progress';
+		} else {
+			status = 'pending';
+		}
+		return { ...step, status };
+	});
 }
