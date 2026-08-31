@@ -15,7 +15,7 @@ import BomStep from '../execute-prc/components/steps/BomStep';
 import SapConfirmationStep from '../execute-prc/components/steps/SapConfirmationStep';
 import StepPreview from '../execute-prc/components/StepPreview';
 import StepExecutionMetaSummary from '../StepExecutionMetaSummary';
-import { formatDisplayDateTime } from '../../../../utils/formatDisplayDate';
+import { formatDisplayDate, formatDisplayDateTime } from '../../../../utils/formatDisplayDate';
 import './prcExecutionReportPrint.css';
 
 const noopForm = (_fd: FormData) => {
@@ -77,27 +77,19 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 		<>
 			<Box className="prc-report-header-summary-grid" sx={summaryGridSx}>
 				<ReportSummaryField label="Order no.">{formatOrderId(execution.orderId)}</ReportSummaryField>
+				<ReportSummaryField label="Date">{formatDisplayDate(execution.date) ?? '—'}</ReportSummaryField>
+
 				<ReportSummaryField label="Part no.">{execution.partNumber || '—'}</ReportSummaryField>
-				<ReportSummaryField label="Customer">{execution.customer || '—'}</ReportSummaryField>
+				<ReportSummaryField label="SAP no.">{execution.sapReferenceNumber || '—'}</ReportSummaryField>
 				<ReportSummaryField label="Part description">{execution.partDescription || '—'}</ReportSummaryField>
-				<ReportSummaryField label="Drawing">{execution.drawingNumber || '—'}</ReportSummaryField>
+				<ReportSummaryField label="Drawing no">{execution.drawingNumber || '—'}</ReportSummaryField>
+				<ReportSummaryField label="Customer">{execution.customer || '—'}</ReportSummaryField>
+
 				<ReportSummaryField label="Variant">{execution.customerVariantName || '—'}</ReportSummaryField>
-				<ReportSummaryField label="Date">{execution.date ?? '—'}</ReportSummaryField>
-				<ReportSummaryField label="Shift">{execution.shift ?? '—'}</ReportSummaryField>
 				<ReportSummaryField label="Mould">{mouldDisplay}</ReportSummaryField>
-				<ReportSummaryField label="PRC template">
-					{templateName ? (
-						<>
-							{templateName}
-							{templateVersion != null ? ` · v${templateVersion}` : ''}
-						</>
-					) : (
-						'—'
-					)}
-				</ReportSummaryField>
-				<ReportSummaryField label="PRC Set">{getPrcSetId(execution)}</ReportSummaryField>
-				<ReportSummaryField label="SAP Set">{execution.productionSetId ?? '—'}</ReportSummaryField>
-				<ReportSummaryField label="Reservation">{execution.reservation || '—'}</ReportSummaryField>
+				<ReportSummaryField label="PRC Set ID">{getPrcSetId(execution)}</ReportSummaryField>
+				{/* <ReportSummaryField label="SAP Set">{execution.productionSetId ?? '—'}</ReportSummaryField> */}
+				<ReportSummaryField label="Reservation no">{execution.reservation || '—'}</ReportSummaryField>
 				<Box sx={{ gridColumn: '1 / -1' }}>
 					<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
 						Remarks
@@ -115,7 +107,7 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 				className="prc-report-bom-pot-life"
 				sx={{ mb: 2, borderRadius: 2, mt: 2 }}
 			>
-				<Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5}}>
+				<Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
 					Physical signature is not required for Digital PRC; electronic approval shall serve as evidence of
 					authorization
 				</Typography>
@@ -456,21 +448,21 @@ const PrcExecutionReport = () => {
 				className="prc-report-section prc-report-hero-paper"
 			>
 				<Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-					{isSingleStepReport ? 'PRC step report' : 'PRC consolidated report'}
+					{isSingleStepReport ? 'PRC Step Report' : 'PRC Report'}
 				</Typography>
-				<Typography variant="body2" color="text.secondary">
+				{/* <Typography variant="body2" color="text.secondary">
 					Execution #{execution.id}
-				</Typography>
+				</Typography> */}
 				{isSingleStepReport && singleTimelineStep && (
 					<Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 600 }}>
 						Step {singleTimelineStep.stepNumber}: {singleTimelineStep.title}
 					</Typography>
 				)}
-				{execution.sapReferenceNumber && (
+				{/* {execution.sapReferenceNumber && (
 					<Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
 						SAP reference {execution.sapReferenceNumber}
 					</Typography>
-				)}
+				)} */}
 				<Divider sx={{ my: 2 }} />
 				<ReportExecutionHeaderSummary execution={execution} />
 			</Paper>

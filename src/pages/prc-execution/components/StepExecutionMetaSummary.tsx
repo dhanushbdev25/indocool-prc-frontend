@@ -15,6 +15,7 @@ import {
 	getStepTiming,
 	isStepLate
 } from '../utils/timelineCardTiming';
+import { formatDisplayDateTime } from '../../../utils/formatDisplayDate';
 
 const timingFontSx = {
 	fontFamily: '"SF Mono", "Roboto Mono", ui-monospace, monospace',
@@ -284,7 +285,7 @@ function ReportMetaPanel({
 			<Box className="prc-report-step-meta-grid" sx={gridSx}>
 				{hasStart && (
 					<ReportMetaField label="Start time">
-						{formatStepTimestamp(approvalMeta.startTime)}
+						{formatDisplayDateTime(approvalMeta.startTime)}
 					</ReportMetaField>
 				)}
 				{plannedSec !== null && (
