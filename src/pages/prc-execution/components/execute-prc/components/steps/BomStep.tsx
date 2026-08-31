@@ -621,28 +621,6 @@ const BomStep = ({
 			className={expandAccordionsForPdf ? 'prc-report-bom-root' : undefined}
 			sx={{ p: 3, backgroundColor: '#fafafa' }}
 		>
-			<Alert
-				severity="info"
-				icon={<AccessTimeIcon />}
-				className="prc-report-bom-pot-life"
-				sx={{ mb: 2, borderRadius: 2 }}
-			>
-				<Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-					Prepared chemical mixtures shall be utilized within the specified pot life
-				</Typography>
-				<Box component="ul" sx={{ m: 0, pl: 2.25 }}>
-					<Typography component="li" variant="body2">
-						Gelcoat pot life - 15 mins
-					</Typography>
-					<Typography component="li" variant="body2">
-						Resin pot life - 30 mins
-					</Typography>
-					<Typography component="li" variant="body2">
-						Topcoat pot life - 15 mins
-					</Typography>
-				</Box>
-			</Alert>
-
 			{/* Material Groups */}
 			{Object.entries(groupedEntries).map(([materialCode, entries], groupIndex) => (
 				<Accordion
@@ -1005,6 +983,27 @@ const BomStep = ({
 														sx={{ mt: 1.5 }}
 													/>
 												)}
+												<Alert
+													severity="info"
+													icon={<AccessTimeIcon />}
+													className="prc-report-bom-pot-life"
+													sx={{ mb: 2, borderRadius: 2 }}
+												>
+													<Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+														Prepared chemical mixtures shall be utilized within the specified pot life
+													</Typography>
+													<Box component="ul" sx={{ m: 0, pl: 2.25 }}>
+														<Typography component="li" variant="body2">
+															Gelcoat pot life - 15 mins
+														</Typography>
+														<Typography component="li" variant="body2">
+															Resin pot life - 30 mins
+														</Typography>
+														<Typography component="li" variant="body2">
+															Topcoat pot life - 15 mins
+														</Typography>
+													</Box>
+												</Alert>
 											</FormControl>
 										</Box>
 

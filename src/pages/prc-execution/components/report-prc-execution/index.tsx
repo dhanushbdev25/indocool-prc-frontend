@@ -1,17 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import {
-	Box,
-	Button,
-	CircularProgress,
-	Paper,
-	Stack,
-	Typography,
-	Alert,
-	Chip,
-	Divider
-} from '@mui/material';
-import { ArrowBack, PictureAsPdf } from '@mui/icons-material';
+import { Box, Button, CircularProgress, Paper, Stack, Typography, Alert, Chip, Divider } from '@mui/material';
+import { ArrowBack, PictureAsPdf, WarningAmberOutlined } from '@mui/icons-material';
 import { useFetchPrcExecutionDetailsQuery } from '../../../../store/api/business/prc-execution/prc-execution.api';
 import type { ExecutionData, FormData, TimelineStep } from '../../types/execution.types';
 import { buildTimelineSteps } from '../../utils/buildTimelineSteps';
@@ -67,8 +57,7 @@ function ReportSummaryField({ label, children }: { label: string; children: Reac
 function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData }) {
 	const templateName = execution.prcCurrentTemplate?.prcTemplate?.templateName;
 	const templateVersion = execution.prcCurrentTemplate?.prcTemplate?.version;
-	const mouldDisplay =
-		[execution.mouldCode, execution.mouldId].filter(Boolean).join(' · ') || '—';
+	const mouldDisplay = [execution.mouldCode, execution.mouldId].filter(Boolean).join(' · ') || '—';
 
 	const summaryGridSx = {
 		display: 'grid',
@@ -85,46 +74,57 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 	} as const;
 
 	return (
-		<Box className="prc-report-header-summary-grid" sx={summaryGridSx}>
-			<ReportSummaryField label="Order no.">{formatOrderId(execution.orderId)}</ReportSummaryField>
-			<ReportSummaryField label="Part no.">{execution.partNumber || '—'}</ReportSummaryField>
-			<ReportSummaryField label="Customer">{execution.customer || '—'}</ReportSummaryField>
-			<ReportSummaryField label="Part description">{execution.partDescription || '—'}</ReportSummaryField>
-			<ReportSummaryField label="Drawing">{execution.drawingNumber || '—'}</ReportSummaryField>
-			<ReportSummaryField label="Variant">{execution.customerVariantName || '—'}</ReportSummaryField>
-			<ReportSummaryField label="Date">{execution.date ?? '—'}</ReportSummaryField>
-			<ReportSummaryField label="Shift">{execution.shift ?? '—'}</ReportSummaryField>
-			<ReportSummaryField label="Mould">{mouldDisplay}</ReportSummaryField>
-			<ReportSummaryField label="PRC template">
-				{templateName ? (
-					<>
-						{templateName}
-						{templateVersion != null ? ` · v${templateVersion}` : ''}
-					</>
-				) : (
-					'—'
-				)}
-			</ReportSummaryField>
-			<ReportSummaryField label="PRC Set">{getPrcSetId(execution)}</ReportSummaryField>
-			<ReportSummaryField label="SAP Set">{execution.productionSetId ?? '—'}</ReportSummaryField>
-			<ReportSummaryField label="Reservation">{execution.reservation || '—'}</ReportSummaryField>
-			<Box sx={{ gridColumn: '1 / -1' }}>
-				<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-					Remarks
-				</Typography>
-				<Typography variant="body2" sx={{ fontWeight: 500, whiteSpace: 'pre-wrap' }}>
-					{execution.remarks?.trim() ? execution.remarks : '—'}
-				</Typography>
+		<>
+			<Box className="prc-report-header-summary-grid" sx={summaryGridSx}>
+				<ReportSummaryField label="Order no.">{formatOrderId(execution.orderId)}</ReportSummaryField>
+				<ReportSummaryField label="Part no.">{execution.partNumber || '—'}</ReportSummaryField>
+				<ReportSummaryField label="Customer">{execution.customer || '—'}</ReportSummaryField>
+				<ReportSummaryField label="Part description">{execution.partDescription || '—'}</ReportSummaryField>
+				<ReportSummaryField label="Drawing">{execution.drawingNumber || '—'}</ReportSummaryField>
+				<ReportSummaryField label="Variant">{execution.customerVariantName || '—'}</ReportSummaryField>
+				<ReportSummaryField label="Date">{execution.date ?? '—'}</ReportSummaryField>
+				<ReportSummaryField label="Shift">{execution.shift ?? '—'}</ReportSummaryField>
+				<ReportSummaryField label="Mould">{mouldDisplay}</ReportSummaryField>
+				<ReportSummaryField label="PRC template">
+					{templateName ? (
+						<>
+							{templateName}
+							{templateVersion != null ? ` · v${templateVersion}` : ''}
+						</>
+					) : (
+						'—'
+					)}
+				</ReportSummaryField>
+				<ReportSummaryField label="PRC Set">{getPrcSetId(execution)}</ReportSummaryField>
+				<ReportSummaryField label="SAP Set">{execution.productionSetId ?? '—'}</ReportSummaryField>
+				<ReportSummaryField label="Reservation">{execution.reservation || '—'}</ReportSummaryField>
+				<Box sx={{ gridColumn: '1 / -1' }}>
+					<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+						Remarks
+					</Typography>
+					<Typography variant="body2" sx={{ fontWeight: 500, whiteSpace: 'pre-wrap' }}>
+						{execution.remarks?.trim() ? execution.remarks : '—'}
+					</Typography>
+				</Box>
+				<ReportSummaryField label="Created">{formatWhenKnown(execution.createdAt)}</ReportSummaryField>
+				<ReportSummaryField label="Last updated">{formatWhenKnown(execution.updatedAt)}</ReportSummaryField>
 			</Box>
-			<ReportSummaryField label="Created">{formatWhenKnown(execution.createdAt)}</ReportSummaryField>
-			<ReportSummaryField label="Last updated">{formatWhenKnown(execution.updatedAt)}</ReportSummaryField>
-		</Box>
+			<Alert
+				severity="warning"
+				icon={<WarningAmberOutlined />}
+				className="prc-report-bom-pot-life"
+				sx={{ mb: 2, borderRadius: 2, mt: 2 }}
+			>
+				<Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5}}>
+					Physical signature is not required for Digital PRC; electronic approval shall serve as evidence of
+					authorization
+				</Typography>
+			</Alert>
+		</>
 	);
 }
 
-function stepStatusChipColor(
-	status: TimelineStep['status']
-): 'success' | 'info' | 'warning' | 'default' {
+function stepStatusChipColor(status: TimelineStep['status']): 'success' | 'info' | 'warning' | 'default' {
 	if (status === 'completed') return 'success';
 	if (status === 'in-progress') return 'info';
 	if (status === 'pending') return 'warning';
@@ -179,17 +179,9 @@ function ReportSectionShell({
 						)}
 					</Box>
 					<Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-						{step.ctq && (
-							<Chip label="CTQ" size="small" color="warning" variant="outlined" sx={{ fontWeight: 600 }} />
-						)}
+						{step.ctq && <Chip label="CTQ" size="small" color="warning" variant="outlined" sx={{ fontWeight: 600 }} />}
 						{step.partialCtqApprove && (
-							<Chip
-								label="Partial CTQ"
-								size="small"
-								color="warning"
-								variant="filled"
-								sx={{ fontWeight: 600 }}
-							/>
+							<Chip label="Partial CTQ" size="small" color="warning" variant="filled" sx={{ fontWeight: 600 }} />
 						)}
 						<Chip label={step.type} size="small" variant="outlined" />
 						<Chip label={step.status} size="small" color={stepStatusChipColor(step.status)} />
@@ -313,11 +305,7 @@ function ReportTimelineSection({
 			return (
 				<Box className={className}>
 					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						<SapConfirmationStep
-							executionData={execution}
-							onStepComplete={noopAsyncForm}
-							readOnlyOverride
-						/>
+						<SapConfirmationStep executionData={execution} onStepComplete={noopAsyncForm} readOnlyOverride />
 					</ReportSectionShell>
 				</Box>
 			);
@@ -419,8 +407,7 @@ const PrcExecutionReport = () => {
 	}
 
 	const isSingleStepReport = stepReportMode.kind === 'single';
-	const singleTimelineStep =
-		stepReportMode.kind === 'single' ? timelineSteps[stepReportMode.index] : null;
+	const singleTimelineStep = stepReportMode.kind === 'single' ? timelineSteps[stepReportMode.index] : null;
 
 	if (stepReportMode.kind === 'invalid' || stepReportMode.kind === 'sapExcluded') {
 		return (
