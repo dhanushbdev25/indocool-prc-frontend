@@ -355,6 +355,9 @@ export function buildTimingData(step: TimelineStep, startTime: string, endTime: 
 	return {};
 }
 
+const isMergeableObject = (value: unknown): value is Record<string, unknown> =>
+	value !== null && typeof value === 'object' && !Array.isArray(value);
+
 export function mergeAggregatedData(
 	existingData: Record<string, unknown> | undefined,
 	newData: Record<string, unknown>
@@ -374,7 +377,12 @@ export function mergeAggregatedData(
 			);
 			continue;
 		}
-		if (merged[key] && typeof merged[key] === 'object' && typeof value === 'object') {
+		// Arrays are `typeof === 'object'` too, so recursing into one spreads it into an
+		// index-keyed object ({ "0": {...} }) that no Array.isArray read path recognises. A step
+		// always submits its rows and annotations in full, so the incoming list replaces the
+		// stored one — which also hands back a clean array for executions already holding the
+		// index-keyed shape.
+		if (isMergeableObject(merged[key]) && isMergeableObject(value)) {
 			// Special handling for sequence step data to preserve responsiblePersons
 			if (isSequenceStepData(merged[key], value)) {
 				merged[key] = mergeSequenceStepData(merged[key] as Record<string, unknown>, value as Record<string, unknown>);
@@ -409,7 +417,23 @@ function isSequenceStepData(existing: unknown, newData: unknown): boolean {
 		existingKeys.every(key => !isNaN(Number(key))) &&
 		newKeys.every(key => !isNaN(Number(key))) &&
 		existingKeys.length > 0 &&
-		newKeys.length > 0
+		newKeys.length > 0 &&
+		hasNumericChildKeys(existingObj) &&
+		hasNumericChildKeys(newObj)
+	);
+}
+
+/**
+ * The second level of numeric keys the check above describes but never tested for. Without it an
+ * inspection step's bucket — parameter ids, so numeric keys too — was merged as sequence data, and
+ * its `value` / `annotations` arrays were spread into index-keyed objects one level down.
+ *
+ * A step group holds its stepIds alongside flags like `stepCompleted`, so one numeric key is
+ * enough; requiring all of them would stop matching real sequence data.
+ */
+function hasNumericChildKeys(obj: Record<string, unknown>): boolean {
+	return Object.values(obj).some(
+		child => isMergeableObject(child) && Object.keys(child).some(key => !isNaN(Number(key)))
 	);
 }
 

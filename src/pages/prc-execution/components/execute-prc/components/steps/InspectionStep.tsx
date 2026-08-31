@@ -40,7 +40,11 @@ import {
 } from '../../../../types/execution.types';
 import ImageAnnotator from '../ImageAnnotator';
 import { countAnnotationsByCategory } from '../defectAnnotationStyles';
-import { transformPrcAggregatedData, debugDataTransformation } from '../../../../utils/dataTransformers';
+import {
+	transformPrcAggregatedData,
+	debugDataTransformation,
+	transformObjectToArray
+} from '../../../../utils/dataTransformers';
 import {
 	collectDemouldDefectCategoriesFromForm,
 	findDemouldStatusParameter,
@@ -212,7 +216,18 @@ const InspectionStep = ({
 								const param = step.inspectionParameters?.find(p => p.id.toString() === parameterId);
 								const isTableType = param?.type === 'table' && param?.columns && param.columns.length > 0;
 
-								if (isTableType && Array.isArray(value)) {
+								if (param?.type === 'fixed-table') {
+									// The rows have to be parked on the parameter for the effect below to restore
+									// them into `<id>_fixedTable`; nothing downstream reads them from here.
+									// Without this the sheet always fell back to the template's blank rows.
+									//
+									// Rows are saved as an array, but re-saving a step spreads that array into an
+									// index-keyed object ({ "0": {...} }), which is the shape nearly every existing
+									// execution holds, so both have to load.
+									paramFormData.value = Array.isArray(value)
+										? value
+										: transformObjectToArray(value as Record<string, unknown>);
+								} else if (isTableType && Array.isArray(value)) {
 									// Table type: { "value": [{col1: val1, ...}, {col1: val1, ...}] }
 									const rows = value as Record<string, unknown>[];
 									rows.forEach((row, rowIndex) => {
