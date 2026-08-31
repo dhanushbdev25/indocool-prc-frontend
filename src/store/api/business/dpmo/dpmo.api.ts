@@ -9,12 +9,26 @@ import {
 	type DpmoSummaryData,
 	type DpmoTrendsData
 } from './dpmo.validators';
+import { buildDpmoQueryParams, parseDpmoResponse, type DpmoData, type DpmoQueryParams } from './dpmo.legacy.validators';
 
 export const dpmoApi = createApi({
 	reducerPath: 'dpmoApi',
 	baseQuery,
 	tagTypes: ['DpmoMetrics'],
 	endpoints: builder => ({
+		/**
+		 * Superseded by the three dpmometrics endpoints below, but still served by the
+		 * backend and still used by the hidden legacy DPMO dashboard route.
+		 */
+		fetchDpmoMetrics: builder.query<DpmoData, DpmoQueryParams>({
+			query: args => ({
+				url: 'dashboard/metrics/dpmo',
+				method: 'GET',
+				params: buildDpmoQueryParams(args)
+			}),
+			transformResponse: (response: unknown) => parseDpmoResponse(response),
+			providesTags: ['DpmoMetrics']
+		}),
 		fetchDpmoSummary: builder.query<DpmoSummaryData, DashboardQueryParams>({
 			query: args => ({
 				url: 'dashboard/metrics/dpmometrics/summary',
@@ -45,4 +59,9 @@ export const dpmoApi = createApi({
 	})
 });
 
-export const { useFetchDpmoSummaryQuery, useFetchDpmoBreakdownQuery, useFetchDpmoTrendsQuery } = dpmoApi;
+export const {
+	useFetchDpmoMetricsQuery,
+	useFetchDpmoSummaryQuery,
+	useFetchDpmoBreakdownQuery,
+	useFetchDpmoTrendsQuery
+} = dpmoApi;
