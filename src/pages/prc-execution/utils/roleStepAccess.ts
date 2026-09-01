@@ -18,9 +18,15 @@ export const getExecutionRoleKind = (roleName?: string): ExecutionRoleKind => {
  * A quality-approved inspection is an inspection step whose master config
  * requires sign-off by Quality (`approveByQuality === true`).
  */
-const isQualityApprovedInspection = (step: TimelineStep): boolean => {
-return 	(step.type === 'inspection' && step.inspectionMetadata?.approveByQuality === true ) || (step.type === 'sequence' && (step.stepGroup?.steps?.some((step : any) => step.ctq)) === true);
-}
+const isQualityApprovedInspection = (step: TimelineStep): boolean =>
+	step.type === 'inspection' && step.inspectionMetadata?.approveByQuality === true;
+
+// REVERTED: a sequence step containing any CTQ sub-step used to count as quality-approved here,
+// which made the whole step read-only for the Production role and editable only by Quality.
+// Restore this branch to bring that restriction back.
+// const isQualityApprovedInspection = (step: TimelineStep): boolean => {
+// return 	(step.type === 'inspection' && step.inspectionMetadata?.approveByQuality === true ) || (step.type === 'sequence' && (step.stepGroup?.steps?.some((step : any) => step.ctq)) === true);
+// }
 /**
  * Determines whether the current role may edit (enter data for) a given step.
  * - Production: all steps except quality-approved inspections.

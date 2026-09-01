@@ -37,7 +37,7 @@ import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMe
 import {
 	areNonSapStepsComplete,
 	canAccessStepIndex,
-	CTQ_FILL_PERMISSION,
+	// CTQ_FILL_PERMISSION, // REVERTED: CTQ quality-only data entry
 	getExecutionFrontierIndex,
 	hasInspectionParameterData,
 	isAlwaysAccessibleStep,
@@ -122,8 +122,8 @@ const ExecutePrc = () => {
 	const canKitUpdate = hasPermission('KITTING_UPDATE');
 	const canKitView = hasPermission('KITTING_VIEW');
 	const canAccessCatalystMixing = canKitUpdate || canKitView;
-	// CTQ sequence sub-steps may only be filled by a quality approver.
-	const canFillCtqSteps = hasPermission(CTQ_FILL_PERMISSION);
+	// REVERTED: CTQ sequence sub-steps may only be filled by a quality approver.
+	// const canFillCtqSteps = hasPermission(CTQ_FILL_PERMISSION);
 
 	// State management
 	const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -1837,7 +1837,8 @@ const ExecutePrc = () => {
 							executionData={actualExecutionData}
 							aggregatedStepsSnapshot={getCurrentAggregatedData()}
 							readOnly={isViewOnlyMode || roleReadOnly}
-							canFillCtqSteps={canFillCtqSteps}
+							// REVERTED: CTQ quality-only data entry
+							// canFillCtqSteps={canFillCtqSteps}
 							defectCategories={defectCategories}
 							onBackToList={handleBackToList}
 							onPreviousStep={() => {

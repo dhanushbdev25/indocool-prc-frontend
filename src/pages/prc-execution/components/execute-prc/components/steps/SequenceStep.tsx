@@ -53,12 +53,13 @@ interface SequenceStepProps {
 	onStepComplete: (formData: FormData) => void;
 	/** When true, all inputs are disabled (e.g. part master template preview). */
 	readOnlyOverride?: boolean;
-	/**
-	 * True when this is a CTQ sub-step and the user lacks the quality permission. Locks the
-	 * step and explains why, rather than leaving the form looking broken — see
-	 * `isCtqFillLocked` in `utils/stepGating.ts`.
-	 */
-	ctqRoleLocked?: boolean;
+	// REVERTED: CTQ quality-only data entry.
+	// /**
+	//  * True when this is a CTQ sub-step and the user lacks the quality permission. Locks the
+	//  * step and explains why, rather than leaving the form looking broken — see
+	//  * `isCtqFillLocked` in `utils/stepGating.ts`.
+	//  */
+	// ctqRoleLocked?: boolean;
 	/** Lets the owning view (e.g. the header Next arrow) trigger this step's validate-and-save. */
 	submitActionRef?: MutableRefObject<(() => void) | null>;
 }
@@ -162,9 +163,12 @@ const SequenceStepForm = ({
 	executionData,
 	onStepComplete,
 	readOnlyOverride,
-	ctqRoleLocked = false,
+	// ctqRoleLocked = false, // REVERTED: CTQ quality-only data entry
 	submitActionRef
 }: SequenceStepProps & { stepData: NonNullable<TimelineStep['stepData']> }) => {
+	// REVERTED: pinned to false so the checks below stay in place. Restore the prop above and
+	// delete this line to bring the CTQ lock back.
+	const ctqRoleLocked = false;
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 	const { containerRef, requestScrollToError } = useScrollToFirstError();

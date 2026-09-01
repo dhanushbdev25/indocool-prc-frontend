@@ -3,7 +3,8 @@ import { Box, Typography, Button, Avatar, Chip, IconButton } from '@mui/material
 import { ArrowBack, ArrowForward, CheckCircle, PlayArrow } from '@mui/icons-material';
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../types/execution.types';
 import { isRawMaterialsStepCompleteForNavigation } from '../../../utils/rawMaterialsNavigation';
-import { isCtqFillLocked, isTimelineStepComplete } from '../../../utils/stepGating';
+// REVERTED: `isCtqFillLocked` no longer imported — CTQ quality-only data entry is off.
+import { isTimelineStepComplete } from '../../../utils/stepGating';
 import RawMaterialsStep from './steps/RawMaterialsStep';
 import BomStep from './steps/BomStep';
 import SequenceStep from './steps/SequenceStep';
@@ -23,13 +24,14 @@ interface StepDetailViewProps {
 	canGoNext: boolean;
 	/** Browse-only mode: same step UI as execution, inputs disabled, Prev/Next navigate without completing. */
 	readOnly?: boolean;
-	/**
-	 * Whether the current user may enter data on CTQ sequence sub-steps. Passed in rather than
-	 * read from RoleContext here so this stays renderable outside a RoleProvider, the same way
-	 * `readOnly` is supplied by the caller. Defaults to locked, so a caller that forgets it
-	 * fails visibly rather than silently dropping the gate.
-	 */
-	canFillCtqSteps?: boolean;
+	// REVERTED: CTQ quality-only data entry.
+	// /**
+	//  * Whether the current user may enter data on CTQ sequence sub-steps. Passed in rather than
+	//  * read from RoleContext here so this stays renderable outside a RoleProvider, the same way
+	//  * `readOnly` is supplied by the caller. Defaults to locked, so a caller that forgets it
+	//  * fails visibly rather than silently dropping the gate.
+	//  */
+	// canFillCtqSteps?: boolean;
 	/** Defect categories offered by the image annotator — see `utils/demouldDefects.ts`. */
 	defectCategories?: string[];
 	/** False while any non-SAP step is still open; gates Complete PRC on the SAP confirmations step. */
@@ -47,7 +49,7 @@ const StepDetailView = ({
 	canGoPrevious,
 	canGoNext,
 	readOnly = false,
-	canFillCtqSteps = false,
+	// canFillCtqSteps = false, // REVERTED: CTQ quality-only data entry
 	defectCategories = [],
 	allOtherStepsComplete = true
 }: StepDetailViewProps) => {
@@ -89,11 +91,15 @@ const StepDetailView = ({
 	 */
 	const stepSubmitRef = useRef<(() => void) | null>(null);
 
+	// REVERTED: CTQ sub-steps are no longer locked to quality approvers. Pinned to false so the
+	// downstream checks stay in place; swap the two lines below to bring the lock back.
+	//
 	// A CTQ sub-step is a hard stop for anyone without the quality permission: inputs are
 	// disabled and it cannot be completed, so the group waits here until they hand over.
 	// Browse-only callers are exempt — everything is already disabled there, and the lock
 	// notice would be noise in a template preview.
-	const ctqRoleLocked = !readOnly && isCtqFillLocked(currentSubStep, canFillCtqSteps);
+	// const ctqRoleLocked = !readOnly && isCtqFillLocked(currentSubStep, canFillCtqSteps);
+	const ctqRoleLocked = false;
 
 	const handleSubStepComplete = async (formData: FormData) => {
 		if (isSequenceGroup && currentSubStep) {
@@ -293,7 +299,7 @@ const StepDetailView = ({
 					executionData={executionData}
 					onStepComplete={handleSubStepComplete}
 					readOnlyOverride={readOnly || ctqRoleLocked}
-					ctqRoleLocked={ctqRoleLocked}
+					// ctqRoleLocked={ctqRoleLocked} // REVERTED: CTQ quality-only data entry
 					submitActionRef={stepSubmitRef}
 				/>
 			);

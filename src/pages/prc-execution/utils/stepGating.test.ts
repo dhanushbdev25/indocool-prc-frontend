@@ -7,7 +7,7 @@ import {
 	canAccessStepIndex,
 	getExecutionFrontierIndex,
 	hasInspectionParameterData,
-	isCtqFillLocked,
+	// isCtqFillLocked, // REVERTED: CTQ quality-only data entry
 	isTimelineStepComplete
 } from './stepGating';
 
@@ -351,26 +351,27 @@ describe('inspection parameter ordering', () => {
 	});
 });
 
-describe('isCtqFillLocked', () => {
-	it('locks a CTQ sub-step for a user without the quality permission', () => {
-		expect(isCtqFillLocked({ ctq: true }, false)).toBe(true);
-	});
-
-	it('leaves a CTQ sub-step open for a user with the quality permission', () => {
-		expect(isCtqFillLocked({ ctq: true }, true)).toBe(false);
-	});
-
-	it('never locks a non-CTQ sub-step, whatever the permission', () => {
-		expect(isCtqFillLocked({ ctq: false }, false)).toBe(false);
-		expect(isCtqFillLocked({ ctq: false }, true)).toBe(false);
-	});
-
-	it('treats a sub-step with no ctq flag as unlocked', () => {
-		expect(isCtqFillLocked({}, false)).toBe(false);
-	});
-
-	it('does not lock when there is no sub-step to judge', () => {
-		expect(isCtqFillLocked(null, false)).toBe(false);
-		expect(isCtqFillLocked(undefined, false)).toBe(false);
-	});
-});
+// REVERTED: CTQ quality-only data entry — restore alongside `isCtqFillLocked` in stepGating.ts.
+// describe('isCtqFillLocked', () => {
+// 	it('locks a CTQ sub-step for a user without the quality permission', () => {
+// 		expect(isCtqFillLocked({ ctq: true }, false)).toBe(true);
+// 	});
+//
+// 	it('leaves a CTQ sub-step open for a user with the quality permission', () => {
+// 		expect(isCtqFillLocked({ ctq: true }, true)).toBe(false);
+// 	});
+//
+// 	it('never locks a non-CTQ sub-step, whatever the permission', () => {
+// 		expect(isCtqFillLocked({ ctq: false }, false)).toBe(false);
+// 		expect(isCtqFillLocked({ ctq: false }, true)).toBe(false);
+// 	});
+//
+// 	it('treats a sub-step with no ctq flag as unlocked', () => {
+// 		expect(isCtqFillLocked({}, false)).toBe(false);
+// 	});
+//
+// 	it('does not lock when there is no sub-step to judge', () => {
+// 		expect(isCtqFillLocked(null, false)).toBe(false);
+// 		expect(isCtqFillLocked(undefined, false)).toBe(false);
+// 	});
+// });
