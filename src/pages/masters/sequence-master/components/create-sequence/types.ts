@@ -58,5 +58,7 @@ export const uomOptions = [
 	// { value: 'PSI', label: 'PSI' },
 	{ value: 'Hours', label: 'Hours (hr)' },
 	{ value: 'mm Hg', label: 'Millimeters of Mercury (mm Hg)' },
-	{ value: 'Microns (µm)', label: 'Microns (µm)' }
+	{ value: 'Microns (µm)', label: 'Microns (µm)' },
+		{ value: 'Newton Meter (nm)', label: 'Newton Meter (nm)' }
+
 ];
