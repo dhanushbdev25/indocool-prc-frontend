@@ -45,7 +45,7 @@ import { formatExecutionDuration } from '../../../utils/timelineCardTiming';
 import { useFetchOperationDelayReasonComboQuery } from '../../../../../store/api/business/prc-execution/prc-execution.api';
 import { type OperationDelayReasonComboOption } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 import ImageDisplay from './ImageDisplay';
-import { debugDataTransformation } from '../../../utils/dataTransformers';
+import { debugDataTransformation, transformObjectToArray } from '../../../utils/dataTransformers';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { toFileRenderUrl } from '../../../../../utils/fileUrl';
 import {
@@ -73,6 +73,17 @@ import {
 	type PreviewAnnotation
 } from '../../../utils/inspectionPreviewImageHelpers';
 import { normalizeInspectionStepAggregatedData } from '../../../utils/inspectionAggregatedNormalization';
+
+/**
+ * Fixed-table rows are saved as an array, but re-saving a step used to spread that array into an
+ * index-keyed object (`{ "0": {...} }`) — the shape nearly every stored execution holds. The merge
+ * that caused it is fixed, so newer saves are arrays; both have to render or the sheet reads empty.
+ */
+const readStoredRowList = <T,>(value: unknown): T[] => {
+	if (Array.isArray(value)) return value as T[];
+	if (value !== null && typeof value === 'object') return transformObjectToArray(value as Record<string, T>);
+	return [];
+};
 
 const COMMENT_PREVIEW_MAX_CHARS = 50;
 
@@ -1314,8 +1325,8 @@ const StepPreview = ({
 										}
 
 										if (paramObj.value) {
-											if (isFixedTableType && Array.isArray(paramObj.value)) {
-												tableRowCount = (paramObj.value as unknown[]).length;
+											if (isFixedTableType) {
+												tableRowCount = readStoredRowList(paramObj.value).length;
 												displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
 											} else if (isTableType && Array.isArray(paramObj.value)) {
 												isMultiColumn = true;
@@ -1630,20 +1641,18 @@ const StepPreview = ({
 																		columns?: Array<{ name: string; type: string }>;
 																		rows?: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }>;
 																	} | null;
-																	const rows = Array.isArray((parameterData as Record<string, unknown>).value)
-																		? ((parameterData as Record<string, unknown>).value as Record<string, string>[])
-																		: [];
+																	const rows = readStoredRowList<Record<string, string>>(
+																		(parameterData as Record<string, unknown>).value
+																	);
 																	const rowMappings = Array.isArray(paramMeta?.rowMappings) ? paramMeta.rowMappings : [];
-																	const rowAnnotations = Array.isArray((parameterData as Record<string, unknown>).rowAnnotations)
-																		? ((parameterData as Record<string, unknown>).rowAnnotations as Array<{
-																				rowIndex: number;
-																				annotations: Array<{
-																					imageFileName: string;
-																					imageUrl?: string;
-																					regions?: unknown[];
-																				}>;
-																			}>)
-																		: [];
+																	const rowAnnotations = readStoredRowList<{
+																		rowIndex: number;
+																		annotations: Array<{
+																			imageFileName: string;
+																			imageUrl?: string;
+																			regions?: unknown[];
+																		}>;
+																	}>((parameterData as Record<string, unknown>).rowAnnotations);
 																	if (!tc?.columns) return <Typography variant="body2" color="text.secondary">No table configuration</Typography>;
 																	return (
 																		<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
