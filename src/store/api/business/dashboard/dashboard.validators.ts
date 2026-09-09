@@ -66,7 +66,8 @@ export type StageKey =
 	| 'assembly'
 	| 'topCoat'
 	| 'antiskid'
-	| 'packaging';
+	| 'packaging'
+	| 'sapStats';
 
 export const STAGE_KEYS: StageKey[] = [
 	'moulding',
@@ -76,7 +77,8 @@ export const STAGE_KEYS: StageKey[] = [
 	'assembly',
 	'topCoat',
 	'antiskid',
-	'packaging'
+	'packaging',
+	'sapStats'
 ];
 
 export interface StageMetrics {
@@ -88,6 +90,7 @@ export interface StageMetrics {
 	topCoat: MetricBlock;
 	antiskid: MetricBlock;
 	packaging: MetricBlock;
+	sapStats: MetricBlock;
 }
 
 export interface DelayReasonItem {
@@ -180,7 +183,8 @@ export const coerceStageMetrics = (raw: unknown): StageMetrics => {
 		assembly: coerceMetricBlock(o.assembly),
 		topCoat: coerceMetricBlock(o.topCoat),
 		antiskid: coerceMetricBlock(o.antiskid),
-		packaging: coerceMetricBlock(o.packaging)
+		packaging: coerceMetricBlock(o.packaging),
+		sapStats : coerceMetricBlock(o.sapStats)
 	};
 };
 
@@ -210,7 +214,7 @@ export const coerceMetricsData = (raw: unknown): MetricsData => {
 		output: coerceStageMetrics(o.output),
 		manpower: coerceStageMetrics(o.manpower),
 		delayReasons: coerceStageDelayReasons(o.delayReasons)
-	};
+		};
 };
 
 const isRangedMetricsResponse = (

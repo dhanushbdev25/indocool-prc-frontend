@@ -25,7 +25,7 @@ interface RangeDonutProps {
 
 const RangeDonut = ({ caption, metric, muted = false }: RangeDonutProps) => {
 	const theme = useTheme();
-	const hasData = metric.total > 0 || metric.completed > 0;
+	const hasData = metric?.total > 0 || metric?.completed > 0;
 	const displayPct = hasData ? formatPercentage(metric.percentage) : '—';
 	const fillPct = hasData ? Math.min(Math.max(metric.percentage, 0), 100) : 0;
 	const arcColor = muted ? alpha(theme.palette.primary.main, 0.55) : theme.palette.primary.main;
@@ -83,13 +83,13 @@ const RangeDonut = ({ caption, metric, muted = false }: RangeDonutProps) => {
 				}}
 			>
 				<Box component="span" sx={{ color: 'success.main' }}>
-					{metric.completed.toLocaleString('en-IN')}
+					{metric?.completed.toLocaleString('en-IN')}
 				</Box>
 				<Box component="span" sx={{ color: 'text.disabled', mx: 0.35 }}>
 					/
 				</Box>
 				<Box component="span" sx={{ color: 'text.primary' }}>
-					{metric.total.toLocaleString('en-IN')}
+					{metric?.total.toLocaleString('en-IN')}
 				</Box>
 			</Typography>
 

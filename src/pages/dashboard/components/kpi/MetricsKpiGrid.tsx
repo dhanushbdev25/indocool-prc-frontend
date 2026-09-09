@@ -49,7 +49,7 @@ const KpiPanel = ({ title, subtitle, selectedMetrics, extendedMetrics, suffix }:
 
 export const MetricsKpiGrid = ({ data }: MetricsKpiGridProps) => (
 	<Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-		<KpiPanel
+					<KpiPanel
 			title="Production output"
 			subtitle="Completed vs planned output by manufacturing stage — selected range against the 90-day extended range"
 			selectedMetrics={data.selectedRange.output}

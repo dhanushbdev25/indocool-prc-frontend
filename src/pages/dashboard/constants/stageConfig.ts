@@ -15,7 +15,8 @@ export const STAGE_CONFIG: StageConfig[] = [
 	{ key: 'assembly', label: 'Assembly', hasDatewiseChart: true },
 	{ key: 'topCoat', label: 'Top Coat' },
 	{ key: 'antiskid', label: 'Anti-skid' },
-	{ key: 'packaging', label: 'Packing', hasDatewiseChart: true }
+	{ key: 'packaging', label: 'Packing', hasDatewiseChart: true },
+	{ key: 'sapStats', label: 'SAP Completion Stats' }
 ];
 
 export const DATEWISE_STAGE_CONFIG = STAGE_CONFIG.filter(s => s.hasDatewiseChart);
