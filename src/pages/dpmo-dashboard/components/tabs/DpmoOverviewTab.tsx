@@ -32,6 +32,7 @@ import {
 	toShiftYieldChart,
 	toTopDefectsChart,
 	toTopOperatorsChart,
+	toTopPartDefectsChart,
 	toWorkstationDaywiseChart,
 	toWorkstationDefectsChart,
 	toWorkstationYieldChart
@@ -178,44 +179,9 @@ export const DpmoOverviewTab = () => {
 				>
 					<Grid container spacing={2}>
 						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
-							<DashboardChartCard title="Top defects">
-								<DashboardChart
-									data={toTopDefectsChart(summary?.topDefects ?? [])}
-									valueFormatter={formatCount}
-									xTickFormatter={truncateAxisLabel}
-								/>
-							</DashboardChartCard>
-						</Grid>
-						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
-							<DashboardChartCard title="Top operators by defects">
-								<DashboardChart
-									data={toTopOperatorsChart(summary?.topOperators ?? [])}
-									valueFormatter={formatCount}
-									xTickFormatter={truncateAxisLabel}
-								/>
-							</DashboardChartCard>
-						</Grid>
-						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
 							<DashboardChartCard title="Monthly first pass yield (%)">
 								<DashboardChart
 									data={toMonthlyYieldChart(summary?.monthlyFirstPassYield ?? [])}
-									valueFormatter={formatPercentage}
-								/>
-							</DashboardChartCard>
-						</Grid>
-						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
-							<DashboardChartCard title="Defects by shift">
-								<DashboardChart
-									data={toShiftDefectsChart(summary?.shiftWiseDefects ?? [])}
-									series={GATE_SPLIT_SERIES}
-									valueFormatter={formatCount}
-								/>
-							</DashboardChartCard>
-						</Grid>
-						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
-							<DashboardChartCard title="First pass yield by shift (%)">
-								<DashboardChart
-									data={toShiftYieldChart(summary?.shiftWiseFirstPassYield ?? [])}
 									valueFormatter={formatPercentage}
 								/>
 							</DashboardChartCard>
@@ -228,11 +194,34 @@ export const DpmoOverviewTab = () => {
 								/>
 							</DashboardChartCard>
 						</Grid>
-					</Grid>
-				</DashboardSection>
+						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
+							<DashboardChartCard title="Top defects">
+								<DashboardChart
+									data={toTopDefectsChart(summary?.topDefects ?? [])}
+									valueFormatter={formatCount}
+									xTickFormatter={truncateAxisLabel}
+								/>
+							</DashboardChartCard>
+						</Grid>
+						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
+							<DashboardChartCard title="Defects by shift">
+								<DashboardChart
+									data={toShiftDefectsChart(summary?.shiftWiseDefects ?? [])}
+									series={GATE_SPLIT_SERIES}
+									valueFormatter={formatCount}
+								/>
+							</DashboardChartCard>
+						</Grid>
 
-				<DashboardSection title="Breakdown" subtitle="Yield and defects split by project and workstation">
-					<Grid container spacing={2}>
+						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
+							<DashboardChartCard title="First pass yield by shift (%)">
+								<DashboardChart
+									data={toShiftYieldChart(summary?.shiftWiseFirstPassYield ?? [])}
+									valueFormatter={formatPercentage}
+								/>
+							</DashboardChartCard>
+						</Grid>
+
 						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
 							<DashboardChartCard title="First pass yield by project (%)">
 								<DashboardChart
@@ -242,6 +231,7 @@ export const DpmoOverviewTab = () => {
 								/>
 							</DashboardChartCard>
 						</Grid>
+
 						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
 							<DashboardChartCard title="Defects by project">
 								<DashboardChart
@@ -261,6 +251,7 @@ export const DpmoOverviewTab = () => {
 								/>
 							</DashboardChartCard>
 						</Grid>
+
 						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
 							<DashboardChartCard title="Defects by workstation">
 								<DashboardChart
@@ -271,6 +262,18 @@ export const DpmoOverviewTab = () => {
 								/>
 							</DashboardChartCard>
 						</Grid>
+
+						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
+							<DashboardChartCard title="Top operators by defects">
+								<DashboardChart
+									data={toTopOperatorsChart(summary?.topOperators ?? [])}
+									valueFormatter={formatCount}
+									xTickFormatter={truncateAxisLabel}
+								/>
+							</DashboardChartCard>
+						</Grid>
+						
+						
 						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
 							<DashboardChartCard title="Defects per sq.m by project">
 								<DashboardChart
@@ -280,8 +283,29 @@ export const DpmoOverviewTab = () => {
 								/>
 							</DashboardChartCard>
 						</Grid>
+
+						<Grid size={{ xs: 12, md: 6, xl: 4 }}>
+							<DashboardChartCard title="Top parts by defects">
+								<DashboardChart
+									data={toTopPartDefectsChart(summary?.topPartsByDefects ?? [])}
+									valueFormatter={formatCount}
+									xTickFormatter={truncateAxisLabel}
+								/>
+							</DashboardChartCard>
+						</Grid>
+						
 					</Grid>
 				</DashboardSection>
+
+				{/* <DashboardSection title="Breakdown" subtitle="Yield and defects split by project and workstation">
+					<Grid container spacing={2}>
+						
+						
+						
+						
+						
+					</Grid>
+				</DashboardSection> */}
 
 				<DashboardSection title="Trends" subtitle="Day-wise defect movement by workstation and operator">
 					<Grid container spacing={2}>

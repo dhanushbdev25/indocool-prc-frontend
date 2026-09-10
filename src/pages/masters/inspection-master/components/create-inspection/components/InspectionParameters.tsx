@@ -461,7 +461,7 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 							})()}
 
 							{/* Role */}
-							<Grid size={{ xs: 12, md: 6 }}>
+							{/* <Grid size={{ xs: 12, md: 6 }}>
 								<Controller
 									name={`inspectionParameters.${index}.role`}
 									control={control as Control<InspectionFormData>}
@@ -483,7 +483,7 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 										</FormControl>
 									)}
 								/>
-							</Grid>
+							</Grid> */}
 
 							{/* Gate / Not Gate / CTA */}
 							<Grid size={{ xs: 12, sm: 6 }}>

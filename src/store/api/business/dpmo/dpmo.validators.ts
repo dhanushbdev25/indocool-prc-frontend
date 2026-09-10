@@ -25,6 +25,11 @@ export interface DpmoTopOperator {
 	count: number;
 }
 
+export interface DpmoTopPartDefects {
+	partNumber: string;
+	totalDefects: number;
+}
+
 export interface DpmoMonthlyYield {
 	month: string;
 	total: number;
@@ -58,6 +63,7 @@ export interface DpmoSummaryData {
 	shiftWiseDefects: DpmoShiftDefects[];
 	shiftWiseFirstPassYield: DpmoShiftYield[];
 	gateDefectDatewise: DpmoGateDefectDay[];
+	topPartsByDefects: DpmoTopPartDefects[];
 }
 
 // ─── breakdown ──────────────────────────────────────────────────────────────
@@ -194,6 +200,10 @@ export const parseDpmoSummary = (response: unknown): DpmoSummaryData => {
 		gateDefectDatewise: parseRows(payload.gateDefectDatewise, (r, i) => ({
 			date: coerceLabel(r.date, `day-${i}`),
 			gateDefectQty: coerceNumber(r.gateDefectQty)
+		})),
+		topPartsByDefects: parseRows(payload.topPartsByDefects, (r, i) => ({
+			partNumber: coerceLabel(r.partNumber, `Part ${i + 1}`),
+			totalDefects: coerceNumber(r.totalDefects)
 		}))
 	};
 };

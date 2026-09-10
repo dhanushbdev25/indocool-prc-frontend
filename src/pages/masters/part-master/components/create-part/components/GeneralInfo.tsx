@@ -439,7 +439,7 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 					</Grid>
 
 					{/* Layup Type */}
-					<Grid size={{ xs: 12, md: 6 }}>
+					{/* <Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="layupType"
 							control={control}
@@ -458,10 +458,10 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 								/>
 							)}
 						/>
-					</Grid>
+					</Grid> */}
 
 					{/* Model */}
-					<Grid size={{ xs: 12, md: 6 }}>
+					{/* <Grid size={{ xs: 12, md: 6 }}>
 						<Controller
 							name="model"
 							control={control}
@@ -480,7 +480,7 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 								/>
 							)}
 						/>
-					</Grid>
+					</Grid> */}
 
 					{/* sq.m */}
 					<Grid size={{ xs: 12, md: 6 }}>
@@ -499,6 +499,7 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 									type="number"
 									label="sq.m"
 									placeholder="e.g., 12.5"
+									required
 									helperText="Square meter value"
 									inputProps={{ min: 0, step: 'any' }}
 									sx={{

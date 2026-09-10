@@ -121,20 +121,23 @@ const skillLevelCountSchema = yup
 		const n = Number(val);
 		return Number.isFinite(n) ? Math.max(0, Math.floor(n)) : 0;
 	})
-	.test('nonneg-int', 'Must be a non-negative whole number', v => typeof v === 'number' && Number.isInteger(v) && v >= 0)
+	.test(
+		'nonneg-int',
+		'Must be a non-negative whole number',
+		v => typeof v === 'number' && Number.isInteger(v) && v >= 0
+	)
 	.default(0);
 
-export const operationWiseRowFormSchema = yup
-	.object({
-		id: yup.mixed<string | number>().required(),
-		operationID: yup.number().required(),
-		operationName: yup.string().required(),
-		l1Count: skillLevelCountSchema,
-		l2Count: skillLevelCountSchema,
-		l3Count: skillLevelCountSchema,
-		l4Count: skillLevelCountSchema,
-		responsiblePersonCount: yup.number().optional()
-	});
+export const operationWiseRowFormSchema = yup.object({
+	id: yup.mixed<string | number>().required(),
+	operationID: yup.number().required(),
+	operationName: yup.string().required(),
+	l1Count: skillLevelCountSchema,
+	l2Count: skillLevelCountSchema,
+	l3Count: skillLevelCountSchema,
+	l4Count: skillLevelCountSchema,
+	responsiblePersonCount: yup.number().optional()
+});
 
 // Main form validation schema
 export const partMasterFormSchema = yup.object({
@@ -148,7 +151,7 @@ export const partMasterFormSchema = yup.object({
 		.transform((value, originalValue) => (originalValue === '' || originalValue == null ? undefined : value))
 		.typeError('sq.m must be a number')
 		.min(0, 'sq.m cannot be negative')
-		.optional(),
+		.required('sq.m is required'),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),
 	customerVariantId: yup.number().nullable().optional(),
@@ -163,7 +166,7 @@ export const partMasterFormSchema = yup.object({
 	sapReferenceNumber: yup.string().max(50, 'SAP reference number must be less than 50 characters').optional(),
 	version: yup.number().default(1),
 	isLatest: yup.boolean().default(true),
-	catalyst: yup.number().optional(),
+	catalyst: yup.number().required('Catalyst chart mapping is required'),
 	prcTemplate: yup.number().optional(),
 	// Inline PRC template fields
 	templateId: yup.string().trim().optional(),
@@ -282,7 +285,8 @@ export const generalInfoSchema = yup.object({
 		.transform((value, originalValue) => (originalValue === '' || originalValue == null ? undefined : value))
 		.typeError('sq.m must be a number')
 		.min(0, 'sq.m cannot be negative')
-		.optional(),
+		.required('sq.m is required'),
+	// .optional(),
 	isActive: yup.boolean().default(true),
 	customer: yup.string().required('Customer is required'),
 	customerVariantId: yup.number().nullable().optional(),
@@ -308,7 +312,7 @@ export const technicalDataSchema = yup.object({
 });
 
 export const linkedMastersSchema = yup.object({
-	catalyst: yup.number().optional(),
+	catalyst: yup.number().required('Catalyst chart mapping is required'),
 	prcTemplate: yup.number().optional(),
 	templateId: yup.string().optional(),
 	templateName: yup.string().optional(),

@@ -78,6 +78,9 @@ export const toTopDefectsChart = (rows: DpmoTopDefect[]): ChartDataPoint[] =>
 export const toTopOperatorsChart = (rows: DpmoTopOperator[]): ChartDataPoint[] =>
 	sortChartDataDesc(rows.map(r => ({ name: r.employeeName, value: r.count })));
 
+export const toTopPartDefectsChart = (rows: DpmoTopPartDefects[]): ChartDataPoint[] =>
+	sortChartDataDesc(rows.map(r => ({ name: r.partNumber, value: r.totalDefects })));
+
 export const toMonthlyYieldChart = (rows: DpmoMonthlyYield[]): ChartDataPoint[] =>
 	rows.map(r => ({ name: formatMonthLabel(r.month), value: r.percentage }));
 

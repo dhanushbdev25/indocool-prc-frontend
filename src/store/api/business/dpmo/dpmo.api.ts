@@ -29,6 +29,15 @@ export const dpmoApi = createApi({
 			transformResponse: (response: unknown) => parseDpmoResponse(response),
 			providesTags: ['DpmoMetrics']
 		}),
+		fetchDpmoMetricsv2: builder.query<DpmoData, DpmoQueryParams>({
+			query: args => ({
+				url: 'dashboard/metrics/dpmo/v2',
+				method: 'GET',
+				params: buildDpmoQueryParams(args)
+			}),
+			transformResponse: (response: unknown) => parseDpmoResponse(response),
+			providesTags: ['DpmoMetrics']
+		}),
 		fetchDpmoSummary: builder.query<DpmoSummaryData, DashboardQueryParams>({
 			query: args => ({
 				url: 'dashboard/metrics/dpmometrics/summary',
@@ -63,5 +72,6 @@ export const {
 	useFetchDpmoMetricsQuery,
 	useFetchDpmoSummaryQuery,
 	useFetchDpmoBreakdownQuery,
-	useFetchDpmoTrendsQuery
+	useFetchDpmoTrendsQuery,
+	useFetchDpmoMetricsv2Query
 } = dpmoApi;
