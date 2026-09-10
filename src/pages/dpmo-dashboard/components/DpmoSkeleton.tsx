@@ -10,6 +10,26 @@ const ChartCardSkeleton = () => (
 	</Box>
 );
 
+// Mirrors DpmoKpiStrip's grid so the strip doesn't shift the page in when it loads.
+const KpiStripSkeleton = ({ cards }: { cards: number }) => (
+	<Box
+		sx={{
+			display: 'grid',
+			gridTemplateColumns: {
+				xs: 'repeat(2, minmax(0, 1fr))',
+				sm: 'repeat(2, minmax(0, 1fr))',
+				md: 'repeat(4, minmax(0, 1fr))',
+				lg: `repeat(${cards}, minmax(0, 1fr))`
+			},
+			gap: { xs: 1.25, sm: 1.5 }
+		}}
+	>
+		{Array.from({ length: cards }).map((_, i) => (
+			<Skeleton key={i} variant="rounded" height={108} sx={{ borderRadius: '10px' }} />
+		))}
+	</Box>
+);
+
 const SectionSkeleton = ({ charts }: { charts: number }) => (
 	<Box>
 		<Skeleton variant="text" width={160} height={22} sx={{ mb: 0.75 }} />
@@ -32,6 +52,7 @@ export const DpmoSkeleton = () => (
 		</Box>
 
 		<Stack spacing={analyticsPageGap}>
+			<KpiStripSkeleton cards={5} />
 			<SectionSkeleton charts={6} />
 			<SectionSkeleton charts={5} />
 			<SectionSkeleton charts={3} />

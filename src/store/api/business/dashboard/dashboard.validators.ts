@@ -16,6 +16,12 @@ export interface DashboardEntityFilterParams {
 	sapReferenceNumber?: string[];
 	/** Customer variant ids (numeric strings). */
 	customerVariantId?: string[];
+	/**
+	 * Inspection issue types ("Defect type" in the UI). Only the dpmometrics
+	 * endpoints read this — and only for their defect-count queries, not the
+	 * first pass yield ones.
+	 */
+	issueType?: string[];
 }
 
 export interface DashboardQueryParams extends DashboardDateRangeParams, DashboardEntityFilterParams {}
@@ -27,6 +33,7 @@ export interface DashboardQueryWireParams extends DashboardDateRangeParams {
 	customer?: string;
 	sapReferenceNumber?: string;
 	customerVariantId?: string;
+	issueType?: string;
 }
 
 const joinFilterValues = (values: string[] | undefined): string | undefined => {
@@ -43,12 +50,14 @@ export const buildDashboardQueryParams = (args: DashboardQueryParams): Dashboard
 	const customer = joinFilterValues(args.projects);
 	const sapReferenceNumber = joinFilterValues(args.sapReferenceNumber);
 	const customerVariantId = joinFilterValues(args.customerVariantId);
+	const issueType = joinFilterValues(args.issueType);
 	if (plantCode) params.plantCode = plantCode;
 	if (workstation) params.workstation = workstation;
 	if (shift) params.shift = shift;
 	if (customer) params.customer = customer;
 	if (sapReferenceNumber) params.sapReferenceNumber = sapReferenceNumber;
 	if (customerVariantId) params.customerVariantId = customerVariantId;
+	if (issueType) params.issueType = issueType;
 	return params;
 };
 

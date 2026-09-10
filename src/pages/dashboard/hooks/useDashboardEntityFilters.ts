@@ -9,7 +9,8 @@ const EMPTY_FILTERS: DashboardEntityFilters = {
 	shift: [],
 	projects: [],
 	sapReferenceNumber: [],
-	customerVariantId: []
+	customerVariantId: [],
+	issueType: []
 };
 
 export type DashboardEntityFilterKey = keyof DashboardEntityFilters;
@@ -27,7 +28,8 @@ const areFilterMapsEqual = (a: DashboardEntityFilters, b: DashboardEntityFilters
 	areArraysEqual(a.shift, b.shift) &&
 	areArraysEqual(a.projects, b.projects) &&
 	areArraysEqual(a.sapReferenceNumber, b.sapReferenceNumber) &&
-	areArraysEqual(a.customerVariantId, b.customerVariantId);
+	areArraysEqual(a.customerVariantId, b.customerVariantId) &&
+	areArraysEqual(a.issueType, b.issueType);
 
 /**
  * Dashboard entity filters with a draft/applied split.
@@ -77,7 +79,8 @@ export const useDashboardEntityFilters = () => {
 			appliedFilters.shift.length > 0 ||
 			appliedFilters.projects.length > 0 ||
 			appliedFilters.sapReferenceNumber.length > 0 ||
-			appliedFilters.customerVariantId.length > 0,
+			appliedFilters.customerVariantId.length > 0 ||
+			appliedFilters.issueType.length > 0,
 		[appliedFilters]
 	);
 

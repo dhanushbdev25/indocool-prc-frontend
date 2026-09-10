@@ -1,6 +1,12 @@
 import dayjs from 'dayjs';
 import type { ChartDataPoint } from '../../../../pages/dashboard/components/charts/chartTypes';
 
+/**
+ * Response contract shared by `dashboard/metrics/dpmo` (Legacy tab) and
+ * `dashboard/metrics/dpmo/v2` (the Overview KPI strip and product-wise chart).
+ * Despite the filename this is no longer legacy-only.
+ */
+
 export interface DpmoQueryParams {
 	from: string;
 	to: string;
@@ -223,6 +229,33 @@ export const buildOverallKpis = (data: DpmoData | undefined): DpmoKpi[] => {
 		{ kind: 'single', key: 'totalPanelsSize', label: 'Total Panels Size (Sq.m)', value: d.totals.totalSqm, format: 'decimal' },
 		{ kind: 'single', key: 'totalDefects', label: 'Total Defects (Nos)', value: d.defects.total, format: 'number' },
 		{ kind: 'single', key: 'totalCoPQ', label: 'Total CoPQ (Rs.)', value: 0, format: 'currency' },
+		{ kind: 'single', key: 'firstPassYield', label: 'First Pass Yield (%)', value: d.firstPassYield.percentage, format: 'percentage' }
+	];
+};
+
+/**
+ * KPI strip for the Overview tab, fed by `dashboard/metrics/dpmo/v2`. The union of the two
+ * legacy strips below, minus the hardcoded-zero CoPQ card.
+ *
+ * Note `totals` and `firstPassYield` are unaffected by the `issueType` filter server-side —
+ * only the defect figures respond to it.
+ */
+export const buildOverviewKpis = (data: DpmoData | undefined): DpmoKpi[] => {
+	const d = data ?? EMPTY_DPMO_DATA;
+	return [
+		{ kind: 'single', key: 'totalPanels', label: 'Total Panels (Nos)', value: d.totals.totalCount, format: 'number' },
+		{ kind: 'single', key: 'totalPanelsSize', label: 'Total Panels Size (Sq.m)', value: d.totals.totalSqm, format: 'decimal' },
+		{ kind: 'single', key: 'totalDefects', label: 'Total Defects (Nos)', value: d.defects.total, format: 'number' },
+		{
+			kind: 'split',
+			key: 'defects',
+			label: 'Defects (Nos)',
+			format: 'number',
+			items: [
+				{ label: 'Gate', value: d.defects.gate },
+				{ label: 'Non-Gate', value: d.defects.nonGate }
+			]
+		},
 		{ kind: 'single', key: 'firstPassYield', label: 'First Pass Yield (%)', value: d.firstPassYield.percentage, format: 'percentage' }
 	];
 };

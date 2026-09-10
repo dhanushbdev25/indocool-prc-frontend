@@ -3,11 +3,17 @@ import { Box, Grid, Stack } from '@mui/material';
 import {
 	useFetchDpmoBreakdownQuery,
 	useFetchDpmoSummaryQuery,
-	useFetchDpmoTrendsQuery
+	useFetchDpmoTrendsQuery,
+	useFetchDpmoMetricsv2Query,
+	useFetchIssueTypesComboQuery
 } from '../../../../store/api/business/dpmo/dpmo.api';
+import { buildOverviewKpis } from '../../../../store/api/business/dpmo/dpmo.legacy.validators';
+import { DpmoKpiStrip } from '../../../dpmo-dashboard-legacy/components/kpi/DpmoKpiStrip';
+import { DpmoProductDefectChart } from '../../../dpmo-dashboard-legacy/components/charts/DpmoProductDefectChart';
 import { useFetchSapComboQuery } from '../../../../store/api/business/part-master/part.api';
 import { useCustomerVariantOptions } from '../../../../hooks/useCustomerVariantOptions';
 import { sapComboOptions } from '../../../../utils/comboOptionHelpers';
+import type { FilterComboOption } from '../../../../components/masters/filters/FilterAutocomplete';
 import { analyticsPageGap } from '../../../dashboard/constants/dashboardTokens';
 import { useDashboardDateRange } from '../../../dashboard/hooks/useDashboardDateRange';
 import { useDashboardEntityFilters } from '../../../dashboard/hooks/useDashboardEntityFilters';
@@ -80,6 +86,20 @@ export const DpmoOverviewTab = () => {
 
 	const { data: sapComboData } = useFetchSapComboQuery();
 	const sapProductOptions = useMemo(() => sapComboOptions(sapComboData?.data), [sapComboData]);
+
+	// Defect types are independent of every other filter, so the combo loads once on mount.
+	const { data: issueTypeComboData } = useFetchIssueTypesComboQuery();
+	const issueTypeOptions = useMemo<FilterComboOption[]>(() => {
+		const byValue = new Map<string, FilterComboOption>();
+		for (const row of issueTypeComboData ?? []) {
+			const value = String(row.value).trim();
+			if (!value || byValue.has(value)) continue;
+			const label = row.label.trim() || value;
+			byValue.set(value, { label, value });
+		}
+		return [...byValue.values()];
+	}, [issueTypeComboData]);
+
 	const {
 		options: variantOptions,
 		disabled: variantDisabled,
@@ -94,22 +114,30 @@ export const DpmoOverviewTab = () => {
 		shift: appliedFilters.shift,
 		projects: appliedFilters.projects,
 		sapReferenceNumber: appliedFilters.sapReferenceNumber,
-		customerVariantId: appliedFilters.customerVariantId
+		customerVariantId: appliedFilters.customerVariantId,
+		issueType: appliedFilters.issueType
 	};
 	const skip = !isReady;
 
 	const summaryQuery = useFetchDpmoSummaryQuery(queryArgs, { skip });
 	const breakdownQuery = useFetchDpmoBreakdownQuery(queryArgs, { skip });
 	const trendsQuery = useFetchDpmoTrendsQuery(queryArgs, { skip });
+	// Feeds the KPI strip and the product-wise defect chart.
+	const totalsQuery = useFetchDpmoMetricsv2Query(queryArgs, { skip });
 
-	const isLoading = !skip && (summaryQuery.isLoading || breakdownQuery.isLoading || trendsQuery.isLoading);
-	const isRefreshing = !skip && (summaryQuery.isFetching || breakdownQuery.isFetching || trendsQuery.isFetching);
-	const hasError = summaryQuery.isError || breakdownQuery.isError || trendsQuery.isError;
+	const isLoading =
+		!skip &&
+		(summaryQuery.isLoading || breakdownQuery.isLoading || trendsQuery.isLoading || totalsQuery.isLoading);
+	const isRefreshing =
+		!skip &&
+		(summaryQuery.isFetching || breakdownQuery.isFetching || trendsQuery.isFetching || totalsQuery.isFetching);
+	const hasError = summaryQuery.isError || breakdownQuery.isError || trendsQuery.isError || totalsQuery.isError;
 
 	const refetchAll = () => {
 		summaryQuery.refetch();
 		breakdownQuery.refetch();
 		trendsQuery.refetch();
+		totalsQuery.refetch();
 	};
 
 	const isDirty = isDateRangeDirty || areEntityFiltersDirty;
@@ -128,6 +156,14 @@ export const DpmoOverviewTab = () => {
 	const summary = summaryQuery.data;
 	const breakdown = breakdownQuery.data;
 	const trends = trendsQuery.data;
+	const totals = totalsQuery.data;
+
+	const overviewKpis = useMemo(() => buildOverviewKpis(totals), [totals]);
+	// The endpoint returns a row per SAP reference in range, including ones with no defects.
+	const productDefects = useMemo(
+		() => (totals?.productDefects ?? []).filter(item => item.quantity > 0),
+		[totals]
+	);
 
 	const workstationTrend = useMemo(() => toWorkstationDaywiseChart(trends?.workstationDaywiseDefects ?? []), [trends]);
 	const operatorTrend = useMemo(() => toOperatorDaywiseChart(trends?.operatorDaywiseDefects ?? []), [trends]);
@@ -166,12 +202,16 @@ export const DpmoOverviewTab = () => {
 					variantOptions={variantOptions}
 					variantDisabled={variantDisabled}
 					variantPlaceholder={variantPlaceholder}
+					showIssueTypeFilter
+					issueTypeOptions={issueTypeOptions}
 					disabled={!isReady}
 				/>
 			</Box>
 
 			<Stack spacing={analyticsPageGap}>
 				{hasError ? <DashboardErrorBanner onRetry={refetchAll} /> : null}
+
+				<DpmoKpiStrip kpis={overviewKpis} />
 
 				<DashboardSection
 					title="Summary"
@@ -293,7 +333,11 @@ export const DpmoOverviewTab = () => {
 								/>
 							</DashboardChartCard>
 						</Grid>
-						
+
+						<Grid size={{ xs: 12 }}>
+							<DpmoProductDefectChart data={productDefects} />
+						</Grid>
+
 					</Grid>
 				</DashboardSection>
 

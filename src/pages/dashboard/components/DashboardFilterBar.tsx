@@ -36,6 +36,9 @@ interface DashboardFilterBarProps {
 	variantOptions: FilterComboOption[];
 	variantDisabled?: boolean;
 	variantPlaceholder?: string;
+	/** Opt-in: only the dpmometrics endpoints read `issueType`, so the field is hidden by default. */
+	showIssueTypeFilter?: boolean;
+	issueTypeOptions?: FilterComboOption[];
 	disabled?: boolean;
 }
 
@@ -63,6 +66,8 @@ export const DashboardFilterBar = ({
 	variantOptions,
 	variantDisabled = false,
 	variantPlaceholder,
+	showIssueTypeFilter = false,
+	issueTypeOptions = [],
 	disabled = false
 }: DashboardFilterBarProps) => {
 	const theme = useTheme();
@@ -78,6 +83,7 @@ export const DashboardFilterBar = ({
 		(draftFilters.projects.length > 0 ? 1 : 0) +
 		(draftFilters.sapReferenceNumber.length > 0 ? 1 : 0) +
 		(draftFilters.customerVariantId.length > 0 ? 1 : 0) +
+		(showIssueTypeFilter && draftFilters.issueType.length > 0 ? 1 : 0) +
 		(draftPreset !== 'last30' || draftCustomFrom || draftCustomTo ? 1 : 0);
 
 	const panelSx = {
@@ -237,6 +243,18 @@ export const DashboardFilterBar = ({
 							compactDisplay
 							sx={dashboardFilterField}
 						/>
+						{showIssueTypeFilter ? (
+							<FilterAutocomplete
+								label="Defect type"
+								placeholder="All defect types"
+								options={issueTypeOptions}
+								value={draftFilters.issueType}
+								onChange={value => onDraftFilterChange('issueType', value)}
+								disabled={disabled}
+								compactDisplay
+								sx={dashboardFilterField}
+							/>
+						) : null}
 					</Box>
 
 					{/* Action row: Reset/Apply right-aligned on the next line */}

@@ -10,11 +10,12 @@ import {
 	type DpmoTrendsData
 } from './dpmo.validators';
 import { buildDpmoQueryParams, parseDpmoResponse, type DpmoData, type DpmoQueryParams } from './dpmo.legacy.validators';
+import { isWebComboResponse, type WebComboItem } from '../prc-execution/prc-execution.validators';
 
 export const dpmoApi = createApi({
 	reducerPath: 'dpmoApi',
 	baseQuery,
-	tagTypes: ['DpmoMetrics'],
+	tagTypes: ['DpmoMetrics', 'IssueTypeCombo'],
 	endpoints: builder => ({
 		/**
 		 * Superseded by the three dpmometrics endpoints below, but still served by the
@@ -29,11 +30,16 @@ export const dpmoApi = createApi({
 			transformResponse: (response: unknown) => parseDpmoResponse(response),
 			providesTags: ['DpmoMetrics']
 		}),
-		fetchDpmoMetricsv2: builder.query<DpmoData, DpmoQueryParams>({
+		/**
+		 * Same payload as `dashboard/metrics/dpmo` minus the `itemwise` array. Built on the
+		 * backend's shared `buildDashboardFilters`, so it takes the full dashboard filter set
+		 * plus `issueType` — the Overview tab passes it the same args as the dpmometrics queries.
+		 */
+		fetchDpmoMetricsv2: builder.query<DpmoData, DashboardQueryParams>({
 			query: args => ({
 				url: 'dashboard/metrics/dpmo/v2',
 				method: 'GET',
-				params: buildDpmoQueryParams(args)
+				params: buildDashboardQueryParams(args)
 			}),
 			transformResponse: (response: unknown) => parseDpmoResponse(response),
 			providesTags: ['DpmoMetrics']
@@ -64,6 +70,21 @@ export const dpmoApi = createApi({
 			}),
 			transformResponse: (response: unknown) => parseDpmoTrends(response),
 			providesTags: ['DpmoMetrics']
+		}),
+		/** GET /web/combo/issue-types — distinct inspection issue types, label === value */
+		fetchIssueTypesCombo: builder.query<WebComboItem[], void>({
+			query: () => ({
+				url: 'combo/issue-types',
+				method: 'GET'
+			}),
+			transformResponse: (response: unknown) => {
+				if (!isWebComboResponse(response)) {
+					console.warn('Invalid issue types combo response structure', response);
+					return [];
+				}
+				return response.data;
+			},
+			providesTags: ['IssueTypeCombo']
 		})
 	})
 });
@@ -73,5 +94,6 @@ export const {
 	useFetchDpmoSummaryQuery,
 	useFetchDpmoBreakdownQuery,
 	useFetchDpmoTrendsQuery,
-	useFetchDpmoMetricsv2Query
+	useFetchDpmoMetricsv2Query,
+	useFetchIssueTypesComboQuery
 } = dpmoApi;
