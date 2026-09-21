@@ -41,7 +41,7 @@ import {
 	RemoveCircleOutline
 } from '@mui/icons-material';
 import { type StepPreviewData, type ProceedFromPreviewPayload } from '../../../types/execution.types';
-import { formatExecutionDuration, formatStepTimestampParts } from '../../../utils/timelineCardTiming';
+import { formatCompactTimeRange, formatExecutionDuration } from '../../../utils/timelineCardTiming';
 import { useFetchOperationDelayReasonComboQuery } from '../../../../../store/api/business/prc-execution/prc-execution.api';
 import { type OperationDelayReasonComboOption } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 import ImageDisplay from './ImageDisplay';
@@ -690,7 +690,7 @@ const StepPreview = ({
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Method</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Time</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Start – End</TableCell>
 								</TableRow>
 							</TableHead>
 							<TableBody>
@@ -942,8 +942,8 @@ const StepPreview = ({
 											</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 												{(() => {
-													const parts = formatStepTimestampParts(measurement.stepEndTime);
-													if (!parts) {
+													const range = formatCompactTimeRange(measurement.stepStartTime, measurement.stepEndTime);
+													if (!range) {
 														return (
 															<Typography variant="body2" sx={{ color: '#999', fontSize: '0.8rem' }}>
 																—
@@ -952,11 +952,11 @@ const StepPreview = ({
 													}
 													return (
 														<Box>
-															<Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
-																{parts.time}
+															<Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
+																{range.primary}
 															</Typography>
 															<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', display: 'block' }}>
-																{parts.date}
+																{range.secondary}
 															</Typography>
 														</Box>
 													);

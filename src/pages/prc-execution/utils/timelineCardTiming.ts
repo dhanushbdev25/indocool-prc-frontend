@@ -451,6 +451,32 @@ export function formatStepTimestampParts(iso: string | null | undefined): StepTi
 	};
 }
 
+/**
+ * Compact `start – end` for one step, with the date(s) as a secondary line.
+ * Falls back to the single known side when only one end of the window was recorded.
+ */
+export function formatCompactTimeRange(
+	startIso: string | null | undefined,
+	endIso: string | null | undefined
+): { primary: string; secondary: string } | null {
+	const start = startIso ? formatStepTimestampParts(startIso) : null;
+	const end = endIso ? formatStepTimestampParts(endIso) : null;
+
+	if (!start && !end) return null;
+
+	if (start && end) {
+		const sameDay = start.date === end.date;
+		return {
+			primary: `${start.time} – ${end.time}`,
+			secondary: sameDay ? start.date : `${start.date} → ${end.date}`
+		};
+	}
+
+	const single = start ?? end;
+	if (!single) return null;
+	return { primary: single.time, secondary: single.date };
+}
+
 export function formatApproverDisplay(approver: ApproverInfo): string {
 	return approver.employeeNo ? `${approver.name} (${approver.employeeNo})` : approver.name;
 }

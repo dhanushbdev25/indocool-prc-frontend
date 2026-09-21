@@ -9,8 +9,7 @@ import {
 	type TimelineStepApprovalMeta,
 	formatApproverDisplay,
 	formatExecutionDuration,
-	formatStepTimestamp,
-	formatStepTimestampParts,
+	formatCompactTimeRange,
 	getTimelineStepApprovalMeta,
 	getStepTiming,
 	isStepLate
@@ -49,25 +48,6 @@ function ReportMetaField({ label, children }: { label: string; children: ReactNo
 			</Typography>
 		</Box>
 	);
-}
-
-function formatCompactTimeRange(startIso: string | null, endIso: string | null): { primary: string; secondary: string } | null {
-	const start = startIso ? formatStepTimestampParts(startIso) : null;
-	const end = endIso ? formatStepTimestampParts(endIso) : null;
-
-	if (!start && !end) return null;
-
-	if (start && end) {
-		const sameDay = start.date === end.date;
-		return {
-			primary: sameDay ? `${start.time} – ${end.time}` : `${start.time} – ${end.time}`,
-			secondary: sameDay ? start.date : `${start.date} → ${end.date}`
-		};
-	}
-
-	const single = start ?? end;
-	if (!single) return null;
-	return { primary: single.time, secondary: single.date };
 }
 
 function SidebarStatCell({
