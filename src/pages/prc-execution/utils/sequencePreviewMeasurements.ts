@@ -18,9 +18,13 @@ export function filterMeasurementSteps(groupData: Record<string, unknown>): Arra
 export type SequenceStepDefinition = StepGroup['steps'][number];
 
 /** Build the same `detailedMeasurements` array used by StepPreview for sequence groups */
+/** Per-sub-step `{startTime, endTime}` bucket: `stepStartEndTime[prcTemplateStepId][stepGroupId]`. */
+export type SequenceStepTimings = Record<string, { startTime?: string; endTime?: string } | undefined>;
+
 export function buildSequenceDetailedMeasurements(
 	groupData: Record<string, unknown>,
-	stepDefinitions: SequenceStepDefinition[]
+	stepDefinitions: SequenceStepDefinition[],
+	stepTimings?: SequenceStepTimings
 ): Record<string, unknown>[] {
 	const detailedMeasurements: Record<string, unknown>[] = [];
 	const filteredSteps = filterMeasurementSteps(groupData);
@@ -28,11 +32,16 @@ export function buildSequenceDetailedMeasurements(
 	for (const [stepId, rawStepData] of filteredSteps) {
 		const stepData = rawStepData as Record<string, unknown>;
 		const stepDefinition = stepDefinitions.find(s => s.id.toString() === stepId);
+		const timing = stepTimings?.[stepId];
+		const stepStartTime = typeof timing?.startTime === 'string' ? timing.startTime : '';
+		const stepEndTime = typeof timing?.endTime === 'string' ? timing.endTime : '';
 
 		if (stepDefinition?.targetValueType === 'table') {
 			const tableValue = stepData.data ?? stepData.value;
 			const measurementData: Record<string, unknown> = {
 				stepId,
+				stepStartTime,
+				stepEndTime,
 				value: tableValue,
 				parameterDescription: stepDefinition.parameterDescription || `Step ${stepId}`,
 				targetValueType: 'table',
@@ -43,7 +52,9 @@ export function buildSequenceDetailedMeasurements(
 				ctq: stepDefinition.ctq || false,
 				criticalityTag: stepDefinition.criticalityTag ?? null,
 				stepNumber: stepDefinition.stepNumber || 0,
-				instrumentId: (stepData.instrumentId || (stepData.data as Record<string, unknown>)?.instrumentId || '') as string,
+				instrumentId: (stepData.instrumentId ||
+					(stepData.data as Record<string, unknown>)?.instrumentId ||
+					'') as string,
 				responsiblePersons: [] as Array<{ role: string; employeeName: string; employeeCode: string }>
 			};
 			const rp = stepData.responsiblePersons || (stepData.data as Record<string, unknown>)?.responsiblePersons;
@@ -56,6 +67,8 @@ export function buildSequenceDetailedMeasurements(
 			const okNotOkValue = stepData.value ?? stepData.data;
 			const measurementData: Record<string, unknown> = {
 				stepId,
+				stepStartTime,
+				stepEndTime,
 				value: okNotOkValue,
 				parameterDescription: stepDefinition.parameterDescription || `Step ${stepId}`,
 				targetValueType: 'ok/not ok',
@@ -65,7 +78,9 @@ export function buildSequenceDetailedMeasurements(
 				ctq: stepDefinition.ctq || false,
 				criticalityTag: stepDefinition.criticalityTag ?? null,
 				stepNumber: stepDefinition.stepNumber || 0,
-				instrumentId: (stepData.instrumentId || (stepData.data as Record<string, unknown>)?.instrumentId || '') as string,
+				instrumentId: (stepData.instrumentId ||
+					(stepData.data as Record<string, unknown>)?.instrumentId ||
+					'') as string,
 				responsiblePersons: [] as Array<{ role: string; employeeName: string; employeeCode: string }>
 			};
 			let responsiblePersons: unknown = null;
@@ -113,6 +128,8 @@ export function buildSequenceDetailedMeasurements(
 
 		const measurementData: Record<string, unknown> = {
 			stepId,
+			stepStartTime,
+			stepEndTime,
 			value,
 			parameterDescription: stepDefinition?.parameterDescription || `Step ${stepId}`,
 			targetValueType: stepDefinition?.targetValueType || 'range',

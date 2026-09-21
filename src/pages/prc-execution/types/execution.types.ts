@@ -560,6 +560,10 @@ export interface CatalystMixingEntry {
 	employeeName: string;
 	employeeCode: string;
 	role: 'l1' | 'l2' | 'l3' | 'l4';
+	/** True once the entry has been persisted; persisted entries are locked against further edits. */
+	savedEntry?: boolean;
+	/** ISO timestamp stamped when the entry was first saved. Never rewritten on later saves. */
+	capturedAt?: string;
 }
 
 export interface CatalystMixingFormData {

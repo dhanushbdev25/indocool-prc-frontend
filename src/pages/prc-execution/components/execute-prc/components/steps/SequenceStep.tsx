@@ -32,7 +32,8 @@ import {
 	OK_NOT_OK_OPTIONS,
 	OK_NOT_OK_SELECTED_COLORS,
 	acceptsOkNotOkComment,
-	formatOkNotOkValueForDisplay,
+	getOkNotOkCommentFieldLabel,
+	getOkNotOkCommentPlaceholder,
 	isValidOkNotOkValue,
 	requiresOkNotOkComment
 } from '../../../../../../utils/okNotOkLabels';
@@ -1063,8 +1064,8 @@ const SequenceStepForm = ({
 							fullWidth
 							multiline
 							rows={3}
-							label={requiresOkNotOkComment(selectedValue) ? 'Comments' : 'Comments (optional)'}
-							placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(selectedValue)}`}
+							label={getOkNotOkCommentFieldLabel(selectedValue)}
+							placeholder={getOkNotOkCommentPlaceholder(selectedValue)}
 							value={typeof formData.notOkComment === 'string' ? formData.notOkComment : ''}
 							onChange={e => handleNotOkCommentChange(e.target.value)}
 							error={!!errors.notOkComment}

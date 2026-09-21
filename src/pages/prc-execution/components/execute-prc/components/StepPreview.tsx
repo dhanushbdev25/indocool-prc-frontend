@@ -41,7 +41,7 @@ import {
 	RemoveCircleOutline
 } from '@mui/icons-material';
 import { type StepPreviewData, type ProceedFromPreviewPayload } from '../../../types/execution.types';
-import { formatExecutionDuration } from '../../../utils/timelineCardTiming';
+import { formatExecutionDuration, formatStepTimestampParts } from '../../../utils/timelineCardTiming';
 import { useFetchOperationDelayReasonComboQuery } from '../../../../../store/api/business/prc-execution/prc-execution.api';
 import { type OperationDelayReasonComboOption } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 import ImageDisplay from './ImageDisplay';
@@ -49,6 +49,7 @@ import { debugDataTransformation, transformObjectToArray } from '../../../utils/
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { toFileRenderUrl } from '../../../../../utils/fileUrl';
 import {
+	OK_NOT_OK_DEVIATION_PREVIEW_LABEL,
 	OK_NOT_OK_POSITIVE_VALUE,
 	OK_NOT_OK_TYPE_KEY,
 	formatOkNotOkTypeForDisplay,
@@ -157,7 +158,7 @@ const NotOkCommentPreview = ({ comment }: { comment: string }) => {
 				...(isTruncated ? { cursor: 'help' as const } : {})
 			}}
 		>
-			Comment: {display}
+			{OK_NOT_OK_DEVIATION_PREVIEW_LABEL}: {display}
 		</Typography>
 	);
 	if (!isTruncated) {
@@ -689,6 +690,7 @@ const StepPreview = ({
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Method</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
+									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Time</TableCell>
 								</TableRow>
 							</TableHead>
 							<TableBody>
@@ -938,11 +940,33 @@ const StepPreview = ({
 													);
 												})()}
 											</TableCell>
+											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+												{(() => {
+													const parts = formatStepTimestampParts(measurement.stepEndTime);
+													if (!parts) {
+														return (
+															<Typography variant="body2" sx={{ color: '#999', fontSize: '0.8rem' }}>
+																—
+															</Typography>
+														);
+													}
+													return (
+														<Box>
+															<Typography variant="body2" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>
+																{parts.time}
+															</Typography>
+															<Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem', display: 'block' }}>
+																{parts.date}
+															</Typography>
+														</Box>
+													);
+												})()}
+											</TableCell>
 										</TableRow>
 									))
 								) : (
 									<TableRow>
-										<TableCell colSpan={7} sx={{ textAlign: 'center', py: 3, color: '#666' }}>
+										<TableCell colSpan={8} sx={{ textAlign: 'center', py: 3, color: '#666' }}>
 											No measurement data available
 										</TableCell>
 									</TableRow>

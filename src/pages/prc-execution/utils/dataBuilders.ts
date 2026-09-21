@@ -2,7 +2,12 @@ import { type TimelineStep, type FormData, type OperationWiseExecutionRow } from
 import { isDemouldInspectionStep } from './demouldDefects';
 import { mergeOperationWiseExecutionArrays, normalizeOperationWiseToArray } from './operationWiseMerge';
 
-export function buildAggregatedData(step: TimelineStep, formData: FormData): Record<string, unknown> {
+export function buildAggregatedData(
+	step: TimelineStep,
+	formData: FormData,
+	/** Previously persisted aggregate, so first-save-only stamps survive a re-save. */
+	existingAggregatedData?: Record<string, unknown>
+): Record<string, unknown> {
 	if (step.type === 'setup') {
 		const out: Record<string, unknown> = {
 			prcmetadata: {
@@ -30,6 +35,9 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 		// Structure: { materialId: { order: { data } } }
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const simplifiedData: Record<string, Record<string, any>> = {};
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const existingBom = (existingAggregatedData?.bom as Record<string, Record<string, any>>) || {};
+		const savedAt = new Date().toISOString();
 
 		if (formData.entries && Array.isArray(formData.entries)) {
 			formData.entries.forEach(entry => {
@@ -42,8 +50,19 @@ export function buildAggregatedData(step: TimelineStep, formData: FormData): Rec
 					simplifiedData[materialId] = {};
 				}
 
+				// Stamp the capture time on first save only; a re-save keeps the original.
+				const previousCapturedAt = existingBom[materialId]?.[order.toString()]?.capturedAt;
+				const hasEntryData = String(entry.catalystQuantity ?? '').trim().length > 0;
+				const capturedAt =
+					typeof previousCapturedAt === 'string' && previousCapturedAt
+						? previousCapturedAt
+						: hasEntryData
+							? savedAt
+							: '';
+
 				// Store data under order key
 				simplifiedData[materialId][order.toString()] = {
+					capturedAt,
 					calculatedMax: entry.calculatedMax,
 					calculatedMin: entry.calculatedMin,
 					catalystQuantity: entry.catalystQuantity,

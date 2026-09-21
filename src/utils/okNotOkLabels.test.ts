@@ -6,6 +6,9 @@ import {
 	OK_NOT_OK_POSITIVE_VALUE,
 	acceptsOkNotOkComment,
 	formatOkNotOkValueForDisplay,
+	getOkNotOkCommentFieldLabel,
+	getOkNotOkCommentPlaceholder,
+	getOkNotOkCommentPreviewLabel,
 	isNegativeOkNotOk,
 	isNotApplicableOkNotOk,
 	isValidOkNotOkValue,
@@ -83,6 +86,27 @@ describe('OK_NOT_OK_OPTIONS', () => {
 	it('offers only values validation accepts', () => {
 		for (const option of OK_NOT_OK_OPTIONS) {
 			expect(isValidOkNotOkValue(option.value)).toBe(true);
+		}
+	});
+});
+
+describe('comment field labels', () => {
+	it('asks for a deviation number when the value is a deviation', () => {
+		expect(getOkNotOkCommentFieldLabel(OK_NOT_OK_NEGATIVE_VALUE)).toBe('Enter Deviation Number');
+		expect(getOkNotOkCommentPlaceholder(OK_NOT_OK_NEGATIVE_VALUE)).toBe('Enter deviation number');
+		expect(getOkNotOkCommentPreviewLabel(OK_NOT_OK_NEGATIVE_VALUE)).toBe('Deviation Number');
+	});
+
+	it('keeps an optional comment box for Not Applicable', () => {
+		expect(getOkNotOkCommentFieldLabel(OK_NOT_OK_NA_VALUE)).toBe('Comments (optional)');
+		expect(getOkNotOkCommentPlaceholder(OK_NOT_OK_NA_VALUE)).toBe('Enter comments');
+		expect(getOkNotOkCommentPreviewLabel(OK_NOT_OK_NA_VALUE)).toBe('Comment');
+	});
+
+	it('does not ask for a deviation number for OK or an unanswered value', () => {
+		for (const value of [OK_NOT_OK_POSITIVE_VALUE, '']) {
+			expect(getOkNotOkCommentFieldLabel(value)).toBe('Comments (optional)');
+			expect(getOkNotOkCommentPreviewLabel(value)).toBe('Comment');
 		}
 	});
 });

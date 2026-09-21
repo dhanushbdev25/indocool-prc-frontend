@@ -14,16 +14,18 @@ interface MouldReconciliationTableProps {
 	data: MouldReconciliationRow[];
 	reconcilingKey: string | null;
 	onReconcile: (row: MouldReconciliationRow) => void;
+	onEdit: (row: MouldReconciliationRow) => void;
 	pagination?: MRT_PaginationState;
 	onPaginationChange?: (updaterOrValue: MRT_Updater<MRT_PaginationState>) => void;
 }
 
 const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
-const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagination, onPaginationChange }: MouldReconciliationTableProps) => {
+const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, onEdit, pagination, onPaginationChange }: MouldReconciliationTableProps) => {
 	const { hasPermission } = useCurrentRole();
 	const canCreateReconcile = hasPermission('MOULD_RECONCILIATION_CREATE');
 	const canEditReconcile = hasPermission('MOULD_RECONCILIATION_EDIT');
+	const canUpdateMould = hasPermission('MOULD_UPDATE');
 	const columns = useMemo<MRT_ColumnDef<MouldReconciliationRow>[]>(
 		() => [
 			{
@@ -93,7 +95,7 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 			{
 				id: 'actions',
 				header: 'Actions',
-				size: 140,
+				size: 200,
 				enableSorting: false,
 				enableColumnFilter: false,
 				Cell: ({ row }) => {
@@ -103,24 +105,39 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, pagi
 						canCreate: canCreateReconcile,
 						canEdit: canEditReconcile
 					});
-					if (!showAction) {
+					if (!showAction && !canUpdateMould) {
 						return null;
 					}
 					return (
-						<Button
-							variant="contained"
-							size="small"
-							onClick={() => onReconcile(row.original)}
-							disabled={isLoading}
-							title={!isDue ? 'Reconcile mould (not yet due by count)' : undefined}
-						>
-							Reconcile
-						</Button>
+						<Box sx={{ display: 'flex', gap: 1 }}>
+							{showAction && (
+								<Button
+									variant="contained"
+									size="small"
+									onClick={() => onReconcile(row.original)}
+									disabled={isLoading}
+									title={!isDue ? 'Reconcile mould (not yet due by count)' : undefined}
+								>
+									Reconcile
+								</Button>
+							)}
+							{canUpdateMould && (
+								<Button
+									variant="outlined"
+									size="small"
+									onClick={() => onEdit(row.original)}
+									disabled={isLoading}
+									title="Edit total count"
+								>
+									Edit
+								</Button>
+							)}
+						</Box>
 					);
 				}
 			}
 		],
-		[onReconcile, reconcilingKey, canCreateReconcile, canEditReconcile]
+		[onReconcile, onEdit, reconcilingKey, canCreateReconcile, canEditReconcile, canUpdateMould]
 	);
 
 	if (!data.length) {

@@ -8,13 +8,15 @@ import {
 	DialogContent,
 	DialogTitle,
 	IconButton,
+	TextField,
 	Tooltip,
 	Typography
 } from '@mui/material';
 import { Refresh as RefreshIcon } from '@mui/icons-material';
 import {
 	useFetchMouldsQuery,
-	useReconcileMouldMutation
+	useReconcileMouldMutation,
+	useUpdateMouldMutation
 } from '../../../../../store/api/business/mould/mould.api';
 import {
 	type MouldReconciliationRow,
@@ -42,16 +44,21 @@ const getRowKey = (row: MouldReconciliationRow) => String(row.id);
 
 const ListMouldReconciliation = () => {
 	const { hasPermission } = useCurrentRole();
-	const canReconcileAction =
-		hasPermission('MOULD_RECONCILIATION_CREATE') || hasPermission('MOULD_RECONCILIATION_EDIT');
+	const canReconcileAction = hasPermission('MOULD_RECONCILIATION_CREATE') || hasPermission('MOULD_RECONCILIATION_EDIT');
+	const canUpdateMould = hasPermission('MOULD_UPDATE');
 	const { data: rows = [], isLoading, isFetching, isError, error, refetch } = useFetchMouldsQuery();
 	const [reconcileMould, { isLoading: isReconciling }] = useReconcileMouldMutation();
+	const [updateMould, { isLoading: isUpdatingMould }] = useUpdateMouldMutation();
 
 	const { searchTerm, filters, pagination, setSearchTerm, setFilters, setPagination } = useListView('mould');
 	const [reconcilingKey, setReconcilingKey] = useState<string | null>(null);
 	const [selectedRow, setSelectedRow] = useState<MouldReconciliationRow | null>(null);
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [actionError, setActionError] = useState<string | null>(null);
+	const [editRow, setEditRow] = useState<MouldReconciliationRow | null>(null);
+	const [editOpen, setEditOpen] = useState(false);
+	const [editValue, setEditValue] = useState('');
+	const [editError, setEditError] = useState<string | null>(null);
 
 	const isReconcileBusy = reconcilingKey !== null || isReconciling;
 
@@ -87,10 +94,7 @@ const ListMouldReconciliation = () => {
 			const due = isMouldDueForReconciliation(r);
 			if (!matchesMulti(due ? 'Due' : 'Not due', filters.status)) return false;
 			if (!term) return true;
-			return (
-				(r.sapReferenceNumber ?? '').toLowerCase().includes(term) ||
-				r.mouldCode.toLowerCase().includes(term)
-			);
+			return (r.sapReferenceNumber ?? '').toLowerCase().includes(term) || r.mouldCode.toLowerCase().includes(term);
 		});
 	}, [rows, filters, searchTerm]);
 
@@ -134,6 +138,41 @@ const ListMouldReconciliation = () => {
 			setActionError('Failed to reconcile. Check that the reconcile API path matches your backend.');
 		} finally {
 			setReconcilingKey(null);
+		}
+	};
+
+	const handleRequestEdit = (row: MouldReconciliationRow) => {
+		if (!canUpdateMould) return;
+		setEditRow(row);
+		setEditValue(String(row.totalCount ?? 0));
+		setEditError(null);
+		setEditOpen(true);
+	};
+
+	const handleEditClose = () => {
+		setEditOpen(false);
+		setEditRow(null);
+		setEditValue('');
+		setEditError(null);
+	};
+
+	const parsedEditValue = Number(editValue.trim());
+	const isEditValueValid = editValue.trim().length > 0 && Number.isInteger(parsedEditValue) && parsedEditValue >= 0;
+	const isEditValueChanged = isEditValueValid && parsedEditValue !== (editRow?.totalCount ?? 0);
+
+	const handleConfirmEdit = async () => {
+		if (!editRow || !canUpdateMould || !isEditValueValid || !isEditValueChanged) return;
+		const sapReferenceNumber = editRow.sapReferenceNumber?.trim() || '';
+		if (!sapReferenceNumber || !editRow.mouldCode) {
+			setEditError('This mould has no SAP number or mould code, so it cannot be updated.');
+			return;
+		}
+		setEditError(null);
+		try {
+			await updateMould({ sapReferenceNumber, mouldCode: editRow.mouldCode, totalCount: parsedEditValue }).unwrap();
+			handleEditClose();
+		} catch {
+			setEditError('Failed to update the total count. Please try again.');
 		}
 	};
 
@@ -212,6 +251,7 @@ const ListMouldReconciliation = () => {
 							data={filteredData}
 							reconcilingKey={reconcilingKey}
 							onReconcile={handleRequestReconcile}
+							onEdit={handleRequestEdit}
 							pagination={pagination}
 							onPaginationChange={setPagination}
 						/>
@@ -229,26 +269,65 @@ const ListMouldReconciliation = () => {
 					)}
 					<Typography variant="body2">
 						Reconcile mould <strong>{selectedRow?.mouldCode}</strong> for SAP number{' '}
-						<strong>{selectedRow?.sapReferenceNumber?.trim() || '—'}</strong>? This should reset the current
-						count on the server.
+						<strong>{selectedRow?.sapReferenceNumber?.trim() || '—'}</strong>? This should reset the current count on
+						the server.
 					</Typography>
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={handleConfirmClose} disabled={isReconcileBusy}>
 						Cancel
 					</Button>
-					<Button
-						variant="contained"
-						onClick={handleConfirmReconcile}
-						disabled={!selectedRow || isReconcileBusy}
-					>
+					<Button variant="contained" onClick={handleConfirmReconcile} disabled={!selectedRow || isReconcileBusy}>
 						Reconcile
 					</Button>
 				</DialogActions>
 			</Dialog>
 
+			<Dialog open={editOpen} onClose={handleEditClose} maxWidth="xs" fullWidth>
+				<DialogTitle>Edit total count</DialogTitle>
+				<DialogContent>
+					{editError && (
+						<Alert severity="error" sx={{ mb: 2 }}>
+							{editError}
+						</Alert>
+					)}
+					<Typography variant="body2" sx={{ mb: 2 }}>
+						Mould <strong>{editRow?.mouldCode}</strong> for SAP number{' '}
+						<strong>{editRow?.sapReferenceNumber?.trim() || '—'}</strong>
+					</Typography>
+					<TextField
+						fullWidth
+						autoFocus
+						type="number"
+						label="Total count"
+						value={editValue}
+						onChange={e => setEditValue(e.target.value)}
+						disabled={isUpdatingMould}
+						error={editValue.trim().length > 0 && !isEditValueValid}
+						helperText={editValue.trim().length > 0 && !isEditValueValid ? 'Enter a whole number of 0 or more' : ' '}
+						slotProps={{ htmlInput: { min: 0, step: 1 } }}
+					/>
+				</DialogContent>
+				<DialogActions>
+					<Button onClick={handleEditClose} disabled={isUpdatingMould}>
+						Cancel
+					</Button>
+					<Button
+						variant="contained"
+						onClick={handleConfirmEdit}
+						disabled={!isEditValueValid || !isEditValueChanged || isUpdatingMould}
+					>
+						Save
+					</Button>
+				</DialogActions>
+			</Dialog>
+
+			<FullScreenFormSavingOverlay open={isUpdatingMould} message="Saving…" />
 			<FullScreenFormSavingOverlay open={isReconcileBusy} message="Reconciling…" />
-			<FullScreenFormSavingOverlay open={isFetching && !isLoading && !isReconcileBusy} message="Refreshing…" />
+			<FullScreenFormSavingOverlay
+				open={isFetching && !isLoading && !isReconcileBusy && !isUpdatingMould}
+				message="Refreshing…"
+			/>
 		</>
 	);
 };

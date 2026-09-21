@@ -20,9 +20,7 @@ export const mouldApi = createApi({
 				method: 'GET'
 			}),
 			transformResponse: (response: unknown) =>
-				extractMouldListArray(response).map((raw, i) =>
-					mapMouldApiItemToRow(coerceMouldApiItem(raw, i))
-				),
+				extractMouldListArray(response).map((raw, i) => mapMouldApiItemToRow(coerceMouldApiItem(raw, i))),
 			providesTags: ['Mould']
 		}),
 		/** Moulds for a part (label = mouldId per backend template). Query: partId (part master id). */
@@ -59,8 +57,26 @@ export const mouldApi = createApi({
 				method: 'PUT'
 			}),
 			invalidatesTags: ['Mould']
+		}),
+		/**
+		 * PUT /web/mould/updatemould?sapReferenceNumber=&mouldCode= — updates the mould's total count.
+		 *
+		 * NOTE: the backend handler does not read the request body yet; it currently reconciles the
+		 * matched row (zeroes currentCount, stamps lastReconciled) and ignores `totalCount`. The body
+		 * below is the agreed contract — this endpoint will not persist the edit until the handler is
+		 * updated to read it.
+		 */
+		updateMould: builder.mutation<void, { sapReferenceNumber: string; mouldCode: string; totalCount: number }>({
+			query: ({ sapReferenceNumber, mouldCode, totalCount }) => ({
+				url: 'mould/updatemould',
+				method: 'PUT',
+				params: { sapReferenceNumber, mouldCode },
+				body: { totalCount }
+			}),
+			invalidatesTags: ['Mould']
 		})
 	})
 });
 
-export const { useFetchMouldsQuery, useFetchMouldComboQuery, useReconcileMouldMutation } = mouldApi;
+export const { useFetchMouldsQuery, useFetchMouldComboQuery, useReconcileMouldMutation, useUpdateMouldMutation } =
+	mouldApi;

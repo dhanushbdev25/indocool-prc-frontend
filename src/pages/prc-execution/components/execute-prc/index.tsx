@@ -33,7 +33,7 @@ import {
 	collectDemouldDefectCategories,
 	findDemouldStep
 } from '../../utils/demouldDefects';
-import { buildSequenceDetailedMeasurements } from '../../utils/sequencePreviewMeasurements';
+import { buildSequenceDetailedMeasurements, type SequenceStepTimings } from '../../utils/sequencePreviewMeasurements';
 import {
 	areNonSapStepsComplete,
 	canAccessStepIndex,
@@ -223,6 +223,13 @@ const ExecutePrc = () => {
 		return actualData?.prcAggregatedSteps || {};
 	}, [currentAggregatedData, executionData]);
 
+	// Mirrors getCurrentAggregatedData for the timing tree, so both preview builders read the
+	// per-sub-step `{startTime, endTime}` windows from one place.
+	const getCurrentStepTimingRoot = useCallback((): Record<string, unknown> => {
+		const actualData = (executionData as { data: ExecutionData })?.data;
+		return (actualData?.stepStartEndTime as Record<string, unknown>) || {};
+	}, [executionData]);
+
 	// Image annotation usually happens on a FIR/AFIR step, but the defect names come from the
 	// demould inspection's recorded counts, so they are resolved here where both are in scope.
 	const demouldStep = useMemo(() => findDemouldStep(timelineSteps), [timelineSteps]);
@@ -397,7 +404,7 @@ const ExecutePrc = () => {
 			const endTime = new Date().toISOString();
 			const startTime = options?.startTime || stepStartTimeRef.current || endTime;
 
-			const stepAggregatedData = buildAggregatedData(stepToProcess, stepFormData);
+			const stepAggregatedData = buildAggregatedData(stepToProcess, stepFormData, getCurrentAggregatedData());
 
 			let stepTimingData = {};
 			const hasExisting = hasExistingTimingData(stepToProcess, stepFormData);
@@ -643,9 +650,15 @@ const ExecutePrc = () => {
 					>;
 					const groupData = stepGroupData?.[currentStep.stepGroup?.id.toString() || ''] as Record<string, unknown>;
 
+					const groupTimings = (
+						mergedTimingData[currentStep.prcTemplateStepId?.toString() || ''] as
+							| Record<string, SequenceStepTimings>
+							| undefined
+					)?.[currentStep.stepGroup?.id.toString() || ''];
+
 					const detailedMeasurements =
 						groupData && currentStep.stepGroup
-							? buildSequenceDetailedMeasurements(groupData, currentStep.stepGroup.steps)
+							? buildSequenceDetailedMeasurements(groupData, currentStep.stepGroup.steps, groupTimings)
 							: [];
 
 					// Load approval state from backend (look inside step group)
@@ -1349,7 +1362,9 @@ const ExecutePrc = () => {
 			const userApprovalData = buildUserApprovalData(currentStep, 'stepCompletedBy', userInfo.id);
 
 			// Build aggregated data for this step
-			const stepAggregatedData = previewData ? buildAggregatedData(currentStep, previewData.data as FormData) : {};
+			const stepAggregatedData = previewData
+				? buildAggregatedData(currentStep, previewData.data as FormData, getCurrentAggregatedData())
+				: {};
 
 			// Only build timing data if it doesn't already exist for this step
 			let stepTimingData = {};
@@ -1542,9 +1557,15 @@ const ExecutePrc = () => {
 				>;
 				const groupData = stepGroupData?.[targetStep.stepGroup?.id.toString() || ''] as Record<string, unknown>;
 
+				const groupTimings = (
+					getCurrentStepTimingRoot()[targetStep.prcTemplateStepId?.toString() || ''] as
+						| Record<string, SequenceStepTimings>
+						| undefined
+				)?.[targetStep.stepGroup?.id.toString() || ''];
+
 				const detailedMeasurements =
 					groupData && targetStep.stepGroup
-						? buildSequenceDetailedMeasurements(groupData, targetStep.stepGroup.steps)
+						? buildSequenceDetailedMeasurements(groupData, targetStep.stepGroup.steps, groupTimings)
 						: [];
 
 				// Load approval state from backend (look inside step group)

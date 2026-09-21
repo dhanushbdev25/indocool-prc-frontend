@@ -44,13 +44,16 @@ import {
 	type CatalystMixingFormData
 } from '../../../../types/execution.types';
 import {
+	OK_NOT_OK_DEVIATION_PREVIEW_LABEL,
 	OK_NOT_OK_NEGATIVE_LABEL,
 	OK_NOT_OK_OPTIONS,
 	acceptsOkNotOkComment,
-	formatOkNotOkValueForDisplay,
+	getOkNotOkCommentFieldLabel,
+	getOkNotOkCommentPlaceholder,
 	isValidOkNotOkValue,
 	requiresOkNotOkComment
 } from '../../../../../../utils/okNotOkLabels';
+import { formatDisplayDateTime } from '../../../../../../utils/formatDisplayDate';
 import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
 import { ERROR_ANCHOR_CLASS } from '../../../../utils/scrollToFirstError';
 
@@ -294,7 +297,8 @@ const BomStep = ({
 							role:
 								savedEntry.role === 'l2' || savedEntry.role === 'l3' || savedEntry.role === 'l4'
 									? savedEntry.role
-									: 'l1'
+									: 'l1',
+							capturedAt: savedEntry.capturedAt || ''
 						};
 					}
 					return entry;
@@ -493,7 +497,8 @@ const BomStep = ({
 				if (!isValidOkNotOkValue(entry.fodCheckpoint)) {
 					newErrors[`${entry.id}_fod`] = 'FOD checkpoint is required';
 				} else if (requiresOkNotOkComment(entry.fodCheckpoint) && !entry.fodDeviationComment.trim()) {
-					newErrors[`${entry.id}_fodComment`] = `Comments are required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
+					newErrors[`${entry.id}_fodComment`] =
+						`${OK_NOT_OK_DEVIATION_PREVIEW_LABEL} is required for ${OK_NOT_OK_NEGATIVE_LABEL}`;
 				}
 			}
 		});
@@ -721,6 +726,15 @@ const BomStep = ({
 														color="warning"
 														size="small"
 														variant="outlined"
+													/>
+												)}
+												{entry.capturedAt && (
+													<Chip
+														icon={<AccessTimeIcon />}
+														label={formatDisplayDateTime(entry.capturedAt)}
+														size="small"
+														variant="outlined"
+														sx={{ color: 'text.secondary' }}
 													/>
 												)}
 												{entry.temperature && entry.humidity && entry.catalystQuantity && !entry.blocked && (
@@ -965,10 +979,8 @@ const BomStep = ({
 														fullWidth
 														multiline
 														rows={2}
-														label={
-															requiresOkNotOkComment(entry.fodCheckpoint) ? 'Deviation comments' : 'Comments (optional)'
-														}
-														placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(entry.fodCheckpoint)}`}
+														label={getOkNotOkCommentFieldLabel(entry.fodCheckpoint)}
+														placeholder={getOkNotOkCommentPlaceholder(entry.fodCheckpoint)}
 														value={entry.fodDeviationComment}
 														onChange={e => handleInputChange(entry.id, 'fodDeviationComment', e.target.value)}
 														error={!!errors[`${entry.id}_fodComment`]}

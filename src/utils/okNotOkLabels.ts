@@ -91,3 +91,29 @@ export function formatOkNotOkValueForDisplay(value: string): string {
 	if (isNotApplicableOkNotOk(value)) return OK_NOT_OK_NA_LABEL;
 	return value;
 }
+
+/**
+ * Field label for the box shown next to a deviation. A deviation is tracked by its deviation
+ * number, so the negative value asks for that rather than free-form comments; Not Applicable
+ * keeps an optional comment box.
+ */
+export const OK_NOT_OK_DEVIATION_FIELD_LABEL = 'Enter Deviation Number';
+
+export const OK_NOT_OK_NA_COMMENT_LABEL = 'Comments (optional)';
+
+/** Read-only caption for the same value, used by the preview surfaces. */
+export const OK_NOT_OK_DEVIATION_PREVIEW_LABEL = 'Deviation Number';
+
+export const OK_NOT_OK_COMMENT_PREVIEW_LABEL = 'Comment';
+
+export function getOkNotOkCommentFieldLabel(value: unknown): string {
+	return requiresOkNotOkComment(value) ? OK_NOT_OK_DEVIATION_FIELD_LABEL : OK_NOT_OK_NA_COMMENT_LABEL;
+}
+
+export function getOkNotOkCommentPlaceholder(value: unknown): string {
+	return requiresOkNotOkComment(value) ? 'Enter deviation number' : 'Enter comments';
+}
+
+export function getOkNotOkCommentPreviewLabel(value: unknown): string {
+	return requiresOkNotOkComment(value) ? OK_NOT_OK_DEVIATION_PREVIEW_LABEL : OK_NOT_OK_COMMENT_PREVIEW_LABEL;
+}

@@ -59,7 +59,8 @@ import {
 	OK_NOT_OK_SELECTED_COLORS,
 	OK_NOT_OK_TYPE_KEY,
 	acceptsOkNotOkComment,
-	formatOkNotOkValueForDisplay,
+	getOkNotOkCommentFieldLabel,
+	getOkNotOkCommentPlaceholder,
 	isValidOkNotOkValue,
 	requiresOkNotOkComment
 } from '../../../../../../utils/okNotOkLabels';
@@ -1474,8 +1475,8 @@ const InspectionStep = ({
 																		fullWidth
 																		multiline
 																		rows={2}
-																		label={requiresOkNotOkComment(currentValue) ? 'Comments' : 'Comments (optional)'}
-																		placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(currentValue)}`}
+																		label={getOkNotOkCommentFieldLabel(currentValue)}
+																		placeholder={getOkNotOkCommentPlaceholder(currentValue)}
 																		value={String(
 																			formData[commentKey] ||
 																				(typeof paramData === 'object' && paramData !== null
@@ -2069,12 +2070,8 @@ const InspectionStep = ({
 																											fullWidth
 																											multiline
 																											rows={2}
-																											label={
-																												requiresOkNotOkComment(currentValue)
-																													? 'Comments'
-																													: 'Comments (optional)'
-																											}
-																											placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(currentValue)}`}
+																											label={getOkNotOkCommentFieldLabel(currentValue)}
+																											placeholder={getOkNotOkCommentPlaceholder(currentValue)}
 																											value={String(formData[getNotOkCommentKey(key)] || '')}
 																											onChange={e => handleNotOkCommentChange(key, e.target.value)}
 																											error={!!errors[getNotOkCommentKey(key)]}
@@ -2289,12 +2286,8 @@ const InspectionStep = ({
 																									fullWidth
 																									multiline
 																									rows={2}
-																									label={
-																										requiresOkNotOkComment(currentValue)
-																											? 'Comments'
-																											: 'Comments (optional)'
-																									}
-																									placeholder={`Enter comments for ${formatOkNotOkValueForDisplay(currentValue)}`}
+																									label={getOkNotOkCommentFieldLabel(currentValue)}
+																									placeholder={getOkNotOkCommentPlaceholder(currentValue)}
 																									value={String(formData[commentKey] || '')}
 																									onChange={e => handleNotOkCommentChange(key, e.target.value)}
 																									error={!!errors[commentKey]}
