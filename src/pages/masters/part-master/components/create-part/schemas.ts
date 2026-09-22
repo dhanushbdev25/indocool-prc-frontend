@@ -166,7 +166,7 @@ export const partMasterFormSchema = yup.object({
 	sapReferenceNumber: yup.string().max(50, 'SAP reference number must be less than 50 characters').optional(),
 	version: yup.number().default(1),
 	isLatest: yup.boolean().default(true),
-	catalyst: yup.number().required('Catalyst chart mapping is required'),
+	catalyst: yup.number().optional(),
 	prcTemplate: yup.number().optional(),
 	// Inline PRC template fields
 	templateId: yup.string().trim().optional(),
@@ -312,7 +312,7 @@ export const technicalDataSchema = yup.object({
 });
 
 export const linkedMastersSchema = yup.object({
-	catalyst: yup.number().required('Catalyst chart mapping is required'),
+	catalyst: yup.number().optional(),
 	prcTemplate: yup.number().optional(),
 	templateId: yup.string().optional(),
 	templateName: yup.string().optional(),

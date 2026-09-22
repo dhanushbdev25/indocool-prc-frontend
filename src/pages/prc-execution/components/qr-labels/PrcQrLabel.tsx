@@ -21,14 +21,10 @@ type PrcQrLabelProps = {
 const PrcQrLabel = ({ fields }: PrcQrLabelProps) => (
 	<article className="prc-qr-label" aria-label={`QR label for PRC ${fields.executionId}`}>
 		<header className="prc-qr-label__header">
-			<img className="prc-qr-label__logo" src={indocoolLogo} alt="Indocool Logo" />
 			<div className="prc-qr-label__company">INDOCOOL COMPOSITES PRIVATE LIMITED - INDIA</div>
 		</header>
 
 		<div className="prc-qr-label__body">
-			<span className="prc-qr-label__mark-e" aria-hidden>
-				E
-			</span>
 
 			<table className="prc-qr-label__table">
 				<tbody>
@@ -46,7 +42,7 @@ const PrcQrLabel = ({ fields }: PrcQrLabelProps) => (
 					<PrintableQrCode value={fields.qrUrl} size={68} title={`PRC ${fields.executionId}`} />
 				</div>
 				<div className="prc-qr-label__mark-m" aria-hidden>
-					M 1
+					{fields["mouldCode"] || " "}
 				</div>
 			</div>
 		</div>

@@ -43,6 +43,21 @@ const MouldReconciliationTable = memo(({ data, reconcilingKey, onReconcile, onEd
 				header: 'Mould Code',
 				size: 160
 			},
+				{
+				accessorKey: 'partCode',
+				header: 'Part Code',
+				size: 160
+			},
+				{
+				accessorKey: 'customerName',
+				header: 'Customer Name',
+				size: 160
+			},
+				{
+				accessorKey: 'customerVariantName',
+				header: 'Customer Variant',
+				size: 160
+			},
 			{
 				accessorKey: 'reconciliationCount',
 				header: 'Reconciliation Count',

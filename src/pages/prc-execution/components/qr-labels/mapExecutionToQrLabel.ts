@@ -15,6 +15,7 @@ export type PrcQrLabelFields = {
 	purchaseOrderNo: string;
 	/** Absolute URL encoded in the QR code */
 	qrUrl: string;
+	mouldCode?: string;
 };
 
 const asDisplay = (value: unknown): string => {
@@ -95,7 +96,8 @@ export function mapExecutionToQrLabel(execution: ExecutionData): PrcQrLabelField
 		'revNo',
 		'rev_no',
 		'revision',
-		'Revision'
+		'Revision',
+		'mouldCode'
 	]);
 
 	const modelNo = pickField(root, ['model', 'modelNo', 'model_no', 'modelNumber', 'model_number']);
@@ -121,7 +123,8 @@ export function mapExecutionToQrLabel(execution: ExecutionData): PrcQrLabelField
 		purchaseOrderNo:
 			asDisplay(execution.orderId) ||
 			pickField(root, ['orderId', 'order_id', 'purchaseOrderNo', 'purchase_order_no', 'poNumber']),
-		qrUrl: buildPrcExecutionExecuteUrl(execution.id)
+		qrUrl: buildPrcExecutionExecuteUrl(execution.id),
+		mouldCode: asDisplay(execution.mouldCode) || pickField(root, ['mouldCode', 'mould_code'])
 	};
 }
 

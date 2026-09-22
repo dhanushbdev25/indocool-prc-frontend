@@ -15,6 +15,8 @@ export interface MouldApiItem {
 	reconcileNowFlag: boolean;
 	createdAt?: string;
 	updatedAt?: string;
+	customerName?: string;
+	customerVariantName?: string;
 	[key: string]: unknown;
 }
 
@@ -24,6 +26,9 @@ export interface MouldReconciliationRow {
 	partId: number;
 	partNumber: string;
 	sapReferenceNumber?: string;
+	partCode: string;
+	customerName?: string;
+	customerVariantName?: string;
 	mouldCode: string;
 	reconciliationCount: number;
 	currentCount: number;
@@ -45,7 +50,10 @@ export const mapMouldApiItemToRow = (item: MouldApiItem): MouldReconciliationRow
 	currentCount: item.currentCount ?? 0,
 	totalCount: item.totalCount ?? 0,
 	lastReconciledAt: item.lastReconciled ?? null,
-	reconcileNowFlag: item.reconcileNowFlag
+	reconcileNowFlag: item.reconcileNowFlag,
+	partCode: item.partCode,
+	customerName: item.customerName ?? '',
+	customerVariantName: item.customerVariantName ?? ''
 });
 
 /** Normalize GET /mould body to an array (raw array or `{ data }`); empty if unrecognized. */
@@ -88,6 +96,8 @@ export function coerceMouldApiItem(raw: unknown, fallbackIndex: number): MouldAp
 			? (o.lastReconciled as string | null)
 			: undefined;
 	const reconcileNowFlag = parseReconcileNowFlag(o);
+	const customerName = typeof o.customerName === 'string' ? o.customerName : '';
+	const customerVariantName = typeof o.customerVariantName === 'string' ? o.customerVariantName : '';
 	return {
 		id,
 		partId,
@@ -99,7 +109,9 @@ export function coerceMouldApiItem(raw: unknown, fallbackIndex: number): MouldAp
 		currentCount,
 		totalCount,
 		lastReconciled,
-		reconcileNowFlag
+		reconcileNowFlag,
+		customerName,
+		customerVariantName
 	};
 }
 

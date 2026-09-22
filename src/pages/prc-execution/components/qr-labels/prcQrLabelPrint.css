@@ -57,7 +57,7 @@ body > .prc-qr-labels-print-root {
 	text-align: center;
 	padding: 2px 4px 1px;
 	border-bottom: 1.5px solid #000;
-	background: #0b1f3a;
+	background: #000000;
 	flex: none;
 }
 
@@ -74,12 +74,12 @@ body > .prc-qr-labels-print-root {
 .prc-qr-label__company {
 	font-family: Arial, Helvetica, sans-serif;
 	font-weight: 700;
-	font-size: 7px;
+	font-size: 12px;
 	letter-spacing: 0.02em;
 	text-transform: uppercase;
 	line-height: 1.2;
 	padding: 2px 2px 1px;
-	border-top: 1px solid rgba(255, 255, 255, 0.35);
+	/* border-top: 1px solid rgba(255, 255, 255, 0.35); */
 	color: #fff;
 }
 
@@ -192,6 +192,8 @@ body > .prc-qr-labels-print-root {
 	margin-top: 1px;
 	text-align: center;
 	width: 100%;
+	    height: 14px;       /* always reserves the same space */
+
 }
 
 /* Screen preview inside dialog */
