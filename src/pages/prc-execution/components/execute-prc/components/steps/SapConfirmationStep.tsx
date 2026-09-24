@@ -46,11 +46,11 @@ function LogRow({
 		operationId: string;
 		operationText: string;
 		requestUrl: string;
-		requestBody: Record<string, unknown>;
-		httpStatus: number;
+		requestBody: unknown;
+		httpStatus: number | null;
 		success: boolean;
 		errorMessage: string | null;
-		errorDescription?: string | Record<string, unknown> | null;
+		errorDescription?: unknown;
 		triggeredAt: string;
 	};
 	expanded: boolean;
@@ -60,8 +60,12 @@ function LogRow({
 }) {
 	const displayOperation = archivePresentation
 		? log.operationText?.trim() || '—'
-		: `${log.operationId} — ${log.operationText}`;
-	const payloadForDisplay = log.requestBody;
+		: [log.operationId, log.operationText].filter(v => v?.trim()).join(' — ') || '—';
+	const payloadForDisplay = log.requestBody == null ? '—' : JSON.stringify(log.requestBody, null, 2);
+	const triggeredAtText = (() => {
+		const parsed = new Date(log.triggeredAt);
+		return log.triggeredAt && !isNaN(parsed.getTime()) ? parsed.toLocaleString() : '—';
+	})();
 
 	const errorDescriptionText = (() => {
 		const raw = log.errorDescription;
@@ -123,7 +127,7 @@ function LogRow({
 				Request URL
 			</Typography>
 			<Typography variant="body2" sx={{ mb: 2, wordBreak: 'break-all' }}>
-				{log.requestUrl}
+				{log.requestUrl || '—'}
 			</Typography>
 			<Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
 				Request body
@@ -140,7 +144,7 @@ function LogRow({
 					maxHeight: 240
 				}}
 			>
-				{JSON.stringify(payloadForDisplay, null, 2)}
+				{payloadForDisplay}
 			</Box>
 		</Box>
 	);
@@ -179,7 +183,7 @@ function LogRow({
 				<TableCell>
 					<Typography variant="body2">{displayOperation}</Typography>
 				</TableCell>
-				<TableCell>{log.httpStatus}</TableCell>
+				<TableCell>{log.httpStatus ?? '—'}</TableCell>
 				<TableCell>
 					<Chip
 						size="small"
@@ -195,7 +199,7 @@ function LogRow({
 				</TableCell>
 				<TableCell>
 					<Typography variant="body2" color="text.secondary">
-						{new Date(log.triggeredAt).toLocaleString()}
+						{triggeredAtText}
 					</Typography>
 				</TableCell>
 			</TableRow>
@@ -222,10 +226,13 @@ const SapConfirmationStep = ({
 	const { hasPermission } = useCurrentRole();
 	const canRetrySap = hasPermission('SAP_INTEGRATION_JOBS_EDIT');
 
-	const { data: logs = [], isLoading, isError, error, refetch } = useFetchSapConfirmationLogsQuery(
-		{ prcExecutionId },
-		{ skip: !prcExecutionId }
-	);
+	const {
+		data: logs = [],
+		isLoading,
+		isError,
+		error,
+		refetch
+	} = useFetchSapConfirmationLogsQuery({ prcExecutionId }, { skip: !prcExecutionId });
 
 	const [retrigger, { isLoading: isRetriggering }] = useRetriggerSapConfirmationsMutation();
 

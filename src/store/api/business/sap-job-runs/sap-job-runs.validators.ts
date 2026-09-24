@@ -1,3 +1,87 @@
+/*
+ * SAP-backed payloads are not a contract we control: most log columns are
+ * nullable, SAP itself varies field casing/typing between endpoints, and new
+ * fields appear without notice. So nothing in this file rejects a row — every
+ * parser coerces what it gets into something renderable and warns on the
+ * console. A single odd row must never blank out a whole screen.
+ */
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function toStr(value: unknown, fallback = ''): string {
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+	if (value === null || value === undefined) return fallback;
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return fallback;
+	}
+}
+
+function toNullableStr(value: unknown): string | null {
+	if (value === null || value === undefined) return null;
+	const str = toStr(value);
+	return str === '' ? null : str;
+}
+
+function toNum(value: unknown, fallback: number): number {
+	if (typeof value === 'number' && Number.isFinite(value)) return value;
+	if (typeof value === 'string' && value.trim() !== '') {
+		const parsed = Number(value);
+		if (Number.isFinite(parsed)) return parsed;
+	}
+	return fallback;
+}
+
+function toNullableNum(value: unknown): number | null {
+	if (value === null || value === undefined || value === '') return null;
+	const parsed = toNum(value, Number.NaN);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function toBool(value: unknown): boolean {
+	if (typeof value === 'boolean') return value;
+	if (typeof value === 'number') return value === 1;
+	if (typeof value === 'string') {
+		const normalized = value.trim().toLowerCase();
+		return normalized === 'true' || normalized === '1' || normalized === 'y' || normalized === 'x';
+	}
+	return false;
+}
+
+/**
+ * Pulls the list out of whatever envelope arrived: a bare array, `{ data }`,
+ * or one of the OData-ish wrappers SAP hands back. Anything else yields an
+ * empty list plus a warning rather than an exception.
+ */
+function extractListArray(value: unknown, label: string): unknown[] {
+	if (Array.isArray(value)) return value;
+	if (isPlainObject(value)) {
+		for (const key of ['data', 'items', 'results', 'value', 'logs'] as const) {
+			const nested = value[key];
+			if (Array.isArray(nested)) return nested;
+		}
+		const d = value.d;
+		if (isPlainObject(d) && Array.isArray(d.results)) return d.results;
+	}
+	if (value !== null && value !== undefined) {
+		console.warn(`Unexpected ${label} response structure — rendering an empty list`, value);
+	}
+	return [];
+}
+
+/** Keeps only the objects; anything else in the list is dropped with a warning. */
+function objectRows(value: unknown, label: string): Record<string, unknown>[] {
+	return extractListArray(value, label).filter((item): item is Record<string, unknown> => {
+		if (isPlainObject(item)) return true;
+		console.warn(`Skipping non-object ${label} entry`, item);
+		return false;
+	});
+}
+
 /** GET sapJobRuns/configs — { data: SapJobConfigItem[] } */
 
 export interface SapJobConfigItem {
@@ -9,6 +93,19 @@ export interface SapJobConfigItem {
 	createdAt: string;
 	updatedAt: string;
 	[key: string]: unknown;
+}
+
+export function parseSapJobConfigsResponse(response: unknown): SapJobConfigItem[] {
+	return objectRows(response, 'SAP job configs').map((o, index) => ({
+		...o,
+		id: toNum(o.id, -(index + 1)),
+		jobKey: toStr(o.jobKey),
+		cronExpression: toStr(o.cronExpression),
+		endpoint: toStr(o.endpoint),
+		enabled: toBool(o.enabled),
+		createdAt: toStr(o.createdAt),
+		updatedAt: toStr(o.updatedAt)
+	}));
 }
 
 /** GET sapJobRuns?jobKey= — { data: SapJobRunItem[] } */
@@ -26,93 +123,19 @@ export interface SapJobRunItem {
 	[key: string]: unknown;
 }
 
-function extractListArray(value: unknown): unknown[] {
-	if (Array.isArray(value)) {
-		return value;
-	}
-	if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-		const data = (value as Record<string, unknown>).data;
-		if (Array.isArray(data)) {
-			return data;
-		}
-	}
-	throw new Error('Invalid SAP job list response structure');
-}
-
-function isSapJobConfigApiItem(value: unknown): value is SapJobConfigItem {
-	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-		return false;
-	}
-	const o = value as Record<string, unknown>;
-	return (
-		typeof o.id === 'number' &&
-		typeof o.jobKey === 'string' &&
-		typeof o.cronExpression === 'string' &&
-		typeof o.endpoint === 'string' &&
-		typeof o.enabled === 'boolean' &&
-		typeof o.createdAt === 'string' &&
-		typeof o.updatedAt === 'string'
-	);
-}
-
-function isSapJobRunApiItem(value: unknown): value is SapJobRunItem {
-	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-		return false;
-	}
-	const o = value as Record<string, unknown>;
-	const err = o.errorMessage;
-	const runEnd = o.runEnd;
-	const endpointUrl = o.endpointUrl;
-	const csrfToken = o.csrfToken;
-	return (
-		typeof o.id === 'number' &&
-		typeof o.jobKey === 'string' &&
-		typeof o.runStart === 'string' &&
-		(runEnd === null || typeof runEnd === 'string') &&
-		typeof o.status === 'string' &&
-		typeof o.recordsProcessed === 'number' &&
-		(endpointUrl === null || typeof endpointUrl === 'string') &&
-		(csrfToken === null || typeof csrfToken === 'string') &&
-		(err === null || typeof err === 'string')
-	);
-}
-
-export function parseSapJobConfigsResponse(response: unknown): SapJobConfigItem[] {
-	let arr: unknown[];
-	try {
-		arr = extractListArray(response);
-	} catch {
-		console.error('Invalid SAP job configs response structure', response);
-		throw new Error('Invalid SAP job configs response structure');
-	}
-	const out: SapJobConfigItem[] = [];
-	for (const item of arr) {
-		if (!isSapJobConfigApiItem(item)) {
-			console.error('Invalid SAP job config item', item);
-			throw new Error('Invalid SAP job configs response structure');
-		}
-		out.push(item);
-	}
-	return out;
-}
-
 export function parseSapJobRunsResponse(response: unknown): SapJobRunItem[] {
-	let arr: unknown[];
-	try {
-		arr = extractListArray(response);
-	} catch {
-		console.error('Invalid SAP job runs response structure', response);
-		throw new Error('Invalid SAP job runs response structure');
-	}
-	const out: SapJobRunItem[] = [];
-	for (const item of arr) {
-		if (!isSapJobRunApiItem(item)) {
-			console.error('Invalid SAP job run item', item);
-			throw new Error('Invalid SAP job runs response structure');
-		}
-		out.push(item);
-	}
-	return out;
+	return objectRows(response, 'SAP job runs').map((o, index) => ({
+		...o,
+		id: toNum(o.id, -(index + 1)),
+		jobKey: toStr(o.jobKey),
+		runStart: toStr(o.runStart),
+		runEnd: toNullableStr(o.runEnd),
+		status: toStr(o.status),
+		recordsProcessed: toNum(o.recordsProcessed, 0),
+		endpointUrl: toNullableStr(o.endpointUrl),
+		csrfToken: toNullableStr(o.csrfToken),
+		errorMessage: toNullableStr(o.errorMessage)
+	}));
 }
 
 /** GET sapJobRuns/confirmationLogs/:prcExecutionId — { data: SapConfirmationLogItem[] } */
@@ -123,62 +146,46 @@ export interface SapConfirmationLogItem {
 	operationId: string;
 	operationText: string;
 	requestUrl: string;
-	requestBody: Record<string, unknown>;
-	httpStatus: number;
+	/** Whatever SAP was sent — object, array, raw string. Rendered as JSON. */
+	requestBody: unknown;
+	/** Null when the call never reached a response (timeout, transport error). */
+	httpStatus: number | null;
 	success: boolean;
 	errorMessage: string | null;
-	errorDescription?: string | Record<string, unknown> | null;
+	errorDescription?: unknown;
 	triggeredAt: string;
 	[key: string]: unknown;
 }
 
-function isSapConfirmationLogItem(value: unknown): value is SapConfirmationLogItem {
-	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-		return false;
+/** A JSON string round-trips into an object so the payload viewer can pretty-print it. */
+function normalizeRequestBody(value: unknown): unknown {
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (!trimmed) return null;
+		try {
+			return JSON.parse(trimmed);
+		} catch {
+			return trimmed;
+		}
 	}
-	const o = value as Record<string, unknown>;
-	const rb = o.requestBody;
-	if (rb === null || typeof rb !== 'object' || Array.isArray(rb)) {
-		return false;
-	}
-	const err = o.errorMessage;
-	const errDesc = o.errorDescription;
-	const errDescOk =
-		errDesc === undefined ||
-		errDesc === null ||
-		typeof errDesc === 'string' ||
-		(typeof errDesc === 'object' && !Array.isArray(errDesc));
-	return (
-		typeof o.id === 'number' &&
-		typeof o.prcExecutionId === 'number' &&
-		typeof o.operationId === 'string' &&
-		typeof o.operationText === 'string' &&
-		typeof o.requestUrl === 'string' &&
-		typeof o.httpStatus === 'number' &&
-		typeof o.success === 'boolean' &&
-		(err === null || typeof err === 'string') &&
-		errDescOk &&
-		typeof o.triggeredAt === 'string'
-	);
+	return value ?? null;
 }
 
 export function parseSapConfirmationLogsResponse(response: unknown): SapConfirmationLogItem[] {
-	let arr: unknown[];
-	try {
-		arr = extractListArray(response);
-	} catch {
-		console.error('Invalid SAP confirmation logs response structure', response);
-		throw new Error('Invalid SAP confirmation logs response structure');
-	}
-	const out: SapConfirmationLogItem[] = [];
-	for (const item of arr) {
-		if (!isSapConfirmationLogItem(item)) {
-			console.error('Invalid SAP confirmation log item', item);
-			throw new Error('Invalid SAP confirmation logs response structure');
-		}
-		out.push(item);
-	}
-	return out;
+	return objectRows(response, 'SAP confirmation logs').map((o, index) => ({
+		...o,
+		id: toNum(o.id, -(index + 1)),
+		prcExecutionId: toNum(o.prcExecutionId, 0),
+		operationId: toStr(o.operationId),
+		operationText: toStr(o.operationText),
+		requestUrl: toStr(o.requestUrl),
+		requestBody: normalizeRequestBody(o.requestBody),
+		httpStatus: toNullableNum(o.httpStatus),
+		success: toBool(o.success),
+		errorMessage: toNullableStr(o.errorMessage),
+		errorDescription: o.errorDescription ?? null,
+		triggeredAt: toStr(o.triggeredAt)
+	}));
 }
 
 /** POST sapJobRuns/fetch-rm/:orderId — fresh SAP-backed raw materials list */
@@ -205,45 +212,24 @@ export interface FetchRmResponse {
 	rawMaterials: RawMaterialItem[];
 }
 
-function isRawMaterialApiItem(value: unknown): value is RawMaterialItem {
-	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-		return false;
-	}
-	const o = value as Record<string, unknown>;
-	// Only validate fields the UI renders so the popup tolerates SAP-side variance.
-	return (
-		typeof o.id === 'number' &&
-		typeof o.materialCode === 'string' &&
-		typeof o.materialName === 'string' &&
-		typeof o.materialGroup === 'string' &&
-		typeof o.quantity === 'string' &&
-		typeof o.uom === 'string'
-	);
-}
-
 export function parseFetchRmResponse(response: unknown): FetchRmResponse {
-	if (response === null || typeof response !== 'object' || Array.isArray(response)) {
+	if (!isPlainObject(response)) {
 		console.error('Invalid fetch-rm response structure', response);
 		throw new Error('Invalid fetch-rm response structure');
 	}
-	const o = response as Record<string, unknown>;
-	const rawMaterials = o.rawMaterials;
-	if (!Array.isArray(rawMaterials)) {
-		console.error('Invalid fetch-rm response structure', response);
-		throw new Error('Invalid fetch-rm response structure');
-	}
-	const out: RawMaterialItem[] = [];
-	for (const item of rawMaterials) {
-		if (!isRawMaterialApiItem(item)) {
-			console.error('Invalid raw material item', item);
-			throw new Error('Invalid fetch-rm response structure');
-		}
-		out.push(item);
-	}
+	const rawMaterials = objectRows(response.rawMaterials ?? response, 'fetch-rm raw materials').map((o, index) => ({
+		...o,
+		id: toNum(o.id, -(index + 1)),
+		materialCode: toStr(o.materialCode),
+		materialName: toStr(o.materialName),
+		materialGroup: toStr(o.materialGroup),
+		quantity: toStr(o.quantity),
+		uom: toStr(o.uom)
+	}));
 	return {
-		message: typeof o.message === 'string' ? o.message : '',
-		orderId: o.orderId != null ? String(o.orderId) : '',
-		prcExecutionId: typeof o.prcExecutionId === 'number' ? o.prcExecutionId : 0,
-		rawMaterials: out
+		message: toStr(response.message),
+		orderId: toStr(response.orderId),
+		prcExecutionId: toNum(response.prcExecutionId, 0),
+		rawMaterials
 	};
 }
