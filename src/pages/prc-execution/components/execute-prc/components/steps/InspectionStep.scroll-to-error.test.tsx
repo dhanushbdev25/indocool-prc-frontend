@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionData, TimelineStep } from '../../../../types/execution.types';
 import InspectionStep from './InspectionStep';
@@ -78,10 +78,22 @@ describe('InspectionStep scroll-to-first-error', () => {
 		expect(screen.getByText(/please fill in all required fields/i)).toBeInTheDocument();
 		expect(screen.getAllByText(/is required/i).length).toBeGreaterThan(0);
 
-		// The scroll is deferred by two frames so the Collapse transition has real height.
+		// The scroll waits for the Collapse to finish opening — scrolling against a layout that
+		// is still growing leaves the error below the fold.
 		expect(scrollIntoView).not.toHaveBeenCalled();
-		vi.advanceTimersToNextFrame();
-		vi.advanceTimersToNextFrame();
+		act(() => {
+			vi.advanceTimersToNextFrame();
+		});
+		act(() => {
+			vi.advanceTimersToNextFrame();
+		});
+		expect(scrollIntoView).not.toHaveBeenCalled();
+
+		act(() => {
+			document
+				.querySelector('.MuiCollapse-root')!
+				.dispatchEvent(Object.assign(new Event('transitionend', { bubbles: true }), { propertyName: 'height' }));
+		});
 		expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center', inline: 'nearest' });
 	});
 });

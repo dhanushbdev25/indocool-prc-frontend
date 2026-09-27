@@ -56,14 +56,15 @@ import {
 import { ReorderControls } from '../../../../../../components/masters';
 import { InspectionParametersProps } from '../types';
 import { InspectionFormData } from '../schemas';
-import { OK_NOT_OK_NEGATIVE_LABEL, OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../../utils/okNotOkLabels';
+import {
+	OK_NOT_OK_NEGATIVE_LABEL,
+	OK_NOT_OK_TYPE_KEY,
+	OK_NOT_OK_TYPE_LABEL
+} from '../../../../../../utils/okNotOkLabels';
 import { GATE_FIELD_LABEL } from '../../../../../../utils/gateLabels';
 import { INSPECTION_CRITICALITY_OPTIONS } from '../../../../../../utils/criticality';
 import { CriticalityField } from '../../../../../../components/masters';
-import {
-	remapIndexSetAfterMove,
-	remapIndexSetAfterRemove
-} from '../../../../../../utils/orderedRecords';
+import { remapIndexSetAfterMove, remapIndexSetAfterRemove } from '../../../../../../utils/orderedRecords';
 import {
 	defaultInspectionParameter,
 	defaultColumn,
@@ -346,11 +347,7 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 													const newType = e.target.value;
 													field.onChange(newType);
 													if (newType === 'number') {
-														applyNumberDefaults(
-															setValue,
-															getValues,
-															`inspectionParameters.${index}`
-														);
+														applyNumberDefaults(setValue, getValues, `inspectionParameters.${index}`);
 													}
 												}}
 											>
@@ -519,29 +516,26 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 								/>
 							</Grid>
 
-						{/* Columns Section - Only show when parameter type is 'table' */}
-						{(() => {
-							const parameterType = memoizedParameterTypes?.[index]?.type || 'text';
+							{/* Columns Section - Only show when parameter type is 'table' */}
+							{(() => {
+								const parameterType = memoizedParameterTypes?.[index]?.type || 'text';
 
-							if (parameterType !== 'table') return null;
+								if (parameterType !== 'table') return null;
 
-							return (
-								<Grid size={{ xs: 12 }}>
-									<Divider sx={{ my: 2 }} />
-									<ParameterColumns
-										parameterIndex={index}
-										control={control}
-										errors={errors as Record<string, unknown>}
-									/>
-								</Grid>
-							);
-						})()}
+								return (
+									<Grid size={{ xs: 12 }}>
+										<Divider sx={{ my: 2 }} />
+										<ParameterColumns
+											parameterIndex={index}
+											control={control}
+											errors={errors as Record<string, unknown>}
+										/>
+									</Grid>
+								);
+							})()}
 
-						{/* Fixed Table Config - Only show when parameter type is 'fixed-table' */}
-						<FixedTableConfigEditor
-							control={control as Control<InspectionFormData>}
-							parameterIndex={index}
-						/>
+							{/* Fixed Table Config - Only show when parameter type is 'fixed-table' */}
+							<FixedTableConfigEditor control={control as Control<InspectionFormData>} parameterIndex={index} />
 						</Grid>
 					</CardContent>
 				</Collapse>
@@ -635,14 +629,23 @@ const FixedTableConfigEditor = ({
 
 	if (parameterType !== 'fixed-table') return null;
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const columns: Array<{ name: string; type: string }> = (tableConfig as any)?.columns || [];
+	const columns: Array<{
+		name: string;
+		type: string;
+		minimumAcceptanceValue?: string | number | null;
+		maximumAcceptanceValue?: string | number | null;
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	}> = (tableConfig as any)?.columns || [];
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const rows: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }> = (tableConfig as any)?.rows || [];
 
 	const setConfig = (newColumns: typeof columns, newRows: typeof rows) => {
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		setValue(`inspectionParameters.${parameterIndex}.tableConfig` as any, { columns: newColumns, rows: newRows }, { shouldDirty: true });
+		setValue(
+			`inspectionParameters.${parameterIndex}.tableConfig` as any,
+			{ columns: newColumns, rows: newRows },
+			{ shouldDirty: true }
+		);
 	};
 
 	const addColumn = () => {
@@ -730,7 +733,34 @@ const FixedTableConfigEditor = ({
 	};
 
 	const updateColumnType = (colIndex: number, newType: string) => {
-		const newColumns = columns.map((col, i) => (i === colIndex ? { ...col, type: newType } : col));
+		const newColumns = columns.map((col, i) => {
+			if (i !== colIndex) return col;
+			// Only a number column can carry an acceptance range; drop stale bounds on the way out
+			// so they cannot resurface if the column is switched back later.
+			if (newType !== 'number') {
+				const { minimumAcceptanceValue: _min, maximumAcceptanceValue: _max, ...rest } = col;
+				return { ...rest, type: newType };
+			}
+			return { ...col, type: newType };
+		});
+		setConfig(newColumns, rows);
+	};
+
+	/** Blank stays blank — an empty bound must not become 0, which would read as a 0-to-0 range. */
+	const updateColumnBound = (
+		colIndex: number,
+		field: 'minimumAcceptanceValue' | 'maximumAcceptanceValue',
+		rawValue: string
+	) => {
+		const newColumns = columns.map((col, i) => {
+			if (i !== colIndex) return col;
+			if (rawValue.trim() === '') {
+				const next = { ...col };
+				delete next[field];
+				return next;
+			}
+			return { ...col, [field]: rawValue };
+		});
 		setConfig(newColumns, rows);
 	};
 
@@ -743,7 +773,10 @@ const FixedTableConfigEditor = ({
 	};
 
 	const removeRow = (rowIndex: number) => {
-		setConfig(columns, rows.filter((_, i) => i !== rowIndex));
+		setConfig(
+			columns,
+			rows.filter((_, i) => i !== rowIndex)
+		);
 	};
 
 	const updateCell = (rowIndex: number, colName: string, field: 'value' | 'readOnly', val: string | boolean) => {
@@ -785,7 +818,10 @@ const FixedTableConfigEditor = ({
 
 				{/* Step 1 - Column Setup */}
 				<Box sx={{ mb: 2 }}>
-					<Typography variant="caption" sx={{ fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+					<Typography
+						variant="caption"
+						sx={{ fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}
+					>
 						Step 1 &mdash; Define Columns
 					</Typography>
 					<Box sx={{ mt: 1 }}>
@@ -809,12 +845,47 @@ const FixedTableConfigEditor = ({
 									size="small"
 									value={col.type}
 									onChange={e => updateColumnType(colIndex, e.target.value)}
-									sx={{ minWidth: 120, borderRadius: '6px', backgroundColor: 'white', '& .MuiSelect-select': { py: '6px', fontSize: '0.875rem' } }}
+									sx={{
+										minWidth: 120,
+										borderRadius: '6px',
+										backgroundColor: 'white',
+										'& .MuiSelect-select': { py: '6px', fontSize: '0.875rem' }
+									}}
 								>
 									{fixedTableColumnTypeOptions.map(opt => (
-										<MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+										<MenuItem key={opt.value} value={opt.value}>
+											{opt.label}
+										</MenuItem>
 									))}
 								</Select>
+								{col.type === 'number' && (
+									<>
+										<TextField
+											size="small"
+											type="number"
+											placeholder="Min"
+											value={col.minimumAcceptanceValue ?? ''}
+											onChange={e => updateColumnBound(colIndex, 'minimumAcceptanceValue', e.target.value)}
+											sx={{
+												width: 90,
+												'& .MuiOutlinedInput-root': { borderRadius: '6px', backgroundColor: 'white' },
+												'& .MuiOutlinedInput-input': { py: '6px', fontSize: '0.875rem' }
+											}}
+										/>
+										<TextField
+											size="small"
+											type="number"
+											placeholder="Max"
+											value={col.maximumAcceptanceValue ?? ''}
+											onChange={e => updateColumnBound(colIndex, 'maximumAcceptanceValue', e.target.value)}
+											sx={{
+												width: 90,
+												'& .MuiOutlinedInput-root': { borderRadius: '6px', backgroundColor: 'white' },
+												'& .MuiOutlinedInput-input': { py: '6px', fontSize: '0.875rem' }
+											}}
+										/>
+									</>
+								)}
 								<ReorderControls
 									itemLabel="column"
 									position={colIndex + 1}
@@ -823,7 +894,11 @@ const FixedTableConfigEditor = ({
 									onMoveUp={() => moveColumn(colIndex, colIndex - 1)}
 									onMoveDown={() => moveColumn(colIndex, colIndex + 1)}
 								/>
-								<IconButton size="small" onClick={() => removeColumn(colIndex)} sx={{ color: '#bbb', '&:hover': { color: '#f44336' } }}>
+								<IconButton
+									size="small"
+									onClick={() => removeColumn(colIndex)}
+									sx={{ color: '#bbb', '&:hover': { color: '#f44336' } }}
+								>
 									<DeleteIcon sx={{ fontSize: 18 }} />
 								</IconButton>
 							</Box>
@@ -843,7 +918,10 @@ const FixedTableConfigEditor = ({
 				{columns.length > 0 && (
 					<Box>
 						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-							<Typography variant="caption" sx={{ fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+							<Typography
+								variant="caption"
+								sx={{ fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}
+							>
 								Step 2 &mdash; Define Rows &amp; Cell Values
 							</Typography>
 							<Button
@@ -863,7 +941,16 @@ const FixedTableConfigEditor = ({
 							<Table size="small">
 								<TableHead>
 									<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
-										<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#333', py: 1, width: 40, textAlign: 'center' }}>
+										<TableCell
+											sx={{
+												fontWeight: 600,
+												fontSize: '0.75rem',
+												color: '#333',
+												py: 1,
+												width: 40,
+												textAlign: 'center'
+											}}
+										>
 											#
 										</TableCell>
 										{columns.map((col, ci) => (
@@ -904,7 +991,12 @@ const FixedTableConfigEditor = ({
 																	}
 																}}
 															/>
-															<Tooltip title={cell.readOnly ? 'Cell is read-only (click to unlock)' : 'Click to lock as read-only'} arrow>
+															<Tooltip
+																title={
+																	cell.readOnly ? 'Cell is read-only (click to unlock)' : 'Click to lock as read-only'
+																}
+																arrow
+															>
 																<IconButton
 																	size="small"
 																	onClick={() => updateCell(rowIndex, colKey, 'readOnly', !cell.readOnly)}
@@ -914,7 +1006,11 @@ const FixedTableConfigEditor = ({
 																		'&:hover': { color: cell.readOnly ? '#1565c0' : '#999' }
 																	}}
 																>
-																	{cell.readOnly ? <LockIcon sx={{ fontSize: 16 }} /> : <LockOpenIcon sx={{ fontSize: 16 }} />}
+																	{cell.readOnly ? (
+																		<LockIcon sx={{ fontSize: 16 }} />
+																	) : (
+																		<LockOpenIcon sx={{ fontSize: 16 }} />
+																	)}
 																</IconButton>
 															</Tooltip>
 														</Box>
@@ -947,9 +1043,7 @@ const FixedTableConfigEditor = ({
 
 				{columns.length === 0 && (
 					<Box sx={{ textAlign: 'center', py: 2, color: '#aaa' }}>
-						<Typography variant="body2">
-							Add columns above to start building your table.
-						</Typography>
+						<Typography variant="body2">Add columns above to start building your table.</Typography>
 					</Box>
 				)}
 			</Paper>

@@ -28,6 +28,25 @@ const findFocusTarget = (element: HTMLElement): HTMLElement | null => {
 	return null;
 };
 
+/** The first error in document order — document order is visual order. */
+export const findFirstErrorElement = (container: HTMLElement | null): HTMLElement | null =>
+	container?.querySelector<HTMLElement>(ERROR_SELECTOR) ?? null;
+
+/**
+ * The enclosing MUI `Collapse` that is still animating its height, if there is one.
+ *
+ * `Collapse timeout="auto"` derives its duration from the content height, so a parameter table
+ * animates for roughly 250-450ms. Measuring a scroll position part-way through that transition
+ * anchors on a layout that is still growing: the rest of the expansion pushes the error further
+ * down after the browser has settled the scroll, and a tall panel (a fixed table with row-image
+ * cells) leaves it below the fold entirely. MUI stamps `MuiCollapse-entered` once it is done.
+ */
+export const findExpandingCollapse = (element: HTMLElement | null): HTMLElement | null => {
+	const collapse = element?.closest<HTMLElement>('.MuiCollapse-root') ?? null;
+	if (!collapse || collapse.classList.contains('MuiCollapse-entered')) return null;
+	return collapse;
+};
+
 /**
  * Scrolls the first visible validation error inside `container` into view and focuses its input.
  *
@@ -36,7 +55,7 @@ const findFocusTarget = (element: HTMLElement): HTMLElement | null => {
 export const scrollToFirstError = (container: HTMLElement | null): boolean => {
 	if (!container) return false;
 
-	const target = container.querySelector<HTMLElement>(ERROR_SELECTOR);
+	const target = findFirstErrorElement(container);
 	if (!target) return false;
 
 	target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });

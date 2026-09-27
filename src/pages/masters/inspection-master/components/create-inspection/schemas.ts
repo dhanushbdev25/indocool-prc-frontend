@@ -2,6 +2,20 @@ import * as yup from 'yup';
 import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/okNotOkLabels';
 import { CRITICALITY_TAGS } from '../../../../../utils/criticality';
 
+/**
+ * One end of an acceptance range. A blank input stays `undefined` rather than becoming 0, so a
+ * column the author left without a range carries no range at all downstream.
+ */
+const acceptanceBoundSchema = yup
+	.mixed()
+	.nullable()
+	.optional()
+	.transform(value => {
+		if (value === '' || value === null || value === undefined) return undefined;
+		const num = Number(value);
+		return isNaN(num) ? value : num;
+	});
+
 // Column validation schema
 export const columnSchema = yup
 	.object({
@@ -120,10 +134,24 @@ export const inspectionParameterSchema = yup
 							type: yup
 								.string()
 								.required('Column type is required')
-								.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift'])
+								.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift']),
+							// Acceptance range for a number column, applied to every row of that column.
+							// Left blank it stays undefined, which execution reads as "no range".
+							minimumAcceptanceValue: acceptanceBoundSchema,
+							maximumAcceptanceValue: acceptanceBoundSchema
 						})
 					)
-					.min(1, 'At least one column is required'),
+					.min(1, 'At least one column is required')
+					// Kept on the array rather than each column: a `.test()` on the element schema
+					// changes yup's inferred type for the whole tableConfig object.
+					.test('fixed-column-min-max-range', 'Minimum value cannot be greater than maximum value', cols => {
+						if (!Array.isArray(cols)) return true;
+						return cols.every(col => {
+							if (!col || col.type !== 'number') return true;
+							if (col.minimumAcceptanceValue === undefined || col.maximumAcceptanceValue === undefined) return true;
+							return Number(col.minimumAcceptanceValue) <= Number(col.maximumAcceptanceValue);
+						});
+					}),
 				rows: yup
 					.array(
 						yup.object({

@@ -109,16 +109,34 @@ const InspectionStep = ({
 	const getInstrumentIdKey = (paramId: number) => `${paramId}_instrumentId`;
 	const getRangeStatus = (
 		value: number,
-		min?: string | number,
-		max?: string | number
+		min?: string | number | null,
+		max?: string | number | null
 	): 'InRange' | 'Lesser' | 'Greater' | null => {
-		if (min === undefined || max === undefined || min === '' || max === '') return null;
+		if (min === null || max === null || min === undefined || max === undefined || min === '' || max === '') return null;
 		const minNum = Number(min);
 		const maxNum = Number(max);
 		if (Number.isNaN(minNum) || Number.isNaN(maxNum)) return null;
+		// A 0-to-0 band is what the master stores when the author leaves the range blank
+		// (`applyNumberDefaults` coerces empty numeric fields to 0), so it means "no range
+		// configured" rather than "must be exactly zero". A range that genuinely starts at
+		// zero — 0 to 10 — still applies.
+		if (minNum === 0 && maxNum === 0) return null;
 		if (value < minNum) return 'Lesser';
 		if (value > maxNum) return 'Greater';
 		return 'InRange';
+	};
+
+	/**
+	 * A blank or zero reading is not a measurement to judge against the acceptance range: the
+	 * operator has either not filled the field in yet or has recorded a true zero, and neither
+	 * should raise an out-of-range deviation. Blank values are still caught by the
+	 * required-field check that runs before this one.
+	 */
+	const isRangeExemptValue = (value: unknown): boolean => {
+		if (value === null || value === undefined) return true;
+		const text = String(value).trim();
+		if (text === '') return true;
+		return parseFloat(text) === 0;
 	};
 
 	const readApiCommentField = (obj: Record<string, unknown>): string => {
@@ -877,13 +895,24 @@ const InspectionStep = ({
 						const cellConfig = rowConfig?.cells[col.name];
 						if (cellConfig?.readOnly) return;
 						const val = row[col.name];
+						const cellKey = `ft_${param.id}_${rowIdx}_${col.name}`;
 						if (!val || val.trim() === '') {
-							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} is required`;
-						} else if (col.type === 'number' && isNaN(parseFloat(val))) {
-							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a number`;
+							newErrors[cellKey] = `Row ${rowIdx + 1}, ${col.name} is required`;
+						} else if (col.type === 'number') {
+							const numValue = parseFloat(val);
+							if (isNaN(numValue)) {
+								newErrors[cellKey] = `Row ${rowIdx + 1}, ${col.name} must be a number`;
+							} else {
+								const status = isRangeExemptValue(val)
+									? null
+									: getRangeStatus(numValue, col.minimumAcceptanceValue, col.maximumAcceptanceValue);
+								if (status && status !== 'InRange' && !acknowledgments[cellKey]) {
+									newErrors[getAckKey(cellKey)] =
+										`Row ${rowIdx + 1}, ${col.name} out of range. Please acknowledge deviation.`;
+								}
+							}
 						} else if (col.type === 'shift' && !SHIFT_OPTIONS.includes(String(val) as (typeof SHIFT_OPTIONS)[number])) {
-							newErrors[`ft_${param.id}_${rowIdx}_${col.name}`] =
-								`Row ${rowIdx + 1}, ${col.name} must be a valid shift`;
+							newErrors[cellKey] = `Row ${rowIdx + 1}, ${col.name} must be a valid shift`;
 						}
 					});
 				});
@@ -914,7 +943,9 @@ const InspectionStep = ({
 							if (isNaN(numValue)) {
 								newErrors[key] = `Row ${rowIndex + 1}, ${column.name} must be a valid number`;
 							} else {
-								const status = getRangeStatus(numValue, column.minimumAcceptanceValue, column.maximumAcceptanceValue);
+								const status = isRangeExemptValue(value)
+									? null
+									: getRangeStatus(numValue, column.minimumAcceptanceValue, column.maximumAcceptanceValue);
 								if (status && status !== 'InRange' && !acknowledgments[key]) {
 									newErrors[getAckKey(key)] =
 										`Row ${rowIndex + 1}, ${column.name} out of range. Please acknowledge deviation.`;
@@ -954,7 +985,9 @@ const InspectionStep = ({
 						if (isNaN(numValue)) {
 							newErrors[key] = `${column.name} must be a valid number`;
 						} else {
-							const status = getRangeStatus(numValue, column.minimumAcceptanceValue, column.maximumAcceptanceValue);
+							const status = isRangeExemptValue(value)
+								? null
+								: getRangeStatus(numValue, column.minimumAcceptanceValue, column.maximumAcceptanceValue);
 							if (status && status !== 'InRange' && !acknowledgments[key]) {
 								newErrors[getAckKey(key)] = `${column.name} is out of range. Please acknowledge deviation.`;
 							}
@@ -1000,7 +1033,9 @@ const InspectionStep = ({
 					if (isNaN(numValue)) {
 						newErrors[key] = 'Value must be a valid number';
 					} else {
-						const status = getRangeStatus(numValue, param.minimumAcceptanceValue, param.maximumAcceptanceValue);
+						const status = isRangeExemptValue(value)
+							? null
+							: getRangeStatus(numValue, param.minimumAcceptanceValue, param.maximumAcceptanceValue);
 						if (status && status !== 'InRange' && !acknowledgments[key]) {
 							newErrors[getAckKey(key)] = 'Value is out of range. Please acknowledge deviation.';
 						}
@@ -1072,7 +1107,26 @@ const InspectionStep = ({
 				const ftKey = `${param.id}_fixedTable`;
 				const ftRowAnnotationsKey = getFixedTableRowAnnotationsKey(param.id);
 				const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
-				paramData.value = rows;
+				// Carry the deviation alongside the reading, the same way the table and
+				// multi-column parameters do, so the acknowledgement survives the save.
+				paramData.value = rows.map((row, rowIdx) => {
+					const enriched: Record<string, unknown> = { ...row };
+					param.tableConfig!.columns.forEach(col => {
+						if (col.type !== 'number') return;
+						const raw = row[col.name];
+						if (raw === undefined || isRangeExemptValue(raw)) return;
+						const parsed = parseFloat(String(raw));
+						if (isNaN(parsed)) return;
+						const status = getRangeStatus(parsed, col.minimumAcceptanceValue, col.maximumAcceptanceValue);
+						if (!status) return;
+						const cellKey = `ft_${param.id}_${rowIdx}_${col.name}`;
+						enriched[`${col.name}_validationStatus`] = status;
+						enriched[`${col.name}_minimumAcceptanceValue`] = col.minimumAcceptanceValue;
+						enriched[`${col.name}_maximumAcceptanceValue`] = col.maximumAcceptanceValue;
+						enriched[`${col.name}_acknowledged`] = acknowledgments[cellKey] || false;
+					});
+					return enriched;
+				});
 				const rowAnnotations = formData[ftRowAnnotationsKey];
 				if (Array.isArray(rowAnnotations)) {
 					paramData.rowAnnotations = rowAnnotations;
@@ -1747,6 +1801,7 @@ const InspectionStep = ({
 																										variant="caption"
 																										color="error"
 																										className={ERROR_ANCHOR_CLASS}
+																										sx={{ mt: 0.5, display: 'block' }}
 																									>
 																										{errors[errKey]}
 																									</Typography>
@@ -1835,6 +1890,16 @@ const InspectionStep = ({
 																						);
 																					}
 
+																					const rangeStatus =
+																						col.type === 'number' && !isRangeExemptValue(cellValue)
+																							? getRangeStatus(
+																									parseFloat(String(cellValue)),
+																									col.minimumAcceptanceValue,
+																									col.maximumAcceptanceValue
+																								)
+																							: null;
+																					const isDeviation = !!rangeStatus && rangeStatus !== 'InRange';
+
 																					return (
 																						<TableCell key={col.name}>
 																							<TextField
@@ -1854,6 +1919,50 @@ const InspectionStep = ({
 																									step: col.type === 'number' ? 0.01 : undefined
 																								}}
 																							/>
+																							{col.type === 'number' &&
+																								(col.minimumAcceptanceValue ?? null) !== null &&
+																								(col.maximumAcceptanceValue ?? null) !== null && (
+																									<Typography
+																										variant="caption"
+																										sx={{ display: 'block', color: '#666', mt: 0.25 }}
+																									>
+																										Range: {col.minimumAcceptanceValue} to {col.maximumAcceptanceValue}
+																									</Typography>
+																								)}
+																							{isDeviation && (
+																								<Box sx={{ mt: 0.5 }}>
+																									<Chip
+																										label={rangeStatus}
+																										size="small"
+																										color={rangeStatus === 'Lesser' ? 'warning' : 'error'}
+																										sx={{ fontSize: '0.7rem', height: 20 }}
+																									/>
+																									<FormControlLabel
+																										control={
+																											<Checkbox
+																												size="small"
+																												checked={acknowledgments[errKey] || false}
+																												onChange={e =>
+																													handleAcknowledgmentChange(errKey, e.target.checked)
+																												}
+																												disabled={isReadOnly}
+																											/>
+																										}
+																										label="Acknowledge deviation"
+																										sx={{ display: 'block', mt: 0.25 }}
+																									/>
+																									{errors[getAckKey(errKey)] && (
+																										<Typography
+																											variant="caption"
+																											color="error"
+																											className={ERROR_ANCHOR_CLASS}
+																											sx={{ mt: 0.5, display: 'block' }}
+																										>
+																											{errors[getAckKey(errKey)]}
+																										</Typography>
+																									)}
+																								</Box>
+																							)}
 																						</TableCell>
 																					);
 																				})}
