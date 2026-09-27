@@ -5,6 +5,7 @@
  */
 
 import type { TimelineStep } from '../types/execution.types';
+import { isDemouldInspectionStep } from './demouldDefects';
 
 const TIMING_META_KEYS = new Set([
 	'stepCompleted',
@@ -150,7 +151,8 @@ function resolveBucketEndIso(bucket: Record<string, unknown> | undefined): strin
  * (sequence: completion, inspection: entry-session end), which is what made them diverge.
  *
  * Planned: bucket `plannedTime`, falling back to the master timing
- * (`stepGroup.sequenceTiming` / `inspectionMetadata.inspectionTiming`).
+ * (`stepGroup.sequenceTiming` / `inspectionMetadata.inspectionTiming`) — except on demoulding
+ * inspection, which is exempt and always reports `plannedSec: null` (see below).
  */
 export function getStepTiming(
 	step: TimelineStep,
@@ -159,8 +161,16 @@ export function getStepTiming(
 	const bucket = resolveStepTimingBucket(step, stepStartEndTime ?? {});
 
 	const actualSec =
-		deltaSeconds(resolveBucketStartIso(bucket), resolveBucketEndIso(bucket)) ??
-		coercePositiveSeconds(bucket?.duration);
+		deltaSeconds(resolveBucketStartIso(bucket), resolveBucketEndIso(bucket)) ?? coercePositiveSeconds(bucket?.duration);
+
+	// Demoulding inspection carries no planned timing: the part cures in the mould for hours, so
+	// any planned duration is meaningless there and the step would always read as overrun.
+	// Reporting no planned time is the whole exemption — `isStepLate` goes false and every caller
+	// that reads `plannedDuration` empties out, which removes both the planned figure on the card
+	// and the delay-documentation gate on Complete Step. Actual duration is still measured.
+	if (isDemouldInspectionStep(step)) {
+		return { plannedSec: null, actualSec };
+	}
 
 	let plannedSec = plannedFromTimingBlob(bucket);
 	if (plannedSec === null) {
@@ -177,7 +187,10 @@ export function getStepTiming(
 /** True when the step ran past a positive planned duration. No/zero planned timing ⇒ never late. */
 export function isStepLate(timing: TimelineCardTiming): boolean {
 	return (
-		timing.plannedSec !== null && timing.plannedSec > 0 && timing.actualSec !== null && timing.actualSec > timing.plannedSec
+		timing.plannedSec !== null &&
+		timing.plannedSec > 0 &&
+		timing.actualSec !== null &&
+		timing.actualSec > timing.plannedSec
 	);
 }
 
@@ -316,17 +329,25 @@ export function readPersistedDelayMetadata(
 	const bucket = resolveAggregatedStepBucket(step, aggregated);
 	if (!bucket) return EMPTY_DELAY_METADATA;
 
+	// Demould has no planned timing, so any delay documentation saved against it before the
+	// exemption is stale — surfacing it would put a Timing Exceeded panel back on the one step
+	// meant to have none. The edited-after-submit marker below is unrelated and still reported.
+	const timingExempt = isDemouldInspectionStep(step);
+
 	const result: PersistedDelayMetadata = {
-		persistedTimingExceeded: bucket.timingExceeded === true,
-		timingExceededRemarks: typeof bucket.timingExceededRemarks === 'string' ? bucket.timingExceededRemarks : ''
+		persistedTimingExceeded: !timingExempt && bucket.timingExceeded === true,
+		timingExceededRemarks:
+			!timingExempt && typeof bucket.timingExceededRemarks === 'string' ? bucket.timingExceededRemarks : ''
 	};
-	const reasonCode = bucket.timingExceededReasonCode;
-	if (typeof reasonCode === 'string' || typeof reasonCode === 'number') {
-		result.timingExceededReasonCode = reasonCode;
-	}
-	const reasonLabel = bucket.timingExceededReasonLabel;
-	if (typeof reasonLabel === 'string') {
-		result.timingExceededReasonLabel = reasonLabel;
+	if (!timingExempt) {
+		const reasonCode = bucket.timingExceededReasonCode;
+		if (typeof reasonCode === 'string' || typeof reasonCode === 'number') {
+			result.timingExceededReasonCode = reasonCode;
+		}
+		const reasonLabel = bucket.timingExceededReasonLabel;
+		if (typeof reasonLabel === 'string') {
+			result.timingExceededReasonLabel = reasonLabel;
+		}
 	}
 	if (bucket.editedAfterSubmit === true) {
 		result.editedAfterSubmit = {
