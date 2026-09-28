@@ -41,382 +41,389 @@ interface PrcExecutionTableProps {
 
 const getDescription = (row: PrcExecutionData): string => row.partDescription ?? '';
 
-const PrcExecutionTable = memo(({
-	data,
-	onExecute,
-	onView,
-	onOpenReport,
-	onGenerateQr,
-	onBulkGenerateQr,
-	onScanQr,
-	pagination,
-	onPaginationChange,
-	totalCount,
-	onExportAll,
-	isExporting
-}: PrcExecutionTableProps) => {
-	const { hasPermission } = useCurrentRole();
-	const canExecute = hasPermission('PRC_EXECUTION_EDIT');
-	const canView = hasPermission('PRC_EXECUTION_VIEW');
-	const safeData = data || [];
+const PrcExecutionTable = memo(
+	({
+		data,
+		onExecute,
+		onView,
+		onOpenReport,
+		onGenerateQr,
+		onBulkGenerateQr,
+		onScanQr,
+		pagination,
+		onPaginationChange,
+		totalCount,
+		onExportAll,
+		isExporting
+	}: PrcExecutionTableProps) => {
+		const { hasPermission } = useCurrentRole();
+		const canExecute = hasPermission('PRC_EXECUTION_EDIT');
+		const canView = hasPermission('PRC_EXECUTION_VIEW');
+		const safeData = data || [];
 
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case 'ACTIVE':
-				return '#4caf50';
-			case 'IN_PROGRESS':
-				return '#2196f3';
-			case 'COMPLETED':
-				return '#4caf50';
-			case 'INACTIVE':
-				return '#9e9e9e';
-			default:
-				return '#9e9e9e';
-		}
-	};
+		const getStatusColor = (status: string) => {
+			switch (status) {
+				case 'ACTIVE':
+					return '#4caf50';
+				case 'IN_PROGRESS':
+					return '#2196f3';
+				case 'COMPLETED':
+					return '#4caf50';
+				case 'INACTIVE':
+					return '#9e9e9e';
+				default:
+					return '#9e9e9e';
+			}
+		};
 
-	const opChipColors = (prcStatus: boolean, sapStatus: boolean) => {
-		if (prcStatus && sapStatus) return '#2e7d32';
-		if (!prcStatus && !sapStatus) return '#9e9e9e';
-		return '#ed6c02';
-	};
+		const opChipColors = (prcStatus: boolean, sapStatus: boolean) => {
+			if (prcStatus && sapStatus) return '#2e7d32';
+			if (!prcStatus && !sapStatus) return '#9e9e9e';
+			return '#ed6c02';
+		};
 
-	const columns = useMemo<MRT_ColumnDef<PrcExecutionData>[]>(
-		() => [
-			{
-				id: 'orderId',
-				header: 'Order No',
-				size: 140,
-				accessorFn: row => {
-					const v = row.orderId;
-					return v != null && String(v).trim() ? String(v) : '';
-				},
-				Cell: ({ row }) => {
-					const orderId = row.original.orderId;
-					return (
-						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-							{orderId != null && String(orderId).trim() ? String(orderId) : '—'}
-						</Typography>
-					);
-				}
-			},
-			{
-				accessorKey: 'sapReferenceNumber',
-				header: 'SAP Number',
-				size: 150,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'reservation',
-				header: 'Reservation',
-				size: 150,
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{ color: '#333', fontSize: '0.875rem', fontFamily: 'ui-monospace, monospace' }}
-					>
-						{row.original.reservation != null && String(row.original.reservation).trim()
-							? String(row.original.reservation)
-							: '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'prcSetId',
-				header: 'Prc Set Id',
-				size: 150,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.prcSetId != null && String(row.original.prcSetId).trim()
-							? String(row.original.prcSetId)
-							: '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'partNumber',
-				header: 'Part Number',
-				size: 170,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
-						{row.original.partNumber != null && String(row.original.partNumber).trim()
-							? String(row.original.partNumber)
-							: '—'}
-					</Typography>
-				)
-			},
-			{
-				id: 'partDescription',
-				header: 'Part Description',
-				size: 220,
-				accessorFn: row => getDescription(row),
-				Cell: ({ row }) => (
-					<Typography
-						variant="body2"
-						sx={{
-							color: '#333',
-							fontSize: '0.875rem',
-							overflow: 'hidden',
-							textOverflow: 'ellipsis',
-							whiteSpace: 'nowrap'
-						}}
-					>
-						{getDescription(row.original) || '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'productionSetId',
-				header: 'Serial Number',
-				size: 150,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.productionSetId?.trim() ? row.original.productionSetId : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'customerName',
-				header: 'Customer Name',
-				size: 200,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.customerName?.trim() ? row.original.customerName : '—'}
-					</Typography>
-				)
-			},
-			{
-				accessorKey: 'customerVariantName',
-				header: 'Variant',
-				size: 160,
-				Cell: ({ row }) => (
-					<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-						{row.original.customerVariantName?.trim() ? row.original.customerVariantName : '—'}
-					</Typography>
-				)
-			},
-			{
-				id: 'operation',
-				header: 'Operation',
-				size: 300,
-				enableColumnFilter: false,
-				accessorFn: row =>
-					(row.operationStatus ?? []).map(op => (op.operationText ?? '').trim()).filter(Boolean).join(' | ') || '',
-				Cell: ({ row }) => {
-					const ops = row.original.operationStatus ?? [];
-					if (ops.length === 0) {
+		const columns = useMemo<MRT_ColumnDef<PrcExecutionData>[]>(
+			() => [
+				{
+					id: 'orderId',
+					header: 'Order No',
+					size: 140,
+					accessorFn: row => {
+						const v = row.orderId;
+						return v != null && String(v).trim() ? String(v) : '';
+					},
+					Cell: ({ row }) => {
+						const orderId = row.original.orderId;
 						return (
-							<Typography variant="body2" sx={{ color: '#999', fontSize: '0.875rem' }}>
-								—
+							<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+								{orderId != null && String(orderId).trim() ? String(orderId) : '—'}
 							</Typography>
 						);
 					}
-					return (
-						<Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5} sx={{ gap: 0.5 }}>
-							{ops.map(op => {
-								const label = (op.operationText ?? '').trim() || op.operationId || `Op ${op.id}`;
-								const tip = `Op ${op.operationId} · PRC: ${op.prcStatus ? 'complete' : 'pending'} · SAP: ${op.sapStatus ? 'complete' : 'pending'}`;
-								const bg = opChipColors(op.prcStatus, op.sapStatus);
-								return (
-									<Tooltip key={op.id} title={tip}>
-										<Chip
-											label={label}
-											size="small"
-											variant="outlined"
-											sx={{
-												borderColor: bg,
-												color: bg,
-												backgroundColor: `${bg}12`,
-												fontSize: '0.7rem',
-												height: 22,
-												maxWidth: 200,
-												'& .MuiChip-label': { px: 0.75 }
-											}}
-										/>
-									</Tooltip>
-								);
-							})}
+				},
+				{
+					accessorKey: 'sapReferenceNumber',
+					header: 'SAP Number',
+					size: 150,
+					Cell: ({ row }) => (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{row.original.sapReferenceNumber?.trim() ? row.original.sapReferenceNumber : '—'}
+						</Typography>
+					)
+				},
+				{
+					accessorKey: 'reservation',
+					header: 'Reservation',
+					size: 150,
+					Cell: ({ row }) => (
+						<Typography
+							variant="body2"
+							sx={{ color: '#333', fontSize: '0.875rem', fontFamily: 'ui-monospace, monospace' }}
+						>
+							{row.original.reservation != null && String(row.original.reservation).trim()
+								? String(row.original.reservation)
+								: '—'}
+						</Typography>
+					)
+				},
+				{
+					accessorKey: 'prcSetId',
+					header: 'Prc Set Id',
+					size: 150,
+					Cell: ({ row }) => (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{row.original.prcSetId != null && String(row.original.prcSetId).trim()
+								? String(row.original.prcSetId)
+								: '—'}
+						</Typography>
+					)
+				},
+				{
+					accessorKey: 'partNumber',
+					header: 'Part Number',
+					size: 170,
+					Cell: ({ row }) => (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem', fontWeight: 500 }}>
+							{row.original.partNumber != null && String(row.original.partNumber).trim()
+								? String(row.original.partNumber)
+								: '—'}
+						</Typography>
+					)
+				},
+				{
+					id: 'partDescription',
+					header: 'Part Description',
+					size: 220,
+					accessorFn: row => getDescription(row),
+					Cell: ({ row }) => (
+						<Typography
+							variant="body2"
+							sx={{
+								color: '#333',
+								fontSize: '0.875rem',
+								overflow: 'hidden',
+								textOverflow: 'ellipsis',
+								whiteSpace: 'nowrap'
+							}}
+						>
+							{getDescription(row.original) || '—'}
+						</Typography>
+					)
+				},
+				{
+					accessorKey: 'productionSetId',
+					header: 'Serial Number',
+					size: 150,
+					Cell: ({ row }) => (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{row.original.productionSetId?.trim() ? row.original.productionSetId : '—'}
+						</Typography>
+					)
+				},
+				{
+					accessorKey: 'customerName',
+					header: 'Customer Name',
+					size: 200,
+					Cell: ({ row }) => (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{row.original.customerName?.trim() ? row.original.customerName : '—'}
+						</Typography>
+					)
+				},
+				{
+					accessorKey: 'customerVariantName',
+					header: 'Variant',
+					size: 160,
+					Cell: ({ row }) => (
+						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+							{row.original.customerVariantName?.trim() ? row.original.customerVariantName : '—'}
+						</Typography>
+					)
+				},
+				{
+					id: 'operation',
+					header: 'Operation',
+					size: 300,
+					enableColumnFilter: false,
+					accessorFn: row =>
+						(row.operationStatus ?? [])
+							.map(op => (op.operationText ?? '').trim())
+							.filter(Boolean)
+							.join(' | ') || '',
+					Cell: ({ row }) => {
+						const ops = row.original.operationStatus ?? [];
+						if (ops.length === 0) {
+							return (
+								<Typography variant="body2" sx={{ color: '#999', fontSize: '0.875rem' }}>
+									—
+								</Typography>
+							);
+						}
+						return (
+							<Stack direction="row" flexWrap="wrap" useFlexGap spacing={0.5} sx={{ gap: 0.5 }}>
+								{ops.map(op => {
+									const label = (op.operationText ?? '').trim() || op.operationId || `Op ${op.id}`;
+									const tip = `Op ${op.operationId} · PRC: ${op.prcStatus ? 'complete' : 'pending'} · SAP: ${op.sapStatus ? 'complete' : 'pending'}`;
+									const bg = opChipColors(op.prcStatus, op.sapStatus);
+									return (
+										<Tooltip key={op.id} title={tip}>
+											<Chip
+												label={label}
+												size="small"
+												variant="outlined"
+												sx={{
+													borderColor: bg,
+													color: bg,
+													backgroundColor: `${bg}12`,
+													fontSize: '0.7rem',
+													height: 22,
+													maxWidth: 200,
+													'& .MuiChip-label': { px: 0.75 }
+												}}
+											/>
+										</Tooltip>
+									);
+								})}
+							</Stack>
+						);
+					}
+				},
+				{
+					accessorKey: 'date',
+					header: 'PRC Date',
+					size: 130,
+					accessorFn: row => (row.date ? row.date : ''),
+					Cell: ({ row }) => {
+						const raw = row.original.date;
+						const d = raw ? dayjs(raw) : null;
+						const text = d && d.isValid() ? d.format(DATE_PICKER_FORMAT) : '—';
+						return (
+							<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+								{text}
+							</Typography>
+						);
+					}
+				},
+				{
+					// The list endpoint selects this column as `plantCode`; reading `plant` left the
+					// column empty on every row.
+					accessorKey: 'plantCode',
+					header: 'Plant Code',
+					size: 130,
+					accessorFn: row => (row.plantCode != null && String(row.plantCode).trim() ? String(row.plantCode) : ''),
+					Cell: ({ row }) => {
+						const v = row.original.plantCode;
+						return (
+							<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
+								{v != null && String(v).trim() ? String(v) : '—'}
+							</Typography>
+						);
+					}
+				},
+				{
+					accessorKey: 'status',
+					header: 'Status',
+					size: 140,
+					filterVariant: 'select',
+					filterSelectOptions: ['ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'INACTIVE'],
+					Cell: ({ row }) => (
+						<Chip
+							label={row.original.status}
+							icon={<CheckCircleIcon sx={{ fontSize: '0.75rem' }} />}
+							sx={{
+								backgroundColor: getStatusColor(row.original.status),
+								color: 'white',
+								fontSize: '0.75rem',
+								height: '24px',
+								'& .MuiChip-icon': {
+									color: 'white'
+								}
+							}}
+						/>
+					)
+				},
+				{
+					id: 'execute',
+					header: 'Actions',
+					size: 210,
+					enableSorting: false,
+					enableColumnFilter: false,
+					Cell: ({ row }) => (
+						<Stack direction="row" spacing={0.5} alignItems="center" flexWrap="nowrap">
+							{canExecute && (
+								<Button
+									variant="contained"
+									startIcon={<PlayArrowIcon />}
+									onClick={() => onExecute(row.original.id)}
+									size="small"
+									sx={{
+										backgroundColor: '#1976d2',
+										minWidth: 0,
+										px: 1,
+										'&:hover': {
+											backgroundColor: '#1565c0'
+										}
+									}}
+								>
+									Execute
+								</Button>
+							)}
+							{canView && !canExecute && (
+								<Button
+									variant="outlined"
+									startIcon={<VisibilityIcon />}
+									onClick={() => onView(row.original.id)}
+									size="small"
+									sx={{ minWidth: 0, px: 1 }}
+								>
+									View
+								</Button>
+							)}
+							<Tooltip title="Generate QR sticker label">
+								<IconButton
+									size="small"
+									color="primary"
+									onClick={() => onGenerateQr(row.original.id)}
+									aria-label={`Generate QR for PRC ${row.original.id}`}
+								>
+									<QrCode2Icon fontSize="small" />
+								</IconButton>
+							</Tooltip>
+							<Tooltip title="Consolidated report — print or save as PDF">
+								<IconButton
+									size="small"
+									color="primary"
+									onClick={() => onOpenReport(row.original.id)}
+									aria-label={`PDF report for PRC ${row.original.id}`}
+								>
+									<PictureAsPdfIcon fontSize="small" />
+								</IconButton>
+							</Tooltip>
 						</Stack>
-					);
+					)
 				}
-			},
-			{
-				accessorKey: 'date',
-				header: 'PRC Date',
-				size: 130,
-				accessorFn: row => (row.date ? row.date : ''),
-				Cell: ({ row }) => {
-					const raw = row.original.date;
-					const d = raw ? dayjs(raw) : null;
-					const text = d && d.isValid() ? d.format(DATE_PICKER_FORMAT) : '—';
-					return (
-						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-							{text}
-						</Typography>
-					);
-				}
-			},
-			{
-				accessorKey: 'plant',
-				header: 'Plant Code',
-				size: 130,
-				accessorFn: row => (row.plant != null && String(row.plant).trim() ? String(row.plant) : ''),
-				Cell: ({ row }) => {
-					const v = row.original.plant;
-					return (
-						<Typography variant="body2" sx={{ color: '#333', fontSize: '0.875rem' }}>
-							{v != null && String(v).trim() ? String(v) : '—'}
-						</Typography>
-					);
-				}
-			},
-			{
-				accessorKey: 'status',
-				header: 'Status',
-				size: 140,
-				filterVariant: 'select',
-				filterSelectOptions: ['ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'INACTIVE'],
-				Cell: ({ row }) => (
-					<Chip
-						label={row.original.status}
-						icon={<CheckCircleIcon sx={{ fontSize: '0.75rem' }} />}
-						sx={{
-							backgroundColor: getStatusColor(row.original.status),
-							color: 'white',
-							fontSize: '0.75rem',
-							height: '24px',
-							'& .MuiChip-icon': {
-								color: 'white'
-							}
-						}}
-					/>
-				)
-			},
-			{
-				id: 'execute',
-				header: 'Actions',
-				size: 210,
-				enableSorting: false,
-				enableColumnFilter: false,
-				Cell: ({ row }) => (
-					<Stack direction="row" spacing={0.5} alignItems="center" flexWrap="nowrap">
-						{canExecute && (
-							<Button
-								variant="contained"
-								startIcon={<PlayArrowIcon />}
-								onClick={() => onExecute(row.original.id)}
-								size="small"
-								sx={{
-									backgroundColor: '#1976d2',
-									minWidth: 0,
-									px: 1,
-									'&:hover': {
-										backgroundColor: '#1565c0'
-									}
-								}}
-							>
-								Execute
-							</Button>
-						)}
-						{canView && !canExecute && (
-							<Button
-								variant="outlined"
-								startIcon={<VisibilityIcon />}
-								onClick={() => onView(row.original.id)}
-								size="small"
-								sx={{ minWidth: 0, px: 1 }}
-							>
-								View
-							</Button>
-						)}
-						<Tooltip title="Generate QR sticker label">
-							<IconButton
-								size="small"
-								color="primary"
-								onClick={() => onGenerateQr(row.original.id)}
-								aria-label={`Generate QR for PRC ${row.original.id}`}
-							>
-								<QrCode2Icon fontSize="small" />
-							</IconButton>
-						</Tooltip>
-						<Tooltip title="Consolidated report — print or save as PDF">
-							<IconButton
-								size="small"
-								color="primary"
-								onClick={() => onOpenReport(row.original.id)}
-								aria-label={`PDF report for PRC ${row.original.id}`}
-							>
-								<PictureAsPdfIcon fontSize="small" />
-							</IconButton>
-						</Tooltip>
-					</Stack>
-				)
-			}
-		],
-		[onExecute, onView, onOpenReport, onGenerateQr, canExecute, canView]
-	);
+			],
+			[onExecute, onView, onOpenReport, onGenerateQr, canExecute, canView]
+		);
 
-	if (totalCount === 0) {
+		if (totalCount === 0) {
+			return (
+				<Box sx={{ textAlign: 'center', py: 8 }}>
+					<PlayArrowIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
+					<Typography variant="h6" sx={{ color: '#666', mb: 1 }}>
+						No PRC Executions Found
+					</Typography>
+					<Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+						Create your first PRC execution to get started
+					</Typography>
+				</Box>
+			);
+		}
+
 		return (
-			<Box sx={{ textAlign: 'center', py: 8 }}>
-				<PlayArrowIcon sx={{ fontSize: 64, color: '#ccc', mb: 2 }} />
-				<Typography variant="h6" sx={{ color: '#666', mb: 1 }}>
-					No PRC Executions Found
-				</Typography>
-				<Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
-					Create your first PRC execution to get started
-				</Typography>
-			</Box>
+			<TableComponent
+				tableColumns={columns}
+				data={safeData}
+				pagination={pagination}
+				onPaginationChange={onPaginationChange}
+				manualPagination
+				rowCount={totalCount}
+				onExportOverride={onExportAll}
+				isExporting={isExporting}
+				exportTitle="prc-execution"
+				pinnedColumnsLeft={['orderId', 'status', 'execute']}
+				toolbarActions={
+					(onBulkGenerateQr || onScanQr) && (
+						<Stack direction="row" spacing={1} alignItems="center">
+							{onScanQr ? (
+								<Button
+									size="small"
+									variant="outlined"
+									startIcon={<QrCodeScannerIcon fontSize="small" />}
+									onClick={onScanQr}
+									sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
+								>
+									Scan QR
+								</Button>
+							) : null}
+							{onBulkGenerateQr ? (
+								<Button
+									size="small"
+									variant="contained"
+									startIcon={<QrCode2Icon fontSize="small" />}
+									onClick={onBulkGenerateQr}
+									sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
+								>
+									Generate QR Codes
+								</Button>
+							) : null}
+						</Stack>
+					)
+				}
+			/>
 		);
 	}
-
-	return (
-		<TableComponent
-			tableColumns={columns}
-			data={safeData}
-			pagination={pagination}
-			onPaginationChange={onPaginationChange}
-			manualPagination
-			rowCount={totalCount}
-			onExportOverride={onExportAll}
-			isExporting={isExporting}
-			exportTitle="prc-execution"
-			pinnedColumnsLeft={['orderId', 'status', 'execute']}
-			toolbarActions={
-				(onBulkGenerateQr || onScanQr) && (
-					<Stack direction="row" spacing={1} alignItems="center">
-						{onScanQr ? (
-							<Button
-								size="small"
-								variant="outlined"
-								startIcon={<QrCodeScannerIcon fontSize="small" />}
-								onClick={onScanQr}
-								sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
-							>
-								Scan QR
-							</Button>
-						) : null}
-						{onBulkGenerateQr ? (
-							<Button
-								size="small"
-								variant="contained"
-								startIcon={<QrCode2Icon fontSize="small" />}
-								onClick={onBulkGenerateQr}
-								sx={{ textTransform: 'none', fontWeight: 600, minHeight: 34 }}
-							>
-								Generate QR Codes
-							</Button>
-						) : null}
-					</Stack>
-				)
-			}
-		/>
-	);
-});
+);
 
 PrcExecutionTable.displayName = 'PrcExecutionTable';
 

@@ -30,15 +30,10 @@ export function parsePrcExecutionOperationStatusList(value: unknown): PrcExecuti
 
 		out.push({
 			id,
-			prcExecutionId:
-				prcExecutionId !== undefined && Number.isFinite(prcExecutionId) ? prcExecutionId : undefined,
+			prcExecutionId: prcExecutionId !== undefined && Number.isFinite(prcExecutionId) ? prcExecutionId : undefined,
 			operationId: o.operationId != null ? String(o.operationId) : '',
 			operationText:
-				typeof o.operationText === 'string'
-					? o.operationText
-					: o.operationText != null
-						? String(o.operationText)
-						: '',
+				typeof o.operationText === 'string' ? o.operationText : o.operationText != null ? String(o.operationText) : '',
 			prcStatus: Boolean(o.prcStatus),
 			sapStatus: Boolean(o.sapStatus),
 			metadata: o.metadata ?? null,
@@ -50,17 +45,13 @@ export function parsePrcExecutionOperationStatusList(value: unknown): PrcExecuti
 }
 
 /** At least one operation and every row has both PRC and SAP complete. */
-export function executionOperationsAllComplete(
-	ops: PrcExecutionOperationStatusRow[] | undefined
-): boolean {
+export function executionOperationsAllComplete(ops: PrcExecutionOperationStatusRow[] | undefined): boolean {
 	const list = ops ?? [];
 	return list.length > 0 && list.every(op => op.prcStatus && op.sapStatus);
 }
 
 /** At least one operation exists and at least one row is missing PRC or SAP completion. */
-export function executionOperationsHasIncomplete(
-	ops: PrcExecutionOperationStatusRow[] | undefined
-): boolean {
+export function executionOperationsHasIncomplete(ops: PrcExecutionOperationStatusRow[] | undefined): boolean {
 	const list = ops ?? [];
 	return list.length > 0 && list.some(op => !op.prcStatus || !op.sapStatus);
 }
@@ -90,8 +81,10 @@ export interface PrcExecution {
 	/** Per-operation PRC/SAP completion flags when the API returns nested rows. */
 	operationStatus?: PrcExecutionOperationStatusRow[];
 	date: string;
-	/** Plant code (server-side column `plant`). */
-	plant?: string | null;
+	/** Part this execution ran, as selected by POST /prcExecution/list. */
+	partId?: number | null;
+	/** Plant the execution ran in, as selected by POST /prcExecution/list. */
+	plantCode?: string | null;
 }
 
 /** Status values the server writes to `prc_execution.status`. */
@@ -231,11 +224,7 @@ function isOperationDelayReasonComboItemData(value: unknown): value is Operation
 		return false;
 	}
 	const o = value as Record<string, unknown>;
-	return (
-		typeof o.id === 'number' &&
-		typeof o.type === 'string' &&
-		typeof o.sequence === 'number'
-	);
+	return typeof o.id === 'number' && typeof o.type === 'string' && typeof o.sequence === 'number';
 }
 
 function isOperationDelayReasonComboItem(value: unknown): value is OperationDelayReasonComboItem {
@@ -249,9 +238,7 @@ function isOperationDelayReasonComboItem(value: unknown): value is OperationDela
 	return isOperationDelayReasonComboItemData(o.data);
 }
 
-export function isOperationDelayReasonComboResponse(
-	value: unknown
-): value is OperationDelayReasonComboResponse {
+export function isOperationDelayReasonComboResponse(value: unknown): value is OperationDelayReasonComboResponse {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
 		return false;
 	}

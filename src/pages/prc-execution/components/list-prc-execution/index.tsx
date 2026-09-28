@@ -89,7 +89,7 @@ const PRC_EXPORT_COLUMNS: ExportColumn<PrcExecution>[] = [
 				.join(' | ')
 	},
 	{ header: 'PRC Date', value: r => formatDateCell(r.date) },
-	{ header: 'Plant Code', value: r => r.plant ?? '' },
+	{ header: 'Plant Code', value: r => r.plantCode ?? '' },
 	{ header: 'Status', value: r => r.status ?? '' }
 ];
 
@@ -127,10 +127,7 @@ const ListPrcExecution = () => {
 
 	const sapOptions = useMemo(() => sapComboOptions(sapComboData?.data), [sapComboData]);
 	// Server filters customers with ILIKE on customerName, so options must be the names (labels), not codes.
-	const customerOptions = useMemo(
-		() => uniqueSorted((customersData?.data ?? []).map(r => r.label)),
-		[customersData]
-	);
+	const customerOptions = useMemo(() => uniqueSorted((customersData?.data ?? []).map(r => r.label)), [customersData]);
 	const plantOptions = useMemo(() => plantCodeOptions(plantsData), [plantsData]);
 	const statusOptions = useMemo(
 		() => (statusComboData ?? []).map(item => ({ label: item.label, value: String(item.value) })),
@@ -508,9 +505,7 @@ const ListPrcExecution = () => {
 				table={
 					<Box sx={{ ...masterListTableFrame, position: 'relative' }}>
 						{isPrcExecutionDataFetching && !isPrcExecutionDataLoading ? (
-							<LinearProgress
-								sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, zIndex: 1 }}
-							/>
+							<LinearProgress sx={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, zIndex: 1 }} />
 						) : null}
 						{exportError ? (
 							<Typography variant="body2" color="error" sx={{ px: 2, pt: 1 }}>
