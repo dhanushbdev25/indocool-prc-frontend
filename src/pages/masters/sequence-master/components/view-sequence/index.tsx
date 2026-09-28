@@ -4,6 +4,7 @@ import { ArrowBack, Edit, ContentCopy } from '@mui/icons-material';
 import ViewSequenceBasicInfo from './components/ViewSequenceBasicInfo';
 import ViewSequenceStepGroups from './components/ViewSequenceStepGroups';
 import { useFetchProcessSequenceByIdQuery } from '../../../../../store/api/business/sequence-master/sequence.api';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 
 const ViewSequence = () => {
@@ -22,6 +23,9 @@ const ViewSequence = () => {
 	const handleBack = () => {
 		navigate('/sequence-master');
 	};
+
+	const { hasPermission } = useCurrentRole();
+	const canEdit = hasPermission('SEQUENCE_MASTER_EDIT');
 
 	const handleEdit = () => {
 		navigate(`/sequence-master/edit-sequence/${sequenceId}`);
@@ -100,26 +104,23 @@ const ViewSequence = () => {
 						</Typography>
 					</Box>
 					<Box sx={{ display: 'flex', gap: 2 }}>
-						<Button
-							variant="outlined"
-							startIcon={<ContentCopy />}
-							onClick={handleClone}
-							sx={{ textTransform: 'none' }}
-						>
+						<Button variant="outlined" startIcon={<ContentCopy />} onClick={handleClone} sx={{ textTransform: 'none' }}>
 							Clone
 						</Button>
-						<Button
-							variant="contained"
-							startIcon={<Edit />}
-							onClick={handleEdit}
-							sx={{
-								textTransform: 'none',
-								backgroundColor: '#1976d2',
-								'&:hover': { backgroundColor: '#1565c0' }
-							}}
-						>
-							Edit Sequence
-						</Button>
+						{canEdit && (
+							<Button
+								variant="contained"
+								startIcon={<Edit />}
+								onClick={handleEdit}
+								sx={{
+									textTransform: 'none',
+									backgroundColor: '#1976d2',
+									'&:hover': { backgroundColor: '#1565c0' }
+								}}
+							>
+								Edit Sequence
+							</Button>
+						)}
 					</Box>
 				</Box>
 
@@ -143,26 +144,23 @@ const ViewSequence = () => {
 						Back to List
 					</Button>
 					<Box sx={{ display: 'flex', gap: 2 }}>
-						<Button
-							variant="outlined"
-							startIcon={<ContentCopy />}
-							onClick={handleClone}
-							sx={{ textTransform: 'none' }}
-						>
+						<Button variant="outlined" startIcon={<ContentCopy />} onClick={handleClone} sx={{ textTransform: 'none' }}>
 							Clone
 						</Button>
-						<Button
-							variant="contained"
-							startIcon={<Edit />}
-							onClick={handleEdit}
-							sx={{
-								textTransform: 'none',
-								backgroundColor: '#1976d2',
-								'&:hover': { backgroundColor: '#1565c0' }
-							}}
-						>
-							Edit Sequence
-						</Button>
+						{canEdit && (
+							<Button
+								variant="contained"
+								startIcon={<Edit />}
+								onClick={handleEdit}
+								sx={{
+									textTransform: 'none',
+									backgroundColor: '#1976d2',
+									'&:hover': { backgroundColor: '#1565c0' }
+								}}
+							>
+								Edit Sequence
+							</Button>
+						)}
 					</Box>
 				</Box>
 			</Paper>

@@ -4,6 +4,7 @@ import { ArrowBack, Edit, ContentCopy } from '@mui/icons-material';
 import ViewInspectionBasicInfo from './components/ViewInspectionBasicInfo';
 import ViewInspectionParameters from './components/ViewInspectionParameters';
 import { useFetchInspectionByIdQuery } from '../../../../../store/api/business/inspection-master/inspection.api';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 
 const ViewInspection = () => {
@@ -22,6 +23,9 @@ const ViewInspection = () => {
 	const handleBack = () => {
 		navigate('/inspection-master');
 	};
+
+	const { hasPermission } = useCurrentRole();
+	const canEdit = hasPermission('INSPECTION_MASTER_EDIT');
 
 	const handleEdit = () => {
 		navigate(`/inspection-master/edit-inspection/${inspectionId}`);
@@ -100,26 +104,23 @@ const ViewInspection = () => {
 						</Typography>
 					</Box>
 					<Box sx={{ display: 'flex', gap: 2 }}>
-						<Button
-							variant="outlined"
-							startIcon={<ContentCopy />}
-							onClick={handleClone}
-							sx={{ textTransform: 'none' }}
-						>
+						<Button variant="outlined" startIcon={<ContentCopy />} onClick={handleClone} sx={{ textTransform: 'none' }}>
 							Clone
 						</Button>
-						<Button
-							variant="contained"
-							startIcon={<Edit />}
-							onClick={handleEdit}
-							sx={{
-								textTransform: 'none',
-								backgroundColor: '#1976d2',
-								'&:hover': { backgroundColor: '#1565c0' }
-							}}
-						>
-							Edit Inspection
-						</Button>
+						{canEdit && (
+							<Button
+								variant="contained"
+								startIcon={<Edit />}
+								onClick={handleEdit}
+								sx={{
+									textTransform: 'none',
+									backgroundColor: '#1976d2',
+									'&:hover': { backgroundColor: '#1565c0' }
+								}}
+							>
+								Edit Inspection
+							</Button>
+						)}
 					</Box>
 				</Box>
 
@@ -143,26 +144,23 @@ const ViewInspection = () => {
 						Back to List
 					</Button>
 					<Box sx={{ display: 'flex', gap: 2 }}>
-						<Button
-							variant="outlined"
-							startIcon={<ContentCopy />}
-							onClick={handleClone}
-							sx={{ textTransform: 'none' }}
-						>
+						<Button variant="outlined" startIcon={<ContentCopy />} onClick={handleClone} sx={{ textTransform: 'none' }}>
 							Clone
 						</Button>
-						<Button
-							variant="contained"
-							startIcon={<Edit />}
-							onClick={handleEdit}
-							sx={{
-								textTransform: 'none',
-								backgroundColor: '#1976d2',
-								'&:hover': { backgroundColor: '#1565c0' }
-							}}
-						>
-							Edit Inspection
-						</Button>
+						{canEdit && (
+							<Button
+								variant="contained"
+								startIcon={<Edit />}
+								onClick={handleEdit}
+								sx={{
+									textTransform: 'none',
+									backgroundColor: '#1976d2',
+									'&:hover': { backgroundColor: '#1565c0' }
+								}}
+							>
+								Edit Inspection
+							</Button>
+						)}
 					</Box>
 				</Box>
 			</Paper>

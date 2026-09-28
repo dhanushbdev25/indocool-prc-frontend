@@ -4,6 +4,7 @@ import { ArrowBack, Edit } from '@mui/icons-material';
 import ViewCatalystBasicInfo from './components/ViewCatalystBasicInfo';
 import ViewCatalystConfiguration from './components/ViewCatalystConfiguration';
 import { useFetchCatalystByIdQuery } from '../../../../../store/api/business/catalyst-master/catalyst.api';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 
 const ViewCatalyst = () => {
@@ -22,6 +23,9 @@ const ViewCatalyst = () => {
 	const handleBack = () => {
 		navigate('/catalyst-master');
 	};
+
+	const { hasPermission } = useCurrentRole();
+	const canEdit = hasPermission('CATALYST_MASTER_EDIT');
 
 	const handleEdit = () => {
 		navigate(`/catalyst-master/edit-catalyst/${catalystId}`);
@@ -95,18 +99,20 @@ const ViewCatalyst = () => {
 							View Catalyst Chart
 						</Typography>
 					</Box>
-					<Button
-						variant="contained"
-						startIcon={<Edit />}
-						onClick={handleEdit}
-						sx={{
-							textTransform: 'none',
-							backgroundColor: '#1976d2',
-							'&:hover': { backgroundColor: '#1565c0' }
-						}}
-					>
-						Edit Chart
-					</Button>
+					{canEdit && (
+						<Button
+							variant="contained"
+							startIcon={<Edit />}
+							onClick={handleEdit}
+							sx={{
+								textTransform: 'none',
+								backgroundColor: '#1976d2',
+								'&:hover': { backgroundColor: '#1565c0' }
+							}}
+						>
+							Edit Chart
+						</Button>
+					)}
 				</Box>
 
 				{/* Basic Information Section */}
@@ -128,18 +134,20 @@ const ViewCatalyst = () => {
 					<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
 						Back to List
 					</Button>
-					<Button
-						variant="contained"
-						startIcon={<Edit />}
-						onClick={handleEdit}
-						sx={{
-							textTransform: 'none',
-							backgroundColor: '#1976d2',
-							'&:hover': { backgroundColor: '#1565c0' }
-						}}
-					>
-						Edit Chart
-					</Button>
+					{canEdit && (
+						<Button
+							variant="contained"
+							startIcon={<Edit />}
+							onClick={handleEdit}
+							sx={{
+								textTransform: 'none',
+								backgroundColor: '#1976d2',
+								'&:hover': { backgroundColor: '#1565c0' }
+							}}
+						>
+							Edit Chart
+						</Button>
+					)}
 				</Box>
 			</Paper>
 		</Box>
