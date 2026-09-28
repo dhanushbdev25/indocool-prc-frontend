@@ -17,10 +17,11 @@ import {
 	Divider
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import { ExpandMore, Warning, Link, Lock as LockIcon } from '@mui/icons-material';
+import { ExpandMore, Warning, Link } from '@mui/icons-material';
 import { InspectionParameter } from '../../../../../../store/api/business/inspection-master/inspection.validators';
 import { roleOptions } from '../../create-inspection/schemas';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
+import { TableConfigPreview, formatAcceptanceRange } from '../../../../../../components/masters';
 import { GATE_FIELD_LABEL } from '../../../../../../utils/gateLabels';
 import {
 	CRITICALITY_CHIP_HEX,
@@ -221,10 +222,31 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 										{parameter.columns && parameter.columns.length > 0 && parameter.type !== 'fixed-table' && (
 											<Grid size={{ xs: 12 }}>
 												<Divider sx={{ my: 2 }} />
-												<Box sx={{ p: 2, backgroundColor: parameter.type === 'table' ? '#f0f4ff' : '#f8f9fa', borderRadius: '12px', border: parameter.type === 'table' ? 'none' : '1px solid #e0e0e0' }}>
-													<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-														<Typography variant="body2" sx={{ color: parameter.type === 'table' ? '#1a237e' : 'text.secondary', fontWeight: 600 }}>
-															{parameter.type === 'table' ? 'Table Columns (rows added at execution)' : 'Parameter Columns'}
+												<Box
+													sx={{
+														p: 2,
+														backgroundColor: parameter.type === 'table' ? '#f0f4ff' : '#f8f9fa',
+														borderRadius: '12px',
+														border: parameter.type === 'table' ? 'none' : '1px solid #e0e0e0'
+													}}
+												>
+													<Box
+														sx={{
+															display: 'flex',
+															alignItems: 'center',
+															justifyContent: 'space-between',
+															mb: 1.5,
+															flexWrap: 'wrap',
+															gap: 1
+														}}
+													>
+														<Typography
+															variant="body2"
+															sx={{ color: parameter.type === 'table' ? '#1a237e' : 'text.secondary', fontWeight: 600 }}
+														>
+															{parameter.type === 'table'
+																? 'Table Columns (rows added at execution)'
+																: 'Parameter Columns'}
 														</Typography>
 														<Chip
 															label={`${parameter.columns.length} column${parameter.columns.length !== 1 ? 's' : ''}`}
@@ -232,23 +254,36 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 															sx={{ backgroundColor: '#ede7f6', color: '#5e35b1', fontWeight: 500, fontSize: '0.7rem' }}
 														/>
 													</Box>
-													<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
+													<TableContainer
+														component={Paper}
+														variant="outlined"
+														sx={{ borderRadius: '8px', overflow: 'hidden' }}
+													>
 														<Table size="small">
 															<TableHead>
 																<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
 																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>Name</TableCell>
-																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>Range (Min-Max)</TableCell>
+																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>Type</TableCell>
+																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>
+																		Range (Min-Max)
+																	</TableCell>
 																</TableRow>
 															</TableHead>
 															<TableBody>
 																{parameter.columns.map((column: Record<string, unknown>, colIndex: number) => (
-																	<TableRow key={colIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
+																	<TableRow
+																		key={colIndex}
+																		sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}
+																	>
 																		<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.name)}</TableCell>
 																		<TableCell sx={{ fontSize: '0.8rem' }}>
-																			{formatRange(
-																				column.minimumAcceptanceValue,
-																				column.maximumAcceptanceValue
-																			)}
+																			{formatOkNotOkTypeForDisplay(String(column.type))}
+																		</TableCell>
+																		<TableCell sx={{ fontSize: '0.8rem' }}>
+																			{formatAcceptanceRange(
+																				column.minimumAcceptanceValue as string | number | null,
+																				column.maximumAcceptanceValue as string | number | null
+																			) || 'Not specified'}
 																		</TableCell>
 																	</TableRow>
 																))}
@@ -260,67 +295,14 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 										)}
 
 										{/* Fixed-table structure preview */}
-										{parameter.type === 'fixed-table' && parameter.tableConfig?.columns && parameter.tableConfig.columns.length > 0 && (
-											<Grid size={{ xs: 12 }}>
-												<Divider sx={{ my: 2 }} />
-												<Box sx={{ p: 2, backgroundColor: '#f0f4ff', borderRadius: '12px' }}>
-													<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-														<Typography variant="body2" sx={{ color: '#1a237e', fontWeight: 600 }}>
-															Fixed Table Preview
-														</Typography>
-														<Chip
-															label={`${parameter.tableConfig.columns.length} col${parameter.tableConfig.columns.length !== 1 ? 's' : ''} \u00b7 ${parameter.tableConfig.rows?.length || 0} row${(parameter.tableConfig.rows?.length || 0) !== 1 ? 's' : ''}`}
-															size="small"
-															sx={{ backgroundColor: '#ede7f6', color: '#5e35b1', fontWeight: 500, fontSize: '0.7rem' }}
-														/>
-													</Box>
-													<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
-														<Table size="small">
-															<TableHead>
-																<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
-																	<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75, width: 40, textAlign: 'center' }}>#</TableCell>
-																	{parameter.tableConfig.columns.map(col => (
-																		<TableCell key={col.name} sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75 }}>
-																			{col.name}
-																			<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}>
-																				{formatOkNotOkTypeForDisplay(col.type)}
-																			</Typography>
-																		</TableCell>
-																	))}
-																</TableRow>
-															</TableHead>
-															<TableBody>
-																{(parameter.tableConfig.rows || []).map((row, ri) => (
-																	<TableRow key={ri} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
-																		<TableCell sx={{ textAlign: 'center', color: '#999', fontSize: '0.7rem' }}>{ri + 1}</TableCell>
-																		{parameter.tableConfig!.columns!.map(col => {
-																			const cell = row.cells[col.name] || { value: '', readOnly: false };
-																			return (
-																				<TableCell key={col.name} sx={{ fontSize: '0.8rem' }}>
-																					<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-																						{cell.readOnly && <LockIcon sx={{ fontSize: 12, color: '#1976d2' }} />}
-																						<Typography variant="body2" sx={{ fontSize: '0.8rem', ...(cell.readOnly ? { color: '#1565c0', fontWeight: 500 } : { color: '#999', fontStyle: 'italic' }) }}>
-																							{cell.value || (cell.readOnly ? '-' : 'Editable')}
-																						</Typography>
-																					</Box>
-																				</TableCell>
-																			);
-																		})}
-																	</TableRow>
-																))}
-																{(!parameter.tableConfig.rows || parameter.tableConfig.rows.length === 0) && (
-																	<TableRow>
-																		<TableCell colSpan={parameter.tableConfig.columns.length + 1} sx={{ textAlign: 'center', py: 2, color: '#aaa' }}>
-																			No rows defined
-																		</TableCell>
-																	</TableRow>
-																)}
-															</TableBody>
-														</Table>
-													</TableContainer>
-												</Box>
-											</Grid>
-										)}
+										{parameter.type === 'fixed-table' &&
+											parameter.tableConfig?.columns &&
+											parameter.tableConfig.columns.length > 0 && (
+												<Grid size={{ xs: 12 }}>
+													<Divider sx={{ my: 2 }} />
+													<TableConfigPreview config={parameter.tableConfig} title="Fixed Table Preview" />
+												</Grid>
+											)}
 									</Grid>
 								</AccordionDetails>
 							</Accordion>

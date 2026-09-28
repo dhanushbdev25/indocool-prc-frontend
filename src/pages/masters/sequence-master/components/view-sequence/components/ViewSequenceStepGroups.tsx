@@ -24,6 +24,7 @@ import {
 	type ProcessStepGroup,
 	type ProcessStep
 } from '../../../../../../store/api/business/sequence-master/sequence.validators';
+import { TableConfigPreview } from '../../../../../../components/masters';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
 import {
 	CRITICALITY_CHIP_HEX,
@@ -147,25 +148,20 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 							</Box>
 						</Grid>
 
-					{/* Table Config Summary */}
-					{step.targetValueType === 'table' && (step as Record<string, unknown>).tableConfig && (
-						<Grid size={{ xs: 12 }}>
-							<Box>
-								<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
-									Table Structure
-								</Typography>
-								<Paper sx={{ p: 2, backgroundColor: '#f3e8ff', border: '1px solid #ce93d8' }}>
-									<Typography variant="body2" sx={{ color: '#6a1b9a', fontWeight: 600 }}>
-										{((step as Record<string, unknown>).tableConfig as { columns?: unknown[]; rows?: unknown[] })?.columns?.length || 0} columns,{' '}
-										{((step as Record<string, unknown>).tableConfig as { columns?: unknown[]; rows?: unknown[] })?.rows?.length || 0} rows
+						{/* Table Config */}
+						{step.targetValueType === 'table' && step.tableConfig && (
+							<Grid size={{ xs: 12 }}>
+								<Box>
+									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
+										Table Structure
 									</Typography>
-								</Paper>
-							</Box>
-						</Grid>
-					)}
+									<TableConfigPreview config={step.tableConfig} title="Configured Table" />
+								</Box>
+							</Grid>
+						)}
 
-					{/* Target Values */}
-					{(step.targetValueType === 'range' || step.targetValueType === 'exact value') && (
+						{/* Target Values */}
+						{(step.targetValueType === 'range' || step.targetValueType === 'exact value') && (
 							<Grid size={{ xs: 12 }}>
 								<Box>
 									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
@@ -181,28 +177,28 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 											</Typography>
 										</Paper>
 									) : (
-									<Grid container spacing={2}>
-										<Grid size={{ xs: 6 }}>
-											<Paper sx={{ p: 2, backgroundColor: '#e3f2fd', border: '1px solid #2196f3' }}>
-												<Typography variant="caption" sx={{ color: '#1565c0', fontWeight: 600 }}>
-													MINIMUM
-												</Typography>
-												<Typography variant="h6" sx={{ color: '#1565c0', fontWeight: 600 }}>
-													{step.minimumAcceptanceValue}
-												</Typography>
-											</Paper>
+										<Grid container spacing={2}>
+											<Grid size={{ xs: 6 }}>
+												<Paper sx={{ p: 2, backgroundColor: '#e3f2fd', border: '1px solid #2196f3' }}>
+													<Typography variant="caption" sx={{ color: '#1565c0', fontWeight: 600 }}>
+														MINIMUM
+													</Typography>
+													<Typography variant="h6" sx={{ color: '#1565c0', fontWeight: 600 }}>
+														{step.minimumAcceptanceValue}
+													</Typography>
+												</Paper>
+											</Grid>
+											<Grid size={{ xs: 6 }}>
+												<Paper sx={{ p: 2, backgroundColor: '#ffebee', border: '1px solid #f44336' }}>
+													<Typography variant="caption" sx={{ color: '#c62828', fontWeight: 600 }}>
+														MAXIMUM
+													</Typography>
+													<Typography variant="h6" sx={{ color: '#c62828', fontWeight: 600 }}>
+														{step.maximumAcceptanceValue}
+													</Typography>
+												</Paper>
+											</Grid>
 										</Grid>
-										<Grid size={{ xs: 6 }}>
-											<Paper sx={{ p: 2, backgroundColor: '#ffebee', border: '1px solid #f44336' }}>
-												<Typography variant="caption" sx={{ color: '#c62828', fontWeight: 600 }}>
-													MAXIMUM
-												</Typography>
-												<Typography variant="h6" sx={{ color: '#c62828', fontWeight: 600 }}>
-													{step.maximumAcceptanceValue}
-												</Typography>
-											</Paper>
-										</Grid>
-									</Grid>
 									)}
 								</Box>
 							</Grid>

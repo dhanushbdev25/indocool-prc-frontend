@@ -10,6 +10,9 @@ export { default as CriticalityField } from './CriticalityField';
 export type { CriticalityFieldProps } from './CriticalityField';
 export { default as ReorderControls } from './ReorderControls';
 export type { ReorderControlsProps } from './ReorderControls';
+export { default as TableConfigPreview } from './TableConfigPreview';
+export { formatAcceptanceRange } from './acceptanceRange';
+export type { TableConfigPreviewProps } from './TableConfigPreview';
 export { formatFilteredListSummary } from './listSummaryHelpers';
 export {
 	masterListSectionGap,
