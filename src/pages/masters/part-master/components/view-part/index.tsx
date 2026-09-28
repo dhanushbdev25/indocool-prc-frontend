@@ -6,6 +6,7 @@ import ViewRawMaterials from './components/ViewRawMaterials';
 import ViewLinkedMasters from './components/ViewLinkedMasters';
 import { useFetchPartByIdQuery } from '../../../../../store/api/business/part-master/part.api';
 import { useFetchPrcTemplateByIdQuery } from '../../../../../store/api/business/prc-template/prc-template.api';
+import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import { AuditHistoryPanel } from '../../../../../components/common/auditHistory';
 import PartSapSyncActions from '../PartSapSyncActions';
 
@@ -32,6 +33,9 @@ const ViewPart = () => {
 	const handleBack = () => {
 		navigate('/part-master');
 	};
+
+	const { hasPermission } = useCurrentRole();
+	const canEdit = hasPermission('PART_MASTER_EDIT');
 
 	const handleEdit = () => {
 		navigate(`/part-master/edit-part/${partId}`);
@@ -107,18 +111,20 @@ const ViewPart = () => {
 					</Box>
 					<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
 						<PartSapSyncActions partId={partId} onSynced={() => refetchPart()} />
-						<Button
-							variant="contained"
-							startIcon={<Edit />}
-							onClick={handleEdit}
-							sx={{
-								textTransform: 'none',
-								backgroundColor: '#1976d2',
-								'&:hover': { backgroundColor: '#1565c0' }
-							}}
-						>
-							Edit Part
-						</Button>
+						{canEdit && (
+							<Button
+								variant="contained"
+								startIcon={<Edit />}
+								onClick={handleEdit}
+								sx={{
+									textTransform: 'none',
+									backgroundColor: '#1976d2',
+									'&:hover': { backgroundColor: '#1565c0' }
+								}}
+							>
+								Edit Part
+							</Button>
+						)}
 					</Box>
 				</Box>
 
@@ -126,7 +132,11 @@ const ViewPart = () => {
 				<Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 					<ViewGeneralInfo partMaster={partMaster} files={partData?.detail?.files || undefined} />
 					<ViewRawMaterials rawMaterials={rawMaterials} />
-					<ViewLinkedMasters partMaster={partMaster} files={partData.detail.files || undefined} />
+					<ViewLinkedMasters
+						partMaster={partMaster}
+						files={partData.detail.files || undefined}
+						partDetail={partData.detail}
+					/>
 					<AuditHistoryPanel history={partData.history} domain="part" />
 					{linkedPrcTemplateId && (
 						<AuditHistoryPanel
@@ -143,18 +153,20 @@ const ViewPart = () => {
 					<Button onClick={handleBack} sx={{ textTransform: 'none' }}>
 						Back to List
 					</Button>
-					<Button
-						variant="contained"
-						startIcon={<Edit />}
-						onClick={handleEdit}
-						sx={{
-							textTransform: 'none',
-							backgroundColor: '#1976d2',
-							'&:hover': { backgroundColor: '#1565c0' }
-						}}
-					>
-						Edit Part
-					</Button>
+					{canEdit && (
+						<Button
+							variant="contained"
+							startIcon={<Edit />}
+							onClick={handleEdit}
+							sx={{
+								textTransform: 'none',
+								backgroundColor: '#1976d2',
+								'&:hover': { backgroundColor: '#1565c0' }
+							}}
+						>
+							Edit Part
+						</Button>
+					)}
 				</Box>
 			</Paper>
 		</Box>

@@ -191,6 +191,7 @@ function cleanOperationWiseDataForApi(
 			id: row.id,
 			operationID: row.operationID,
 			operationName: String(row.operationName ?? ''),
+			...(row.plant ? { plant: String(row.plant) } : {}),
 			l1Count: l1,
 			l2Count: l2,
 			l3Count: l3,

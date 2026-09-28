@@ -1,10 +1,11 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import {
 	Accordion,
 	AccordionDetails,
 	AccordionSummary,
 	Alert,
 	Box,
+	Button,
 	Chip,
 	Paper,
 	Skeleton,
@@ -13,10 +14,12 @@ import {
 import {
 	Science as CatalystIcon,
 	Assignment as TemplateIcon,
+	Factory as OperationsIcon,
+	Visibility as PreviewIcon,
 	Image as ImageIcon,
 	ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
-import { PartDrawing, PartMaster } from '../../../../../../store/api/business/part-master/part.validators';
+import { PartDetail, PartDrawing, PartMaster } from '../../../../../../store/api/business/part-master/part.validators';
 import ViewOnlyImageGallery from '../../../../../../components/common/imageGallery/ViewOnlyImageGallery';
 import { useFetchCatalystByIdQuery } from '../../../../../../store/api/business/catalyst-master/catalyst.api';
 import { useFetchPrcTemplateByIdQuery } from '../../../../../../store/api/business/prc-template/prc-template.api';
@@ -24,10 +27,15 @@ import ViewCatalystBasicInfo from '../../../../catalyst-master/components/view-c
 import ViewCatalystConfiguration from '../../../../catalyst-master/components/view-catalyst/components/ViewCatalystConfiguration';
 import ViewPrcTemplateBasicInfo from '../../../../prc-template-master/components/view-prc-template/components/ViewPrcTemplateBasicInfo';
 import ViewPrcTemplateSteps from '../../../../prc-template-master/components/view-prc-template/components/ViewPrcTemplateSteps';
+import ViewPartOperations from './ViewPartOperations';
+import PrcExecutionPreviewDialog from '../../create-part/components/PrcExecutionPreviewDialog';
+import { buildPartPreviewSnapshot } from '../../../utils/buildPartPreviewSnapshot';
 
 interface ViewLinkedMastersProps {
 	partMaster: PartMaster;
 	files?: PartDrawing[];
+	/** Full part detail, needed to build the snapshot the PRC execution preview runs on. */
+	partDetail?: PartDetail;
 }
 
 interface LinkedMasterSectionProps {
@@ -114,10 +122,12 @@ const LoadingDetail = () => (
 	</>
 );
 
-const ViewLinkedMasters = ({ partMaster, files = [] }: ViewLinkedMastersProps) => {
+const ViewLinkedMasters = ({ partMaster, files = [], partDetail }: ViewLinkedMastersProps) => {
+	const [previewOpen, setPreviewOpen] = useState(false);
 	const catalystId = partMaster.catalyst;
 	const prcTemplateId = partMaster.prcTemplate;
-	const hasLinkedMasters = Boolean(catalystId || prcTemplateId);
+	const operationRows = partMaster.operationWiseData || [];
+	const hasLinkedMasters = Boolean(catalystId || prcTemplateId || operationRows.length > 0);
 
 	// The part only stores the ids of the masters it links to. Pull each one so this screen can
 	// show the same detail the catalyst and PRC template screens do — a bare id tells a
@@ -135,6 +145,12 @@ const ViewLinkedMasters = ({ partMaster, files = [] }: ViewLinkedMastersProps) =
 		isLoading: isPrcTemplateLoading,
 		isError: isPrcTemplateError
 	} = useFetchPrcTemplateByIdQuery({ id: Number(prcTemplateId) }, { skip: !prcTemplateId });
+
+	const templateSteps = prcTemplateData?.detail?.prcTemplateSteps || [];
+	// Mirrors the edit screen's gate: the preview resolves template steps, so it needs some.
+	const canPreview = Boolean(partDetail) && templateSteps.length > 0;
+	const previewSnapshot =
+		canPreview && partDetail ? buildPartPreviewSnapshot(partDetail, prcTemplateData?.detail) : null;
 
 	const catalyst = catalystData?.detail?.catalyst;
 	const prcTemplate = prcTemplateData?.detail?.prcTemplate;
@@ -167,9 +183,33 @@ const ViewLinkedMasters = ({ partMaster, files = [] }: ViewLinkedMastersProps) =
 
 	return (
 		<Paper sx={{ p: 3, borderRadius: 2, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-			<Typography variant="h6" sx={{ mb: 3, fontWeight: 600, color: '#333' }}>
-				Linked Masters
-			</Typography>
+			<Box
+				sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, gap: 2, flexWrap: 'wrap' }}
+			>
+				<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
+					Linked Masters
+				</Typography>
+				<Button
+					variant="outlined"
+					color="primary"
+					startIcon={<PreviewIcon />}
+					disabled={!canPreview}
+					onClick={() => setPreviewOpen(true)}
+					sx={{ textTransform: 'none' }}
+				>
+					Preview PRC execution
+				</Button>
+			</Box>
+
+			{previewOpen && previewSnapshot && (
+				<PrcExecutionPreviewDialog
+					open
+					onClose={() => setPreviewOpen(false)}
+					formSnapshot={previewSnapshot}
+					// Each step already carries its own operationText, so the combo is not needed here.
+					operationsData={undefined}
+				/>
+			)}
 
 			<Box sx={{ mb: 3 }}>
 				<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -195,6 +235,27 @@ const ViewLinkedMasters = ({ partMaster, files = [] }: ViewLinkedMastersProps) =
 							version={catalyst?.version}
 						>
 							{catalystBody}
+						</LinkedMasterSection>
+					)}
+
+					{Boolean(partMaster.id) && (
+						<LinkedMasterSection
+							icon={<OperationsIcon />}
+							accent="#ef6c00"
+							tint="#fff8f0"
+							label="PRC Operations"
+							title="Operation Mapping"
+							caption={
+								operationRows.length > 0
+									? `${operationRows.length} operation${operationRows.length !== 1 ? 's' : ''} mapped`
+									: 'No operations mapped'
+							}
+						>
+							<ViewPartOperations
+								partId={Number(partMaster.id)}
+								sapReferenceNumber={partMaster.sapReferenceNumber}
+								operationWiseData={operationRows}
+							/>
 						</LinkedMasterSection>
 					)}
 

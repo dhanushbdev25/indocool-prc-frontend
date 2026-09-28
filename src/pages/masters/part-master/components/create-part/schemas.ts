@@ -132,6 +132,7 @@ export const operationWiseRowFormSchema = yup.object({
 	id: yup.mixed<string | number>().required(),
 	operationID: yup.number().required(),
 	operationName: yup.string().required(),
+	plant: yup.string().optional(),
 	l1Count: skillLevelCountSchema,
 	l2Count: skillLevelCountSchema,
 	l3Count: skillLevelCountSchema,

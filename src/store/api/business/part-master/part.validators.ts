@@ -131,6 +131,13 @@ export interface OperationWisePartRow {
 	id: string | number;
 	operationID: number;
 	operationName: string;
+	/**
+	 * Plant the operation was added under in Linked Masters. Operations are picked per plant, but
+	 * the picker's choice was never stored, and it cannot be recovered afterwards because plants
+	 * share operation numbers (1102 and 1103 both carry 10/20/30). Rows saved before this was
+	 * added carry no plant.
+	 */
+	plant?: string;
 	/** Sum of l1–l4 when set; optional until user enters skill counts */
 	responsiblePersonCount?: number;
 	l1Count: number;
@@ -250,9 +257,7 @@ function isCustomerVariantComboRow(value: unknown): value is CustomerVariantComb
 	return labelOk && valueOk;
 }
 
-export function isCustomerVariantComboResponse(
-	value: unknown
-): value is { data: CustomerVariantComboRawRow[] } {
+export function isCustomerVariantComboResponse(value: unknown): value is { data: CustomerVariantComboRawRow[] } {
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) {
 		return false;
 	}
@@ -313,11 +318,7 @@ function isPartListHeader(value: unknown): value is PartListHeader {
 		return false;
 	}
 	const h = value as Record<string, unknown>;
-	return (
-		typeof h.ACTIVE === 'number' &&
-		typeof h.NEW === 'number' &&
-		typeof h.INACTIVE === 'number'
-	);
+	return typeof h.ACTIVE === 'number' && typeof h.NEW === 'number' && typeof h.INACTIVE === 'number';
 }
 
 function isPartDetail(value: unknown): value is PartDetail {
@@ -377,10 +378,5 @@ export function isPartMutationResponse(value: unknown): value is CreatePartRespo
 		return false;
 	}
 	const o = value as Record<string, unknown>;
-	return (
-		typeof o.message === 'string' &&
-		o.data !== null &&
-		typeof o.data === 'object' &&
-		!Array.isArray(o.data)
-	);
+	return typeof o.message === 'string' && o.data !== null && typeof o.data === 'object' && !Array.isArray(o.data);
 }

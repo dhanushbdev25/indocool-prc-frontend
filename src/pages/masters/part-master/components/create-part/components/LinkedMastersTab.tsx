@@ -423,6 +423,8 @@ const LinkedMastersTab = ({
 				id: existing?.id ?? `op-${g.id}`,
 				operationID: Number.isFinite(opNum) ? opNum : 0,
 				operationName: g.name || g.label,
+				// Record which plant these operations came from; the view screen cannot infer it.
+				plant: selectedPlant || existing?.plant,
 				l1Count: l1,
 				l2Count: l2,
 				l3Count: l3,
@@ -433,7 +435,7 @@ const LinkedMastersTab = ({
 		if (JSON.stringify(cur) !== JSON.stringify(next)) {
 			replaceOperationWise(next);
 		}
-	}, [headcountOperationRows, getValues, replaceOperationWise]);
+	}, [headcountOperationRows, selectedPlant, getValues, replaceOperationWise]);
 
 	return (
 		<Box>
