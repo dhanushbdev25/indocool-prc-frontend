@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
 // material-ui
 import {
@@ -25,6 +25,7 @@ import Cookie from '../../../utils/Cookie';
 import { useAppDispatch } from '../../../store/store';
 import { sessionApi } from '../../../store/api/auth/session.api';
 import { consumePostLoginRedirect } from '../../../utils/postLoginRedirect';
+import { FORGOT_PASSWORD_PATH } from '../../../constants/authRoutes';
 
 interface FormValues {
 	employeeId: string;
@@ -290,7 +291,8 @@ const AuthLogin = () => {
 						</label>
 					</Box>
 					<Link
-						href="#"
+						component={RouterLink}
+						to={FORGOT_PASSWORD_PATH}
 						sx={{
 							fontSize: '0.875rem',
 							color: '#0D5FDC',

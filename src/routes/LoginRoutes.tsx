@@ -3,6 +3,7 @@ import Loadable from '../components/common/Loadable';
 import MinimalLayout from '../layouts/MinimalLayout';
 import { Navigate } from 'react-router-dom';
 const Login = Loadable(lazy(() => import('../pages/authentication/Login')));
+const ForgotPassword = Loadable(lazy(() => import('../pages/authentication/ForgotPassword')));
 
 export const LoginRoutes = {
 	path: '/',
@@ -11,6 +12,10 @@ export const LoginRoutes = {
 		{
 			index: true,
 			element: <Login />
+		},
+		{
+			path: 'forgot-password',
+			element: <ForgotPassword />
 		},
 		{
 			path: '*',

@@ -26,8 +26,20 @@ import { hydrateListView } from './slices/listView';
 
 // ==============================|| REDUX TOOLKIT - MAIN STORE ||============================== //
 
+/**
+ * Endpoints that render their own errors inline and must not raise the global
+ * dialog. A modal over the forgot-password form would hide the very field the
+ * user has to correct.
+ */
+const INLINE_ERROR_ENDPOINTS = new Set(['requestPasswordOtp', 'resetPasswordWithOtp']);
+
 export const rtkQueryErrorLogger: Middleware = () => next => action => {
 	if (isRejectedWithValue(action)) {
+		const endpointName = (action.meta as { arg?: { endpointName?: string } } | undefined)?.arg?.endpointName;
+		if (endpointName && INLINE_ERROR_ENDPOINTS.has(endpointName)) {
+			return next(action);
+		}
+
 		const { status, data, error } =
 			(action.payload as { status?: number; data?: { msg?: string; message?: string }; error?: string }) || {};
 		let text = data?.msg || data?.message || error || 'server error';
