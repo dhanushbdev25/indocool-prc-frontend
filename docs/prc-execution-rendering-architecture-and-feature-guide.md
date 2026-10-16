@@ -127,6 +127,10 @@ Implementation: `src/pages/prc-execution/components/execute-prc/components/steps
   - numeric input within configured limits
 - `exact value`
   - numeric input (configured as exact-match style in sequence definition)
+- `table`
+  - fixed rows and columns from `tableConfig` (see §12)
+- `list`
+  - label / value rows from `listConfig` (see §13)
 
 ### 5.2 Multi-Measurement Capability
 
@@ -314,6 +318,7 @@ Configured target value types:
 - `exact value`
 - `ok/not ok`
 - `table` (fixed-table with per-cell read-only configuration)
+- `list` (label / value rows with `listConfig`, see §13)
 
 ### Inspection Master
 
@@ -328,6 +333,7 @@ Configured parameter/column types include:
 - `datetime`
 - `table` (dynamic-row table with user-defined columns)
 - `fixed-table` (fixed-row table with `tableConfig` and per-cell read-only)
+- `list` (label / value rows with `listConfig`, see §13)
 
 ---
 
@@ -404,7 +410,69 @@ interface TableConfig { columns: TableColumn[]; rows: TableRowConfig[]; }
 
 ---
 
-## 13. Executive Summary
+## 13. List Feature (Sequence & Inspection)
+
+### Overview
+
+A `list` is a two-column form: the left column is a fixed label from the master, the right column is the
+value the operator enters. It is available as a sequence `targetValueType` and as an inspection parameter
+`type`, and both share the same config, renderer, validation and saved shape.
+
+### Shared Data Model
+
+Frontend only: there is no backend column for it. A `list` row stores its `ListConfig` in the existing
+`tableConfig` JSONB column of `process_step` / `inspection_parameters`, which the backend saves and returns
+untouched. In the frontend it is exposed as `listConfig`; the conversion happens only at the API boundary
+via `readStoredListConfig` / `toStoredListConfig` (`src/utils/listConfig.ts`), used by the payload mappers
+and `buildTimelineSteps.ts`. Shape (`src/types/list-config.types.ts`):
+
+```ts
+interface ListConfig {
+  items: Array<{
+    id: string;            // stable key, generated once; renaming a label keeps saved answers
+    label: string;
+    type: 'text' | 'number' | 'ok/not ok' | 'date' | 'datetime' | 'shift' | 'workstation';
+    required: boolean;
+    readOnly: boolean;     // shows defaultValue, no input
+    defaultValue?: string;
+    minimumAcceptanceValue?: string | number | null;   // number only; blank or 0-to-0 = no range
+    maximumAcceptanceValue?: string | number | null;
+  }>;
+}
+```
+
+Helpers live in `src/utils/listConfig.ts` (range status, validation, saved value build/parse) and
+`src/utils/listConfigSchema.ts` (Yup schema plus per-item problems: blank/duplicate label, read-only
+without a value, min > max).
+
+### Master Integration
+
+- Editor: `src/components/masters/ListConfigEditor.tsx`, mounted by `SequenceStepGroups.tsx` and
+  `InspectionParameters.tsx` when the type is `list`. Choosing `list` seeds one empty item.
+- View/review: `src/components/masters/ListConfigPreview.tsx`.
+- Payload mappers send the list config as `tableConfig` for `list` rows only
+  (`processStepGroupPayload.ts`, `inspectionParameterPayload.ts`).
+
+### Execution Runtime Flow
+
+1. `buildTimelineSteps.ts` reads `tableConfig` of `list` rows into `listConfig` on sequence steps and
+   inspection parameters (template snapshots carry `tableConfig` as-is).
+2. `ListValueInput.tsx` renders the rows; the widget per row follows the item type.
+3. Sequence (`SequenceStep.tsx`): state is local; error keys are `list_<itemId>`.
+4. Inspection (`InspectionStep.tsx`): state lives in `formData['<paramId>_list']`; error keys are
+   `<paramId>_list_<itemId>` so `parameterIdsFromErrorKeys` reopens a collapsed list row before scrolling.
+   The list row is an expandable row, open by default, like fixed tables.
+5. Required items must be filled, numbers must parse, out-of-range numbers need an acknowledgement,
+   and `OK with deviation` needs a deviation number. Read-only items are never validated.
+6. Saved value, one self-describing entry per item in master order:
+   `[{ id, label, type, value, comments?, validationStatus?, minimumAcceptanceValue?, maximumAcceptanceValue?, acknowledged? }]`
+   - sequence: `prcAggregatedSteps[tplStep][group][step].data`
+   - inspection: `prcAggregatedSteps[tplStep][paramId].value`
+7. Preview, report and PDF render it with `ListValuePreview.tsx`, which highlights deviations.
+
+---
+
+## 14. Executive Summary
 
 The PRC execution module uses a single orchestrated runtime flow that:
 

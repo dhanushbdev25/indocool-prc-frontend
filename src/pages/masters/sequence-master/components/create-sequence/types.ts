@@ -22,7 +22,8 @@ export const targetValueTypeOptions = [
 	{ value: 'range', label: 'Range' },
 	{ value: 'exact value', label: 'Exact Value' },
 	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
-	{ value: 'table', label: 'Table' }
+	{ value: 'table', label: 'Table' },
+	{ value: 'list', label: 'List' }
 ];
 
 // Column type options for table target value type

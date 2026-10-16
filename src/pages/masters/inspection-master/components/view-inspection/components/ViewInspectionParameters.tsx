@@ -22,7 +22,8 @@ import { ExpandMore, Warning, Link } from '@mui/icons-material';
 import { InspectionParameter } from '../../../../../../store/api/business/inspection-master/inspection.validators';
 import { roleOptions } from '../../create-inspection/schemas';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
-import { TableConfigPreview, formatAcceptanceRange } from '../../../../../../components/masters';
+import { ListConfigPreview, TableConfigPreview, formatAcceptanceRange } from '../../../../../../components/masters';
+import { readStoredListConfig } from '../../../../../../utils/listConfig';
 import { GATE_FIELD_LABEL } from '../../../../../../utils/gateLabels';
 import {
 	CRITICALITY_CHIP_HEX,
@@ -71,6 +72,8 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 				return '#607d8b';
 			case 'fixed-table':
 				return '#7b1fa2';
+			case 'list':
+				return '#00838f';
 			case 'ok/not ok':
 				return '#ff9800';
 			case 'date':
@@ -310,6 +313,14 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 														</Table>
 													</TableContainer>
 												</Box>
+											</Grid>
+										)}
+
+										{/* List structure preview */}
+										{parameter.type === 'list' && (
+											<Grid size={{ xs: 12 }}>
+												<Divider sx={{ my: 2 }} />
+												<ListConfigPreview config={readStoredListConfig(parameter.tableConfig)} title="List Preview" />
 											</Grid>
 										)}
 

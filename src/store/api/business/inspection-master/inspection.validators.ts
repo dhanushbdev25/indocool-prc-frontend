@@ -43,6 +43,7 @@ export interface InspectionParameter {
 	files?: Files;
 	rowAnnotations?: FixedTableRowAnnotation[];
 	columns: Column[];
+	/** For `list` rows this holds the list's config instead; see `readStoredListConfig`. */
 	tableConfig?: TableConfig | null;
 	role: string;
 	ctq: boolean;
@@ -123,6 +124,7 @@ export interface InspectionParameterRequest {
 	files?: Files;
 	rowAnnotations?: FixedTableRowAnnotation[];
 	columns: ColumnRequest[];
+	/** For `list` rows this holds the list's config instead; see `readStoredListConfig`. */
 	tableConfig?: TableConfig | null;
 	role: string;
 	ctq: boolean;

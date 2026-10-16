@@ -47,7 +47,10 @@ import {
 } from 'react-hook-form';
 import { SequenceStepGroupsProps, targetValueTypeOptions, tableColumnTypeOptions, uomOptions } from '../types';
 import { SequenceFormData } from '../schemas';
-import { CriticalityField, ReorderControls } from '../../../../../../components/masters';
+import { CriticalityField, ListConfigEditor, ReorderControls } from '../../../../../../components/masters';
+import { getListItemProblems } from '../../../../../../utils/listConfigSchema';
+import { createListItem } from '../../../../../../utils/listConfig';
+import type { ListConfig } from '../../../../../../types/list-config.types';
 import { CRITICALITY_FIELD_LABEL, SEQUENCE_CRITICALITY_OPTIONS } from '../../../../../../utils/criticality';
 
 interface StepGroupAccordionBlockProps {
@@ -226,6 +229,7 @@ const SequenceStepGroups = ({ control, errors }: SequenceStepGroupsProps) => {
 					multipleMeasurements: false,
 					multipleMeasurementMaxCount: null,
 					tableConfig: null,
+					listConfig: null,
 					uom: '',
 					ctq: false,
 					criticalityTag: null,
@@ -722,6 +726,44 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 	);
 };
 
+interface SequenceListConfigEditorProps {
+	control: Control<SequenceFormData>;
+	groupIndex: number;
+	stepIndex: number;
+}
+
+const SequenceListConfigEditor = ({ control, groupIndex, stepIndex }: SequenceListConfigEditorProps) => {
+	const {
+		setValue,
+		formState: { errors, isSubmitted }
+	} = useFormContext<SequenceFormData>();
+	const basePath = `processStepGroups.${groupIndex}.processSteps.${stepIndex}` as const;
+	const targetValueType = useWatch({ control, name: `${basePath}.targetValueType` });
+	const listConfig = useWatch({ control, name: `${basePath}.listConfig` }) as ListConfig | null | undefined;
+
+	if (targetValueType !== 'list') return null;
+
+	const listError = errors.processStepGroups?.[groupIndex]?.processSteps?.[stepIndex]?.listConfig;
+	const errorMessage = typeof listError?.message === 'string' ? listError.message : undefined;
+
+	return (
+		<Grid size={{ xs: 12 }}>
+			<ListConfigEditor
+				config={listConfig}
+				errorMessage={errorMessage}
+				itemErrors={isSubmitted || errorMessage ? getListItemProblems(listConfig) : undefined}
+				onChange={next =>
+					setValue(`${basePath}.listConfig`, next, {
+						shouldDirty: true,
+						shouldTouch: true,
+						shouldValidate: true
+					})
+				}
+			/>
+		</Grid>
+	);
+};
+
 interface StepGroupFormProps {
 	control: Control<SequenceFormData>;
 	errors: FieldErrors<SequenceFormData>;
@@ -759,6 +801,7 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 			multipleMeasurements: false,
 			multipleMeasurementMaxCount: null,
 			tableConfig: null,
+			listConfig: null,
 			uom: '',
 			ctq: false,
 			criticalityTag: null,
@@ -1087,6 +1130,9 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 													const v = e.target.value as string;
 													field.onChange(v);
 													const basePath = `processStepGroups.${groupIndex}.processSteps.${stepIndex}` as const;
+													if (v === 'list' && !getValues(`${basePath}.listConfig`)?.items?.length) {
+														setValue(`${basePath}.listConfig`, { items: [createListItem()] }, { shouldDirty: true });
+													}
 													if (v === 'exact value') {
 														const minVal = getValues(`${basePath}.minimumAcceptanceValue`);
 														if (minVal != null && typeof minVal === 'number' && !Number.isNaN(minVal)) {
@@ -1114,7 +1160,8 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 							name={`processStepGroups.${groupIndex}.processSteps.${stepIndex}.targetValueType`}
 							control={control}
 							render={({ field: { value: targetValueType } }) => {
-								if (targetValueType === 'ok/not ok' || targetValueType === 'table') return <></>;
+								if (targetValueType === 'ok/not ok' || targetValueType === 'table' || targetValueType === 'list')
+									return <></>;
 
 								const basePath = `processStepGroups.${groupIndex}.processSteps.${stepIndex}` as const;
 
@@ -1251,6 +1298,9 @@ const StepGroupForm = ({ control, errors, groupIndex }: StepGroupFormProps) => {
 							groupIndex={groupIndex}
 							stepIndex={stepIndex}
 						/>
+
+						{/* List Configuration - Shown when targetValueType is 'list' */}
+						<SequenceListConfigEditor control={control} groupIndex={groupIndex} stepIndex={stepIndex} />
 
 							{/* Multiple Measurements */}
 							<Grid size={{ xs: 12, md: 6 }}>

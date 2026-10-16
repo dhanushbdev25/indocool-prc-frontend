@@ -214,3 +214,47 @@ describe('criticality round-trip', () => {
 		expect(group.processSteps[0].criticalityTag).toBe('CTA');
 	});
 });
+
+describe('list steps', () => {
+	const listConfig = {
+		items: [
+			{
+				id: 'li_1',
+				label: 'Operator',
+				type: 'text' as const,
+				required: true,
+				readOnly: false,
+				defaultValue: '',
+				minimumAcceptanceValue: '',
+				maximumAcceptanceValue: ''
+			}
+		]
+	};
+
+	// Lists ride in the existing tableConfig column so the backend needs no change.
+	const stored = listConfig as unknown as ProcessStep['tableConfig'];
+
+	it('reads the list config out of tableConfig and writes it back there on every path', () => {
+		const groups = [apiGroup({ steps: [apiStep({ targetValueType: 'list', tableConfig: stored })] })];
+		const [formGroup] = toProcessStepGroupFormValues(groups);
+		expect(formGroup.processSteps?.[0].listConfig).toEqual(listConfig);
+		expect(formGroup.processSteps?.[0].tableConfig).toBeNull();
+
+		const [request] = toProcessStepGroupRequests([formGroup])[0].processSteps;
+		expect(request.tableConfig).toEqual(listConfig);
+		expect(request).not.toHaveProperty('listConfig');
+		expect(toProcessStepGroupRequestsFromDetail(groups)[0].processSteps[0].tableConfig).toEqual(listConfig);
+	});
+
+	it('does not send a stale list config once the type is no longer list', () => {
+		const [formGroup] = toProcessStepGroupFormValues([
+			apiGroup({ steps: [apiStep({ targetValueType: 'range', tableConfig: stored })] })
+		]);
+		expect(formGroup.processSteps?.[0].listConfig).toBeNull();
+		const edited = {
+			...formGroup,
+			processSteps: [{ ...formGroup.processSteps![0], listConfig }]
+		} as ProcessStepGroupFormValues;
+		expect(toProcessStepGroupRequests([edited])[0].processSteps[0].tableConfig).toBeNull();
+	});
+});

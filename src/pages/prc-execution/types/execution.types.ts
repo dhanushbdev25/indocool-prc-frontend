@@ -1,6 +1,7 @@
 // TypeScript interfaces for PRC Execution screen
 
 import { TableConfig } from '../../../types/table-config.types';
+import type { ListConfig } from '../../../types/list-config.types';
 
 // Annotation types
 export interface AnnotationPoint {
@@ -69,6 +70,7 @@ export interface StepGroup {
 		multipleMeasurements: boolean;
 		multipleMeasurementMaxCount?: number;
 		tableConfig?: TableConfig | null;
+		listConfig?: ListConfig | null;
 		notes: string;
 		parameterDescription: string;
 		evaluationMethod: string;
@@ -137,6 +139,7 @@ export interface StepPreviewData {
 			maximumAcceptanceValue?: string;
 		}>;
 		tableConfig?: TableConfig | null;
+		listConfig?: ListConfig | null;
 		specification: string;
 		order: number;
 		minimumAcceptanceValue?: string;
@@ -238,6 +241,7 @@ export interface TimelineStep {
 		multipleMeasurements?: boolean;
 		multipleMeasurementMaxCount?: number;
 		tableConfig?: TableConfig | null;
+		listConfig?: ListConfig | null;
 		notes?: string;
 		parameterDescription?: string;
 		evaluationMethod?: string;
@@ -264,6 +268,7 @@ export interface TimelineStep {
 			maximumAcceptanceValue?: string;
 		}>;
 		tableConfig?: TableConfig | null;
+		listConfig?: ListConfig | null;
 		specification: string;
 		order: number;
 		minimumAcceptanceValue?: string;

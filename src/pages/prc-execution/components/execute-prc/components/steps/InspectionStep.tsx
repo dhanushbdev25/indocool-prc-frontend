@@ -73,6 +73,16 @@ import {
 import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
 import { ERROR_ANCHOR_CLASS, parameterIdsFromErrorKeys } from '../../../../utils/scrollToFirstError';
+import { ListValueInputWithWorkstations } from '../ListValueInput';
+import type { ListItemConfig, ListValueState, ListValues } from '../../../../../../types/list-config.types';
+import {
+	LIST_TYPE_KEY,
+	buildListSavedValue,
+	initListValues,
+	listErrorKeys,
+	updateListValue,
+	validateListValues
+} from '../../../../../../utils/listConfig';
 
 interface InspectionStepProps {
 	step: TimelineStep;
@@ -108,6 +118,10 @@ const InspectionStep = ({
 	const getFixedTableRowAnnotationsKey = (parameterId: number) => `${parameterId}_fixedTable_rowAnnotations`;
 	const getAckKey = (key: string) => `${key}_acknowledge`;
 	const getInstrumentIdKey = (paramId: number) => `${paramId}_instrumentId`;
+	// List answers live under one key per parameter; errors use `<id>_list_<itemId>` so the
+	// parameter id still leads, which `parameterIdsFromErrorKeys` relies on to reopen the row.
+	const getListKey = (paramId: number) => `${paramId}_list`;
+	const getListErrorPrefix = (paramId: number) => `${paramId}_list_`;
 	const getRangeStatus = (
 		value: number,
 		min?: string | number | null,
@@ -236,7 +250,10 @@ const InspectionStep = ({
 								const param = step.inspectionParameters?.find(p => p.id.toString() === parameterId);
 								const isTableType = param?.type === 'table' && param?.columns && param.columns.length > 0;
 
-								if (param?.type === 'fixed-table') {
+								if (param?.type === LIST_TYPE_KEY) {
+									// Parked for the effect below, which turns it into `<id>_list` form state.
+									paramFormData.value = value;
+								} else if (param?.type === 'fixed-table') {
 									// The rows have to be parked on the parameter for the effect below to restore
 									// them into `<id>_fixedTable`; nothing downstream reads them from here.
 									// Without this the sheet always fell back to the template's blank rows.
@@ -412,6 +429,18 @@ const InspectionStep = ({
 						updatedFormData[key] = '';
 					});
 					console.log(`Added default row for table parameter ${param.id}`);
+				}
+			}
+
+			if (param.type === LIST_TYPE_KEY) {
+				const listKey = getListKey(param.id);
+				if (!updatedFormData[listKey]) {
+					const existingParamData = updatedFormData[param.id.toString()];
+					const saved =
+						existingParamData && typeof existingParamData === 'object'
+							? (existingParamData as Record<string, unknown>).value
+							: undefined;
+					updatedFormData[listKey] = initListValues(param.listConfig?.items ?? [], saved);
 				}
 			}
 
@@ -595,6 +624,18 @@ const InspectionStep = ({
 				...prev,
 				[getNotOkCommentKey(key)]: ''
 			}));
+		}
+	};
+
+	const handleListValueChange = (paramId: number, item: ListItemConfig, patch: Partial<ListValueState>) => {
+		const listKey = getListKey(paramId);
+		setFormData(prev => ({
+			...prev,
+			[listKey]: updateListValue((prev[listKey] as ListValues | undefined) ?? {}, item, patch)
+		}));
+		const keys = listErrorKeys(getListErrorPrefix(paramId), item.id);
+		if (errors[keys.value] || errors[keys.comments] || errors[keys.acknowledge]) {
+			setErrors(prev => ({ ...prev, [keys.value]: '', [keys.comments]: '', [keys.acknowledge]: '' }));
 		}
 	};
 
@@ -887,6 +928,25 @@ const InspectionStep = ({
 		const newErrors: Record<string, string> = {};
 
 		step.inspectionParameters?.forEach(param => {
+			if (param.type === LIST_TYPE_KEY) {
+				Object.assign(
+					newErrors,
+					validateListValues(
+						param.listConfig?.items ?? [],
+						(formData[getListKey(param.id)] as ListValues | undefined) ?? {},
+						getListErrorPrefix(param.id),
+						SHIFT_OPTIONS
+					)
+				);
+				if (param.getInstrumentId) {
+					const iidKey = getInstrumentIdKey(param.id);
+					if (!String(formData[iidKey] || '').trim()) {
+						newErrors[iidKey] = 'Instrument ID is required';
+					}
+				}
+				return;
+			}
+
 			if (param.type === 'fixed-table' && param.tableConfig) {
 				const ftKey = `${param.id}_fixedTable`;
 				const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
@@ -1141,7 +1201,12 @@ const InspectionStep = ({
 
 			const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
-			if (isTableType && param.columns) {
+			if (param.type === LIST_TYPE_KEY) {
+				paramData.value = buildListSavedValue(
+					param.listConfig?.items ?? [],
+					(formData[getListKey(param.id)] as ListValues | undefined) ?? {}
+				);
+			} else if (isTableType && param.columns) {
 				// Table type parameter: store as array of row objects
 				const rowCount = getTableRowCount(param.id);
 				const rowsArray: Record<string, unknown>[] = [];
@@ -1389,6 +1454,8 @@ const InspectionStep = ({
 						{step.inspectionParameters?.map((param, index) => {
 							const hasImages = Array.isArray(param.files) && param.files.length > 0;
 							const isFixedTableType = param.type === 'fixed-table' && param.tableConfig;
+							const isListType = param.type === LIST_TYPE_KEY;
+							const listItems = param.listConfig?.items ?? [];
 							const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 							const hasMultipleColumns = !isTableType && !isFixedTableType && param.columns && param.columns.length > 0;
 							const isExpanded = !collapsedRows.has(param.id);
@@ -1426,7 +1493,21 @@ const InspectionStep = ({
 											/>
 										</TableCell>
 										<TableCell>
-											{isFixedTableType ? (
+											{isListType ? (
+												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+													<Typography variant="caption" sx={{ color: '#666' }}>
+														List ({listItems.length} item{listItems.length !== 1 ? 's' : ''})
+													</Typography>
+													<IconButton
+														size="small"
+														aria-label={`Toggle ${param.parameterName} list`}
+														onClick={() => toggleMultiColumnRowExpansion(param.id)}
+														sx={{ color: 'primary' }}
+													>
+														{isMultiColumnExpanded ? <ExpandLess /> : <ExpandMore />}
+													</IconButton>
+												</Box>
+											) : isFixedTableType ? (
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 													<Typography variant="caption" sx={{ color: '#666' }}>
 														Fixed Table ({param.tableConfig!.columns.length} cols, {param.tableConfig!.rows.length}{' '}
@@ -1724,6 +1805,30 @@ const InspectionStep = ({
 											</Box>
 										</TableCell>
 									</TableRow>
+
+									{/* Expandable List Type Row */}
+									{isListType && (
+										<TableRow key={`${param.id}-list`}>
+											<TableCell colSpan={7} sx={{ p: 0, border: 0 }}>
+												<Collapse in={isMultiColumnExpanded} timeout="auto" unmountOnExit>
+													<Box sx={{ p: 2, backgroundColor: '#f0f4ff' }}>
+														<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 2, color: '#1a237e' }}>
+															{param.parameterName} - List
+														</Typography>
+														<ListValueInputWithWorkstations
+															items={listItems}
+															values={(formData[getListKey(param.id)] as ListValues | undefined) ?? {}}
+															onChange={(item, patch) => handleListValueChange(param.id, item, patch)}
+															errors={errors}
+															errorPrefix={getListErrorPrefix(param.id)}
+															disabled={isReadOnly}
+															plantCode={executionData.plantCode ?? ''}
+														/>
+													</Box>
+												</Collapse>
+											</TableCell>
+										</TableRow>
+									)}
 
 									{/* Expandable Fixed Table Type Row */}
 									{isFixedTableType && param.tableConfig && (

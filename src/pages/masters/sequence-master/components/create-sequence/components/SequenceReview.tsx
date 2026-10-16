@@ -24,6 +24,8 @@ import {
 	Lock as LockIcon
 } from '@mui/icons-material';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
+import { ListConfigPreview } from '../../../../../../components/masters';
+import type { ListConfig } from '../../../../../../types/list-config.types';
 import {
 	CRITICALITY_CHIP_HEX,
 	CRITICALITY_FIELD_LABEL,
@@ -195,6 +197,8 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 														rows?: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }>;
 													} | null;
 													const isTable = step.targetValueType === 'table' && tc?.columns && tc.columns.length > 0;
+													const lc = (step as Record<string, unknown>).listConfig as ListConfig | null | undefined;
+													const isList = step.targetValueType === 'list' && (lc?.items?.length ?? 0) > 0;
 
 													return (
 													<React.Fragment key={stepIndex}>
@@ -218,6 +222,12 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 																label={`Table \u00b7 ${tc!.columns!.length} cols, ${tc!.rows?.length || 0} rows`}
 																size="small"
 																sx={{ backgroundColor: '#ede7f6', color: '#5e35b1', fontSize: '0.75rem', fontWeight: 500 }}
+															/>
+														) : isList ? (
+															<Chip
+																label={`List · ${lc!.items.length} item${lc!.items.length !== 1 ? 's' : ''}`}
+																size="small"
+																sx={{ backgroundColor: '#e0f7fa', color: '#00838f', fontSize: '0.75rem', fontWeight: 500 }}
 															/>
 														) : step.targetValueType === 'exact value' ? (
 															<Typography variant="body2">{step.minimumAcceptanceValue}</Typography>
@@ -282,6 +292,13 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 															/>
 														</TableCell>
 													</TableRow>
+													{isList && (
+														<TableRow>
+															<TableCell colSpan={8} sx={{ py: 1.5, px: 2, backgroundColor: '#fafafa', borderBottom: '2px solid #e0e0e0' }}>
+																<ListConfigPreview config={lc} title="Configured List" />
+															</TableCell>
+														</TableRow>
+													)}
 													{isTable && (
 														<TableRow>
 															<TableCell colSpan={8} sx={{ py: 1.5, px: 2, backgroundColor: '#fafafa', borderBottom: '2px solid #e0e0e0' }}>

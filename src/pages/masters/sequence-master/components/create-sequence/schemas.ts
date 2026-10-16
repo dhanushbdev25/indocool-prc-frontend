@@ -1,5 +1,6 @@
 import * as yup from 'yup';
 import { CRITICALITY_TAGS } from '../../../../../utils/criticality';
+import { buildListConfigSchema } from '../../../../../utils/listConfigSchema';
 
 // Table configuration schemas
 const tableRowConfigSchema = yup.object({
@@ -50,7 +51,7 @@ export const processStepSchema = yup
 		targetValueType: yup
 			.string()
 			.required('Target value type is required')
-			.oneOf(['range', 'exact value', 'ok/not ok', 'table'], 'Invalid target value type'),
+			.oneOf(['range', 'exact value', 'ok/not ok', 'table', 'list'], 'Invalid target value type'),
 		minimumAcceptanceValue: yup
 			.number()
 			.nullable()
@@ -93,6 +94,7 @@ export const processStepSchema = yup
 					}),
 			otherwise: schema => schema.nullable().default(null)
 		}),
+		listConfig: buildListConfigSchema('targetValueType'),
 		uom: yup.string().optional(),
 		// `ctq` and `criticalityTag` together hold the single Criticality value the user
 		// picks. Only `ctq` gates execution; CTA/CTP are tags. Always write them through
@@ -184,6 +186,7 @@ export const defaultProcessStep: ProcessStepFormData = {
 	multipleMeasurements: false,
 	multipleMeasurementMaxCount: null,
 	tableConfig: null,
+	listConfig: null,
 	uom: '',
 	ctq: false,
 	criticalityTag: null,

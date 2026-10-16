@@ -24,7 +24,8 @@ import {
 	type ProcessStepGroup,
 	type ProcessStep
 } from '../../../../../../store/api/business/sequence-master/sequence.validators';
-import { TableConfigPreview } from '../../../../../../components/masters';
+import { ListConfigPreview, TableConfigPreview } from '../../../../../../components/masters';
+import { readStoredListConfig } from '../../../../../../utils/listConfig';
 import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
 import {
 	CRITICALITY_CHIP_HEX,
@@ -60,6 +61,8 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 				return '#ff9800';
 			case 'table':
 				return '#7b1fa2';
+			case 'list':
+				return '#00838f';
 			default:
 				return '#9e9e9e';
 		}
@@ -157,6 +160,13 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									</Typography>
 									<TableConfigPreview config={step.tableConfig} title="Configured Table" />
 								</Box>
+							</Grid>
+						)}
+
+						{/* List Config */}
+						{step.targetValueType === 'list' && (
+							<Grid size={{ xs: 12 }}>
+								<ListConfigPreview config={readStoredListConfig(step.tableConfig)} title="Configured List" />
 							</Grid>
 						)}
 

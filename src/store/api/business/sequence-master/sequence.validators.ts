@@ -14,6 +14,7 @@ export interface ProcessStep {
 	maximumAcceptanceValue: string | null;
 	multipleMeasurements: boolean;
 	multipleMeasurementMaxCount: number | null;
+	/** For `list` rows this holds the list's config instead; see `readStoredListConfig`. */
 	tableConfig?: TableConfig | null;
 	uom?: string;
 	ctq: boolean;
@@ -98,6 +99,7 @@ export interface ProcessStepRequest {
 	maximumAcceptanceValue: number | null;
 	multipleMeasurements: boolean;
 	multipleMeasurementMaxCount: number | null;
+	/** For `list` rows this holds the list's config instead; see `readStoredListConfig`. */
 	tableConfig?: TableConfig | null;
 	uom?: string;
 	ctq: boolean;

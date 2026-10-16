@@ -148,3 +148,44 @@ describe('toInspectionParameterRequests', () => {
 		expect(requests.map(r => r.order)).toEqual([1, 2]);
 	});
 });
+
+describe('list parameters', () => {
+	const listConfig = {
+		items: [
+			{
+				id: 'li_1',
+				label: 'Mould temperature',
+				type: 'number' as const,
+				required: true,
+				readOnly: false,
+				defaultValue: '',
+				minimumAcceptanceValue: '20',
+				maximumAcceptanceValue: '30'
+			}
+		]
+	};
+
+	// Lists ride in the existing tableConfig column so the backend needs no change.
+	const stored = listConfig as unknown as InspectionParameter['tableConfig'];
+
+	it('reads the list config out of tableConfig and writes it back there', () => {
+		const [form] = toInspectionParameterFormValues([apiParameter({ type: 'list', tableConfig: stored })]);
+		expect(form.listConfig).toEqual(listConfig);
+		expect(form.tableConfig).toBeUndefined();
+
+		const [request] = toInspectionParameterRequests([form]);
+		expect(request.tableConfig).toEqual(listConfig);
+		expect(request).not.toHaveProperty('listConfig');
+	});
+
+	it('does not send a stale list config once the type is no longer list', () => {
+		const [request] = toInspectionParameterRequests([formValue({ type: 'text', listConfig })]);
+		expect(request.tableConfig).toBeUndefined();
+	});
+
+	it('sends the list config even if a fixed-table config was left in the form', () => {
+		const fixedTable = { columns: [{ name: 'A', type: 'text' }], rows: [] };
+		const [request] = toInspectionParameterRequests([formValue({ type: 'list', listConfig, tableConfig: fixedTable })]);
+		expect(request.tableConfig).toEqual(listConfig);
+	});
+});

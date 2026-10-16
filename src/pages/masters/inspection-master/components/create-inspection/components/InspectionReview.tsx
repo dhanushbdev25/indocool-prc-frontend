@@ -31,6 +31,8 @@ import { useWatch } from 'react-hook-form';
 import { InspectionReviewProps } from '../types';
 import VirtualizedList from '../../../../../../components/common/VirtualizedList';
 import { roleOptions } from '../schemas';
+import { ListConfigPreview } from '../../../../../../components/masters';
+import type { ListConfig } from '../../../../../../types/list-config.types';
 import {
 	formatInspectionCriticality,
 	getCriticalityChipColor,
@@ -404,6 +406,15 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 															</Table>
 														</TableContainer>
 													</Box>
+												</Grid>
+											) : null}
+											{parameter.type === 'list' && (parameter as { listConfig?: ListConfig | null }).listConfig ? (
+												<Grid size={{ xs: 12 }}>
+													<Divider sx={{ my: 2 }} />
+													<ListConfigPreview
+														config={(parameter as { listConfig?: ListConfig | null }).listConfig}
+														title="List Preview"
+													/>
 												</Grid>
 											) : null}
 											{parameter.type === 'fixed-table' && parameter.tableConfig

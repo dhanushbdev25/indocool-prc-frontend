@@ -1,6 +1,7 @@
 import * as yup from 'yup';
 import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/okNotOkLabels';
 import { CRITICALITY_TAGS } from '../../../../../utils/criticality';
+import { buildListConfigSchema } from '../../../../../utils/listConfigSchema';
 
 /**
  * One end of an acceptance range. A blank input stays `undefined` rather than becoming 0, so a
@@ -120,7 +121,7 @@ export const inspectionParameterSchema = yup
 			.string()
 			.required('Parameter type is required')
 			.oneOf(
-				['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime', 'fixed-table', 'shift'],
+				['text', 'number', 'boolean', 'files', 'table', 'ok/not ok', 'datetime', 'fixed-table', 'shift', 'list'],
 				'Invalid parameter type'
 			),
 		files: filesSchema.optional(),
@@ -187,6 +188,7 @@ export const inspectionParameterSchema = yup
 						}),
 				otherwise: schema => schema.nullable().optional()
 			}),
+		listConfig: buildListConfigSchema('type'),
 		role: yup
 			.string()
 			.required('Role is required')
@@ -279,6 +281,7 @@ export const defaultInspectionParameter: InspectionParameterFormData = {
 	files: {},
 	columns: [],
 	tableConfig: undefined,
+	listConfig: null,
 	role: 'QUALITY_ENGINEER',
 	ctq: false,
 	criticalityTag: null,
@@ -341,7 +344,8 @@ export const parameterTypeOptions = [
 	{ value: 'datetime', label: 'Date & Time' },
 	{ value: 'shift', label: 'Shift' },
 	{ value: 'table', label: 'Table (dynamic rows at execution)' },
-	{ value: 'fixed-table', label: 'Fixed table' }
+	{ value: 'fixed-table', label: 'Fixed table' },
+	{ value: 'list', label: 'List' }
 ];
 
 // Column type options

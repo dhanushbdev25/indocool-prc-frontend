@@ -53,7 +53,10 @@ import {
 	UseFormGetValues,
 	UseFormSetValue
 } from 'react-hook-form';
-import { ReorderControls } from '../../../../../../components/masters';
+import { ListConfigEditor, ReorderControls } from '../../../../../../components/masters';
+import { getListItemProblems } from '../../../../../../utils/listConfigSchema';
+import { createListItem } from '../../../../../../utils/listConfig';
+import type { ListConfig } from '../../../../../../types/list-config.types';
 import { InspectionParametersProps } from '../types';
 import VirtualizedList from '../../../../../../components/common/VirtualizedList';
 import { InspectionFormData } from '../schemas';
@@ -350,6 +353,16 @@ const InspectionParameters = ({ control, errors, listRef }: InspectionParameters
 													if (newType === 'number') {
 														applyNumberDefaults(setValue, getValues, `inspectionParameters.${index}`);
 													}
+													if (
+														newType === 'list' &&
+														!getValues(`inspectionParameters.${index}.listConfig`)?.items?.length
+													) {
+														setValue(
+															`inspectionParameters.${index}.listConfig`,
+															{ items: [createListItem()] },
+															{ shouldDirty: true }
+														);
+													}
 												}}
 											>
 												{parameterTypeOptions.map(option => (
@@ -537,6 +550,9 @@ const InspectionParameters = ({ control, errors, listRef }: InspectionParameters
 
 							{/* Fixed Table Config - Only show when parameter type is 'fixed-table' */}
 							<FixedTableConfigEditor control={control as Control<InspectionFormData>} parameterIndex={index} />
+
+							{/* List Config - Only show when parameter type is 'list' */}
+							<InspectionListConfigEditor control={control as Control<InspectionFormData>} parameterIndex={index} />
 						</Grid>
 					</CardContent>
 				</Collapse>
@@ -616,6 +632,48 @@ const InspectionParameters = ({ control, errors, listRef }: InspectionParameters
 				)}
 			</Paper>
 		</Box>
+	);
+};
+
+// List Configuration Editor for 'list' parameter type
+const InspectionListConfigEditor = ({
+	control,
+	parameterIndex
+}: {
+	control: Control<InspectionFormData>;
+	parameterIndex: number;
+}) => {
+	const {
+		setValue,
+		formState: { errors, isSubmitted }
+	} = useFormContext<InspectionFormData>();
+	const parameterType = useWatch({ control, name: `inspectionParameters.${parameterIndex}.type` });
+	const listConfig = useWatch({ control, name: `inspectionParameters.${parameterIndex}.listConfig` }) as
+		| ListConfig
+		| null
+		| undefined;
+
+	if (parameterType !== 'list') return null;
+
+	const listError = errors.inspectionParameters?.[parameterIndex]?.listConfig;
+	const errorMessage = typeof listError?.message === 'string' ? listError.message : undefined;
+
+	return (
+		<Grid size={{ xs: 12 }}>
+			<Divider sx={{ my: 2 }} />
+			<ListConfigEditor
+				config={listConfig}
+				errorMessage={errorMessage}
+				itemErrors={isSubmitted || errorMessage ? getListItemProblems(listConfig) : undefined}
+				onChange={next =>
+					setValue(`inspectionParameters.${parameterIndex}.listConfig`, next, {
+						shouldDirty: true,
+						shouldTouch: true,
+						shouldValidate: true
+					})
+				}
+			/>
+		</Grid>
 	);
 };
 

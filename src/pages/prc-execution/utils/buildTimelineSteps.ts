@@ -1,4 +1,5 @@
 import { type TimelineStep, type ExecutionData } from '../types/execution.types';
+import { LIST_TYPE_KEY, readStoredListConfig } from '../../../utils/listConfig';
 import { isRawMaterialsStepCompleteForNavigation } from './rawMaterialsNavigation';
 import { isTimelineStepComplete } from './stepGating';
 import { sortByNumericOrder } from '../../../utils/orderedRecords';
@@ -186,6 +187,8 @@ export function buildTimelineSteps(
 								sequenceTiming: stepGroup.sequenceTiming || 0, // Default value since sequenceTiming is not available in stepGroup
 								steps: stepGroup.steps.map(step => ({
 									...step,
+									// Lists keep their config in tableConfig; see readStoredListConfig.
+									listConfig: step.targetValueType === LIST_TYPE_KEY ? readStoredListConfig(step.tableConfig) : null,
 									minValue: step.minValue,
 									maxValue: step.maxValue,
 									minimumAcceptanceValue: step.minimumAcceptanceValue || step.minValue,
@@ -290,6 +293,7 @@ export function buildTimelineSteps(
 							columns: param.columns || [],
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any
 							tableConfig: (param as any).tableConfig || null,
+							listConfig: param.type === LIST_TYPE_KEY ? readStoredListConfig((param as Record<string, unknown>).tableConfig) : null,
 							specification: param.specification,
 							order: param.order ?? index + 1,
 							// eslint-disable-next-line @typescript-eslint/no-explicit-any

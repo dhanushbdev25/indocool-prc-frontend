@@ -67,6 +67,9 @@ import {
 } from '../../../../../utils/criticality';
 import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
 import { formatTableCellDisplay } from '../../../../../utils/formatTableCellDisplay';
+import { LIST_TYPE_KEY, parseListSavedValue } from '../../../../../utils/listConfig';
+import type { ListConfig } from '../../../../../types/list-config.types';
+import ListValuePreview from './ListValuePreview';
 
 import {
 	findMatchingPreviewFile,
@@ -737,7 +740,9 @@ const StepPreview = ({
 												</Typography>
 											</TableCell>
 										<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-											{measurement.targetValueType === 'table' && Array.isArray(measurement.value) ? (
+											{measurement.targetValueType === LIST_TYPE_KEY ? (
+												<ListValuePreview value={measurement.value} listConfig={measurement.listConfig} />
+											) : measurement.targetValueType === 'table' && Array.isArray(measurement.value) ? (
 												<Box>
 													<Chip
 														label={`Table (${measurement.value.length} rows)`}
@@ -1335,6 +1340,8 @@ const StepPreview = ({
 									let isMultiColumn = false;
 									let isTableType = false;
 									let isFixedTableType = false;
+									const isListType = (paramMeta?.type || 'text') === LIST_TYPE_KEY;
+									let listItemCount = 0;
 									let tableRowCount = 0;
 									const criticality = resolveCriticality(paramMeta);
 									let parameterName = paramMeta?.parameterName || `Parameter ${parameterId}`;
@@ -1360,7 +1367,10 @@ const StepPreview = ({
 										}
 
 										if (paramObj.value) {
-											if (isFixedTableType) {
+											if (isListType) {
+												listItemCount = parseListSavedValue(paramObj.value).length;
+												displayValue = `${listItemCount} item${listItemCount !== 1 ? 's' : ''}`;
+											} else if (isFixedTableType) {
 												tableRowCount = readStoredRowList(paramObj.value).length;
 												displayValue = `${tableRowCount} row${tableRowCount !== 1 ? 's' : ''}`;
 											} else if (isTableType && Array.isArray(paramObj.value)) {
@@ -1435,12 +1445,12 @@ const StepPreview = ({
 													'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
 													'&:hover': { backgroundColor: '#f0f0f0' },
 													cursor:
-														embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType)
+														embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType || isListType)
 															? 'default'
 															: 'pointer'
 												}}
 												onClick={
-													embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType)
+													embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType || isListType)
 														? undefined
 														: () => toggleMultiValueParam(parameterId)
 												}
@@ -1448,7 +1458,7 @@ const StepPreview = ({
 												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
 														{!embeddedReportMode &&
-															(isMultiColumn || isTableType || isFixedTableType) && (
+															(isMultiColumn || isTableType || isFixedTableType || isListType) && (
 																<IconButton size="small" sx={{ p: 0.25 }}>
 																	{collapsedMultiValueParams.has(parameterId) ? <ExpandMore /> : <ExpandLess />}
 																</IconButton>
@@ -1487,6 +1497,19 @@ const StepPreview = ({
 																	sx={{
 																		backgroundColor: '#e1f5fe',
 																		color: '#0277bd',
+																		fontSize: '0.6rem',
+																		height: 16,
+																		'& .MuiChip-label': { px: 0.5 }
+																	}}
+																/>
+															)}
+															{isListType && (
+																<Chip
+																	label="List"
+																	size="small"
+																	sx={{
+																		backgroundColor: '#e0f7fa',
+																		color: '#00838f',
 																		fontSize: '0.6rem',
 																		height: 16,
 																		'& .MuiChip-label': { px: 0.5 }
@@ -1536,7 +1559,11 @@ const StepPreview = ({
 													</TableCell>
 													<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{formatOkNotOkTypeForDisplay(parameterType)}</TableCell>
 												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-													{isFixedTableType ? (
+													{isListType ? (
+														<Typography variant="body2" sx={{ fontWeight: 600, color: '#00838f' }}>
+															{listItemCount} item{listItemCount !== 1 ? 's' : ''}
+														</Typography>
+													) : isFixedTableType ? (
 														<Typography variant="body2" sx={{ fontWeight: 600, color: '#7b1fa2' }}>
 															{tableRowCount} row{tableRowCount !== 1 ? 's' : ''}
 														</Typography>
@@ -1657,6 +1684,33 @@ const StepPreview = ({
 														)}
 													</TableCell>
 												</TableRow>
+
+											{/* Collapsible Detail Row for List Parameters */}
+											{isListType && (
+												<TableRow>
+													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+														<Collapse
+															in={embeddedReportMode || !collapsedMultiValueParams.has(parameterId)}
+															timeout="auto"
+															unmountOnExit={!embeddedReportMode}
+														>
+															<Box sx={{ p: 2, backgroundColor: '#f0f4ff', borderRadius: '8px', m: 1 }}>
+																<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a237e' }}>
+																	{parameterName} - List
+																</Typography>
+																<ListValuePreview
+																	value={
+																		typeof parameterData === 'object' && parameterData !== null
+																			? (parameterData as Record<string, unknown>).value
+																			: undefined
+																	}
+																	listConfig={(paramMeta as { listConfig?: ListConfig | null } | undefined)?.listConfig}
+																/>
+															</Box>
+														</Collapse>
+													</TableCell>
+												</TableRow>
+											)}
 
 											{/* Collapsible Detail Row for Fixed-Table Parameters */}
 											{isFixedTableType && (

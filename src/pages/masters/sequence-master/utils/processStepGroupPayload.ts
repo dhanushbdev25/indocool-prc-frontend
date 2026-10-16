@@ -2,6 +2,8 @@ import { normalizeTableConfig } from '../components/create-sequence/table-config
 import { normalizeCriticalityTag, resolveCriticality, toCriticalityFields } from '../../../../utils/criticality';
 import type { SequenceFormData } from '../components/create-sequence/schemas';
 import type { TableConfig } from '../../../../types/table-config.types';
+import type { ListConfig } from '../../../../types/list-config.types';
+import { LIST_TYPE_KEY, readStoredListConfig, toStoredListConfig } from '../../../../utils/listConfig';
 import type {
 	ProcessStep,
 	ProcessStepGroup,
@@ -40,6 +42,12 @@ const stepTableConfig = (step: ProcessStep): TableConfig | null => {
 		| Parameters<typeof normalizeTableConfig>[0]
 		| undefined;
 	return normalizeTableConfig(raw ?? null);
+};
+
+const stepListConfig = (step: ProcessStep): ListConfig | null => {
+	if (step.targetValueType !== LIST_TYPE_KEY) return null;
+	// Lists are stored in the tableConfig column; see readStoredListConfig.
+	return readStoredListConfig(step.tableConfig ?? (step as Record<string, unknown>).table_config);
 };
 
 /**
@@ -83,6 +91,7 @@ export const toProcessStepGroupFormValues = (groups: readonly ProcessStepGroup[]
 						multipleMeasurements: step.multipleMeasurements ?? false,
 						multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
 						tableConfig: stepTableConfig(step),
+						listConfig: stepListConfig(step),
 						uom: step.uom,
 						ctq: step.ctq ?? false,
 						criticalityTag: normalizeCriticalityTag(step.criticalityTag),
@@ -135,7 +144,12 @@ export const toProcessStepGroupRequests = (groups: readonly ProcessStepGroupForm
 				maximumAcceptanceValue: maxVal,
 				multipleMeasurements: step.multipleMeasurements ?? false,
 				multipleMeasurementMaxCount: step.multipleMeasurementMaxCount ?? null,
-				tableConfig: step.targetValueType === 'table' ? ((step.tableConfig ?? null) as TableConfig | null) : null,
+				tableConfig:
+					step.targetValueType === 'table'
+						? ((step.tableConfig ?? null) as TableConfig | null)
+						: step.targetValueType === LIST_TYPE_KEY
+							? toStoredListConfig(step.listConfig as ListConfig | null | undefined)
+							: null,
 				uom: step.uom,
 				// Sent as an explicit null (not omitted) so clearing a tag actually clears the column.
 				...toCriticalityFields(resolveCriticality(step)),
@@ -179,7 +193,8 @@ export const toProcessStepGroupRequestsFromDetail = (groups: readonly ProcessSte
 					maximumAcceptanceValue: toNumberOrNull(step.maximumAcceptanceValue),
 					multipleMeasurements: step.multipleMeasurements,
 					multipleMeasurementMaxCount: step.multipleMeasurementMaxCount,
-					tableConfig: stepTableConfig(step),
+					tableConfig:
+						step.targetValueType === LIST_TYPE_KEY ? toStoredListConfig(stepListConfig(step)) : stepTableConfig(step),
 					uom: step.uom,
 					ctq: step.ctq,
 					criticalityTag: normalizeCriticalityTag(step.criticalityTag),

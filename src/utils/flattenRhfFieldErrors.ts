@@ -81,6 +81,7 @@ const KEY_LABELS: Record<string, string> = {
 	maximumAcceptanceValue: 'Maximum acceptance',
 	multipleMeasurementMaxCount: 'Max measurements',
 	tableConfig: 'Table configuration',
+	listConfig: 'List configuration',
 	inspectionParameters: 'Inspection parameters',
 	root: '' // "root" bucket from Yup/object-level tests — fold into parent path
 };

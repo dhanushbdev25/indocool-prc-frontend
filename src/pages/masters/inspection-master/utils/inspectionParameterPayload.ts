@@ -1,4 +1,10 @@
 import { sortByNumericOrder } from '../../../../utils/orderedRecords';
+import {
+	LIST_TYPE_KEY,
+	normalizeListConfig,
+	readStoredListConfig,
+	toStoredListConfig
+} from '../../../../utils/listConfig';
 import { normalizeCriticalityTag, resolveCriticality, toCriticalityFields } from '../../../../utils/criticality';
 import type { InspectionFormData } from '../components/create-inspection/schemas';
 import type {
@@ -40,7 +46,9 @@ export const toInspectionParameterFormValues = (
 			minimumAcceptanceValue: col.minimumAcceptanceValue ?? '',
 			maximumAcceptanceValue: col.maximumAcceptanceValue ?? ''
 		})),
-		tableConfig: param.tableConfig || undefined,
+		// Lists are stored in the tableConfig column; see readStoredListConfig.
+		tableConfig: param.type === LIST_TYPE_KEY ? undefined : param.tableConfig || undefined,
+		listConfig: param.type === LIST_TYPE_KEY ? readStoredListConfig(param.tableConfig) : null,
 		role: param.role,
 		ctq: param.ctq,
 		criticalityTag: normalizeCriticalityTag(param.criticalityTag),
@@ -80,7 +88,10 @@ export const toInspectionParameterRequests = (
 			minimumAcceptanceValue: optionalString(col.minimumAcceptanceValue as string | number | null | undefined),
 			maximumAcceptanceValue: optionalString(col.maximumAcceptanceValue as string | number | null | undefined)
 		})),
-		tableConfig: param.tableConfig || undefined,
+		tableConfig:
+			param.type === LIST_TYPE_KEY
+				? (toStoredListConfig(normalizeListConfig(param.listConfig)) ?? undefined)
+				: param.tableConfig || undefined,
 		role: param.role,
 		// Sent as an explicit null (not omitted) so clearing a tag actually clears the column.
 		...toCriticalityFields(resolveCriticality(param)),

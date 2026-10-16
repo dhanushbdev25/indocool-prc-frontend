@@ -45,6 +45,16 @@ import {
 import { useFetchWorkstationsComboQuery } from '../../../../../../store/api/business/prc-execution/prc-execution.api';
 import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
 import { ERROR_ANCHOR_CLASS } from '../../../../utils/scrollToFirstError';
+import ListValueInput from '../ListValueInput';
+import type { ListValueState, ListValues } from '../../../../../../types/list-config.types';
+import {
+	LIST_TYPE_KEY,
+	buildListSavedValue,
+	initListValues,
+	listErrorKeys,
+	updateListValue,
+	validateListValues
+} from '../../../../../../utils/listConfig';
 
 const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
 
@@ -279,6 +289,16 @@ const SequenceStepForm = ({
 					return '';
 				})();
 
+				if (stepData.targetValueType === LIST_TYPE_KEY && actualData && typeof actualData === 'object') {
+					return {
+						formData: {},
+						measurements: [{ id: '1', value: '' }],
+						responsiblePersonData,
+						instrumentId: extractedInstrumentId,
+						listSaved: actualData as unknown
+					};
+				}
+
 				if (stepData.targetValueType === 'table' && Array.isArray(actualData)) {
 					return {
 						formData: {},
@@ -356,7 +376,8 @@ const SequenceStepForm = ({
 					: [{ id: '1', value: '' }],
 			responsiblePersonData: defaultResponsiblePersonData,
 			instrumentId: '',
-			tableData: undefined as Array<Record<string, string>> | undefined
+			tableData: undefined as Array<Record<string, string>> | undefined,
+			listSaved: undefined as unknown
 		};
 	}, [executionData.prcAggregatedSteps, step]);
 
@@ -388,6 +409,20 @@ const SequenceStepForm = ({
 
 	const [tableData, setTableData] = useState<Array<Record<string, string>> | undefined>(initTableData);
 
+	const listItems = useMemo(
+		() => (stepData.targetValueType === LIST_TYPE_KEY ? (stepData.listConfig?.items ?? []) : []),
+		[stepData.targetValueType, stepData.listConfig]
+	);
+	const isListStep = stepData.targetValueType === LIST_TYPE_KEY;
+	const initListState = useMemo(
+		() => initListValues(listItems, initialData.listSaved),
+		[listItems, initialData.listSaved]
+	);
+	const [listValues, setListValues] = useState<ListValues>(initListState);
+	useEffect(() => {
+		setListValues(initListState);
+	}, [initListState]);
+
 	// Update form data when initial data changes
 	useEffect(() => {
 		setFormData(initialData.formData);
@@ -405,6 +440,7 @@ const SequenceStepForm = ({
 	const isSubStepFilled = Boolean(
 		initialData &&
 			(!!initialData.tableData ||
+				!!initialData.listSaved ||
 				(stepData.multipleMeasurements && initialData.measurements
 					? stepData.multipleMeasurementMaxCount && stepData.multipleMeasurementMaxCount > 0
 						? initialData.measurements.length === stepData.multipleMeasurementMaxCount &&
@@ -547,6 +583,14 @@ const SequenceStepForm = ({
 		}
 	};
 
+	const handleListValueChange = (item: (typeof listItems)[number], patch: Partial<ListValueState>) => {
+		setListValues(prev => updateListValue(prev, item, patch));
+		const keys = listErrorKeys('list_', item.id);
+		if (errors[keys.value] || errors[keys.comments] || errors[keys.acknowledge]) {
+			setErrors(prev => ({ ...prev, [keys.value]: '', [keys.comments]: '', [keys.acknowledge]: '' }));
+		}
+	};
+
 	const handleTableCellChange = (rowIndex: number, colName: string, value: string) => {
 		setTableData(prev => {
 			if (!prev) return prev;
@@ -584,7 +628,9 @@ const SequenceStepForm = ({
 		const numericBounds = getNumericMeasurementBounds(stepData);
 
 		// For multiple measurements, only validate the measurements array
-		if (
+		if (isListStep) {
+			Object.assign(newErrors, validateListValues(listItems, listValues, 'list_'));
+		} else if (
 			stepData.multipleMeasurements &&
 			(stepData.targetValueType === 'range' || stepData.targetValueType === 'exact value')
 		) {
@@ -734,6 +780,28 @@ const SequenceStepForm = ({
 			return;
 		}
 
+		if (isListStep) {
+			const formDataToSubmit: FormData = {
+				data: buildListSavedValue(listItems, listValues),
+				stepId: stepData.stepId,
+				stepGroupId: stepData.stepGroupId,
+				prcTemplateStepId: stepData.prcTemplateStepId
+			};
+			if (stepData.responsiblePerson) {
+				formDataToSubmit.responsiblePersons = responsiblePersonData.map(p => ({
+					id: p.id,
+					role: p.role,
+					employeeName: p.employeeName,
+					employeeCode: p.employeeCode
+				}));
+			}
+			if (stepData.getInstrumentId) {
+				formDataToSubmit.instrumentId = instrumentId.trim();
+			}
+			onStepComplete(formDataToSubmit);
+			return;
+		}
+
 		if (stepData.targetValueType === 'table' && tableData) {
 			const formDataToSubmit: FormData = {
 				data: tableData,
@@ -845,6 +913,21 @@ const SequenceStepForm = ({
 	});
 
 	const renderInput = () => {
+		if (isListStep) {
+			return (
+				<ListValueInput
+					items={listItems}
+					values={listValues}
+					onChange={handleListValueChange}
+					errors={errors}
+					errorPrefix="list_"
+					disabled={isReadOnly}
+					workstationOptions={workstationOptions}
+					plantCode={plantCode}
+				/>
+			);
+		}
+
 		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
 			const tc = stepData.tableConfig;
 			return (

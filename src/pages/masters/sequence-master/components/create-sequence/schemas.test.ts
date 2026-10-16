@@ -54,3 +54,47 @@ describe('sequence processStepGroupSchema ordering', () => {
 		).rejects.toThrow();
 	});
 });
+
+describe('sequence processStepSchema list config', () => {
+	const listStep = (items: unknown[]) => ({
+		...defaultProcessStep,
+		parameterDescription: 'Mould readings',
+		evaluationMethod: 'Visual',
+		targetValueType: 'list',
+		listConfig: { items }
+	});
+	const listItem = (overrides: Record<string, unknown> = {}) => ({
+		id: 'li_1',
+		label: 'Mould temperature',
+		type: 'number',
+		required: true,
+		readOnly: false,
+		defaultValue: '',
+		minimumAcceptanceValue: '20',
+		maximumAcceptanceValue: '30',
+		...overrides
+	});
+
+	it('accepts a list with valid items', async () => {
+		await expect(processStepSchema.validate(listStep([listItem()]))).resolves.toBeDefined();
+	});
+
+	it('requires at least one item', async () => {
+		await expect(processStepSchema.validate(listStep([]))).rejects.toThrow(/At least one list item is required/);
+	});
+
+	it('names the first invalid item', async () => {
+		await expect(
+			processStepSchema.validate(listStep([listItem(), listItem({ id: 'li_2', label: '' })]))
+		).rejects.toThrow(/Item 2: Label is required/);
+	});
+
+	it('ignores list config on other types', async () => {
+		await expect(
+			processStepSchema.validate({
+				...listStep([]),
+				targetValueType: 'ok/not ok'
+			})
+		).resolves.toBeDefined();
+	});
+});

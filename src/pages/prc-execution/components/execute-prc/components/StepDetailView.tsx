@@ -282,6 +282,7 @@ const StepDetailView = ({
 					multipleMeasurements: currentSubStep.multipleMeasurements,
 					multipleMeasurementMaxCount: currentSubStep.multipleMeasurementMaxCount,
 					tableConfig: currentSubStep.tableConfig,
+					listConfig: currentSubStep.listConfig,
 					notes: currentSubStep.notes,
 					parameterDescription: currentSubStep.parameterDescription,
 					evaluationMethod: currentSubStep.evaluationMethod,

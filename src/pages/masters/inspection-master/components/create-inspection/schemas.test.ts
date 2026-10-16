@@ -46,3 +46,20 @@ describe('inspection parameter ordering', () => {
 		).rejects.toThrow(/Order must be at least 1/);
 	});
 });
+
+describe('inspection list parameter', () => {
+	it('accepts a list with items and rejects an empty one', async () => {
+		const base = { ...defaultInspectionParameter, parameterName: 'Readings', type: 'list' };
+		await expect(
+			inspectionParameterSchema.validate({
+				...base,
+				listConfig: {
+					items: [{ id: 'li_1', label: 'Shift', type: 'shift', required: true, readOnly: false, defaultValue: '' }]
+				}
+			})
+		).resolves.toBeDefined();
+		await expect(inspectionParameterSchema.validate({ ...base, listConfig: { items: [] } })).rejects.toThrow(
+			/At least one list item is required/
+		);
+	});
+});

@@ -50,3 +50,7 @@ export type {
 	FilterValue,
 	DateRangeFilterValue
 } from './filters';
+export { default as ListConfigEditor } from './ListConfigEditor';
+export type { ListConfigEditorProps } from './ListConfigEditor';
+export { default as ListConfigPreview } from './ListConfigPreview';
+export type { ListConfigPreviewProps } from './ListConfigPreview';

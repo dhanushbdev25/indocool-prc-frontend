@@ -36,7 +36,7 @@ export function buildSequenceDetailedMeasurements(
 		const stepStartTime = typeof timing?.startTime === 'string' ? timing.startTime : '';
 		const stepEndTime = typeof timing?.endTime === 'string' ? timing.endTime : '';
 
-		if (stepDefinition?.targetValueType === 'table') {
+		if (stepDefinition?.targetValueType === 'table' || stepDefinition?.targetValueType === 'list') {
 			const tableValue = stepData.data ?? stepData.value;
 			const measurementData: Record<string, unknown> = {
 				stepId,
@@ -44,8 +44,9 @@ export function buildSequenceDetailedMeasurements(
 				stepEndTime,
 				value: tableValue,
 				parameterDescription: stepDefinition.parameterDescription || `Step ${stepId}`,
-				targetValueType: 'table',
+				targetValueType: stepDefinition.targetValueType,
 				tableConfig: stepDefinition.tableConfig,
+				listConfig: stepDefinition.listConfig,
 				evaluationMethod: stepDefinition.evaluationMethod || 'Unknown',
 				uom: stepDefinition.uom || '',
 				notes: stepDefinition.notes || '',
