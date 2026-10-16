@@ -49,8 +49,7 @@ const enter = (step: TimelineStep, value: string) => {
 	const onStepComplete = vi.fn();
 	render(<InspectionStep step={step} executionData={executionData} onStepComplete={onStepComplete} />);
 
-	// The fields live in a collapsed row; open it before typing.
-	fireEvent.click(screen.getByText('expand'));
+	// The fields' row starts open, so they can be typed into straight away.
 	fireEvent.change(screen.getByLabelText(/thickness/i), { target: { value } });
 	fireEvent.click(screen.getByRole('button', { name: /complete step/i }));
 

@@ -80,9 +80,12 @@ describe('InspectionStep fixed-table scroll-to-first-error', () => {
 		vi.useRealTimers();
 	});
 
-	it('expands the fixed table, waits for it to finish opening, then scrolls to the bad cell', () => {
+	it('re-expands a collapsed fixed table, waits for it to finish opening, then scrolls to the bad cell', () => {
 		const onStepComplete = vi.fn();
 		render(<InspectionStep step={step} executionData={executionData} onStepComplete={onStepComplete} />);
+
+		// Rows start open; the operator collapses the fixed table before submitting.
+		fireEvent.click(screen.getByText('collapse'));
 
 		fireEvent.click(screen.getByRole('button', { name: /complete step/i }));
 

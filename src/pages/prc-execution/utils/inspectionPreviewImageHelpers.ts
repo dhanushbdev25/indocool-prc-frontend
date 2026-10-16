@@ -47,7 +47,25 @@ export const findMatchingPreviewFile = (
 	return files.find(file => buildFileTokens(file).some(token => annotationTokens.has(token)));
 };
 
+/**
+ * Annotations persist the full API URL the image had when it was marked (e.g.
+ * `http://<old-host>:8080/web/files/part_drawings/x.jpg`). Reduce such URLs to their storage
+ * path so they resolve through the authenticated signed-URL fetch on the current API host;
+ * loading the saved URL directly hits a protected JSON endpoint and never renders.
+ */
+const toStoragePathIfApiFileUrl = (url: string): string => {
+	const match = url.replace(/\\/g, '/').match(/^https?:\/\/[^/]+\/(?:.*\/)?web\/(files\/.+)$/i);
+	return match ? match[1] : url;
+};
+
 export const buildPreviewImageUrl = (annotation?: PreviewAnnotation, matchedFile?: PreviewImageFile): string => {
-	const rawUrl = annotation?.imageUrl || matchedFile?.filePath || '';
+	const rawUrl = matchedFile?.filePath || toStoragePathIfApiFileUrl(annotation?.imageUrl || '');
 	return toFileRenderUrl(rawUrl).replace(/\\/g, '/');
 };
+
+/** Attached files that none of the given annotations were drawn on. */
+export const getUnannotatedPreviewFiles = (
+	files: PreviewImageFile[] | undefined,
+	annotations: PreviewAnnotation[]
+): PreviewImageFile[] =>
+	(files || []).filter(file => !annotations.some(annotation => findMatchingPreviewFile([file], annotation)));

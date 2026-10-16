@@ -71,7 +71,9 @@ import { formatTableCellDisplay } from '../../../../../utils/formatTableCellDisp
 import {
 	findMatchingPreviewFile,
 	buildPreviewImageUrl,
-	type PreviewAnnotation
+	getUnannotatedPreviewFiles,
+	type PreviewAnnotation,
+	type PreviewImageFile
 } from '../../../utils/inspectionPreviewImageHelpers';
 import { normalizeInspectionStepAggregatedData } from '../../../utils/inspectionAggregatedNormalization';
 
@@ -231,11 +233,12 @@ const StepPreview = ({
 
 	const [productionApproved, setProductionApproved] = useState(previewData.productionApproved || false);
 	const [ctqApproved, setCtqApproved] = useState(previewData.ctqApproved || false);
-	const [expandedMultiValueParams, setExpandedMultiValueParams] = useState<Set<string>>(new Set());
+	// Table / multi-value rows start open; this tracks the ones the user has collapsed.
+	const [collapsedMultiValueParams, setCollapsedMultiValueParams] = useState<Set<string>>(new Set());
 	const [partialCtqApproved, setPartialCtqApproved] = useState(previewData.partialCtqApprove || false);
 
 	const toggleMultiValueParam = (parameterId: string) => {
-		setExpandedMultiValueParams(prev => {
+		setCollapsedMultiValueParams(prev => {
 			const newSet = new Set(prev);
 			if (newSet.has(parameterId)) {
 				newSet.delete(parameterId);
@@ -1154,6 +1157,14 @@ const StepPreview = ({
 					: false;
 				return direct || row;
 			});
+			const paramFilesById = new Map(
+				inspectionParams.map(parameter => [
+					parameter.id.toString(),
+					Array.isArray(parameter.files) ? (parameter.files as PreviewImageFile[]) : []
+				])
+			);
+			const hasAnyImageData =
+				hasAnyAnnotationData || orderedInspectionEntries.some(([parameterId]) => (paramFilesById.get(parameterId) || []).length > 0);
 
 			type PreviewRegion = Record<string, unknown>;
 			const renderAnnotationRegions = (annotation: PreviewAnnotation) => {
@@ -1439,7 +1450,7 @@ const StepPreview = ({
 														{!embeddedReportMode &&
 															(isMultiColumn || isTableType || isFixedTableType) && (
 																<IconButton size="small" sx={{ p: 0.25 }}>
-																	{expandedMultiValueParams.has(parameterId) ? <ExpandLess /> : <ExpandMore />}
+																	{collapsedMultiValueParams.has(parameterId) ? <ExpandMore /> : <ExpandLess />}
 																</IconButton>
 															)}
 															<Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -1652,7 +1663,7 @@ const StepPreview = ({
 												<TableRow>
 													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
 														<Collapse
-															in={embeddedReportMode || expandedMultiValueParams.has(parameterId)}
+															in={embeddedReportMode || !collapsedMultiValueParams.has(parameterId)}
 															timeout="auto"
 															unmountOnExit={!embeddedReportMode}
 														>
@@ -1778,7 +1789,7 @@ const StepPreview = ({
 													<TableRow>
 														<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
 															<Collapse
-															in={embeddedReportMode || expandedMultiValueParams.has(parameterId)}
+															in={embeddedReportMode || !collapsedMultiValueParams.has(parameterId)}
 															timeout="auto"
 															unmountOnExit={!embeddedReportMode}
 														>
@@ -1932,7 +1943,7 @@ const StepPreview = ({
 					</TableContainer>
 
 					{/* Image Annotations Section */}
-					{hasAnyAnnotationData && (
+					{hasAnyImageData && (
 						<Box sx={{ mt: 2 }}>
 							<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
 								Image Annotations
@@ -1960,7 +1971,10 @@ const StepPreview = ({
 											length: annotations?.length
 										});
 
-										if ((Array.isArray(annotations) && annotations.length > 0) || hasRowAnnotations) {
+										// Attached images nobody marked are still part of the inspection record.
+										const unannotatedFiles = getUnannotatedPreviewFiles(paramFilesById.get(parameterId), annotations);
+
+										if (annotations.length > 0 || hasRowAnnotations || unannotatedFiles.length > 0) {
 											return (
 												<Box key={parameterId} sx={{ mb: 2 }}>
 													<Paper variant="outlined" sx={{ p: 2 }}>
@@ -2012,6 +2026,27 @@ const StepPreview = ({
 																</Box>
 															);
 														})}
+														{unannotatedFiles.map(file => (
+															<Box
+																key={`${parameterId}-file-${file.fileName || file.filePath}`}
+																sx={{
+																	mb: 2,
+																	p: 1.5,
+																	backgroundColor: '#f8f9fa',
+																	borderRadius: 1,
+																	border: '1px solid #e9ecef'
+																}}
+															>
+																<ImageDisplay
+																	imageUrl={buildPreviewImageUrl(undefined, file)}
+																	imageFileName={file.fileName || ''}
+																	originalFileName={file.originalFileName || file.fileName || ''}
+																	annotations={[]}
+																	readOnly={true}
+																	showAnnotations={true}
+																/>
+															</Box>
+														))}
 														{hasRowAnnotations && (
 															<Box sx={{ mt: 1.5 }}>
 																<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#6a1b9a' }}>

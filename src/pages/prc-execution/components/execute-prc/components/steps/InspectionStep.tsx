@@ -97,8 +97,9 @@ const InspectionStep = ({
 }: InspectionStepProps) => {
 	const [errors, setErrors] = useState<Record<string, string>>({});
 	const [annotations, setAnnotations] = useState<ImageAnnotation[]>([]);
-	const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-	const [expandedMultiColumnRows, setExpandedMultiColumnRows] = useState<Set<number>>(new Set());
+	// Image and table rows start open; these track the ones the user has collapsed.
+	const [collapsedRows, setCollapsedRows] = useState<Set<number>>(new Set());
+	const [collapsedMultiColumnRows, setCollapsedMultiColumnRows] = useState<Set<number>>(new Set());
 	const [acknowledgments, setAcknowledgments] = useState<Record<string, boolean>>({});
 	const { containerRef, requestScrollToError } = useScrollToFirstError();
 	// Default all annotations to open (no need for expand/collapse state)
@@ -655,7 +656,7 @@ const InspectionStep = ({
 	};
 
 	const toggleRowExpansion = (parameterId: number) => {
-		setExpandedRows(prev => {
+		setCollapsedRows(prev => {
 			const newSet = new Set(prev);
 			if (newSet.has(parameterId)) {
 				newSet.delete(parameterId);
@@ -667,7 +668,7 @@ const InspectionStep = ({
 	};
 
 	const toggleMultiColumnRowExpansion = (parameterId: number) => {
-		setExpandedMultiColumnRows(prev => {
+		setCollapsedMultiColumnRows(prev => {
 			const newSet = new Set(prev);
 			if (newSet.has(parameterId)) {
 				newSet.delete(parameterId);
@@ -1082,8 +1083,9 @@ const InspectionStep = ({
 	const expandRowsWithErrors = (errorKeys: string[]) => {
 		const failedParamIds = parameterIdsFromErrorKeys(errorKeys);
 		if (failedParamIds.length === 0) return;
-		setExpandedRows(prev => new Set([...prev, ...failedParamIds]));
-		setExpandedMultiColumnRows(prev => new Set([...prev, ...failedParamIds]));
+		const reopen = (prev: Set<number>) => new Set([...prev].filter(id => !failedParamIds.includes(id)));
+		setCollapsedRows(reopen);
+		setCollapsedMultiColumnRows(reopen);
 	};
 
 	const handleSubmit = () => {
@@ -1389,8 +1391,8 @@ const InspectionStep = ({
 							const isFixedTableType = param.type === 'fixed-table' && param.tableConfig;
 							const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 							const hasMultipleColumns = !isTableType && !isFixedTableType && param.columns && param.columns.length > 0;
-							const isExpanded = expandedRows.has(param.id);
-							const isMultiColumnExpanded = expandedMultiColumnRows.has(param.id);
+							const isExpanded = !collapsedRows.has(param.id);
+							const isMultiColumnExpanded = !collapsedMultiColumnRows.has(param.id);
 							const annotationCount = getAnnotationCount(param.id);
 							const tableRowCount = isTableType ? getTableRowCount(param.id) : 0;
 

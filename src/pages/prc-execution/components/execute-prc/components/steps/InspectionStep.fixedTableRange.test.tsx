@@ -55,8 +55,7 @@ const enter = (step: TimelineStep, value: string) => {
 	const onStepComplete = vi.fn();
 	render(<InspectionStep step={step} executionData={executionData} onStepComplete={onStepComplete} />);
 
-	// The fixed table lives in a collapsed row; open it before typing.
-	fireEvent.click(screen.getByText('expand'));
+	// The fixed table row starts open, so its cells can be typed into straight away.
 	fireEvent.change(screen.getByRole('spinbutton'), { target: { value } });
 	fireEvent.click(screen.getByRole('button', { name: /complete step/i }));
 

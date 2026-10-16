@@ -208,6 +208,7 @@ Type-driven controls:
 - image attachments can be annotated using `ImageAnnotator`
 - annotations are persisted per parameter
 - preview renders annotation overlays through `ImageDisplay`
+- image and table rows in the execution step start expanded; the step tracks rows the operator collapses
 
 ### 6.5 Inspection Persistence Shape
 
@@ -284,9 +285,12 @@ Implementation: `src/pages/prc-execution/components/execute-prc/components/StepP
 ### Inspection Preview
 
 - single-value parameters shown directly
-- multi-column and table parameters shown in expandable views
+- multi-column and table parameters shown in expandable views, expanded by default
 - `ok/not ok` values normalized for readability (`OK` / `Not OK`)
 - comments and annotations displayed with parameter context
+- every attached image is shown, with annotation overlays where the operator marked it
+- images load from the parameter file's storage path (or the `/web/files/...` part of a saved
+  annotation `imageUrl`), never the saved absolute URL, so they resolve on the current API host
 
 ### Approval Access Rules
 

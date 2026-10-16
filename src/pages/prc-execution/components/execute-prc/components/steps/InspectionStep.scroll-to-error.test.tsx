@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ExecutionData, TimelineStep } from '../../../../types/execution.types';
 import InspectionStep from './InspectionStep';
@@ -15,8 +15,9 @@ vi.mock('@mui/icons-material', () => ({
 vi.mock('../ImageAnnotator', () => ({ default: () => <div>annotator</div> }));
 
 /**
- * A multi-column parameter: its inputs live inside a `<Collapse unmountOnExit>` row that starts
- * closed, so the required-field error has nowhere to render until the row is expanded.
+ * A multi-column parameter: its inputs live inside a `<Collapse unmountOnExit>` row. Rows start
+ * open, but once the operator collapses one its required-field error has nowhere to render until
+ * the row is expanded again.
  */
 const step: TimelineStep = {
 	stepNumber: 1,
@@ -64,12 +65,13 @@ describe('InspectionStep scroll-to-first-error', () => {
 		vi.useRealTimers();
 	});
 
-	it('expands the collapsed row holding the error and scrolls to it', () => {
+	it('re-expands a collapsed row holding the error and scrolls to it', async () => {
 		const onStepComplete = vi.fn();
 		render(<InspectionStep step={step} executionData={executionData} onStepComplete={onStepComplete} />);
 
-		// The row is collapsed to start with, so neither the inputs nor any error are rendered.
-		expect(screen.queryByLabelText(/length/i)).not.toBeInTheDocument();
+		// Rows start open; the operator collapses this one, so neither its inputs nor any error render.
+		fireEvent.click(screen.getByText('collapse'));
+		await waitFor(() => expect(screen.queryByLabelText(/length/i)).not.toBeInTheDocument());
 
 		fireEvent.click(screen.getByRole('button', { name: /complete step/i }));
 
