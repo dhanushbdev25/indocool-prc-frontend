@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -22,6 +22,7 @@ import {
 	toInspectionParameterRequests
 } from '../../utils/inspectionParameterPayload';
 import { MasterAuditHistoryButton } from '../../../../../components/common/auditHistory';
+import type { VirtualizedListHandle } from '../../../../../components/common/VirtualizedList';
 
 const steps = ['Basic Information', 'Inspection Parameters', 'Review & Submit'];
 
@@ -91,6 +92,9 @@ const CreateInspection = () => {
 		mode: 'onChange', // Validate on change for immediate feedback
 		reValidateMode: 'onChange' // Re-validate on change
 	});
+
+	// Parameter cards are virtualized, so an invalid card may not be in the DOM yet.
+	const parameterListRef = useRef<VirtualizedListHandle>(null);
 
 	const {
 		control,
@@ -170,10 +174,18 @@ const CreateInspection = () => {
 				} else {
 					// Validation failed - show popup with errors
 					console.log('Validation failed for step:', activeStep, 'Errors (Yup):', errors);
-					// Scroll to first error field
-					const firstErrorField = document.querySelector('.Mui-error');
-					if (firstErrorField) {
-						firstErrorField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+					// Scroll to first error field; bring an off-screen parameter card into the DOM first
+					const scrollToFirstError = () =>
+						document.querySelector('.Mui-error')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+					const parameterErrors = methods.formState.errors.inspectionParameters;
+					const firstInvalidParameter = Array.isArray(parameterErrors)
+						? parameterErrors.findIndex(parameterError => parameterError && Object.keys(parameterError).length > 0)
+						: -1;
+					if (activeStep === 1 && firstInvalidParameter >= 0) {
+						parameterListRef.current?.scrollToIndex(firstInvalidParameter);
+						requestAnimationFrame(() => requestAnimationFrame(scrollToFirstError));
+					} else {
+						scrollToFirstError();
 					}
 				}
 			} catch (error) {
@@ -293,7 +305,7 @@ const CreateInspection = () => {
 				return <InspectionBasicInfo control={control as any} errors={errors} />;
 			case 1:
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				return <InspectionParameters control={control as any} errors={errors} />;
+				return <InspectionParameters control={control as any} errors={errors} listRef={parameterListRef} />;
 			case 2:
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				return <InspectionReview control={control as any} errors={errors} />;

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
 	Box,
 	Typography,
@@ -30,6 +31,7 @@ import {
 	resolveCriticality
 } from '../../../../../../utils/criticality';
 import { sortByNumericOrder } from '../../../../../../utils/orderedRecords';
+import VirtualizedList from '../../../../../../components/common/VirtualizedList';
 
 interface ViewInspectionParametersProps {
 	parameters: InspectionParameter[];
@@ -37,6 +39,15 @@ interface ViewInspectionParametersProps {
 
 const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps) => {
 	const orderedParameters = sortByNumericOrder(parameters);
+	// Held here (not inside each Accordion) because virtualized rows unmount when scrolled away.
+	const [expandedKeys, setExpandedKeys] = useState<Set<string | number>>(new Set());
+	const toggleExpanded = (key: string | number) =>
+		setExpandedKeys(prev => {
+			const next = new Set(prev);
+			if (next.has(key)) next.delete(key);
+			else next.add(key);
+			return next;
+		});
 	const formatRange = (min?: unknown, max?: unknown) => {
 		if (min === undefined && max === undefined) return 'Not specified';
 		return `${min ?? '-'} to ${max ?? '-'}`;
@@ -97,9 +108,17 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 				</Typography>
 
 				{orderedParameters.length > 0 ? (
-					<Box>
-						{orderedParameters.map((parameter, index) => (
-							<Accordion key={parameter.id || index} sx={{ mb: 2, border: '1px solid #e0e0e0' }}>
+					<VirtualizedList
+						items={orderedParameters}
+						getItemKey={(parameter, index) => parameter.id || index}
+						estimateSize={72}
+						renderItem={(parameter, index) => (
+							<Accordion
+								expanded={expandedKeys.has(parameter.id || index)}
+								onChange={() => toggleExpanded(parameter.id || index)}
+								slotProps={{ transition: { unmountOnExit: true } }}
+								sx={{ mb: 2, border: '1px solid #e0e0e0' }}
+							>
 								<AccordionSummary expandIcon={<ExpandMore />}>
 									<Box sx={{ display: 'flex', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: 1 }}>
 										<Typography variant="subtitle1" sx={{ fontWeight: 600, mr: 2 }}>
@@ -306,8 +325,8 @@ const ViewInspectionParameters = ({ parameters }: ViewInspectionParametersProps)
 									</Grid>
 								</AccordionDetails>
 							</Accordion>
-						))}
-					</Box>
+						)}
+					/>
 				) : (
 					<Box sx={{ textAlign: 'center', py: 4 }}>
 						<Typography variant="body1" color="text.secondary">

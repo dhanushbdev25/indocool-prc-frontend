@@ -55,6 +55,7 @@ import {
 } from 'react-hook-form';
 import { ReorderControls } from '../../../../../../components/masters';
 import { InspectionParametersProps } from '../types';
+import VirtualizedList from '../../../../../../components/common/VirtualizedList';
 import { InspectionFormData } from '../schemas';
 import {
 	OK_NOT_OK_NEGATIVE_LABEL,
@@ -95,7 +96,7 @@ function applyNumberDefaults(
 	}
 }
 
-const InspectionParameters = ({ control, errors }: InspectionParametersProps) => {
+const InspectionParameters = ({ control, errors, listRef }: InspectionParametersProps) => {
 	const { setValue, getValues } = useFormContext<InspectionFormData>();
 	const [expandedCards, setExpandedCards] = useState<Set<number>>(new Set([0]));
 	const [manuallyCollapsed, setManuallyCollapsed] = useState<Set<number>>(new Set());
@@ -300,7 +301,7 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 					</Box>
 				</Box>
 
-				<Collapse in={shouldBeExpanded}>
+				<Collapse in={shouldBeExpanded} unmountOnExit>
 					<Divider sx={{ my: 2 }} />
 
 					<CardContent sx={{ p: 3 }}>
@@ -577,7 +578,13 @@ const InspectionParameters = ({ control, errors }: InspectionParametersProps) =>
 					</Button>
 				</Box>
 
-				{parameterFields.map((field, index) => renderParameterCard(field, index))}
+				<VirtualizedList
+					ref={listRef}
+					items={parameterFields}
+					getItemKey={field => field.id}
+					estimateSize={140}
+					renderItem={(field, index) => renderParameterCard(field, index)}
+				/>
 
 				{parameterFields.length === 0 && (
 					<Box sx={{ textAlign: 'center', py: 6, border: '2px dashed #e0e0e0', borderRadius: 2 }}>

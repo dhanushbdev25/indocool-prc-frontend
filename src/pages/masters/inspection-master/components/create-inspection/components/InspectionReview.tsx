@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
 	Box,
 	Typography,
@@ -28,6 +29,7 @@ import {
 } from '@mui/icons-material';
 import { useWatch } from 'react-hook-form';
 import { InspectionReviewProps } from '../types';
+import VirtualizedList from '../../../../../../components/common/VirtualizedList';
 import { roleOptions } from '../schemas';
 import {
 	formatInspectionCriticality,
@@ -36,6 +38,15 @@ import {
 } from '../../../../../../utils/criticality';
 
 const InspectionReview = ({ control }: InspectionReviewProps) => {
+	// Held here (not inside each Accordion) because virtualized rows unmount when scrolled away.
+	const [expandedIndexes, setExpandedIndexes] = useState<Set<number>>(new Set());
+	const toggleExpanded = (index: number) =>
+		setExpandedIndexes(prev => {
+			const next = new Set(prev);
+			if (next.has(index)) next.delete(index);
+			else next.add(index);
+			return next;
+		});
 	const watchedData = useWatch({ control });
 	const formatRange = (min?: unknown, max?: unknown) => {
 		if (min === undefined && max === undefined) return 'Not specified';
@@ -220,226 +231,316 @@ const InspectionReview = ({ control }: InspectionReviewProps) => {
 					</Typography>
 				</Box>
 				{watchedData.inspectionParameters && watchedData.inspectionParameters.length > 0 ? (
-					watchedData.inspectionParameters.map((parameter: Record<string, unknown>, index: number) => (
-						<Accordion key={index} sx={{ mb: 2, border: '1px solid #e0e0e0', borderRadius: '8px !important' }}>
-							<AccordionSummary
-								expandIcon={<ExpandMoreIcon />}
-								sx={{
-									backgroundColor: '#f8f9fa',
-									borderRadius: '8px 8px 0 0',
-									'&:hover': { backgroundColor: '#f1f3f4' }
-								}}
+					<VirtualizedList
+						items={watchedData.inspectionParameters as Record<string, unknown>[]}
+						getItemKey={(_parameter, index) => index}
+						estimateSize={72}
+						renderItem={(parameter, index) => (
+							<Accordion
+								expanded={expandedIndexes.has(index)}
+								onChange={() => toggleExpanded(index)}
+								slotProps={{ transition: { unmountOnExit: true } }}
+								sx={{ mb: 2, border: '1px solid #e0e0e0', borderRadius: '8px !important' }}
 							>
-								<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-									<Typography variant="subtitle1" sx={{ fontWeight: 600, mr: 2, color: '#333' }}>
-										{String(parameter.parameterName || `Parameter ${index + 1}`)}
-									</Typography>
-									<Chip
-										label={String(parameter.type)}
-										size="small"
-										variant="outlined"
-										sx={{ mr: 1, fontSize: '0.75rem' }}
-									/>
-									{resolveCriticality(parameter) !== 'NONE' && (
+								<AccordionSummary
+									expandIcon={<ExpandMoreIcon />}
+									sx={{
+										backgroundColor: '#f8f9fa',
+										borderRadius: '8px 8px 0 0',
+										'&:hover': { backgroundColor: '#f1f3f4' }
+									}}
+								>
+									<Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+										<Typography variant="subtitle1" sx={{ fontWeight: 600, mr: 2, color: '#333' }}>
+											{String(parameter.parameterName || `Parameter ${index + 1}`)}
+										</Typography>
 										<Chip
-											label={formatInspectionCriticality(parameter)}
+											label={String(parameter.type)}
 											size="small"
-											color={getCriticalityChipColor(resolveCriticality(parameter))}
 											variant="outlined"
 											sx={{ mr: 1, fontSize: '0.75rem' }}
 										/>
-									)}
-									{Boolean(parameter.getInstrumentId) && (
+										{resolveCriticality(parameter) !== 'NONE' && (
+											<Chip
+												label={formatInspectionCriticality(parameter)}
+												size="small"
+												color={getCriticalityChipColor(resolveCriticality(parameter))}
+												variant="outlined"
+												sx={{ mr: 1, fontSize: '0.75rem' }}
+											/>
+										)}
+										{Boolean(parameter.getInstrumentId) && (
+											<Chip
+												label="Instrument ID"
+												size="small"
+												color="info"
+												variant="outlined"
+												sx={{ mr: 1, fontSize: '0.75rem' }}
+											/>
+										)}
 										<Chip
-											label="Instrument ID"
+											label={getRoleLabel(String(parameter.role))}
 											size="small"
-											color="info"
+											color="primary"
 											variant="outlined"
-											sx={{ mr: 1, fontSize: '0.75rem' }}
+											sx={{ fontSize: '0.75rem' }}
 										/>
-									)}
-									<Chip
-										label={getRoleLabel(String(parameter.role))}
-										size="small"
-										color="primary"
-										variant="outlined"
-										sx={{ fontSize: '0.75rem' }}
-									/>
-								</Box>
-							</AccordionSummary>
-							<AccordionDetails sx={{ backgroundColor: 'white', borderRadius: '0 0 8px 8px' }}>
-								<Box>
-									<Grid container spacing={3}>
-										<Grid size={{ xs: 12, md: 6 }}>
-											<Box>
-												<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-													Specification
-												</Typography>
-												<Typography variant="body1" sx={{ fontWeight: 500 }}>
-													{String(parameter.specification || 'Not specified')}
-												</Typography>
-											</Box>
-										</Grid>
-										<Grid size={{ xs: 12, md: 6 }}>
-											<Box>
-												<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-													Range (Min-Max)
-												</Typography>
-												<Typography variant="body1" sx={{ fontWeight: 500 }}>
-													{formatRange(
-														parameter.minimumAcceptanceValue,
-														parameter.maximumAcceptanceValue
-													)}
-												</Typography>
-											</Box>
-										</Grid>
-										<Grid size={{ xs: 12, md: 6 }}>
-											<Box>
-												<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
-													Get Instrument ID
-												</Typography>
-												<Chip
-													icon={Boolean(parameter.getInstrumentId) ? <CheckCircleIcon /> : <CancelIcon />}
-													label={Boolean(parameter.getInstrumentId) ? 'Yes' : 'No'}
-													size="small"
-													sx={{
-														backgroundColor: Boolean(parameter.getInstrumentId) ? '#4caf50' : '#9e9e9e',
-														color: 'white',
-														fontSize: '0.75rem',
-														'& .MuiChip-icon': { color: 'white' }
-													}}
-												/>
-											</Box>
-										</Grid>
-									{parameter.columns && (parameter.columns as Record<string, unknown>[]).length > 0 && parameter.type !== 'fixed-table' ? (
-										<Grid size={{ xs: 12 }}>
-											<Divider sx={{ my: 2 }} />
-											<Box sx={{ p: 2, backgroundColor: parameter.type === 'table' ? '#f0f4ff' : '#f8f9fa', borderRadius: '12px', border: parameter.type === 'table' ? 'none' : '1px solid #e0e0e0' }}>
-												<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-													<Typography variant="body2" sx={{ color: parameter.type === 'table' ? '#1a237e' : '#666', fontWeight: 600 }}>
-														{parameter.type === 'table' ? 'Table Columns (rows added at execution)' : 'Parameter Columns'}
+									</Box>
+								</AccordionSummary>
+								<AccordionDetails sx={{ backgroundColor: 'white', borderRadius: '0 0 8px 8px' }}>
+									<Box>
+										<Grid container spacing={3}>
+											<Grid size={{ xs: 12, md: 6 }}>
+												<Box>
+													<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
+														Specification
+													</Typography>
+													<Typography variant="body1" sx={{ fontWeight: 500 }}>
+														{String(parameter.specification || 'Not specified')}
+													</Typography>
+												</Box>
+											</Grid>
+											<Grid size={{ xs: 12, md: 6 }}>
+												<Box>
+													<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
+														Range (Min-Max)
+													</Typography>
+													<Typography variant="body1" sx={{ fontWeight: 500 }}>
+														{formatRange(parameter.minimumAcceptanceValue, parameter.maximumAcceptanceValue)}
+													</Typography>
+												</Box>
+											</Grid>
+											<Grid size={{ xs: 12, md: 6 }}>
+												<Box>
+													<Typography variant="body2" sx={{ color: '#666', mb: 0.5 }}>
+														Get Instrument ID
 													</Typography>
 													<Chip
-														label={`${(parameter.columns as Record<string, unknown>[]).length} column${(parameter.columns as Record<string, unknown>[]).length !== 1 ? 's' : ''}`}
+														icon={Boolean(parameter.getInstrumentId) ? <CheckCircleIcon /> : <CancelIcon />}
+														label={Boolean(parameter.getInstrumentId) ? 'Yes' : 'No'}
 														size="small"
-														sx={{ backgroundColor: '#ede7f6', color: '#5e35b1', fontWeight: 500, fontSize: '0.7rem' }}
+														sx={{
+															backgroundColor: Boolean(parameter.getInstrumentId) ? '#4caf50' : '#9e9e9e',
+															color: 'white',
+															fontSize: '0.75rem',
+															'& .MuiChip-icon': { color: 'white' }
+														}}
 													/>
 												</Box>
-												<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
-													<Table size="small">
-														<TableHead>
-															<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
-																<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>Name</TableCell>
-																<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>Range (Min-Max)</TableCell>
-															</TableRow>
-														</TableHead>
-														<TableBody>
-															{(parameter.columns as Record<string, unknown>[]).map(
-																(column: Record<string, unknown>, colIndex: number) => (
-																	<TableRow key={colIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
-																		<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.name)}</TableCell>
-																		<TableCell sx={{ fontSize: '0.8rem' }}>
-																			{formatRange(
-																				column.minimumAcceptanceValue,
-																				column.maximumAcceptanceValue
-																			)}
+											</Grid>
+											{parameter.columns &&
+											(parameter.columns as Record<string, unknown>[]).length > 0 &&
+											parameter.type !== 'fixed-table' ? (
+												<Grid size={{ xs: 12 }}>
+													<Divider sx={{ my: 2 }} />
+													<Box
+														sx={{
+															p: 2,
+															backgroundColor: parameter.type === 'table' ? '#f0f4ff' : '#f8f9fa',
+															borderRadius: '12px',
+															border: parameter.type === 'table' ? 'none' : '1px solid #e0e0e0'
+														}}
+													>
+														<Box
+															sx={{
+																display: 'flex',
+																alignItems: 'center',
+																justifyContent: 'space-between',
+																mb: 1.5,
+																flexWrap: 'wrap',
+																gap: 1
+															}}
+														>
+															<Typography
+																variant="body2"
+																sx={{ color: parameter.type === 'table' ? '#1a237e' : '#666', fontWeight: 600 }}
+															>
+																{parameter.type === 'table'
+																	? 'Table Columns (rows added at execution)'
+																	: 'Parameter Columns'}
+															</Typography>
+															<Chip
+																label={`${(parameter.columns as Record<string, unknown>[]).length} column${(parameter.columns as Record<string, unknown>[]).length !== 1 ? 's' : ''}`}
+																size="small"
+																sx={{
+																	backgroundColor: '#ede7f6',
+																	color: '#5e35b1',
+																	fontWeight: 500,
+																	fontSize: '0.7rem'
+																}}
+															/>
+														</Box>
+														<TableContainer
+															component={Paper}
+															variant="outlined"
+															sx={{ borderRadius: '8px', overflow: 'hidden' }}
+														>
+															<Table size="small">
+																<TableHead>
+																	<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
+																		<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>
+																			Name
+																		</TableCell>
+																		<TableCell sx={{ fontWeight: 600, color: '#333', fontSize: '0.75rem', py: 0.75 }}>
+																			Range (Min-Max)
 																		</TableCell>
 																	</TableRow>
-																)
-															)}
-														</TableBody>
-													</Table>
-												</TableContainer>
-											</Box>
-										</Grid>
-									) : null}
-									{parameter.type === 'fixed-table' && parameter.tableConfig ? (() => {
-										const tc = parameter.tableConfig as {
-											columns?: Array<{ name: string; type: string }>;
-											rows?: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }>;
-										};
-										if (!tc.columns || tc.columns.length === 0) return null;
-										return (
-										<Grid size={{ xs: 12 }}>
-											<Divider sx={{ my: 2 }} />
-											<Box>
-												<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-													<Typography variant="body2" sx={{ color: '#666', fontWeight: 600 }}>
-														Fixed Table Preview
-													</Typography>
-													<Chip
-														label={`${tc.columns.length} col${tc.columns.length !== 1 ? 's' : ''} \u00b7 ${tc.rows?.length || 0} row${(tc.rows?.length || 0) !== 1 ? 's' : ''}`}
-														size="small"
-														sx={{ backgroundColor: '#ede7f6', color: '#5e35b1', fontWeight: 500, fontSize: '0.7rem' }}
-													/>
-												</Box>
-												<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
-													<Table size="small">
-														<TableHead>
-															<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
-																<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#333', py: 0.75, width: 40, textAlign: 'center' }}>
-																	#
-																</TableCell>
-																{tc.columns.map((col, ci) => (
-																	<TableCell key={ci} sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#333', py: 0.75 }}>
-																		{col.name}
-																		<Typography variant="caption" sx={{ display: 'block', color: '#888', fontWeight: 400, lineHeight: 1, fontSize: '0.65rem' }}>
-																			{col.type}
+																</TableHead>
+																<TableBody>
+																	{(parameter.columns as Record<string, unknown>[]).map(
+																		(column: Record<string, unknown>, colIndex: number) => (
+																			<TableRow
+																				key={colIndex}
+																				sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}
+																			>
+																				<TableCell sx={{ fontSize: '0.8rem' }}>{String(column.name)}</TableCell>
+																				<TableCell sx={{ fontSize: '0.8rem' }}>
+																					{formatRange(column.minimumAcceptanceValue, column.maximumAcceptanceValue)}
+																				</TableCell>
+																			</TableRow>
+																		)
+																	)}
+																</TableBody>
+															</Table>
+														</TableContainer>
+													</Box>
+												</Grid>
+											) : null}
+											{parameter.type === 'fixed-table' && parameter.tableConfig
+												? (() => {
+														const tc = parameter.tableConfig as {
+															columns?: Array<{ name: string; type: string }>;
+															rows?: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }>;
+														};
+														if (!tc.columns || tc.columns.length === 0) return null;
+														return (
+															<Grid size={{ xs: 12 }}>
+																<Divider sx={{ my: 2 }} />
+																<Box>
+																	<Box
+																		sx={{
+																			display: 'flex',
+																			alignItems: 'center',
+																			justifyContent: 'space-between',
+																			mb: 1.5
+																		}}
+																	>
+																		<Typography variant="body2" sx={{ color: '#666', fontWeight: 600 }}>
+																			Fixed Table Preview
 																		</Typography>
-																	</TableCell>
-																))}
-															</TableRow>
-														</TableHead>
-														<TableBody>
-															{(tc.rows || []).map((row, ri) => (
-																<TableRow key={ri} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
-																	<TableCell sx={{ textAlign: 'center', color: '#999', fontSize: '0.7rem', py: 0.5 }}>
-																		{ri + 1}
-																	</TableCell>
-																	{tc.columns!.map((col, ci) => {
-																		const cell = row.cells[col.name] || { value: '', readOnly: false };
-																		return (
-																			<TableCell key={ci} sx={{ py: 0.5, fontSize: '0.8rem' }}>
-																				<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-																					{cell.readOnly && (
-																						<LockIcon sx={{ fontSize: 12, color: '#1976d2' }} />
-																					)}
-																					<Typography
-																						variant="body2"
+																		<Chip
+																			label={`${tc.columns.length} col${tc.columns.length !== 1 ? 's' : ''} \u00b7 ${tc.rows?.length || 0} row${(tc.rows?.length || 0) !== 1 ? 's' : ''}`}
+																			size="small"
+																			sx={{
+																				backgroundColor: '#ede7f6',
+																				color: '#5e35b1',
+																				fontWeight: 500,
+																				fontSize: '0.7rem'
+																			}}
+																		/>
+																	</Box>
+																	<TableContainer
+																		component={Paper}
+																		variant="outlined"
+																		sx={{ borderRadius: '8px', overflow: 'hidden' }}
+																	>
+																		<Table size="small">
+																			<TableHead>
+																				<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
+																					<TableCell
 																						sx={{
-																							fontSize: '0.8rem',
-																							...(cell.readOnly
-																								? { color: '#1565c0', fontWeight: 500 }
-																								: { color: '#999', fontStyle: 'italic' })
+																							fontWeight: 600,
+																							fontSize: '0.75rem',
+																							color: '#333',
+																							py: 0.75,
+																							width: 40,
+																							textAlign: 'center'
 																						}}
 																					>
-																						{cell.value || (cell.readOnly ? '-' : 'Editable')}
-																					</Typography>
-																				</Box>
-																			</TableCell>
-																		);
-																	})}
-																</TableRow>
-															))}
-															{(!tc.rows || tc.rows.length === 0) && (
-																<TableRow>
-																	<TableCell colSpan={tc.columns.length + 1} sx={{ textAlign: 'center', py: 2, color: '#aaa' }}>
-																		No rows defined
-																	</TableCell>
-																</TableRow>
-															)}
-														</TableBody>
-													</Table>
-												</TableContainer>
-											</Box>
+																						#
+																					</TableCell>
+																					{tc.columns.map((col, ci) => (
+																						<TableCell
+																							key={ci}
+																							sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#333', py: 0.75 }}
+																						>
+																							{col.name}
+																							<Typography
+																								variant="caption"
+																								sx={{
+																									display: 'block',
+																									color: '#888',
+																									fontWeight: 400,
+																									lineHeight: 1,
+																									fontSize: '0.65rem'
+																								}}
+																							>
+																								{col.type}
+																							</Typography>
+																						</TableCell>
+																					))}
+																				</TableRow>
+																			</TableHead>
+																			<TableBody>
+																				{(tc.rows || []).map((row, ri) => (
+																					<TableRow
+																						key={ri}
+																						sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}
+																					>
+																						<TableCell
+																							sx={{ textAlign: 'center', color: '#999', fontSize: '0.7rem', py: 0.5 }}
+																						>
+																							{ri + 1}
+																						</TableCell>
+																						{tc.columns!.map((col, ci) => {
+																							const cell = row.cells[col.name] || { value: '', readOnly: false };
+																							return (
+																								<TableCell key={ci} sx={{ py: 0.5, fontSize: '0.8rem' }}>
+																									<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+																										{cell.readOnly && (
+																											<LockIcon sx={{ fontSize: 12, color: '#1976d2' }} />
+																										)}
+																										<Typography
+																											variant="body2"
+																											sx={{
+																												fontSize: '0.8rem',
+																												...(cell.readOnly
+																													? { color: '#1565c0', fontWeight: 500 }
+																													: { color: '#999', fontStyle: 'italic' })
+																											}}
+																										>
+																											{cell.value || (cell.readOnly ? '-' : 'Editable')}
+																										</Typography>
+																									</Box>
+																								</TableCell>
+																							);
+																						})}
+																					</TableRow>
+																				))}
+																				{(!tc.rows || tc.rows.length === 0) && (
+																					<TableRow>
+																						<TableCell
+																							colSpan={tc.columns.length + 1}
+																							sx={{ textAlign: 'center', py: 2, color: '#aaa' }}
+																						>
+																							No rows defined
+																						</TableCell>
+																					</TableRow>
+																				)}
+																			</TableBody>
+																		</Table>
+																	</TableContainer>
+																</Box>
+															</Grid>
+														);
+													})()
+												: null}
 										</Grid>
-										);
-									})() : null}
-									</Grid>
-								</Box>
-							</AccordionDetails>
-						</Accordion>
-					))
+									</Box>
+								</AccordionDetails>
+							</Accordion>
+						)}
+					/>
 				) : (
 					<Typography variant="body2" sx={{ color: '#666', textAlign: 'center', py: 2 }}>
 						No inspection parameters added
