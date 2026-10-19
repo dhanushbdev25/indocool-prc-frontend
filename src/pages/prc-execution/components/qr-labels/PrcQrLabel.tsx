@@ -11,7 +11,7 @@ const ROWS: { key: keyof PrcQrLabelFields; label: string }[] = [
 	{ key: 'modelNo', label: 'Model No.' },
 	{ key: 'setIdSerialNo', label: 'Set ID/Serial No.' },
 	{ key: 'productionDate', label: 'Production Date' },
-	{ key: 'purchaseOrderNo', label: 'Purchase Order No.' }
+	// { key: 'purchaseOrderNo', label: 'Purchase Order No.' }
 ];
 
 type PrcQrLabelProps = {

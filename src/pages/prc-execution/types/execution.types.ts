@@ -347,6 +347,7 @@ export interface ExecutionData {
 	partNumber: string;
 	partDescription: string;
 	version: number;
+	prcSetId: string;
 	productionSetId: string;
 	mouldId: string;
 	mouldCode?: string | null;

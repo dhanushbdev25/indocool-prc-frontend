@@ -57,7 +57,7 @@ body > .prc-qr-labels-print-root {
 	text-align: center;
 	padding: 2px 4px 1px;
 	border-bottom: 1.5px solid #000;
-	background: #000000;
+	/* background: #000000; */
 	flex: none;
 }
 
@@ -80,7 +80,7 @@ body > .prc-qr-labels-print-root {
 	line-height: 1.2;
 	padding: 2px 2px 1px;
 	/* border-top: 1px solid rgba(255, 255, 255, 0.35); */
-	color: #fff;
+	/* color: #fff; */
 }
 
 .prc-qr-label__body {

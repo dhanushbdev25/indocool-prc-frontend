@@ -88,19 +88,23 @@ export function parsePrcExecutionIdFromQrPayload(text: string): number | null {
 export function mapExecutionToQrLabel(execution: ExecutionData): PrcQrLabelFields {
 	const root = execution as unknown as Record<string, unknown>;
 
-	const rev = pickField(root, [
-		'drawingRevision',
-		'drawing_revision',
-		'partRevision',
-		'part_revision',
-		'revNo',
-		'rev_no',
-		'revision',
-		'Revision',
-		'mouldCode'
-	]);
+	const rev =
+		asDisplay(execution.drawingRevision) ||
+		pickField(root, [
+			'drawingRevision',
+			'drawing_revision',
+			'partRevision',
+			'part_revision',
+			'revNo',
+			'rev_no',
+			'revision',
+			'Revision',
+			'mouldCode'
+		]);
 
-	const modelNo = pickField(root, ['model', 'modelNo', 'model_no', 'modelNumber', 'model_number']);
+	const modelNo =
+		asDisplay(execution.customerVariantName) ||
+		pickField(root, ['customerVariantName', 'customer_variant_name', 'model', 'modelNo', 'model_no', 'modelNumber', 'model_number']);
 
 	return {
 		executionId: execution.id,
@@ -117,8 +121,8 @@ export function mapExecutionToQrLabel(execution: ExecutionData): PrcQrLabelField
 		revNo: rev,
 		modelNo,
 		setIdSerialNo:
-			asDisplay(execution.productionSetId) ||
-			pickField(root, ['productionSetId', 'production_set_id', 'serialNo', 'serial_no']),
+			asDisplay(execution.prcSetId) ||
+			pickField(root, ['prcSetId', 'prc_set_id', 'serialNo', 'serial_no']),
 		productionDate: formatProductionDate(execution.date) || formatProductionDate(pickField(root, ['date'])),
 		purchaseOrderNo:
 			asDisplay(execution.orderId) ||
