@@ -56,12 +56,15 @@ function MetaField({ label, value, monospace }: { label: string; value: string; 
 			<Typography
 				variant="caption"
 				color="text.secondary"
+				title={label}
 				sx={{
 					fontWeight: 600,
 					letterSpacing: '0.06em',
 					textTransform: 'uppercase',
 					fontSize: '0.65rem',
 					lineHeight: 1.2,
+					overflow: 'hidden',
+					textOverflow: 'ellipsis',
 					whiteSpace: 'nowrap'
 				}}
 			>
@@ -140,14 +143,17 @@ const ExecutionHeader = ({
 			<Stack
 				direction={{ xs: 'column', lg: 'row' }}
 				spacing={2}
+				useFlexGap
 				sx={{
 					alignItems: { xs: 'stretch', lg: 'center' },
+					flexWrap: { lg: 'wrap' },
 					justifyContent: 'space-between',
 					px: { xs: 2, sm: 2.5 },
 					py: 2
 				}}
 			>
-				<Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}>
+				{/* Never shrink the title below its content, or the progress bar draws over it. */}
+				<Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flexShrink: 0 }}>
 					<Button
 						startIcon={<ArrowBack />}
 						onClick={() => (onBackOverride ? onBackOverride() : navigate('/prc-execution'))}
@@ -176,7 +182,15 @@ const ExecutionHeader = ({
 					direction={{ xs: 'column', sm: 'row' }}
 					spacing={2}
 					alignItems={{ xs: 'flex-end', sm: 'center' }}
-					sx={{ flexShrink: 0, ml: { lg: 'auto' }, width: { xs: '100%', sm: 'auto' } }}
+					useFlexGap
+					sx={{
+						flex: { lg: '1 1 auto' },
+						minWidth: 0,
+						flexWrap: { sm: 'wrap' },
+						justifyContent: { sm: 'flex-end' },
+						ml: { lg: 'auto' },
+						width: { xs: '100%', sm: 'auto' }
+					}}
 				>
 					<Box sx={{ width: { xs: '100%', sm: 200 }, minWidth: { sm: 200 } }}>
 						<Stack direction="row" alignItems="center" spacing={1.5}>
