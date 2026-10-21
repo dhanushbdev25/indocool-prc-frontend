@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StepPreviewData } from '../../../types/execution.types';
 
@@ -112,5 +112,18 @@ describe('StepPreview inspection images', () => {
 		expect(imageDisplayCalls[0].imageUrl).not.toContain('43.205.188.89');
 		expect(imageDisplayCalls[0].imageUrl).toMatch(/\/files\/part_drawings\/a\.jpg$/);
 		expect(imageDisplayCalls[0].annotations).toEqual([region]);
+	});
+
+	it('shows each parameter images in the row right under that parameter', () => {
+		renderPreview({ 1: { value: 'ok' }, 2: { value: 'ok' } }, [
+			parameter(1, [{ fileName: 'a.jpg', filePath: 'files/part_drawings/a.jpg' }]),
+			parameter(2, [])
+		]);
+
+		const rows = screen.getAllByRole('row').map(row => row.textContent || '');
+		const paramRow = rows.findIndex(text => text.includes('Parameter 1') && !text.includes('Image Annotation'));
+		expect(rows[paramRow + 1]).toContain('Image Annotation for Parameter 1');
+		expect(rows[paramRow + 2]).toContain('Parameter 2');
+		expect(rows.some(text => text.includes('Image Annotation for Parameter 2'))).toBe(false);
 	});
 });

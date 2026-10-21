@@ -135,19 +135,15 @@ describe('StepPreview table date display', () => {
 			/>
 		);
 
+		// Each parameter's images sit in the row right under it, as in the execution step.
 		const rows = screen.getAllByRole('row');
-		expect(rows).toHaveLength(4);
+		expect(rows).toHaveLength(6);
 		expect(within(rows[1]).getByText('First parameter')).toBeInTheDocument();
-		expect(within(rows[2]).getByText('Second parameter')).toBeInTheDocument();
-		expect(within(rows[3]).getByText('Parameter 5')).toBeInTheDocument();
+		expect(within(rows[2]).getByText('Image Annotation for First parameter')).toBeInTheDocument();
+		expect(within(rows[3]).getByText('Second parameter')).toBeInTheDocument();
+		expect(within(rows[4]).getByText('Image Annotation for Second parameter')).toBeInTheDocument();
+		expect(within(rows[5]).getByText('Parameter 5')).toBeInTheDocument();
 		expect(screen.queryByText('Parameter partialCtqApprove')).not.toBeInTheDocument();
-
-		const annotationSection = screen.getByText('Image Annotations').parentElement;
-		expect(annotationSection).not.toBeNull();
-		expect(
-			within(annotationSection as HTMLElement)
-				.getAllByText(/parameter$/i)
-				.map(node => node.textContent)
-		).toEqual(['First parameter', 'Second parameter']);
+		expect(screen.queryByText('Image Annotations')).not.toBeInTheDocument();
 	});
 });

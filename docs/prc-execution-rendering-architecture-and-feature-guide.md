@@ -212,6 +212,7 @@ Type-driven controls:
 - image attachments can be annotated using `ImageAnnotator`
 - annotations are persisted per parameter
 - preview renders annotation overlays through `ImageDisplay`
+- preview and report/PDF show each parameter's images in a row directly under that parameter, as the execution step does; fixed-table row images stay inside the fixed-table rows
 - image and table rows in the execution step start expanded; the step tracks rows the operator collapses
 
 ### 6.5 Inspection Persistence Shape

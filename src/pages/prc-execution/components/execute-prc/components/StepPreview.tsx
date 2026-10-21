@@ -47,7 +47,6 @@ import { type OperationDelayReasonComboOption } from '../../../../../store/api/b
 import ImageDisplay from './ImageDisplay';
 import { debugDataTransformation, transformObjectToArray } from '../../../utils/dataTransformers';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
-import { toFileRenderUrl } from '../../../../../utils/fileUrl';
 import {
 	OK_NOT_OK_DEVIATION_PREVIEW_LABEL,
 	OK_NOT_OK_POSITIVE_VALUE,
@@ -1150,26 +1149,12 @@ const StepPreview = ({
 				}),
 				...rawInspectionEntries.filter(([parameterId]) => !knownParameterIds.has(parameterId))
 			];
-			const hasAnyAnnotationData = orderedInspectionEntries.some(([, parameterData]) => {
-				if (typeof parameterData !== 'object' || parameterData === null) return false;
-				const parameterRecord = parameterData as Record<string, unknown>;
-				const direct = Array.isArray(parameterRecord.annotations) && parameterRecord.annotations.length > 0;
-				const row = Array.isArray(parameterRecord.rowAnnotations)
-					? parameterRecord.rowAnnotations.some(
-							// eslint-disable-next-line @typescript-eslint/no-explicit-any
-							ra => Array.isArray((ra as any).annotations) && (ra as any).annotations.length > 0
-					  )
-					: false;
-				return direct || row;
-			});
 			const paramFilesById = new Map(
 				inspectionParams.map(parameter => [
 					parameter.id.toString(),
 					Array.isArray(parameter.files) ? (parameter.files as PreviewImageFile[]) : []
 				])
 			);
-			const hasAnyImageData =
-				hasAnyAnnotationData || orderedInspectionEntries.some(([parameterId]) => (paramFilesById.get(parameterId) || []).length > 0);
 
 			type PreviewRegion = Record<string, unknown>;
 			const renderAnnotationRegions = (annotation: PreviewAnnotation) => {
@@ -1241,6 +1226,120 @@ const StepPreview = ({
 						);
 						})}
 					</Box>
+				);
+			};
+
+			type PreviewParamMeta = (typeof inspectionParams)[number] | undefined;
+			const imageBlockSx = {
+				mb: 2,
+				p: 1.5,
+				backgroundColor: '#fff',
+				borderRadius: 1,
+				border: '1px solid #e9ecef'
+			};
+			/**
+			 * The images for one parameter, shown in a row right under it as the execution step
+			 * does. Fixed-table row images are already shown inside that parameter's table rows.
+			 */
+			const renderParameterImages = (
+				parameterId: string,
+				parameterData: unknown,
+				paramMeta: PreviewParamMeta,
+				includeRowAnnotations: boolean
+			) => {
+				const parameterDataObj =
+					typeof parameterData === 'object' && parameterData !== null
+						? (parameterData as Record<string, unknown>)
+						: {};
+				const annotations = Array.isArray(parameterDataObj.annotations)
+					? (parameterDataObj.annotations as PreviewAnnotation[])
+					: [];
+				const rowAnnotations =
+					includeRowAnnotations && Array.isArray(parameterDataObj.rowAnnotations)
+						? (parameterDataObj.rowAnnotations as PreviewRowAnnotationEntry[])
+						: [];
+				const hasRowAnnotations = rowAnnotations.some(ra => Array.isArray(ra.annotations) && ra.annotations.length > 0);
+				// Attached images nobody marked are still part of the inspection record.
+				const unannotatedFiles = getUnannotatedPreviewFiles(paramFilesById.get(parameterId), annotations);
+
+				if (annotations.length === 0 && !hasRowAnnotations && unannotatedFiles.length === 0) return null;
+
+				return (
+					<>
+						{annotations.map((annotation: PreviewAnnotation, annotationIndex: number) => {
+							const matchedFile = findMatchingPreviewFile(paramMeta?.files || [], annotation);
+							return (
+								<Box key={`${parameterId}-${annotationIndex}-${annotation.imageFileName}`} sx={imageBlockSx}>
+									<ImageDisplay
+										imageUrl={buildPreviewImageUrl(annotation, matchedFile)}
+										imageFileName={annotation.imageFileName}
+										originalFileName={matchedFile?.originalFileName || annotation.imageFileName}
+										annotations={annotation.regions || []}
+										readOnly={true}
+										showAnnotations={true}
+									/>
+									{renderAnnotationRegions(annotation)}
+								</Box>
+							);
+						})}
+						{unannotatedFiles.map(file => (
+							<Box key={`${parameterId}-file-${file.fileName || file.filePath}`} sx={imageBlockSx}>
+								<ImageDisplay
+									imageUrl={buildPreviewImageUrl(undefined, file)}
+									imageFileName={file.fileName || ''}
+									originalFileName={file.originalFileName || file.fileName || ''}
+									annotations={[]}
+									readOnly={true}
+									showAnnotations={true}
+								/>
+							</Box>
+						))}
+						{hasRowAnnotations && (
+							<Box sx={{ mt: 1.5 }}>
+								<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#6a1b9a' }}>
+									Row-Mapped Defects
+								</Typography>
+								{rowAnnotations.map((rowEntry: PreviewRowAnnotationEntry) => {
+									const rowAnns = Array.isArray(rowEntry?.annotations) ? rowEntry.annotations : [];
+									const rowIndex = Number(rowEntry?.rowIndex);
+									const rowMappedFiles = Array.isArray(paramMeta?.rowMappings)
+										? paramMeta.rowMappings.find(rm => rm.rowIndex === rowIndex)?.fileName || []
+										: [];
+									if (rowAnns.length === 0) return null;
+									return (
+										<Box
+											key={`${parameterId}-row-${rowIndex}`}
+											sx={{ mb: 1.5, p: 1, backgroundColor: '#f7f0ff', borderRadius: 1 }}
+										>
+											<Typography variant="caption" sx={{ fontWeight: 600, color: '#6a1b9a' }}>
+												Row {rowIndex + 1}
+											</Typography>
+											<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 0.75 }}>
+												{rowAnns.map((annotation: PreviewAnnotation, rowAnnIndex: number) => {
+													const matchedFile =
+														findMatchingPreviewFile(rowMappedFiles, annotation) ||
+														findMatchingPreviewFile(paramMeta?.files || [], annotation);
+													return (
+														<Box key={`${parameterId}-row-${rowIndex}-ann-${rowAnnIndex}`}>
+															<ImageDisplay
+																imageUrl={buildPreviewImageUrl(annotation, matchedFile)}
+																imageFileName={annotation.imageFileName}
+																originalFileName={matchedFile?.originalFileName || annotation.imageFileName}
+																annotations={annotation.regions || []}
+																readOnly={true}
+																showAnnotations={true}
+															/>
+															{renderAnnotationRegions(annotation)}
+														</Box>
+													);
+												})}
+											</Box>
+										</Box>
+									);
+								})}
+							</Box>
+						)}
+					</>
 				);
 			};
 
@@ -1437,6 +1536,15 @@ const StepPreview = ({
 											}
 										}
 
+										const parameterImages = renderParameterImages(
+											parameterId,
+											parameterData,
+											paramMeta,
+											!isFixedTableType
+										);
+										const isExpandable =
+											isMultiColumn || isTableType || isFixedTableType || isListType || parameterImages !== null;
+
 										return (
 											<React.Fragment key={parameterId}>
 												{/* Main Row */}
@@ -1445,12 +1553,12 @@ const StepPreview = ({
 													'&:nth-of-type(odd)': { backgroundColor: '#fafafa' },
 													'&:hover': { backgroundColor: '#f0f0f0' },
 													cursor:
-														embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType || isListType)
+														embeddedReportMode || !isExpandable
 															? 'default'
 															: 'pointer'
 												}}
 												onClick={
-													embeddedReportMode || !(isMultiColumn || isTableType || isFixedTableType || isListType)
+													embeddedReportMode || !isExpandable
 														? undefined
 														: () => toggleMultiValueParam(parameterId)
 												}
@@ -1458,7 +1566,7 @@ const StepPreview = ({
 												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
 														{!embeddedReportMode &&
-															(isMultiColumn || isTableType || isFixedTableType || isListType) && (
+															isExpandable && (
 																<IconButton size="small" sx={{ p: 0.25 }}>
 																	{collapsedMultiValueParams.has(parameterId) ? <ExpandMore /> : <ExpandLess />}
 																</IconButton>
@@ -1989,169 +2097,32 @@ const StepPreview = ({
 														</TableCell>
 													</TableRow>
 												)}
+
+											{/* Collapsible Image Row, under its parameter as in the execution step */}
+											{parameterImages && (
+												<TableRow>
+													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+														<Collapse
+															in={embeddedReportMode || !collapsedMultiValueParams.has(parameterId)}
+															timeout="auto"
+															unmountOnExit={!embeddedReportMode}
+														>
+															<Box sx={{ p: 2, backgroundColor: '#f8f9fa', borderRadius: '8px', m: 1 }}>
+																<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a237e' }}>
+																	Image Annotation for {parameterName}
+																</Typography>
+																{parameterImages}
+															</Box>
+														</Collapse>
+													</TableCell>
+												</TableRow>
+											)}
 											</React.Fragment>
 										);
 								})}
 							</TableBody>
 						</Table>
 					</TableContainer>
-
-					{/* Image Annotations Section */}
-					{hasAnyImageData && (
-						<Box sx={{ mt: 2 }}>
-							<Typography variant="h6" sx={{ mb: 1.5, fontWeight: 600, color: '#333', fontSize: '1.1rem' }}>
-								Image Annotations
-							</Typography>
-							{orderedInspectionEntries.map(([parameterId, parameterData]) => {
-									// Find the corresponding inspection parameter metadata
-									const paramMeta = inspectionParams.find(p => p.id.toString() === parameterId);
-
-									if (typeof parameterData === 'object' && parameterData !== null) {
-										const parameterDataObj = parameterData as Record<string, unknown>;
-										const annotations = Array.isArray(parameterDataObj.annotations)
-											? (parameterDataObj.annotations as PreviewAnnotation[])
-											: [];
-										const rowAnnotations = Array.isArray(parameterDataObj.rowAnnotations)
-											? (parameterDataObj.rowAnnotations as PreviewRowAnnotationEntry[])
-											: [];
-										const hasRowAnnotations = rowAnnotations.some(
-											ra => Array.isArray(ra.annotations) && ra.annotations.length > 0
-										);
-										console.log('🖼️ StepPreview: Processing annotations for parameter:', {
-											parameterId,
-											parameterData,
-											annotations,
-											isArray: Array.isArray(annotations),
-											length: annotations?.length
-										});
-
-										// Attached images nobody marked are still part of the inspection record.
-										const unannotatedFiles = getUnannotatedPreviewFiles(paramFilesById.get(parameterId), annotations);
-
-										if (annotations.length > 0 || hasRowAnnotations || unannotatedFiles.length > 0) {
-											return (
-												<Box key={parameterId} sx={{ mb: 2 }}>
-													<Paper variant="outlined" sx={{ p: 2 }}>
-														<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1, color: '#1976d2' }}>
-															{paramMeta?.parameterName || `Parameter ${parameterId}`}
-														</Typography>
-														{annotations.map((annotation: PreviewAnnotation, annotationIndex: number) => {
-															const matchedFile = findMatchingPreviewFile(paramMeta?.files || [], annotation);
-															const originalFileName = matchedFile?.originalFileName || annotation.imageFileName;
-															const imageUrl = buildPreviewImageUrl(annotation, matchedFile);
-
-															console.log('🖼️ StepPreview: Image URL construction:', {
-																parameterId,
-																annotationIndex,
-																annotation,
-																paramMeta,
-																imageUrl,
-																annotationImageUrl: annotation.imageUrl,
-																constructedUrl: toFileRenderUrl(
-																	paramMeta?.files?.find(file => file.fileName === annotation.imageFileName)?.filePath
-																)
-															});
-
-															return (
-																<Box
-																	key={annotationIndex}
-																	sx={{
-																		mb: 2,
-																		p: 1.5,
-																		backgroundColor: '#f8f9fa',
-																		borderRadius: 1,
-																		border: '1px solid #e9ecef'
-																	}}
-																>
-																	{/* Image Display with Annotations */}
-																	<Box sx={{ mb: 2 }}>
-																		<ImageDisplay
-																			key={`${parameterId}-${annotationIndex}-${annotation.imageFileName}`}
-																			imageUrl={imageUrl}
-																			imageFileName={annotation.imageFileName}
-																			originalFileName={originalFileName}
-																			annotations={annotation.regions || []}
-																			readOnly={true}
-																			showAnnotations={true}
-																		/>
-																	</Box>
-
-																	{renderAnnotationRegions(annotation)}
-																</Box>
-															);
-														})}
-														{unannotatedFiles.map(file => (
-															<Box
-																key={`${parameterId}-file-${file.fileName || file.filePath}`}
-																sx={{
-																	mb: 2,
-																	p: 1.5,
-																	backgroundColor: '#f8f9fa',
-																	borderRadius: 1,
-																	border: '1px solid #e9ecef'
-																}}
-															>
-																<ImageDisplay
-																	imageUrl={buildPreviewImageUrl(undefined, file)}
-																	imageFileName={file.fileName || ''}
-																	originalFileName={file.originalFileName || file.fileName || ''}
-																	annotations={[]}
-																	readOnly={true}
-																	showAnnotations={true}
-																/>
-															</Box>
-														))}
-														{hasRowAnnotations && (
-															<Box sx={{ mt: 1.5 }}>
-																<Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: '#6a1b9a' }}>
-																	Row-Mapped Defects
-																</Typography>
-																{rowAnnotations.map((rowEntry: PreviewRowAnnotationEntry) => {
-																	const rowAnns = Array.isArray(rowEntry?.annotations) ? rowEntry.annotations : [];
-																	const rowIndex = Number(rowEntry?.rowIndex);
-																	const rowMappedFiles = Array.isArray(paramMeta?.rowMappings)
-																		? paramMeta.rowMappings.find(rm => rm.rowIndex === rowIndex)?.fileName || []
-																		: [];
-																	if (rowAnns.length === 0) return null;
-																	return (
-																		<Box key={`${parameterId}-row-${rowIndex}`} sx={{ mb: 1.5, p: 1, backgroundColor: '#f7f0ff', borderRadius: 1 }}>
-																			<Typography variant="caption" sx={{ fontWeight: 600, color: '#6a1b9a' }}>
-																				Row {rowIndex + 1}
-																			</Typography>
-																			<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 0.75 }}>
-																				{rowAnns.map((annotation: PreviewAnnotation, rowAnnIndex: number) => {
-																					const matchedFile =
-																						findMatchingPreviewFile(rowMappedFiles, annotation) ||
-																						findMatchingPreviewFile(paramMeta?.files || [], annotation);
-																					return (
-																						<Box key={`${parameterId}-row-${rowIndex}-ann-${rowAnnIndex}`}>
-																							<ImageDisplay
-																								imageUrl={buildPreviewImageUrl(annotation, matchedFile)}
-																								imageFileName={annotation.imageFileName}
-																								originalFileName={matchedFile?.originalFileName || annotation.imageFileName}
-																								annotations={annotation.regions || []}
-																								readOnly={true}
-																								showAnnotations={true}
-																							/>
-																							{renderAnnotationRegions(annotation)}
-																						</Box>
-																					);
-																				})}
-																			</Box>
-																		</Box>
-																	);
-																})}
-															</Box>
-														)}
-													</Paper>
-												</Box>
-											);
-										}
-									}
-									return null;
-								})}
-						</Box>
-					)}
 
 					{/* Summary Statistics */}
 					<Box sx={{ mt: 2, p: 1.5, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
