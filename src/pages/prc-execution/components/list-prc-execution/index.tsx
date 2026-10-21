@@ -62,7 +62,7 @@ const noop = () => {};
 /** Server clamp on POST /prcExecution/list pageSize. */
 const EXPORT_PAGE_SIZE = 100;
 /** Safety cap for the export-all loop (100 pages × 100 rows = 10k rows). */
-const EXPORT_MAX_PAGES = 100;
+const EXPORT_MAX_PAGES = 200;
 
 const formatDateCell = (raw: string | null | undefined): string => {
 	const d = raw ? dayjs(raw) : null;
