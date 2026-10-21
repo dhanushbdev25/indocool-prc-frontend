@@ -77,11 +77,19 @@ export const toInspectionParameterRequests = (
 		order: index + 1,
 		parameterName: param.parameterName,
 		specification: param.specification ?? undefined,
-		minimumAcceptanceValue: optionalString(param.minimumAcceptanceValue as string | number | null | undefined),
-		maximumAcceptanceValue: optionalString(param.maximumAcceptanceValue as string | number | null | undefined),
+		// A list's items carry their own types and ranges. The editor hides the parameter-level range
+		// and columns for a list, so values left over from an earlier type must not be saved with it.
+		minimumAcceptanceValue:
+			param.type === LIST_TYPE_KEY
+				? undefined
+				: optionalString(param.minimumAcceptanceValue as string | number | null | undefined),
+		maximumAcceptanceValue:
+			param.type === LIST_TYPE_KEY
+				? undefined
+				: optionalString(param.maximumAcceptanceValue as string | number | null | undefined),
 		type: param.type,
 		files: param.files || {},
-		columns: (param.columns || []).map(col => ({
+		columns: (param.type === LIST_TYPE_KEY ? [] : param.columns || []).map(col => ({
 			name: col.name,
 			type: col.type,
 			defaultValue: optionalString(col.defaultValue as string | number | null | undefined),

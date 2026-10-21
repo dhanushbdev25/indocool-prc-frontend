@@ -1,6 +1,8 @@
 import { type TimelineStep, type FormData, type OperationWiseExecutionRow } from '../types/execution.types';
 import { isDemouldInspectionStep } from './demouldDefects';
 import { mergeOperationWiseExecutionArrays, normalizeOperationWiseToArray } from './operationWiseMerge';
+import { LIST_TYPE_KEY, buildListSavedValue } from '../../../utils/listConfig';
+import type { ListValues } from '../../../types/list-config.types';
 
 export function buildAggregatedData(
 	step: TimelineStep,
@@ -173,7 +175,13 @@ export function buildAggregatedData(
 
 				const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
 
-				if (isTableType && param.columns) {
+				if (param.type === LIST_TYPE_KEY) {
+					// A list keeps its items in listConfig; any `columns` left on it from an earlier type are stale.
+					const listValues = formData[`${paramId}_list`];
+					if (listValues && typeof listValues === 'object') {
+						paramData.value = buildListSavedValue(param.listConfig?.items ?? [], listValues as ListValues);
+					}
+				} else if (isTableType && param.columns) {
 					// Table type parameter: collect row data
 					const rowsArray: Record<string, unknown>[] = [];
 

@@ -188,4 +188,19 @@ describe('list parameters', () => {
 		const [request] = toInspectionParameterRequests([formValue({ type: 'list', listConfig, tableConfig: fixedTable })]);
 		expect(request.tableConfig).toEqual(listConfig);
 	});
+
+	it('drops columns and a parameter range left over from an earlier type', () => {
+		const [request] = toInspectionParameterRequests([
+			formValue({
+				type: 'list',
+				listConfig,
+				minimumAcceptanceValue: '9.5',
+				maximumAcceptanceValue: '10.5',
+				columns: [{ name: 'Set ID', type: 'number', defaultValue: '0', minimumAcceptanceValue: '0', maximumAcceptanceValue: '0' }]
+			})
+		]);
+		expect(request.columns).toEqual([]);
+		expect(request.minimumAcceptanceValue).toBeUndefined();
+		expect(request.maximumAcceptanceValue).toBeUndefined();
+	});
 });

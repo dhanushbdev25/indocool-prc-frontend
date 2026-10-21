@@ -67,10 +67,28 @@ const listStep = (status = 'in-progress'): TimelineStep =>
 		]
 	}) as unknown as TimelineStep;
 
-const renderStep = (executionData: ExecutionData = { prcAggregatedSteps: {} } as unknown as ExecutionData) => {
+const renderStep = (
+	executionData: ExecutionData = { prcAggregatedSteps: {} } as unknown as ExecutionData,
+	step: TimelineStep = listStep()
+) => {
 	const onStepComplete = vi.fn();
-	render(<InspectionStep step={listStep()} executionData={executionData} onStepComplete={onStepComplete} />);
+	render(<InspectionStep step={step} executionData={executionData} onStepComplete={onStepComplete} />);
 	return onStepComplete;
+};
+
+/** A list parameter that still carries the columns and range it had as an earlier type. */
+const listStepWithStaleColumns = (): TimelineStep => {
+	const step = listStep();
+	const [param] = step.inspectionParameters ?? [];
+	Object.assign(param, {
+		minimumAcceptanceValue: '9.5',
+		maximumAcceptanceValue: '10.5',
+		columns: [
+			{ name: 'Stale temperature', type: 'number', defaultValue: '0', minimumAcceptanceValue: '0', maximumAcceptanceValue: '0' },
+			{ name: 'Stale check', type: 'ok/not ok' }
+		]
+	});
+	return step;
 };
 
 const rowFor = (label: string) => screen.getByText(label).closest('tr') as HTMLElement;
@@ -154,5 +172,21 @@ describe('InspectionStep list parameter', () => {
 
 		expect(within(rowFor('Mould temperature')).getByRole('spinbutton')).toHaveValue(25);
 		expect(within(rowFor('Remarks')).getByRole('textbox')).toHaveValue('Looks fine');
+	});
+
+	it('ignores columns left over from an earlier type and renders only the list', () => {
+		const onStepComplete = renderStep(undefined, listStepWithStaleColumns());
+
+		expect(screen.getByText('Mould readings - List')).toBeInTheDocument();
+		expect(screen.queryByText('Stale temperature')).not.toBeInTheDocument();
+		expect(screen.queryByText('Stale check')).not.toBeInTheDocument();
+		expect(screen.queryByText(/2 fields/)).not.toBeInTheDocument();
+
+		fireEvent.change(within(rowFor('Mould temperature')).getByRole('spinbutton'), { target: { value: '25' } });
+		submit();
+
+		const saved = onStepComplete.mock.calls[0][0] as Record<string, { value: unknown }>;
+		expect(Array.isArray(saved[String(PARAM_ID)].value)).toBe(true);
+		expect(screen.queryByText(/stale temperature is required/i)).not.toBeInTheDocument();
 	});
 });

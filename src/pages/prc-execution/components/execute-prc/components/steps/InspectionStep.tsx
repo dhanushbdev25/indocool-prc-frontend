@@ -1457,7 +1457,9 @@ const InspectionStep = ({
 							const isListType = param.type === LIST_TYPE_KEY;
 							const listItems = param.listConfig?.items ?? [];
 							const isTableType = param.type === 'table' && param.columns && param.columns.length > 0;
-							const hasMultipleColumns = !isTableType && !isFixedTableType && param.columns && param.columns.length > 0;
+							// A list keeps its items in listConfig; any `columns` left on it from an earlier type are stale.
+							const hasMultipleColumns =
+								!isTableType && !isFixedTableType && !isListType && param.columns && param.columns.length > 0;
 							const isExpanded = !collapsedRows.has(param.id);
 							const isMultiColumnExpanded = !collapsedMultiColumnRows.has(param.id);
 							const annotationCount = getAnnotationCount(param.id);
