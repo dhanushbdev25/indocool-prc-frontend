@@ -8,7 +8,8 @@ import {
 	CheckCircle as CheckCircleIcon,
 	PictureAsPdf as PictureAsPdfIcon,
 	QrCode2 as QrCode2Icon,
-	QrCodeScanner as QrCodeScannerIcon
+	QrCodeScanner as QrCodeScannerIcon,
+	Science
 } from '@mui/icons-material';
 import TableComponent from '../../../../../components/table/TableComponent';
 import { type PrcExecution } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
@@ -339,6 +340,18 @@ const PrcExecutionTable = memo(
 									View
 								</Button>
 							)}
+							<Tooltip title="Catalyst Mixing">
+    <IconButton
+        size="small"
+        sx={{
+            color: row.original.catalystMixingCompleted
+                ? 'success.dark'
+                : 'warning.dark'
+        }}
+    >
+        <Science fontSize="small" />
+    </IconButton>
+</Tooltip>
 							<Tooltip title="Generate QR sticker label">
 								<IconButton
 									size="small"

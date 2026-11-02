@@ -379,6 +379,7 @@ export interface ExecutionData {
 	updatedBy: number;
 	createdAt: string;
 	updatedAt: string;
+	catalystMixingCompleted: boolean;
 	// Additional fields from API response
 	orderId?: string | number | null;
 	customerVariantId?: number | null;

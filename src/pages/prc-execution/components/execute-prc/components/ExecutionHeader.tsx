@@ -253,16 +253,31 @@ const ExecutionHeader = ({
 								</Button>
 							)}
 							{onCatalystMixingClick && (
-								<Button
-									startIcon={<Science />}
-									variant="outlined"
-									size="small"
-									color="inherit"
-									onClick={onCatalystMixingClick}
-									disabled={catalystMixingDisabled}
-								>
-									Catalyst Mixing
-								</Button>
+									<Chip
+									icon={<Science  />}
+							label={`Catalyst Mixing`}
+							size="small"
+							variant="outlined"
+							onClick={onCatalystMixingClick}
+							sx={{
+								padding: '18px 6px',
+								borderColor: executionData.catalystMixingCompleted ? 'success.light' : 'warning.light',
+								color: executionData.catalystMixingCompleted ? 'success.dark' : 'warning.dark',
+								 '& .MuiChip-icon': {
+        							color: 'inherit'
+    							}
+							}}
+						/>
+								// <Button
+								// 	startIcon={<Science />}
+								// 	variant="outlined"
+								// 	size="small"
+								// 	color="inherit"
+								// 	onClick={onCatalystMixingClick}
+								// 	disabled={catalystMixingDisabled}
+								// >
+								// 	Catalyst Mixing
+								// </Button>
 							)}
 							{onPartImagesClick && (
 								<Button

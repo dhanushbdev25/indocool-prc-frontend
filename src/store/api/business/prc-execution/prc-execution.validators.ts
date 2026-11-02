@@ -85,6 +85,7 @@ export interface PrcExecution {
 	partId?: number | null;
 	/** Plant the execution ran in, as selected by POST /prcExecution/list. */
 	plantCode?: string | null;
+	catalystMixingCompleted?: boolean;
 }
 
 /** Status values the server writes to `prc_execution.status`. */
