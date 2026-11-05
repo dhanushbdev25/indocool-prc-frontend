@@ -2,6 +2,13 @@ import * as yup from 'yup';
 import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/okNotOkLabels';
 import { CRITICALITY_TAGS } from '../../../../../utils/criticality';
 import { buildListConfigSchema } from '../../../../../utils/listConfigSchema';
+import {
+	FIXED_TABLE_DATA_TYPES,
+	resolveFixedTableCellSpec,
+	validateCellSpecRange,
+	type FixedTableCellSpec
+} from '../../../../../utils/fixedTableCellSpec';
+import type { TableConfig } from '../../../../../types/table-config.types';
 
 /**
  * One end of an acceptance range. A blank input stays `undefined` rather than becoming 0, so a
@@ -135,8 +142,8 @@ export const inspectionParameterSchema = yup
 							type: yup
 								.string()
 								.required('Column type is required')
-								.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift']),
-							// Acceptance range for a number column, applied to every row of that column.
+								.oneOf([...FIXED_TABLE_DATA_TYPES]),
+							// Acceptance range for a numeric column, applied to every row of that column.
 							// Left blank it stays undefined, which execution reads as "no range".
 							minimumAcceptanceValue: acceptanceBoundSchema,
 							maximumAcceptanceValue: acceptanceBoundSchema
@@ -145,13 +152,15 @@ export const inspectionParameterSchema = yup
 					.min(1, 'At least one column is required')
 					// Kept on the array rather than each column: a `.test()` on the element schema
 					// changes yup's inferred type for the whole tableConfig object.
-					.test('fixed-column-min-max-range', 'Minimum value cannot be greater than maximum value', cols => {
+					.test('fixed-column-min-max-range', 'Minimum value cannot be greater than maximum value', (cols, ctx) => {
 						if (!Array.isArray(cols)) return true;
-						return cols.every(col => {
-							if (!col || col.type !== 'number') return true;
-							if (col.minimumAcceptanceValue === undefined || col.maximumAcceptanceValue === undefined) return true;
-							return Number(col.minimumAcceptanceValue) <= Number(col.maximumAcceptanceValue);
-						});
+						// With per-cell types on, the cells carry the ranges and are checked below.
+						if ((ctx.parent as { cellTypes?: boolean } | undefined)?.cellTypes) return true;
+						for (const col of cols) {
+							const problem = validateCellSpecRange(col as Partial<FixedTableCellSpec>);
+							if (problem) return ctx.createError({ message: `${col?.name || 'Column'}: ${problem}` });
+						}
+						return true;
 					}),
 				rows: yup
 					.array(
@@ -170,7 +179,9 @@ export const inspectionParameterSchema = yup
 							)
 						})
 					)
-					.min(1, 'At least one row is required')
+					.min(1, 'At least one row is required'),
+				// Fixed table: every cell carries its own data type and range (see resolveFixedTableCellSpec).
+				cellTypes: yup.boolean().optional()
 			})
 			.nullable()
 			.default(undefined)
@@ -185,6 +196,22 @@ export const inspectionParameterSchema = yup
 						})
 						.test('has-rows', 'At least one row is required', value => {
 							return value !== null && value !== undefined && Array.isArray(value.rows) && value.rows.length > 0;
+						})
+						.test('valid-cell-types', 'Invalid cell data type', (value, ctx) => {
+							const config = value as TableConfig | null | undefined;
+							if (!config?.cellTypes) return true;
+							for (const [rowIndex, row] of (config.rows ?? []).entries()) {
+								for (const [colIndex, col] of (config.columns ?? []).entries()) {
+									const cell = row?.cells?.[col.name || `col_${colIndex}`];
+									const where = `Row ${rowIndex + 1}, ${col.name || `column ${colIndex + 1}`}`;
+									if (cell?.type && !FIXED_TABLE_DATA_TYPES.includes(cell.type)) {
+										return ctx.createError({ message: `${where}: invalid data type` });
+									}
+									const problem = validateCellSpecRange(resolveFixedTableCellSpec(config, col, cell));
+									if (problem) return ctx.createError({ message: `${where}: ${problem}` });
+								}
+							}
+							return true;
 						}),
 				otherwise: schema => schema.nullable().optional()
 			}),

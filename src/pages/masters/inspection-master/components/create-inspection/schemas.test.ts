@@ -27,6 +27,57 @@ describe('inspection fixed-table tableConfig', () => {
 	});
 });
 
+describe('inspection fixed-table per-cell data types', () => {
+	const withCells = (cell: Record<string, unknown>) =>
+		inspectionParameterSchema.validate({
+			...defaultInspectionParameter,
+			parameterName: 'Per-cell types',
+			type: 'fixed-table',
+			tableConfig: {
+				cellTypes: true,
+				columns: [{ name: 'Reading', type: 'text' }],
+				rows: [{ cells: { Reading: { value: '', readOnly: false, ...cell } } }]
+			}
+		});
+
+	it('accepts every data type the portal offers', async () => {
+		for (const type of ['integer', 'boolean', 'workstation', 'date', 'shift', 'ok/not ok']) {
+			await expect(withCells({ type })).resolves.toBeDefined();
+		}
+		await expect(
+			withCells({ type: 'range', minimumAcceptanceValue: '1', maximumAcceptanceValue: '4' })
+		).resolves.toBeDefined();
+	});
+
+	it('rejects an unknown cell type', async () => {
+		await expect(withCells({ type: 'timestamp' })).rejects.toThrow(/invalid data type/);
+	});
+
+	it('rejects a cell range whose minimum is above its maximum', async () => {
+		await expect(
+			withCells({ type: 'number', minimumAcceptanceValue: '9', maximumAcceptanceValue: '2' })
+		).rejects.toThrow(/Row 1, Reading: Minimum value cannot be greater/);
+	});
+
+	it('needs the target of an exact value cell', async () => {
+		await expect(withCells({ type: 'exact value' })).rejects.toThrow(/target value/);
+	});
+
+	it('accepts the new types on a column too', async () => {
+		await expect(
+			inspectionParameterSchema.validate({
+				...defaultInspectionParameter,
+				parameterName: 'Integer column',
+				type: 'fixed-table',
+				tableConfig: {
+					columns: [{ name: 'Count', type: 'integer', minimumAcceptanceValue: '1', maximumAcceptanceValue: '9' }],
+					rows: [{ cells: { Count: { value: '', readOnly: false } } }]
+				}
+			})
+		).resolves.toBeDefined();
+	});
+});
+
 describe('inspection parameter ordering', () => {
 	it('requires order to be a positive integer', async () => {
 		await expect(

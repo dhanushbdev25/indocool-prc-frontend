@@ -12,8 +12,11 @@ import {
 } from '@mui/material';
 import { Lock as LockIcon } from '@mui/icons-material';
 import type { TableConfig } from '../../types/table-config.types';
-import { formatOkNotOkTypeForDisplay } from '../../utils/okNotOkLabels';
-import { formatAcceptanceRange } from './acceptanceRange';
+import {
+	fixedTableDataTypeLabel,
+	formatCellSpecRange,
+	resolveFixedTableCellSpec
+} from '../../utils/fixedTableCellSpec';
 
 export interface TableConfigPreviewProps {
 	config?: TableConfig | null;
@@ -37,6 +40,8 @@ const TableConfigPreview = ({
 }: TableConfigPreviewProps) => {
 	const columns = config?.columns || [];
 	const rows = config?.rows || [];
+	// With per-cell types on, the type and range sit in each cell instead of the column header.
+	const cellTypes = config?.cellTypes === true;
 
 	return (
 		<Box sx={{ p: 2, backgroundColor: '#f0f4ff', borderRadius: '12px' }}>
@@ -73,7 +78,7 @@ const TableConfigPreview = ({
 									#
 								</TableCell>
 								{columns.map((column, colIndex) => {
-									const range = formatAcceptanceRange(column.minimumAcceptanceValue, column.maximumAcceptanceValue);
+									const range = cellTypes ? null : formatCellSpecRange(column);
 									return (
 										<TableCell
 											key={`${column.name}-${colIndex}`}
@@ -84,14 +89,14 @@ const TableConfigPreview = ({
 												variant="caption"
 												sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}
 											>
-												{formatOkNotOkTypeForDisplay(column.type)}
+												{cellTypes ? '' : fixedTableDataTypeLabel(column.type)}
 											</Typography>
 											{range && (
 												<Typography
 													variant="caption"
 													sx={{ display: 'block', color: '#5e35b1', fontWeight: 500, fontSize: '0.65rem' }}
 												>
-													Range: {range}
+													{range}
 												</Typography>
 											)}
 										</TableCell>
@@ -105,6 +110,8 @@ const TableConfigPreview = ({
 									<TableCell sx={{ textAlign: 'center', color: '#999', fontSize: '0.7rem' }}>{rowIndex + 1}</TableCell>
 									{columns.map((column, colIndex) => {
 										const cell = row.cells?.[column.name] || { value: '', readOnly: false };
+										const spec = cellTypes ? resolveFixedTableCellSpec(config, column, cell) : null;
+										const specRange = spec ? formatCellSpecRange(spec) : null;
 										return (
 											<TableCell key={`${column.name}-${colIndex}`} sx={{ fontSize: '0.8rem' }}>
 												<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -121,6 +128,15 @@ const TableConfigPreview = ({
 														{cell.value || (cell.readOnly ? '-' : 'Editable')}
 													</Typography>
 												</Box>
+												{spec && (
+													<Typography
+														variant="caption"
+														sx={{ display: 'block', color: '#5e35b1', fontWeight: 500, fontSize: '0.65rem' }}
+													>
+														{fixedTableDataTypeLabel(spec.type)}
+														{specRange ? ` · ${specRange}` : ''}
+													</Typography>
+												)}
 											</TableCell>
 										);
 									})}

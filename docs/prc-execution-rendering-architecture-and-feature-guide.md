@@ -357,11 +357,35 @@ The fixed-table feature allows masters to define a table with a fixed number of 
 All fixed-table definitions use a common `TableConfig` interface defined in `src/types/table-config.types.ts`:
 
 ```typescript
-interface TableColumn { name: string; type: 'text' | 'number' | 'ok/not ok' | 'datetime'; }
-interface TableCellConfig { value: string; readOnly: boolean; }
+type TableCellType = 'text' | 'number' | 'integer' | 'range' | 'exact value' | 'boolean'
+  | 'ok/not ok' | 'date' | 'datetime' | 'shift' | 'workstation';
+interface TableColumn { name: string; type: TableCellType; minimumAcceptanceValue?; maximumAcceptanceValue?; }
+interface TableCellConfig { value: string; readOnly: boolean; type?: TableCellType; minimumAcceptanceValue?; maximumAcceptanceValue?; }
 interface TableRowConfig { cells: Record<string, TableCellConfig>; }
-interface TableConfig { columns: TableColumn[]; rows: TableRowConfig[]; }
+interface TableConfig { columns: TableColumn[]; rows: TableRowConfig[]; cellTypes?: boolean; }
 ```
+
+### Per-cell data types (inspection `fixed-table`)
+
+The fixed-table editor (`create-inspection/components/FixedTableConfigEditor.tsx`) has a **"Set data type per
+cell"** toggle, stored as `tableConfig.cellTypes` in the existing JSONB column (no backend change).
+
+- **Off** (default, and every table saved before the toggle existed): each column's `type` and range apply to all
+  of its cells, as before.
+- **On**: every cell carries its own `type` and, for numeric types, its own range; columns only need a name.
+  Turning it on seeds each cell from its column, so nothing changes until a cell is edited; turning it off strips
+  the cell types again.
+
+Data types (`FIXED_TABLE_DATA_TYPE_OPTIONS` in `src/utils/fixedTableCellSpec.ts`, used for columns and cells alike):
+Text, Number, Integer (whole numbers only), Range (Min and Max required), Exact Value (one target, stored as
+min = max), Boolean (Yes/No), OK/Not OK, Date, Date & Time, Shift, Workstation (the plant's workstations). Number,
+Integer, Range and Exact Value are checked against their range at execution; an out-of-range reading needs the
+deviation acknowledged, and the saved row carries `<col>_validationStatus` / `_minimumAcceptanceValue` /
+`_maximumAcceptanceValue` / `_acknowledged` exactly as before.
+
+Every consumer (master schema, `TableConfigPreview`, `InspectionStep`, `StepPreview`) reads a cell's type and range
+through `resolveFixedTableCellSpec(tableConfig, column, cell)`, which returns the cell's own spec when `cellTypes`
+is on and the column's otherwise.
 
 ### Sequence Master Integration
 

@@ -66,6 +66,8 @@ import {
 } from '../../../../../utils/criticality';
 import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
 import { formatTableCellDisplay } from '../../../../../utils/formatTableCellDisplay';
+import { fixedTableDataTypeLabel, resolveFixedTableCellSpec } from '../../../../../utils/fixedTableCellSpec';
+import type { TableConfig } from '../../../../../types/table-config.types';
 import { LIST_TYPE_KEY, parseListSavedValue } from '../../../../../utils/listConfig';
 import type { ListConfig } from '../../../../../types/list-config.types';
 import ListValuePreview from './ListValuePreview';
@@ -1834,10 +1836,7 @@ const StepPreview = ({
 																	{parameterName} - Fixed Table Data
 																</Typography>
 																{(() => {
-																	const tc = (paramMeta as Record<string, unknown>)?.tableConfig as {
-																		columns?: Array<{ name: string; type: string }>;
-																		rows?: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }>;
-																	} | null;
+																	const tc = (paramMeta as Record<string, unknown>)?.tableConfig as Partial<TableConfig> | null;
 																	const rows = readStoredRowList<Record<string, string>>(
 																		(parameterData as Record<string, unknown>).value
 																	);
@@ -1860,7 +1859,7 @@ const StepPreview = ({
 																							<TableCell key={col.name} sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75, px: 1, borderRight: '1px solid #e0e0e0' }}>
 																								{col.name}
 																								<Typography variant="caption" sx={{ display: 'block', color: '#666', fontWeight: 400, fontSize: '0.65rem' }}>
-																									{col.type}
+																									{tc.cellTypes ? '' : fixedTableDataTypeLabel(col.type)}
 																								</Typography>
 																							</TableCell>
 																						))}
@@ -1875,7 +1874,10 @@ const StepPreview = ({
 																							{tc.columns!.map(col => {
 																								const cellConfig = tc.rows?.[rIdx]?.cells?.[col.name];
 																								const cellValue = row[col.name] || '';
-																								const displayValue = formatTableCellDisplay(col.type, cellValue);
+																								const displayValue = formatTableCellDisplay(
+																									resolveFixedTableCellSpec(tc, col, cellConfig).type,
+																									cellValue
+																								);
 																								return (
 																									<TableCell
 																										key={col.name}

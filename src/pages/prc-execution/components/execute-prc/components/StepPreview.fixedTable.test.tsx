@@ -116,4 +116,28 @@ describe('StepPreview fixed-table rows', () => {
 		expect(screen.getByText('JAGADESHAN P')).toBeInTheDocument();
 		expect(screen.getByText('29/08/2026')).toBeInTheDocument();
 	});
+
+	it('formats each cell by its own data type when per-cell types are on', () => {
+		const preview = previewWith([{ ...savedRow, 'Employee Name': '2026-09-01' }]);
+		const tableConfig = (preview.inspectionParameters as unknown as Array<{ tableConfig: Record<string, unknown> }>)[0]
+			.tableConfig;
+		tableConfig.cellTypes = true;
+		(tableConfig.rows as Array<{ cells: Record<string, Record<string, unknown>> }>)[0].cells['Employee Name'].type =
+			'date';
+		render(
+			<StepPreview
+				previewData={preview}
+				onBackToStep={noop}
+				onApproveProduction={noop}
+				onApproveCTQ={noop}
+				onPartialApproveCTQ={noop}
+				onProceedToNext={noop}
+				embeddedReportMode
+			/>
+		);
+
+		expect(screen.getByText('01/09/2026')).toBeInTheDocument();
+		// The column header no longer claims a type the cells may not share.
+		expect(screen.queryByText('Text')).not.toBeInTheDocument();
+	});
 });
