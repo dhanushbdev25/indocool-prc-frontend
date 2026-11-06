@@ -9,8 +9,8 @@ import { formatAcceptanceRange } from '../components/masters/acceptanceRange';
  */
 export const FIXED_TABLE_DATA_TYPE_OPTIONS: ReadonlyArray<{ value: TableCellType; label: string }> = [
 	{ value: 'text', label: 'Text' },
-	{ value: 'number', label: 'Number' },
-	{ value: 'integer', label: 'Integer' },
+	// { value: 'number', label: 'Number' },
+	// { value: 'integer', label: 'Integer' },
 	{ value: 'range', label: 'Range' },
 	{ value: 'exact value', label: 'Exact Value' },
 	{ value: 'boolean', label: 'Boolean' },

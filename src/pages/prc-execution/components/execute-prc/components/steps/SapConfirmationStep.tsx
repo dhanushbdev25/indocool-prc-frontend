@@ -236,8 +236,8 @@ const SapConfirmationStep = ({
 
 	const [retrigger, { isLoading: isRetriggering }] = useRetriggerSapConfirmationsMutation();
 
-	const grLog = logs.find(l => l.operationId === 'GR');
-	const grSucceeded = Boolean(grLog?.success);
+	const grLogs = logs.filter(l => l.operationId === 'GR');
+	const grSucceeded = grLogs.some(l => l.success === true);
 	const canComplete = grSucceeded && allOtherStepsComplete;
 
 	const handleRetrigger = async () => {
