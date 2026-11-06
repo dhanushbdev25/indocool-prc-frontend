@@ -26,7 +26,7 @@ import { ReorderControls } from '../../../../../../components/masters';
 import type { TableCellConfig, TableCellType, TableColumn } from '../../../../../../types/table-config.types';
 import {
 	BOOLEAN_CELL_OPTIONS,
-	FIXED_TABLE_DATA_TYPE_OPTIONS,
+	fixedTableDataTypeOptionsFor,
 	isNumericCellType,
 	resolveFixedTableCellSpec,
 	validateCellSpecRange,
@@ -78,7 +78,7 @@ const DataTypeFields = ({
 					'& .MuiSelect-select': { py: '6px', fontSize: '0.875rem' }
 				}}
 			>
-				{FIXED_TABLE_DATA_TYPE_OPTIONS.map(opt => (
+				{fixedTableDataTypeOptionsFor(type).map(opt => (
 					<MenuItem key={opt.value} value={opt.value}>
 						{opt.label}
 					</MenuItem>

@@ -69,6 +69,23 @@ describe('FixedTableConfigEditor per-cell data types', () => {
 		expect(latest?.rows[0].cells.Reading).toEqual({ value: '', readOnly: false, type: 'boolean' });
 	});
 
+	it('keeps showing a saved number column, while new types leave number and integer out', () => {
+		render(<Harness onConfig={() => {}} />);
+		const columnType = screen.getByRole('combobox', { name: 'Data type' });
+		expect(columnType).toHaveTextContent('Number');
+
+		fireEvent.mouseDown(columnType);
+		const options = within(screen.getByRole('listbox'));
+		expect(options.getByText('Number')).toBeInTheDocument();
+		expect(options.queryByText('Integer')).not.toBeInTheDocument();
+		fireEvent.click(options.getByText('Text'));
+
+		fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Data type' }));
+		const afterChange = within(screen.getByRole('listbox'));
+		expect(afterChange.queryByText('Number')).not.toBeInTheDocument();
+		expect(afterChange.queryByText('Integer')).not.toBeInTheDocument();
+	});
+
 	it('drops the cell types again when the toggle is turned off', () => {
 		render(
 			<Harness

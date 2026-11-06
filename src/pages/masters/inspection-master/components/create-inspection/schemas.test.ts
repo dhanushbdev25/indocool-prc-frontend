@@ -25,6 +25,24 @@ describe('inspection fixed-table tableConfig', () => {
 			})
 		).resolves.toBeDefined();
 	});
+
+	// Number is no longer offered for new columns, but saved tables still use it (inspection 1600).
+	it('still accepts a saved number column', async () => {
+		await expect(
+			inspectionParameterSchema.validate({
+				...defaultInspectionParameter,
+				parameterName: 'INSPECTED BY',
+				type: 'fixed-table',
+				tableConfig: {
+					columns: [
+						{ name: 'DATE', type: 'date' },
+						{ name: 'EMPLOYEE CODE', type: 'number' }
+					],
+					rows: [{ cells: { col_0: { value: '', readOnly: false }, col_1: { value: '', readOnly: false } } }]
+				}
+			})
+		).resolves.toBeDefined();
+	});
 });
 
 describe('inspection fixed-table per-cell data types', () => {

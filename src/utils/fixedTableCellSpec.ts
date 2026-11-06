@@ -2,15 +2,17 @@ import type { TableCellConfig, TableCellType, TableColumn } from '../types/table
 import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from './okNotOkLabels';
 import { formatAcceptanceRange } from '../components/masters/acceptanceRange';
 
+type FixedTableDataTypeOption = { value: TableCellType; label: string };
+
 /**
- * Every scalar data type the portal offers anywhere (inspection parameters, table columns, list
- * items, sequence target values), offered for fixed-table columns and, with per-cell types on,
- * for each cell.
+ * Every data type a fixed-table column or cell can hold: every scalar data type the portal offers
+ * anywhere (inspection parameters, table columns, list items, sequence target values). Saved
+ * tables may use any of these, so validation, execution and the previews accept all of them.
  */
-export const FIXED_TABLE_DATA_TYPE_OPTIONS: ReadonlyArray<{ value: TableCellType; label: string }> = [
+const ALL_FIXED_TABLE_DATA_TYPE_OPTIONS: readonly FixedTableDataTypeOption[] = [
 	{ value: 'text', label: 'Text' },
-	// { value: 'number', label: 'Number' },
-	// { value: 'integer', label: 'Integer' },
+	{ value: 'number', label: 'Number' },
+	{ value: 'integer', label: 'Integer' },
 	{ value: 'range', label: 'Range' },
 	{ value: 'exact value', label: 'Exact Value' },
 	{ value: 'boolean', label: 'Boolean' },
@@ -21,12 +23,29 @@ export const FIXED_TABLE_DATA_TYPE_OPTIONS: ReadonlyArray<{ value: TableCellType
 	{ value: 'workstation', label: 'Workstation' }
 ];
 
-export const FIXED_TABLE_DATA_TYPES: readonly TableCellType[] = FIXED_TABLE_DATA_TYPE_OPTIONS.map(o => o.value);
+/**
+ * Types no longer offered for new columns or cells (Range and Exact Value replace them). They
+ * stay valid so the many tables already saved with a number column still load, save and execute.
+ */
+const RETIRED_FIXED_TABLE_DATA_TYPES: ReadonlySet<TableCellType> = new Set<TableCellType>(['number', 'integer']);
+
+/** The types offered in the editor's data type dropdown. */
+export const FIXED_TABLE_DATA_TYPE_OPTIONS: readonly FixedTableDataTypeOption[] =
+	ALL_FIXED_TABLE_DATA_TYPE_OPTIONS.filter(option => !RETIRED_FIXED_TABLE_DATA_TYPES.has(option.value));
+
+/** The offered types plus `current` when it is a retired one, so a saved column still shows its type. */
+export const fixedTableDataTypeOptionsFor = (current: string | undefined): readonly FixedTableDataTypeOption[] =>
+	ALL_FIXED_TABLE_DATA_TYPE_OPTIONS.filter(
+		option => !RETIRED_FIXED_TABLE_DATA_TYPES.has(option.value) || option.value === current
+	);
+
+/** Every type a saved column or cell may have, retired ones included. */
+export const FIXED_TABLE_DATA_TYPES: readonly TableCellType[] = ALL_FIXED_TABLE_DATA_TYPE_OPTIONS.map(o => o.value);
 
 export const BOOLEAN_CELL_OPTIONS = ['Yes', 'No'] as const;
 
 export const fixedTableDataTypeLabel = (type: string | undefined): string =>
-	FIXED_TABLE_DATA_TYPE_OPTIONS.find(option => option.value === type)?.label ?? type ?? '';
+	ALL_FIXED_TABLE_DATA_TYPE_OPTIONS.find(option => option.value === type)?.label ?? type ?? '';
 
 /** Types whose reading is a number checked against a min/max (an exact value is min = max). */
 export const isNumericCellType = (type: string | undefined): boolean =>

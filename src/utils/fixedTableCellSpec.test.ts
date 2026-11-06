@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+	FIXED_TABLE_DATA_TYPE_OPTIONS,
+	FIXED_TABLE_DATA_TYPES,
+	fixedTableDataTypeLabel,
+	fixedTableDataTypeOptionsFor,
 	formatCellSpecRange,
 	resolveFixedTableCellSpec,
 	validateCellSpecRange,
@@ -8,6 +12,23 @@ import {
 
 const column = { type: 'number' as const, minimumAcceptanceValue: '5', maximumAcceptanceValue: '10' };
 const cell = { value: '', readOnly: false, type: 'text' as const };
+
+describe('fixed-table data type options', () => {
+	const values = (options: readonly { value: string }[]) => options.map(option => option.value);
+
+	it('no longer offers number or integer for new columns and cells', () => {
+		expect(values(FIXED_TABLE_DATA_TYPE_OPTIONS)).not.toContain('number');
+		expect(values(FIXED_TABLE_DATA_TYPE_OPTIONS)).not.toContain('integer');
+		expect(values(fixedTableDataTypeOptionsFor('text'))).toEqual(values(FIXED_TABLE_DATA_TYPE_OPTIONS));
+	});
+
+	it('still accepts, labels and shows number and integer on saved columns', () => {
+		expect(FIXED_TABLE_DATA_TYPES).toEqual(expect.arrayContaining(['number', 'integer']));
+		expect(fixedTableDataTypeLabel('number')).toBe('Number');
+		expect(values(fixedTableDataTypeOptionsFor('number'))).toContain('number');
+		expect(values(fixedTableDataTypeOptionsFor('number'))).not.toContain('integer');
+	});
+});
 
 describe('resolveFixedTableCellSpec', () => {
 	it('uses the column when per-cell types are off', () => {
