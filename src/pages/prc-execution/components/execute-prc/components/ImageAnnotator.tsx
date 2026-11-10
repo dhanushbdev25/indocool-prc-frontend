@@ -43,6 +43,7 @@ import {
 	getDefectStyle,
 	countAnnotationsByCategory
 } from './defectAnnotationStyles';
+import { calculateCanvasSize } from './annotationCanvasSize';
 import { GATE_FIELD_LABEL } from '../../../../../utils/gateLabels';
 import { formatInspectionCriticality } from '../../../../../utils/criticality';
 
@@ -81,38 +82,6 @@ type AnnotationMode = 'none' | 'pan' | 'point' | 'polygon' | 'circle';
 
 const SCALE_MIN = 0.25;
 const SCALE_MAX = 5;
-
-function calculateCanvasSize(
-	imgWidth: number,
-	imgHeight: number,
-	opts?: { maxWidth?: number; maxHeight?: number; minWidth?: number; minHeight?: number }
-) {
-	const maxWidth = opts?.maxWidth ?? 800;
-	const maxHeight = opts?.maxHeight ?? 600;
-	const minWidth = opts?.minWidth ?? 400;
-	const minHeight = opts?.minHeight ?? 300;
-
-	let canvasWidth = imgWidth;
-	let canvasHeight = imgHeight;
-
-	if (imgWidth > maxWidth || imgHeight > maxHeight) {
-		const scaleX = maxWidth / imgWidth;
-		const scaleY = maxHeight / imgHeight;
-		const s = Math.min(scaleX, scaleY);
-		canvasWidth = imgWidth * s;
-		canvasHeight = imgHeight * s;
-	}
-
-	if (imgWidth < minWidth || imgHeight < minHeight) {
-		const scaleX = minWidth / imgWidth;
-		const scaleY = minHeight / imgHeight;
-		const s = Math.min(scaleX, scaleY);
-		canvasWidth = imgWidth * s;
-		canvasHeight = imgHeight * s;
-	}
-
-	return { width: Math.round(canvasWidth), height: Math.round(canvasHeight) };
-}
 
 const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	images,

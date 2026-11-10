@@ -16,6 +16,7 @@ import {
 import { ZoomIn, ZoomOut, Fullscreen, Image as ImageIcon, PanTool } from '@mui/icons-material';
 import { type AnnotationRegion } from '../../../types/execution.types';
 import { getDefectStyle } from './defectAnnotationStyles';
+import { calculateCanvasSize } from './annotationCanvasSize';
 import { useAuthenticatedFileUrl } from '../../../../../hooks/useAuthenticatedFileUrl';
 
 interface ImageDisplayProps {
@@ -44,7 +45,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	const [konvaImage, setKonvaImage] = useState<HTMLImageElement | null>(null);
 	const [scale, setScale] = useState(1);
 	const [position, setPosition] = useState({ x: 0, y: 0 });
-	const [canvasSize, setCanvasSize] = useState({ width: 300, height: 200 });
+	const [canvasSize, setCanvasSize] = useState({ width: 600, height: 400 });
 	const [fullscreenCanvasSize, setFullscreenCanvasSize] = useState({ width: 800, height: 600 });
 	const [isDragging, setIsDragging] = useState(false);
 	const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -84,16 +85,9 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 			setImageLoaded(true);
 			setImageError(false);
 
-			const maxWidth = 300;
-			const maxHeight = 200;
+			// Same size as the annotator's canvas, so the drawing is shown as it was drawn.
+			setCanvasSize(calculateCanvasSize(img.width, img.height));
 			const aspectRatio = img.width / img.height;
-			let width = maxWidth;
-			let height = maxWidth / aspectRatio;
-			if (height > maxHeight) {
-				height = maxHeight;
-				width = maxHeight * aspectRatio;
-			}
-			setCanvasSize({ width, height });
 
 			const fsMaxW = typeof window !== 'undefined' ? Math.min(1200, window.innerWidth - 48) : 1200;
 			const fsMaxH = typeof window !== 'undefined' ? Math.min(900, window.innerHeight - 200) : 900;
@@ -452,15 +446,18 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 						display: 'flex',
 						justifyContent: 'center',
 						alignItems: 'center',
+						// Drawing size where there is room; scales down to fit a narrower space (print, small screens).
 						width: canvasSize.width,
-						height: canvasSize.height
+						maxWidth: '100%',
+						aspectRatio: `${canvasSize.width} / ${canvasSize.height}`,
+						'& > div, & .konvajs-content, & canvas': { width: '100% !important', height: '100% !important' }
 					}}
 				>
 					{!imageLoaded && !imageError && (
 						<Box
 							sx={{
-								width: canvasSize.width,
-								height: canvasSize.height,
+								width: '100%',
+								height: '100%',
 								display: 'flex',
 								alignItems: 'center',
 								justifyContent: 'center',
@@ -473,8 +470,8 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 					{imageError && (
 						<Box
 							sx={{
-								width: canvasSize.width,
-								height: canvasSize.height,
+								width: '100%',
+								height: '100%',
 								display: 'flex',
 								alignItems: 'center',
 								justifyContent: 'center',
