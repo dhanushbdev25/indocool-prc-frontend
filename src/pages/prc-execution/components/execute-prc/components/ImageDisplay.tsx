@@ -16,8 +16,9 @@ import {
 import { ZoomIn, ZoomOut, Fullscreen, Image as ImageIcon, PanTool } from '@mui/icons-material';
 import { type AnnotationRegion } from '../../../types/execution.types';
 import { getDefectStyle } from './defectAnnotationStyles';
-import { calculateCanvasSize } from './annotationCanvasSize';
+import { calculateCanvasSize, fitCanvasToBox } from './annotationCanvasSize';
 import { useAuthenticatedFileUrl } from '../../../../../hooks/useAuthenticatedFileUrl';
+import { useElementSize } from '../../../../../hooks/useElementSize';
 
 interface ImageDisplayProps {
 	imageUrl: string;
@@ -30,6 +31,8 @@ interface ImageDisplayProps {
 
 const SCALE_MIN = 0.25;
 const SCALE_MAX = 5;
+/** The 1px border on each side of the image frame. */
+const FRAME_BORDER = 2;
 
 const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	imageUrl,
@@ -46,7 +49,6 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	const [scale, setScale] = useState(1);
 	const [position, setPosition] = useState({ x: 0, y: 0 });
 	const [canvasSize, setCanvasSize] = useState({ width: 600, height: 400 });
-	const [fullscreenCanvasSize, setFullscreenCanvasSize] = useState({ width: 800, height: 600 });
 	const [isDragging, setIsDragging] = useState(false);
 	const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 	const [showFullscreen, setShowFullscreen] = useState(false);
@@ -55,6 +57,15 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	const stageFullRef = useRef<Konva.Stage>(null);
 	const imageInlineRef = useRef<Konva.Image>(null);
 	const imageFullRef = useRef<Konva.Image>(null);
+	// Fullscreen fills the free area of the dialog and follows it as the window resizes.
+	const [fullscreenAreaRef, fullscreenArea] = useElementSize<HTMLDivElement>();
+	const fullscreenCanvasSize = konvaImage
+		? fitCanvasToBox(
+				konvaImage.width,
+				konvaImage.height,
+				fullscreenArea && { width: fullscreenArea.width - FRAME_BORDER, height: fullscreenArea.height - FRAME_BORDER }
+			)
+		: null;
 
 	useEffect(() => {
 		if (urlLoading) {
@@ -87,17 +98,6 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 
 			// Same size as the annotator's canvas, so the drawing is shown as it was drawn.
 			setCanvasSize(calculateCanvasSize(img.width, img.height));
-			const aspectRatio = img.width / img.height;
-
-			const fsMaxW = typeof window !== 'undefined' ? Math.min(1200, window.innerWidth - 48) : 1200;
-			const fsMaxH = typeof window !== 'undefined' ? Math.min(900, window.innerHeight - 200) : 900;
-			let fw = fsMaxW;
-			let fh = fw / aspectRatio;
-			if (fh > fsMaxH) {
-				fh = fsMaxH;
-				fw = fh * aspectRatio;
-			}
-			setFullscreenCanvasSize({ width: Math.round(fw), height: Math.round(fh) });
 		};
 
 		img.onerror = () => {
@@ -367,7 +367,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 	);
 
 	const renderFullscreenContent = () => (
-		<Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+		<Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 			<Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, flexWrap: 'wrap' }}>
 				<ImageIcon color="primary" />
 				<Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -383,7 +383,10 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 				</Typography>
 			</Box>
 
-			<Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto' }}>
+			<Box
+				ref={fullscreenAreaRef}
+				sx={{ flex: 1, minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}
+			>
 				<Box
 					sx={{
 						border: '1px solid #e0e0e0',
@@ -402,7 +405,9 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 							<Typography color="error">Failed to load image</Typography>
 						</Box>
 					)}
-					{imageLoaded && renderStage(fullscreenCanvasSize.width, fullscreenCanvasSize.height, stageFullRef, imageFullRef)}
+					{imageLoaded &&
+						fullscreenCanvasSize &&
+						renderStage(fullscreenCanvasSize.width, fullscreenCanvasSize.height, stageFullRef, imageFullRef)}
 				</Box>
 			</Box>
 			{zoomControls(true)}
@@ -494,7 +499,7 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 
 			<Dialog open={showFullscreen} onClose={() => setShowFullscreen(false)} fullScreen>
 				<DialogTitle>{originalFileName}</DialogTitle>
-				<DialogContent sx={{ p: 2 }}>{renderFullscreenContent()}</DialogContent>
+				<DialogContent sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>{renderFullscreenContent()}</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setShowFullscreen(false)}>Close</Button>
 				</DialogActions>

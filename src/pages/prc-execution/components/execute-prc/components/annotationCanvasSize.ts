@@ -23,3 +23,17 @@ export function calculateCanvasSize(
 
 	return { width: Math.round(imgWidth * s), height: Math.round(imgHeight * s) };
 }
+
+/**
+ * Largest size with the image's aspect ratio that fits in a box (scales up as well as down), for
+ * the fullscreen views that should fill the space they have. Null until the box has been measured.
+ */
+export function fitCanvasToBox(
+	imgWidth: number,
+	imgHeight: number,
+	box: { width: number; height: number } | null
+): { width: number; height: number } | null {
+	if (!box || imgWidth <= 0 || imgHeight <= 0 || box.width <= 0 || box.height <= 0) return null;
+	const s = Math.min(box.width / imgWidth, box.height / imgHeight);
+	return { width: Math.floor(imgWidth * s), height: Math.floor(imgHeight * s) };
+}

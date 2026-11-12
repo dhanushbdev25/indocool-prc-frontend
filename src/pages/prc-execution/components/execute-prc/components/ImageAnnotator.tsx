@@ -43,7 +43,8 @@ import {
 	getDefectStyle,
 	countAnnotationsByCategory
 } from './defectAnnotationStyles';
-import { calculateCanvasSize } from './annotationCanvasSize';
+import { calculateCanvasSize, fitCanvasToBox } from './annotationCanvasSize';
+import { useElementSize } from '../../../../../hooks/useElementSize';
 import { GATE_FIELD_LABEL } from '../../../../../utils/gateLabels';
 import { formatInspectionCriticality } from '../../../../../utils/criticality';
 
@@ -82,6 +83,8 @@ type AnnotationMode = 'none' | 'pan' | 'point' | 'polygon' | 'circle';
 
 const SCALE_MIN = 0.25;
 const SCALE_MAX = 5;
+/** The 1px border on each side of the canvas frame. */
+const FRAME_BORDER = 2;
 
 const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	images,
@@ -124,7 +127,18 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 	const [position, setPosition] = useState({ x: 0, y: 0 });
 	const [isDragging, setIsDragging] = useState(false);
 	const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-	const [canvasSize, setCanvasSize] = useState({ width: 600, height: 400 });
+	const [inlineCanvasSize, setInlineCanvasSize] = useState({ width: 600, height: 400 });
+	// Fullscreen fills the free area of the dialog and follows it as the window resizes.
+	const [fullscreenAreaRef, fullscreenArea] = useElementSize<HTMLDivElement>();
+	const fullscreenCanvasSize =
+		showFullscreen && konvaImage
+			? fitCanvasToBox(
+					konvaImage.width,
+					konvaImage.height,
+					fullscreenArea && { width: fullscreenArea.width - FRAME_BORDER, height: fullscreenArea.height - FRAME_BORDER }
+				)
+			: null;
+	const canvasSize = fullscreenCanvasSize ?? inlineCanvasSize;
 
 	const stageRef = useRef<Konva.Stage>(null);
 	const imageRef = useRef<Konva.Image>(null);
@@ -184,12 +198,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 		const img = new window.Image();
 		img.onload = () => {
 			setImageSize({ width: img.width, height: img.height });
-			const expanded = showFullscreen;
-			const optimalSize = calculateCanvasSize(img.width, img.height, {
-				maxWidth: expanded ? 1200 : 800,
-				maxHeight: expanded ? 900 : 600
-			});
-			setCanvasSize(optimalSize);
+			setInlineCanvasSize(calculateCanvasSize(img.width, img.height));
 			setImageLoaded(true);
 			setKonvaImage(img);
 		};
@@ -199,7 +208,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 			setKonvaImage(null);
 		};
 		img.src = displayImageUrl;
-	}, [displayImageUrl, imageUrlLoading, showFullscreen]);
+	}, [displayImageUrl, imageUrlLoading]);
 
 	const isPanSurface = useCallback(
 		(target: Konva.Node, stage: Konva.Stage | null) => {
@@ -1122,7 +1131,7 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 						<Close />
 					</IconButton>
 				</DialogTitle>
-				<DialogContent sx={{ pt: 0 }}>
+				<DialogContent sx={{ pt: 0, display: 'flex', flexDirection: 'column' }}>
 					{images.length > 1 && (
 						<Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
 							{images.map((_image, index) => (
@@ -1143,9 +1152,39 @@ const ImageAnnotator: React.FC<ImageAnnotatorProps> = ({
 						{renderModeButtons()}
 						{renderZoomControls()}
 					</Box>
-					{renderCanvasBlock()}
-					<Box sx={{ mt: 2 }}>{renderDefectSummary()}</Box>
-					<Box sx={{ mt: 2 }}>{renderAnnotationList()}</Box>
+					<Box
+						sx={{
+							flex: 1,
+							minHeight: 0,
+							display: 'flex',
+							flexDirection: { xs: 'column', md: 'row' },
+							gap: 2
+						}}
+					>
+						<Box
+							ref={fullscreenAreaRef}
+							sx={{
+								flex: { md: '1 1 0' },
+								minWidth: 0,
+								minHeight: 0,
+								height: { xs: '60vh', md: 'auto' },
+								flexShrink: 0,
+								display: 'flex',
+								justifyContent: 'center',
+								alignItems: 'center',
+								overflow: 'hidden'
+							}}
+						>
+							{renderCanvasBlock()}
+						</Box>
+						{/* Side panel only when it has something to show, so an unmarked image gets the full width. */}
+						{(getCurrentImageAnnotations().length > 0 || Object.keys(defectSummary).length > 0) && (
+							<Box sx={{ width: { md: 360 }, flexShrink: 0, overflowY: { md: 'auto' } }}>
+								{renderDefectSummary()}
+								<Box sx={{ mt: 2 }}>{renderAnnotationList()}</Box>
+							</Box>
+						)}
+					</Box>
 				</DialogContent>
 				<DialogActions>
 					<Button onClick={() => setShowFullscreen(false)}>Close</Button>
