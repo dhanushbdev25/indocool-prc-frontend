@@ -20,13 +20,8 @@ import {
 	Paper
 } from '@mui/material';
 import { Add, Delete, CheckCircle, Warning, Error as ErrorIcon, Lock as LockIcon } from '@mui/icons-material';
-import dayjs from 'dayjs';
-import {
-	OperationalDatePicker,
-	OperationalDateTimePicker
-} from '../../../../../../components/common/OperationalDatePicker';
+
 import { type TimelineStep, type ExecutionData, type FormData } from '../../../../types/execution.types';
-import { formatDateColumnStorageValue } from '../../../../../../utils/formatTableCellDisplay';
 import {
 	OK_NOT_OK_NEGATIVE_LABEL,
 	OK_NOT_OK_OPTIONS,
@@ -46,6 +41,13 @@ import { useFetchWorkstationsComboQuery } from '../../../../../../store/api/busi
 import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
 import { ERROR_ANCHOR_CLASS } from '../../../../utils/scrollToFirstError';
 import ListValueInput from '../ListValueInput';
+import FixedTableCellInput from '../FixedTableCellInput';
+import {
+	buildDefaultFixedTableRows,
+	enrichFixedTableRows,
+	validateFixedTableRows
+} from '../../../../utils/fixedTableExecution';
+import { fixedTableDataTypeLabel, resolveFixedTableCellSpec } from '../../../../../../utils/fixedTableCellSpec';
 import type { ListValueState, ListValues } from '../../../../../../types/list-config.types';
 import {
 	LIST_TYPE_KEY,
@@ -55,8 +57,6 @@ import {
 	updateListValue,
 	validateListValues
 } from '../../../../../../utils/listConfig';
-
-const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
 
 interface SequenceStepProps {
 	step: TimelineStep;
@@ -149,6 +149,10 @@ const isNumericRangeStepWithBounds = (stepData: {
 	if (!isRangeOrExactTarget(stepData.targetValueType)) return false;
 	return getNumericMeasurementBounds(stepData) !== null;
 };
+
+/** Error and acknowledgement keys for one table cell. */
+const tableCellKey = (rowIdx: number, colName: string) => `table_${rowIdx}_${colName}`;
+const tableAckKey = (key: string) => `${key}_acknowledge`;
 
 const buildEmptyMeasurements = (n: number) => Array.from({ length: n }, (_, i) => ({ id: String(i + 1), value: '' }));
 
@@ -397,14 +401,7 @@ const SequenceStepForm = ({
 		if (initialData.tableData) return initialData.tableData;
 		const tc = step.stepData?.tableConfig;
 		if (!tc || step.stepData?.targetValueType !== 'table') return undefined;
-		return tc.rows.map(row => {
-			const rowObj: Record<string, string> = {};
-			tc.columns.forEach(col => {
-				const cell = row.cells[col.name];
-				rowObj[col.name] = cell?.readOnly ? cell.value : cell?.value || '';
-			});
-			return rowObj;
-		});
+		return buildDefaultFixedTableRows(tc);
 	}, [initialData.tableData, step.stepData?.tableConfig, step.stepData?.targetValueType]);
 
 	const [tableData, setTableData] = useState<Array<Record<string, string>> | undefined>(initTableData);
@@ -598,6 +595,18 @@ const SequenceStepForm = ({
 			updated[rowIndex] = { ...updated[rowIndex], [colName]: value };
 			return updated;
 		});
+		const key = tableCellKey(rowIndex, colName);
+		// A new reading is judged afresh, so an earlier acknowledgement no longer applies.
+		if (acknowledgments[key]) {
+			setAcknowledgments(prev => {
+				const next = { ...prev };
+				delete next[key];
+				return next;
+			});
+		}
+		if (errors[key] || errors[tableAckKey(key)]) {
+			setErrors(prev => ({ ...prev, [key]: '', [tableAckKey(key)]: '' }));
+		}
 	};
 
 	const validateForm = () => {
@@ -607,19 +616,10 @@ const SequenceStepForm = ({
 			: 'Please acknowledge the out-of-range value';
 
 		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
-			stepData.tableConfig.columns.forEach(col => {
-				tableData.forEach((row, rowIdx) => {
-					const rowConfig = stepData.tableConfig!.rows[rowIdx];
-					const cellConfig = rowConfig?.cells[col.name];
-					if (cellConfig?.readOnly) return;
-					const val = row[col.name];
-					if (!val || val.trim() === '') {
-						newErrors[`table_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} is required`;
-					} else if (col.type === 'number' && isNaN(parseFloat(val))) {
-						newErrors[`table_${rowIdx}_${col.name}`] = `Row ${rowIdx + 1}, ${col.name} must be a number`;
-					}
-				});
-			});
+			Object.assign(
+				newErrors,
+				validateFixedTableRows(stepData.tableConfig, tableData, acknowledgments, tableCellKey, tableAckKey)
+			);
 			setErrors(newErrors);
 			return Object.keys(newErrors).length === 0;
 		}
@@ -802,9 +802,9 @@ const SequenceStepForm = ({
 			return;
 		}
 
-		if (stepData.targetValueType === 'table' && tableData) {
+		if (stepData.targetValueType === 'table' && stepData.tableConfig && tableData) {
 			const formDataToSubmit: FormData = {
-				data: tableData,
+				data: enrichFixedTableRows(stepData.tableConfig, tableData, acknowledgments, tableCellKey),
 				stepId: stepData.stepId,
 				stepGroupId: stepData.stepGroupId,
 				prcTemplateStepId: stepData.prcTemplateStepId
@@ -923,7 +923,7 @@ const SequenceStepForm = ({
 					errorPrefix="list_"
 					disabled={isReadOnly}
 					workstationOptions={workstationOptions}
-					plantCode={plantCode}
+					plantCode={String(plantCode)}
 				/>
 			);
 		}
@@ -947,7 +947,7 @@ const SequenceStepForm = ({
 									<th key={col.name}>
 										{col.name}
 										<Typography variant="caption" sx={{ display: 'block', color: '#999', fontWeight: 400 }}>
-											{col.type}
+											{tc.cellTypes ? '' : fixedTableDataTypeLabel(col.type)}
 										</Typography>
 									</th>
 								))}
@@ -958,7 +958,7 @@ const SequenceStepForm = ({
 								<tr key={rowIdx}>
 									{tc.columns.map(col => {
 										const rowConfig = tc.rows[rowIdx];
-										const cellConfig = rowConfig?.cells[col.name];
+										const cellConfig = rowConfig?.cells?.[col.name];
 										const cellValue = row[col.name] || '';
 										const isCellReadOnly = cellConfig?.readOnly || isReadOnly;
 
@@ -972,141 +972,19 @@ const SequenceStepForm = ({
 											);
 										}
 
-										if (col.type === 'ok/not ok') {
-											return (
-												<td key={col.name}>
-													<RadioGroup
-														row
-														value={cellValue}
-														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
-														sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
-													>
-														{OK_NOT_OK_OPTIONS.map(option => (
-															<FormControlLabel
-																key={option.value}
-																value={option.value}
-																control={<Radio size="small" color={option.color} />}
-																label={option.label}
-															/>
-														))}
-													</RadioGroup>
-													{errors[`table_${rowIdx}_${col.name}`] && (
-														<Typography variant="caption" color="error" className={ERROR_ANCHOR_CLASS}>
-															{errors[`table_${rowIdx}_${col.name}`]}
-														</Typography>
-													)}
-												</td>
-											);
-										}
-
-										if (col.type === 'date') {
-											return (
-												<td key={col.name}>
-													<OperationalDatePicker
-														value={cellValue ? dayjs(cellValue) : null}
-														onChange={newValue => {
-															const formatted = formatDateColumnStorageValue(newValue);
-															handleTableCellChange(rowIdx, col.name, formatted);
-														}}
-														slotProps={{
-															textField: {
-																size: 'small',
-																fullWidth: true,
-																variant: 'outlined',
-																error: !!errors[`table_${rowIdx}_${col.name}`],
-																helperText: errors[`table_${rowIdx}_${col.name}`],
-																sx: { '& .MuiOutlinedInput-root': { borderRadius: '4px' } }
-															}
-														}}
-													/>
-												</td>
-											);
-										}
-
-										if (col.type === 'datetime') {
-											return (
-												<td key={col.name}>
-													<OperationalDateTimePicker
-														value={cellValue ? dayjs(cellValue) : null}
-														onChange={newValue => {
-															const formatted = newValue ? newValue.format('YYYY-MM-DDTHH:mm') : '';
-															handleTableCellChange(rowIdx, col.name, formatted);
-														}}
-														slotProps={{
-															textField: {
-																size: 'small',
-																fullWidth: true,
-																variant: 'outlined',
-																error: !!errors[`table_${rowIdx}_${col.name}`],
-																helperText: errors[`table_${rowIdx}_${col.name}`],
-																sx: { '& .MuiOutlinedInput-root': { borderRadius: '4px' } }
-															}
-														}}
-													/>
-												</td>
-											);
-										}
-
-										if (col.type === 'shift') {
-											return (
-												<td key={col.name}>
-													<TextField
-														select
-														size="small"
-														fullWidth
-														value={cellValue}
-														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
-														error={!!errors[`table_${rowIdx}_${col.name}`]}
-														helperText={errors[`table_${rowIdx}_${col.name}`]}
-														sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px' } }}
-													>
-														{SHIFT_OPTIONS.map(option => (
-															<MenuItem key={option} value={option}>
-																{option}
-															</MenuItem>
-														))}
-													</TextField>
-												</td>
-											);
-										}
-
-										if (col.type === 'workstation') {
-											return (
-												<td key={col.name}>
-													<TextField
-														select
-														size="small"
-														fullWidth
-														value={cellValue}
-														onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
-														error={!!errors[`table_${rowIdx}_${col.name}`]}
-														helperText={
-															errors[`table_${rowIdx}_${col.name}`] || (!plantCode ? 'No plant configured' : undefined)
-														}
-														disabled={isReadOnly || !plantCode}
-														sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px' } }}
-													>
-														{workstationOptions.map(option => (
-															<MenuItem key={String(option.value)} value={String(option.value)}>
-																{option.label}
-															</MenuItem>
-														))}
-													</TextField>
-												</td>
-											);
-										}
-
+										const errKey = tableCellKey(rowIdx, col.name);
 										return (
 											<td key={col.name}>
-												<TextField
-													size="small"
-													fullWidth
-													type={col.type === 'number' ? 'number' : 'text'}
+												<FixedTableCellInput
+													spec={resolveFixedTableCellSpec(tc, col, cellConfig)}
 													value={cellValue}
-													onChange={e => handleTableCellChange(rowIdx, col.name, e.target.value)}
-													error={!!errors[`table_${rowIdx}_${col.name}`]}
-													helperText={errors[`table_${rowIdx}_${col.name}`]}
-													sx={{ '& .MuiOutlinedInput-root': { borderRadius: '4px' } }}
+													onChange={value => handleTableCellChange(rowIdx, col.name, value)}
+													error={errors[errKey]}
+													ackError={errors[tableAckKey(errKey)]}
+													acknowledged={acknowledgments[errKey] || false}
+													onAcknowledgeChange={checked => handleAcknowledgmentChange(errKey, checked)}
+													disabled={isReadOnly}
+													plantCode={String(plantCode)}
 												/>
 											</td>
 										);

@@ -66,8 +66,12 @@ import {
 } from '../../../../../utils/criticality';
 import { sortByNumericOrder } from '../../../../../utils/orderedRecords';
 import { formatTableCellDisplay } from '../../../../../utils/formatTableCellDisplay';
-import { fixedTableDataTypeLabel, resolveFixedTableCellSpec } from '../../../../../utils/fixedTableCellSpec';
-import type { TableConfig } from '../../../../../types/table-config.types';
+import {
+	fixedTableDataTypeLabel,
+	formatSequenceTargetValueType,
+	resolveFixedTableCellSpec
+} from '../../../../../utils/fixedTableCellSpec';
+import type { TableColumn, TableConfig } from '../../../../../types/table-config.types';
 import { LIST_TYPE_KEY, parseListSavedValue } from '../../../../../utils/listConfig';
 import type { ListConfig } from '../../../../../types/list-config.types';
 import ListValuePreview from './ListValuePreview';
@@ -746,7 +750,7 @@ const StepPreview = ({
 											) : measurement.targetValueType === 'table' && Array.isArray(measurement.value) ? (
 												<Box>
 													<Chip
-														label={`Table (${measurement.value.length} rows)`}
+														label={`Fixed Table (${measurement.value.length} rows)`}
 														size="small"
 														sx={{ backgroundColor: '#f3e8ff', color: '#7b1fa2', fontSize: '0.7rem', height: 20 }}
 													/>
@@ -764,7 +768,7 @@ const StepPreview = ({
 														>
 															<thead>
 																<tr>
-																	{measurement.tableConfig.columns?.map((col: { name: string; type?: string }) => (
+																	{measurement.tableConfig.columns?.map((col: TableColumn) => (
 																		<th key={col.name}>{col.name}</th>
 																	))}
 																</tr>
@@ -772,9 +776,12 @@ const StepPreview = ({
 															<tbody>
 																{measurement.value.map((row: Record<string, string>, rIdx: number) => (
 																	<tr key={rIdx}>
-																		{measurement.tableConfig.columns?.map((col: { name: string; type?: string }) => {
+																		{measurement.tableConfig.columns?.map((col: TableColumn) => {
 																			const cellConfig = measurement.tableConfig.rows?.[rIdx]?.cells?.[col.name];
-																			const displayValue = formatTableCellDisplay(col.type, row[col.name]);
+																			const displayValue = formatTableCellDisplay(
+																		resolveFixedTableCellSpec(measurement.tableConfig, col, cellConfig).type,
+																		row[col.name]
+																	);
 																			return (
 																				<td
 																					key={col.name}
@@ -837,7 +844,7 @@ const StepPreview = ({
 												</Typography>
 											)}
 										</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{formatOkNotOkTypeForDisplay(measurement.targetValueType)}</TableCell>
+											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{formatSequenceTargetValueType(measurement.targetValueType)}</TableCell>
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
 												{measurement.evaluationMethod}
 											</TableCell>

@@ -50,6 +50,8 @@ export type {
 	FilterValue,
 	DateRangeFilterValue
 } from './filters';
+export { default as FixedTableEditor } from './FixedTableEditor';
+export type { FixedTableEditorProps } from './FixedTableEditor';
 export { default as ListConfigEditor } from './ListConfigEditor';
 export type { ListConfigEditorProps } from './ListConfigEditor';
 export { default as ListConfigPreview } from './ListConfigPreview';

@@ -1,6 +1,19 @@
 import * as yup from 'yup';
 import { CRITICALITY_TAGS } from '../../../../../utils/criticality';
 import { buildListConfigSchema } from '../../../../../utils/listConfigSchema';
+import { FIXED_TABLE_DATA_TYPES, findFixedTableSpecProblem } from '../../../../../utils/fixedTableCellSpec';
+import type { TableConfig } from '../../../../../types/table-config.types';
+
+/** A column's optional min/max; blank stays undefined, which execution reads as "no range". */
+const acceptanceBoundSchema = yup
+	.mixed()
+	.nullable()
+	.optional()
+	.transform(value => {
+		if (value === '' || value === null || value === undefined) return undefined;
+		const num = Number(value);
+		return isNaN(num) ? value : num;
+	});
 
 // Table configuration schemas
 const tableRowConfigSchema = yup.object({
@@ -23,13 +36,17 @@ const tableColumnSchema = yup.object({
 	type: yup
 		.string()
 		.required('Column type is required')
-		.oneOf(['text', 'number', 'ok/not ok', 'date', 'datetime', 'shift', 'workstation'], 'Invalid column type')
+		.oneOf([...FIXED_TABLE_DATA_TYPES], 'Invalid column type'),
+	minimumAcceptanceValue: acceptanceBoundSchema,
+	maximumAcceptanceValue: acceptanceBoundSchema
 });
 
 const tableConfigSchema = yup
 	.object({
 		columns: yup.array(tableColumnSchema).min(1, 'At least one column is required'),
-		rows: yup.array(tableRowConfigSchema).min(1, 'At least one row is required')
+		rows: yup.array(tableRowConfigSchema).min(1, 'At least one row is required'),
+		// Every cell carries its own data type and range (see resolveFixedTableCellSpec).
+		cellTypes: yup.boolean().optional()
 	})
 	.nullable()
 	.default(null);
@@ -85,12 +102,16 @@ export const processStepSchema = yup
 			then: schema =>
 				schema
 					.nonNullable()
-					.required('Table configuration is required when target value type is Table')
+					.required('Table configuration is required when target value type is Fixed Table')
 					.test('has-columns', 'At least one column is required', value => {
 						return value !== null && value !== undefined && Array.isArray(value.columns) && value.columns.length > 0;
 					})
 					.test('has-rows', 'At least one row is required', value => {
 						return value !== null && value !== undefined && Array.isArray(value.rows) && value.rows.length > 0;
+					})
+					.test('valid-data-types', 'Invalid data type or range', (value, ctx) => {
+						const problem = findFixedTableSpecProblem(value as Partial<TableConfig> | null | undefined);
+						return problem ? ctx.createError({ message: problem }) : true;
 					}),
 			otherwise: schema => schema.nullable().default(null)
 		}),

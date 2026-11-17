@@ -18,24 +18,14 @@ import {
 	AccordionDetails,
 	Card,
 	CardContent,
-	Chip,
-	Alert,
-	Table,
-	TableHead,
-	TableBody,
-	TableRow,
-	TableCell,
-	TableContainer,
-	Tooltip
+	Chip
 } from '@mui/material';
 import {
 	Add as AddIcon,
 	Delete as DeleteIcon,
 	ExpandMore as ExpandMoreIcon,
 	PlaylistAdd as StepIcon,
-	Group as GroupIcon,
-	Lock as LockIcon,
-	LockOpen as LockOpenIcon
+	Group as GroupIcon
 } from '@mui/icons-material';
 import {
 	Controller,
@@ -45,9 +35,10 @@ import {
 	FieldErrors,
 	useFormContext
 } from 'react-hook-form';
-import { SequenceStepGroupsProps, targetValueTypeOptions, tableColumnTypeOptions, uomOptions } from '../types';
-import { SequenceFormData } from '../schemas';
-import { CriticalityField, ListConfigEditor, ReorderControls } from '../../../../../../components/masters';
+import { SequenceStepGroupsProps, targetValueTypeOptions, uomOptions } from '../types';
+import { ProcessStepFormData, SequenceFormData } from '../schemas';
+import { CriticalityField, FixedTableEditor, ListConfigEditor, ReorderControls } from '../../../../../../components/masters';
+import type { TableConfig } from '../../../../../../types/table-config.types';
 import { getListItemProblems } from '../../../../../../utils/listConfigSchema';
 import { createListItem } from '../../../../../../utils/listConfig';
 import type { ListConfig } from '../../../../../../types/list-config.types';
@@ -378,350 +369,23 @@ const TableConfigEditor = ({ control, groupIndex, stepIndex }: TableConfigEditor
 			? tableConfigError.message
 			: typeof tableConfigError?.rows?.message === 'string'
 				? tableConfigError.rows.message
-				: undefined;
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const columns: Array<{ name: string; type: string }> = (tableConfig as any)?.columns || [];
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const rows: Array<{ cells: Record<string, { value: string; readOnly: boolean }> }> = (tableConfig as any)?.rows || [];
-
-	const setConfig = (newColumns: typeof columns, newRows: typeof rows) => {
-		setValue(tableConfigPath, { columns: newColumns, rows: newRows }, {
-			shouldDirty: true,
-			shouldTouch: true,
-			shouldValidate: true
-		});
-	};
-
-	const addColumn = () => {
-		const newColIndex = columns.length;
-		const newKey = `col_${newColIndex}`;
-		const newColumns = [...columns, { name: '', type: 'text' }];
-		const newRows = rows.map(row => ({
-			cells: {
-				...row.cells,
-				[newKey]: { value: '', readOnly: false }
-			}
-		}));
-		setConfig(newColumns, newRows.length > 0 ? newRows : []);
-	};
-
-	const removeColumn = (colIndex: number) => {
-		const col = columns[colIndex];
-		const named = col?.name?.trim();
-		const keysToRemove = new Set<string>();
-		if (named) keysToRemove.add(named);
-		else {
-			keysToRemove.add(`col_${colIndex}`);
-			keysToRemove.add(`col_${colIndex + 1}`);
-		}
-		const newColumns = columns.filter((_, i) => i !== colIndex);
-		const newRows = rows.map(row => {
-			const newCells = { ...row.cells };
-			keysToRemove.forEach(k => {
-				delete newCells[k];
-			});
-			return { cells: newCells };
-		});
-		setConfig(newColumns, newRows);
-	};
-
-	const getReadKeyForColumn = (
-		col: { name: string },
-		columnIndex: number,
-		cells: Record<string, { value: string; readOnly: boolean }>
-	): string => {
-		const named = col.name?.trim();
-		if (named && Object.prototype.hasOwnProperty.call(cells, named)) return named;
-		const ph = `col_${columnIndex}`;
-		if (Object.prototype.hasOwnProperty.call(cells, ph)) return ph;
-		const legacy = `col_${columnIndex + 1}`;
-		if (Object.prototype.hasOwnProperty.call(cells, legacy)) return legacy;
-		if (named) return named;
-		return ph;
-	};
-
-	const columnOrderAfterMove = (n: number, from: number, to: number): number[] => {
-		const order = Array.from({ length: n }, (_, i) => i);
-		const [removed] = order.splice(from, 1);
-		order.splice(to, 0, removed);
-		return order;
-	};
-
-	const moveColumn = (fromIndex: number, toIndex: number) => {
-		if (
-			fromIndex === toIndex ||
-			fromIndex < 0 ||
-			toIndex < 0 ||
-			fromIndex >= columns.length ||
-			toIndex >= columns.length
-		) {
-			return;
-		}
-		const order = columnOrderAfterMove(columns.length, fromIndex, toIndex);
-		const newColumns = order.map(i => columns[i]);
-		const newRows = rows.map(row => {
-			const byOldIndex = columns.map((col, i) => {
-				const k = getReadKeyForColumn(col, i, row.cells);
-				return row.cells[k] ?? { value: '', readOnly: false };
-			});
-			const newCells: Record<string, { value: string; readOnly: boolean }> = {};
-			order.forEach((oldIdx, newIdx) => {
-				const col = newColumns[newIdx];
-				const writeKey = col.name?.trim() || `col_${newIdx}`;
-				newCells[writeKey] = byOldIndex[oldIdx];
-			});
-			return { cells: newCells };
-		});
-		setConfig(newColumns, newRows);
-	};
-
-	const updateColumnName = (colIndex: number, oldName: string, newName: string) => {
-		const newColumns = columns.map((col, i) => (i === colIndex ? { ...col, name: newName } : col));
-		const placeholder = `col_${colIndex}`;
-		const legacyOffByOne = `col_${colIndex + 1}`;
-		const newRows = rows.map(row => {
-			const newCells: Record<string, { value: string; readOnly: boolean }> = {};
-			Object.entries(row.cells).forEach(([key, val]) => {
-				let nextKey = key;
-				if (oldName.trim() !== '') {
-					if (key === oldName) nextKey = newName;
-				} else {
-					if (key === placeholder || key === legacyOffByOne) nextKey = newName;
-				}
-				newCells[nextKey] = val;
-			});
-			return { cells: newCells };
-		});
-		setConfig(newColumns, newRows);
-	};
-
-	const updateColumnType = (colIndex: number, newType: string) => {
-		const newColumns = columns.map((col, i) => (i === colIndex ? { ...col, type: newType } : col));
-		setConfig(newColumns, rows);
-	};
-
-	const addRow = () => {
-		const newCells: Record<string, { value: string; readOnly: boolean }> = {};
-		columns.forEach((col, colIndex) => {
-			newCells[col.name || `col_${colIndex}`] = { value: '', readOnly: false };
-		});
-		setConfig(columns, [...rows, { cells: newCells }]);
-	};
-
-	const removeRow = (rowIndex: number) => {
-		setConfig(columns, rows.filter((_, i) => i !== rowIndex));
-	};
-
-	const updateCell = (rowIndex: number, colName: string, field: 'value' | 'readOnly', val: string | boolean) => {
-		const newRows = rows.map((row, i) => {
-			if (i !== rowIndex) return row;
-			return {
-				cells: {
-					...row.cells,
-					[colName]: { ...row.cells[colName], [field]: val }
-				}
-			};
-		});
-		setConfig(columns, newRows);
-	};
+				: typeof tableConfigError?.columns?.message === 'string'
+					? tableConfigError.columns.message
+					: undefined;
 
 	return (
 		<Grid size={{ xs: 12 }}>
-			<Paper
-				sx={{
-					p: 2.5,
-					backgroundColor: '#f8f9fa',
-					border: tableConfigErrorMessage ? '1px solid #f44336' : '1px solid #e0e0e0',
-					borderRadius: '12px'
-				}}
-			>
-				{tableConfigErrorMessage && (
-					<Alert severity="error" sx={{ mb: 2 }}>
-						{tableConfigErrorMessage}
-					</Alert>
-				)}
-				<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-					<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333' }}>
-						Table Configuration
-					</Typography>
-					<Chip
-						label={`${columns.length} col${columns.length !== 1 ? 's' : ''} \u00b7 ${rows.length} row${rows.length !== 1 ? 's' : ''}`}
-						size="small"
-						sx={{ backgroundColor: '#e3f2fd', color: '#1976d2', fontWeight: 500 }}
-					/>
-				</Box>
-
-				{/* Step 1 - Column Setup (compact inline) */}
-				<Box sx={{ mb: 2 }}>
-					<Typography variant="caption" sx={{ fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-						Step 1 &mdash; Define Columns
-					</Typography>
-					<Box sx={{ mt: 1 }}>
-						{columns.map((col, colIndex) => (
-							<Box key={colIndex} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center' }}>
-								<Typography variant="caption" sx={{ color: '#999', minWidth: 20, textAlign: 'right' }}>
-									{colIndex + 1}.
-								</Typography>
-								<TextField
-									size="small"
-									placeholder="Column name"
-									value={col.name}
-									onChange={e => updateColumnName(colIndex, col.name, e.target.value)}
-									sx={{
-										flex: 1,
-										'& .MuiOutlinedInput-root': { borderRadius: '6px', backgroundColor: 'white' },
-										'& .MuiOutlinedInput-input': { py: '6px', fontSize: '0.875rem' }
-									}}
-								/>
-								<Select
-									size="small"
-									value={col.type}
-									onChange={e => updateColumnType(colIndex, e.target.value)}
-									sx={{ minWidth: 120, borderRadius: '6px', backgroundColor: 'white', '& .MuiSelect-select': { py: '6px', fontSize: '0.875rem' } }}
-								>
-									{tableColumnTypeOptions.map(opt => (
-										<MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-									))}
-								</Select>
-								<ReorderControls
-									itemLabel="column"
-									position={colIndex + 1}
-									canMoveUp={colIndex > 0}
-									canMoveDown={colIndex < columns.length - 1}
-									onMoveUp={() => moveColumn(colIndex, colIndex - 1)}
-									onMoveDown={() => moveColumn(colIndex, colIndex + 1)}
-								/>
-								<IconButton size="small" onClick={() => removeColumn(colIndex)} sx={{ color: '#bbb', '&:hover': { color: '#f44336' } }}>
-									<DeleteIcon sx={{ fontSize: 18 }} />
-								</IconButton>
-							</Box>
-						))}
-						<Button
-							size="small"
-							startIcon={<AddIcon />}
-							onClick={addColumn}
-							sx={{ textTransform: 'none', color: '#1976d2', mt: 0.5 }}
-						>
-							Add Column
-						</Button>
-					</Box>
-				</Box>
-
-				{/* Step 2 - Table Editor (live spreadsheet) */}
-				{columns.length > 0 && (
-					<Box>
-						<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-							<Typography variant="caption" sx={{ fontWeight: 600, color: '#555', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-								Step 2 &mdash; Define Rows &amp; Cell Values
-							</Typography>
-							<Button
-								size="small"
-								startIcon={<AddIcon />}
-								onClick={addRow}
-								sx={{ textTransform: 'none', color: '#1976d2' }}
-							>
-								Add Row
-							</Button>
-						</Box>
-						<Typography variant="caption" sx={{ color: '#888', display: 'block', mb: 1.5 }}>
-							Type a value and click the lock icon to make a cell read-only during execution.
-						</Typography>
-
-						<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
-							<Table size="small">
-								<TableHead>
-									<TableRow sx={{ backgroundColor: '#e8eaf6' }}>
-										<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', color: '#333', py: 1, width: 40, textAlign: 'center' }}>
-											#
-										</TableCell>
-										{columns.map((col, ci) => (
-											<TableCell key={ci} sx={{ fontWeight: 600, fontSize: '0.8rem', color: '#333', py: 1 }}>
-												{col.name || <em style={{ color: '#bbb' }}>Untitled</em>}
-											</TableCell>
-										))}
-										<TableCell sx={{ width: 48 }} />
-									</TableRow>
-								</TableHead>
-								<TableBody>
-									{rows.map((row, rowIndex) => (
-										<TableRow key={rowIndex} sx={{ '&:nth-of-type(odd)': { backgroundColor: '#fafafa' } }}>
-											<TableCell sx={{ textAlign: 'center', color: '#999', fontSize: '0.75rem', py: 0.5 }}>
-												{rowIndex + 1}
-											</TableCell>
-											{columns.map((col, colIndex) => {
-												const colKey = col.name || `col_${colIndex}`;
-												const cell = row.cells[colKey] || { value: '', readOnly: false };
-												return (
-													<TableCell key={colIndex} sx={{ py: 0.5, px: 1 }}>
-														<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-															<TextField
-																size="small"
-																variant="standard"
-																placeholder={cell.readOnly ? '' : 'Enter value'}
-																value={cell.value}
-																onChange={e => updateCell(rowIndex, colKey, 'value', e.target.value)}
-																sx={{
-																	flex: 1,
-																	'& .MuiInput-input': {
-																		fontSize: '0.85rem',
-																		py: '4px',
-																		...(cell.readOnly ? { color: '#1565c0', fontWeight: 500 } : {})
-																	},
-																	'& .MuiInput-underline:before': {
-																		borderBottomColor: cell.readOnly ? '#90caf9' : '#e0e0e0'
-																	}
-																}}
-															/>
-															<Tooltip title={cell.readOnly ? 'Cell is read-only (click to unlock)' : 'Click to lock as read-only'} arrow>
-																<IconButton
-																	size="small"
-																	onClick={() => updateCell(rowIndex, colKey, 'readOnly', !cell.readOnly)}
-																	sx={{
-																		p: 0.5,
-																		color: cell.readOnly ? '#1976d2' : '#ccc',
-																		'&:hover': { color: cell.readOnly ? '#1565c0' : '#999' }
-																	}}
-																>
-																	{cell.readOnly ? <LockIcon sx={{ fontSize: 16 }} /> : <LockOpenIcon sx={{ fontSize: 16 }} />}
-																</IconButton>
-															</Tooltip>
-														</Box>
-													</TableCell>
-												);
-											})}
-											<TableCell sx={{ py: 0.5 }}>
-												<IconButton
-													size="small"
-													onClick={() => removeRow(rowIndex)}
-													sx={{ p: 0.5, color: '#ccc', '&:hover': { color: '#f44336' } }}
-												>
-													<DeleteIcon sx={{ fontSize: 16 }} />
-												</IconButton>
-											</TableCell>
-										</TableRow>
-									))}
-									{rows.length === 0 && (
-										<TableRow>
-											<TableCell colSpan={columns.length + 2} sx={{ textAlign: 'center', py: 3, color: '#aaa' }}>
-												No rows yet. Click &quot;Add Row&quot; above.
-											</TableCell>
-										</TableRow>
-									)}
-								</TableBody>
-							</Table>
-						</TableContainer>
-					</Box>
-				)}
-
-				{columns.length === 0 && (
-					<Box sx={{ textAlign: 'center', py: 2, color: '#aaa' }}>
-						<Typography variant="body2">
-							Add columns above to start building your table.
-						</Typography>
-					</Box>
-				)}
-			</Paper>
+			<FixedTableEditor
+				config={tableConfig as Partial<TableConfig> | null | undefined}
+				errorMessage={tableConfigErrorMessage}
+				onChange={config =>
+					setValue(tableConfigPath, config as NonNullable<ProcessStepFormData['tableConfig']>, {
+						shouldDirty: true,
+						shouldTouch: true,
+						shouldValidate: true
+					})
+				}
+			/>
 		</Grid>
 	);
 };

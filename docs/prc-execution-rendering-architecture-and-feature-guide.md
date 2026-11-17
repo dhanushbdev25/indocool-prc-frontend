@@ -365,10 +365,10 @@ interface TableRowConfig { cells: Record<string, TableCellConfig>; }
 interface TableConfig { columns: TableColumn[]; rows: TableRowConfig[]; cellTypes?: boolean; }
 ```
 
-### Per-cell data types (inspection `fixed-table`)
+### Per-cell data types (inspection `fixed-table` and sequence `table`)
 
-The fixed-table editor (`create-inspection/components/FixedTableConfigEditor.tsx`) has a **"Set data type per
-cell"** toggle, stored as `tableConfig.cellTypes` in the existing JSONB column (no backend change).
+Both masters use one editor, `FixedTableEditor` in `src/components/masters/` (wrapped by the inspection
+`FixedTableConfigEditor` and the sequence `TableConfigEditor`). It has a **"Set data type per cell"** toggle, stored as `tableConfig.cellTypes` in the existing JSONB column (no backend change).
 
 - **Off** (default, and every table saved before the toggle existed): each column's `type` and range apply to all
   of its cells, as before.
@@ -383,15 +383,19 @@ Integer, Range and Exact Value are checked against their range at execution; an 
 deviation acknowledged, and the saved row carries `<col>_validationStatus` / `_minimumAcceptanceValue` /
 `_maximumAcceptanceValue` / `_acknowledged` exactly as before.
 
-Every consumer (master schema, `TableConfigPreview`, `InspectionStep`, `StepPreview`) reads a cell's type and range
+Every consumer (both master schemas, `TableConfigPreview`, `InspectionStep`, `SequenceStep`, `StepPreview`) reads a cell's type and range
 through `resolveFixedTableCellSpec(tableConfig, column, cell)`, which returns the cell's own spec when `cellTypes`
-is on and the column's otherwise.
+is on and the column's otherwise. At execution both step types share `FixedTableCellInput` (the per-type cell
+widget, with range/target caption and acknowledge checkbox) and `utils/fixedTableExecution.ts`
+(`buildDefaultFixedTableRows`, `validateFixedTableRows`, `enrichFixedTableRows`). Number and Integer stay valid for
+saved tables but are no longer offered for new columns or cells.
 
 ### Sequence Master Integration
 
 - **Target Value Type**: `'table'` added to `targetValueTypeOptions` in `types.ts`
 - **Schema**: `tableConfigSchema` added to `schemas.ts`, conditionally required when `targetValueType === 'table'`; min/max acceptance values become optional
-- **UI**: `TableConfigEditor` component in `SequenceStepGroups.tsx` allows defining columns (name + type) and rows (cell value + read-only toggle)
+- **UI**: `TableConfigEditor` in `SequenceStepGroups.tsx` wraps the shared `FixedTableEditor` (column or per-cell data types and ranges, cell values, read-only toggle)
+- **Load**: `normalizeTableConfig` (`table-config.utils.ts`) remaps legacy placeholder cell keys and keeps `cellTypes`
 - **Persistence**: `tableConfig` explicitly mapped in `onSubmit` and edit-load `reset` in `create-sequence/index.tsx`
 - **API Types**: `tableConfig?: TableConfig | null` added to `ProcessStep` and `ProcessStepRequest` in `sequence.validators.ts`
 - **Review/View**: `SequenceReview.tsx` shows "Table (X cols, Y rows)" summary; `ViewSequenceStepGroups.tsx` uses purple (`#7b1fa2`) color badge
@@ -411,9 +415,9 @@ is on and the column's otherwise.
 2. **StepDetailView**: `tableConfig` included in synthetic `TimelineStep.stepData` for sequence sub-steps
 3. **SequenceStep.tsx** (`targetValueType === 'table'`):
    - Initializes `tableData` state from existing aggregated data or `tableConfig` defaults
-   - Renders MUI Table with editable inputs (TextField, RadioGroup, DateTimePicker) for non-read-only cells
-   - Validates required fields and number types before submission
-   - Submits as `{ data: [...rows] }` where each row is `Record<string, string>`
+   - Renders each editable cell with `FixedTableCellInput` for its resolved type
+   - Validates with `validateFixedTableRows` (required, number/integer, shift, Yes/No, range deviation needing acknowledgement)
+   - Submits as `{ data: [...rows] }`; numeric cells with a range carry the same `<col>_validationStatus` / `_acknowledged` keys as inspection
 4. **InspectionStep.tsx** (`parameterType === 'fixed-table'`):
    - Initializes from `prcAggregatedSteps` value array or `tableConfig` defaults
    - Renders expandable MUI Table within the inspection parameter row

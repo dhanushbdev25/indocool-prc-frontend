@@ -1,6 +1,7 @@
 import { Control, FieldErrors } from 'react-hook-form';
 import { SequenceFormData } from './schemas';
 import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from '../../../../../utils/okNotOkLabels';
+import { SEQUENCE_TABLE_TYPE_LABEL } from '../../../../../utils/fixedTableCellSpec';
 
 export interface SequenceBasicInfoProps {
 	control: Control<SequenceFormData>;
@@ -22,19 +23,8 @@ export const targetValueTypeOptions = [
 	{ value: 'range', label: 'Range' },
 	{ value: 'exact value', label: 'Exact Value' },
 	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
-	{ value: 'table', label: 'Table' },
+	{ value: 'table', label: SEQUENCE_TABLE_TYPE_LABEL },
 	{ value: 'list', label: 'List' }
-];
-
-// Column type options for table target value type
-export const tableColumnTypeOptions = [
-	{ value: 'text', label: 'Text' },
-	{ value: 'number', label: 'Number' },
-	{ value: OK_NOT_OK_TYPE_KEY, label: OK_NOT_OK_TYPE_LABEL },
-	{ value: 'date', label: 'Date' },
-	{ value: 'datetime', label: 'Date & Time' },
-	{ value: 'shift', label: 'Shift' },
-	{ value: 'workstation', label: 'Workstation' }
 ];
 
 // Common UOM options

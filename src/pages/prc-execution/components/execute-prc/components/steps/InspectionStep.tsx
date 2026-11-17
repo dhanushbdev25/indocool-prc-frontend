@@ -74,15 +74,18 @@ import { formatDateColumnStorageValue } from '../../../../../../utils/formatTabl
 import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
 import { ERROR_ANCHOR_CLASS, parameterIdsFromErrorKeys } from '../../../../utils/scrollToFirstError';
 import { ListValueInputWithWorkstations } from '../ListValueInput';
+import FixedTableCellInput from '../FixedTableCellInput';
 import {
-	BOOLEAN_CELL_OPTIONS,
+	buildDefaultFixedTableRows,
+	enrichFixedTableRows,
+	getRangeStatus,
+	isRangeExemptValue,
+	validateFixedTableRows
+} from '../../../../utils/fixedTableExecution';
+import {
 	fixedTableDataTypeLabel,
-	formatExactTarget,
-	isNumericCellType,
 	resolveFixedTableCellSpec
 } from '../../../../../../utils/fixedTableCellSpec';
-import { formatAcceptanceRange } from '../../../../../../components/masters/acceptanceRange';
-import { useFetchWorkstationsComboQuery } from '../../../../../../store/api/business/prc-execution/prc-execution.api';
 import type { ListItemConfig, ListValueState, ListValues } from '../../../../../../types/list-config.types';
 import {
 	LIST_TYPE_KEY,
@@ -105,51 +108,6 @@ interface InspectionStepProps {
 }
 
 const SHIFT_OPTIONS = ['Shift A', 'Shift B', 'Shift C', 'Shift G'] as const;
-
-/** Fixed-table cell select for a choice type; a workstation cell loads the plant's workstations itself. */
-const FixedTableChoiceCell = ({
-	type,
-	plantCode,
-	value,
-	onChange,
-	error,
-	disabled
-}: {
-	type: 'boolean' | 'workstation';
-	plantCode: string;
-	value: string;
-	onChange: (value: string) => void;
-	error?: string;
-	disabled: boolean;
-}) => {
-	const { data: workstationOptions = [] } = useFetchWorkstationsComboQuery(
-		{ plantCodes: plantCode ? [plantCode] : [] },
-		{ skip: type !== 'workstation' || !plantCode }
-	);
-	const choices =
-		type === 'boolean'
-			? BOOLEAN_CELL_OPTIONS.map(option => ({ value: option, label: option }))
-			: workstationOptions.map(option => ({ value: String(option.value), label: option.label }));
-	return (
-		<TextField
-			select
-			value={value}
-			onChange={e => onChange(e.target.value)}
-			error={!!error}
-			helperText={error}
-			size="small"
-			disabled={disabled}
-			variant="outlined"
-			fullWidth
-		>
-			{choices.map(choice => (
-				<MenuItem key={choice.value} value={choice.value}>
-					{choice.label}
-				</MenuItem>
-			))}
-		</TextField>
-	);
-};
 
 const InspectionStep = ({
 	step,
@@ -176,38 +134,6 @@ const InspectionStep = ({
 	// parameter id still leads, which `parameterIdsFromErrorKeys` relies on to reopen the row.
 	const getListKey = (paramId: number) => `${paramId}_list`;
 	const getListErrorPrefix = (paramId: number) => `${paramId}_list_`;
-	const getRangeStatus = (
-		value: number,
-		min?: string | number | null,
-		max?: string | number | null
-	): 'InRange' | 'Lesser' | 'Greater' | null => {
-		if (min === null || max === null || min === undefined || max === undefined || min === '' || max === '') return null;
-		const minNum = Number(min);
-		const maxNum = Number(max);
-		if (Number.isNaN(minNum) || Number.isNaN(maxNum)) return null;
-		// A 0-to-0 band is what the master stores when the author leaves the range blank
-		// (`applyNumberDefaults` coerces empty numeric fields to 0), so it means "no range
-		// configured" rather than "must be exactly zero". A range that genuinely starts at
-		// zero — 0 to 10 — still applies.
-		if (minNum === 0 && maxNum === 0) return null;
-		if (value < minNum) return 'Lesser';
-		if (value > maxNum) return 'Greater';
-		return 'InRange';
-	};
-
-	/**
-	 * A blank or zero reading is not a measurement to judge against the acceptance range: the
-	 * operator has either not filled the field in yet or has recorded a true zero, and neither
-	 * should raise an out-of-range deviation. Blank values are still caught by the
-	 * required-field check that runs before this one.
-	 */
-	const isRangeExemptValue = (value: unknown): boolean => {
-		if (value === null || value === undefined) return true;
-		const text = String(value).trim();
-		if (text === '') return true;
-		return parseFloat(text) === 0;
-	};
-
 	const readApiCommentField = (obj: Record<string, unknown>): string => {
 		const c = obj.comments;
 		if (typeof c === 'string') return c;
@@ -521,15 +447,7 @@ const InspectionStep = ({
 						}
 					}
 					if (!loaded) {
-						const defaultRows = param.tableConfig.rows.map(row => {
-							const rowObj: Record<string, string> = {};
-							param.tableConfig!.columns.forEach(col => {
-								const cell = row.cells[col.name];
-								rowObj[col.name] = cell?.readOnly ? cell.value : cell?.value || '';
-							});
-							return rowObj;
-						});
-						updatedFormData[ftKey] = defaultRows;
+						updatedFormData[ftKey] = buildDefaultFixedTableRows(param.tableConfig);
 					}
 				}
 			}
@@ -1004,44 +922,16 @@ const InspectionStep = ({
 			if (param.type === 'fixed-table' && param.tableConfig) {
 				const ftKey = `${param.id}_fixedTable`;
 				const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
-				param.tableConfig.columns.forEach(col => {
-					rows.forEach((row, rowIdx) => {
-						const rowConfig = param.tableConfig!.rows[rowIdx];
-						const cellConfig = rowConfig?.cells[col.name];
-						if (cellConfig?.readOnly) return;
-						const spec = resolveFixedTableCellSpec(param.tableConfig, col, cellConfig);
-						const val = row[col.name];
-						const cellKey = `ft_${param.id}_${rowIdx}_${col.name}`;
-						const where = `Row ${rowIdx + 1}, ${col.name}`;
-						if (!val || val.trim() === '') {
-							newErrors[cellKey] = `${where} is required`;
-						} else if (isNumericCellType(spec.type)) {
-							const numValue = Number(val.trim());
-							if (!Number.isFinite(numValue)) {
-								newErrors[cellKey] = `${where} must be a number`;
-							} else if (spec.type === 'integer' && !Number.isInteger(numValue)) {
-								newErrors[cellKey] = `${where} must be a whole number`;
-							} else {
-								const status = isRangeExemptValue(val)
-									? null
-									: getRangeStatus(numValue, spec.minimumAcceptanceValue, spec.maximumAcceptanceValue);
-								if (status && status !== 'InRange' && !acknowledgments[cellKey]) {
-									newErrors[getAckKey(cellKey)] = `${where} out of range. Please acknowledge deviation.`;
-								}
-							}
-						} else if (
-							spec.type === 'shift' &&
-							!SHIFT_OPTIONS.includes(String(val) as (typeof SHIFT_OPTIONS)[number])
-						) {
-							newErrors[cellKey] = `${where} must be a valid shift`;
-						} else if (
-							spec.type === 'boolean' &&
-							!BOOLEAN_CELL_OPTIONS.includes(String(val) as (typeof BOOLEAN_CELL_OPTIONS)[number])
-						) {
-							newErrors[cellKey] = `${where} must be Yes or No`;
-						}
-					});
-				});
+				Object.assign(
+					newErrors,
+					validateFixedTableRows(
+						param.tableConfig,
+						rows,
+						acknowledgments,
+						(rowIdx, colName) => `ft_${param.id}_${rowIdx}_${colName}`,
+						getAckKey
+					)
+				);
 				return;
 			}
 
@@ -1236,29 +1126,12 @@ const InspectionStep = ({
 				const rows = (formData[ftKey] as Array<Record<string, string>> | undefined) || [];
 				// Carry the deviation alongside the reading, the same way the table and
 				// multi-column parameters do, so the acknowledgement survives the save.
-				paramData.value = rows.map((row, rowIdx) => {
-					const enriched: Record<string, unknown> = { ...row };
-					param.tableConfig!.columns.forEach(col => {
-						const spec = resolveFixedTableCellSpec(
-							param.tableConfig,
-							col,
-							param.tableConfig!.rows[rowIdx]?.cells[col.name]
-						);
-						if (!isNumericCellType(spec.type)) return;
-						const raw = row[col.name];
-						if (raw === undefined || isRangeExemptValue(raw)) return;
-						const parsed = parseFloat(String(raw));
-						if (isNaN(parsed)) return;
-						const status = getRangeStatus(parsed, spec.minimumAcceptanceValue, spec.maximumAcceptanceValue);
-						if (!status) return;
-						const cellKey = `ft_${param.id}_${rowIdx}_${col.name}`;
-						enriched[`${col.name}_validationStatus`] = status;
-						enriched[`${col.name}_minimumAcceptanceValue`] = spec.minimumAcceptanceValue;
-						enriched[`${col.name}_maximumAcceptanceValue`] = spec.maximumAcceptanceValue;
-						enriched[`${col.name}_acknowledged`] = acknowledgments[cellKey] || false;
-					});
-					return enriched;
-				});
+				paramData.value = enrichFixedTableRows(
+					param.tableConfig,
+					rows,
+					acknowledgments,
+					(rowIdx, colName) => `ft_${param.id}_${rowIdx}_${colName}`
+				);
 				const rowAnnotations = formData[ftRowAnnotationsKey];
 				if (Array.isArray(rowAnnotations)) {
 					paramData.rowAnnotations = rowAnnotations;
@@ -1951,224 +1824,25 @@ const InspectionStep = ({
 																						);
 																					}
 
-																					if (spec.type === 'boolean' || spec.type === 'workstation') {
-																						return (
-																							<TableCell key={col.name}>
-																								<FixedTableChoiceCell
-																									type={spec.type}
-																									plantCode={
-																										executionData.plantCode ? String(executionData.plantCode) : ''
-																									}
-																									value={cellValue}
-																									onChange={value =>
-																										handleFixedTableCellChange(param.id, rowIdx, col.name, value)
-																									}
-																									error={errors[errKey]}
-																									disabled={isReadOnly}
-																								/>
-																							</TableCell>
-																						);
-																					}
-
-																					if (spec.type === 'ok/not ok') {
-																						return (
-																							<TableCell key={col.name}>
-																								<RadioGroup
-																									row
-																									value={cellValue}
-																									onChange={e =>
-																										handleFixedTableCellChange(
-																											param.id,
-																											rowIdx,
-																											col.name,
-																											e.target.value
-																										)
-																									}
-																									sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
-																								>
-																									{OK_NOT_OK_OPTIONS.map(option => (
-																										<FormControlLabel
-																											key={option.value}
-																											value={option.value}
-																											control={<Radio size="small" color={option.color} />}
-																											label={option.label}
-																										/>
-																									))}
-																								</RadioGroup>
-																								{errors[errKey] && (
-																									<Typography
-																										variant="caption"
-																										color="error"
-																										className={ERROR_ANCHOR_CLASS}
-																										sx={{ mt: 0.5, display: 'block' }}
-																									>
-																										{errors[errKey]}
-																									</Typography>
-																								)}
-																							</TableCell>
-																						);
-																					}
-
-																					if (spec.type === 'date') {
-																						return (
-																							<TableCell key={col.name}>
-																								<OperationalDatePicker
-																									value={cellValue ? dayjs(cellValue) : null}
-																									onChange={newValue => {
-																										const formatted = formatDateColumnStorageValue(newValue);
-																										handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
-																									}}
-																									disabled={isReadOnly}
-																									slotProps={{
-																										textField: {
-																											size: 'small',
-																											error: !!errors[errKey],
-																											helperText: errors[errKey],
-																											variant: 'outlined',
-																											fullWidth: true
-																										}
-																									}}
-																								/>
-																							</TableCell>
-																						);
-																					}
-
-																					if (spec.type === 'datetime') {
-																						return (
-																							<TableCell key={col.name}>
-																								<OperationalDateTimePicker
-																									value={cellValue ? dayjs(cellValue) : null}
-																									onChange={newValue => {
-																										const formatted = newValue
-																											? newValue.format('YYYY-MM-DDTHH:mm')
-																											: '';
-																										handleFixedTableCellChange(param.id, rowIdx, col.name, formatted);
-																									}}
-																									disabled={isReadOnly}
-																									slotProps={{
-																										textField: {
-																											size: 'small',
-																											error: !!errors[errKey],
-																											helperText: errors[errKey],
-																											variant: 'outlined',
-																											fullWidth: true
-																										}
-																									}}
-																								/>
-																							</TableCell>
-																						);
-																					}
-																					if (spec.type === 'shift') {
-																						return (
-																							<TableCell key={col.name}>
-																								<TextField
-																									select
-																									value={cellValue}
-																									onChange={e =>
-																										handleFixedTableCellChange(
-																											param.id,
-																											rowIdx,
-																											col.name,
-																											e.target.value
-																										)
-																									}
-																									error={!!errors[errKey]}
-																									helperText={errors[errKey]}
-																									size="small"
-																									disabled={isReadOnly}
-																									variant="outlined"
-																									fullWidth
-																								>
-																									{SHIFT_OPTIONS.map(option => (
-																										<MenuItem key={option} value={option}>
-																											{option}
-																										</MenuItem>
-																									))}
-																								</TextField>
-																							</TableCell>
-																						);
-																					}
-
-																					const isNumericCell = isNumericCellType(spec.type);
-																					const rangeStatus =
-																						isNumericCell && !isRangeExemptValue(cellValue)
-																							? getRangeStatus(
-																									parseFloat(String(cellValue)),
-																									spec.minimumAcceptanceValue,
-																									spec.maximumAcceptanceValue
-																								)
-																							: null;
-																					const rangeLabel = isNumericCell
-																						? spec.type === 'exact value'
-																							? formatExactTarget(spec.minimumAcceptanceValue)
-																							: formatAcceptanceRange(
-																									spec.minimumAcceptanceValue,
-																									spec.maximumAcceptanceValue
-																								)
-																						: null;
-																					const isDeviation = !!rangeStatus && rangeStatus !== 'InRange';
-
 																					return (
 																						<TableCell key={col.name}>
-																							<TextField
-																								type={isNumericCell ? 'number' : 'text'}
+																							<FixedTableCellInput
+																								spec={spec}
 																								value={cellValue}
-																								onChange={e =>
-																									handleFixedTableCellChange(param.id, rowIdx, col.name, e.target.value)
+																								onChange={value =>
+																									handleFixedTableCellChange(param.id, rowIdx, col.name, value)
 																								}
-																								error={!!errors[errKey]}
-																								helperText={errors[errKey]}
-																								size="small"
+																								error={errors[errKey]}
+																								ackError={errors[getAckKey(errKey)]}
+																								acknowledged={acknowledgments[errKey] || false}
+																								onAcknowledgeChange={checked =>
+																									handleAcknowledgmentChange(errKey, checked)
+																								}
 																								disabled={isReadOnly}
-																								variant="outlined"
-																								fullWidth
-																								inputProps={{
-																									min: 0,
-																									step: spec.type === 'integer' ? 1 : isNumericCell ? 0.01 : undefined
-																								}}
+																								plantCode={
+																									executionData.plantCode ? String(executionData.plantCode) : ''
+																								}
 																							/>
-																							{rangeLabel && (
-																								<Typography
-																									variant="caption"
-																									sx={{ display: 'block', color: '#666', mt: 0.25 }}
-																								>
-																									{spec.type === 'exact value' ? 'Target' : 'Range'}: {rangeLabel}
-																								</Typography>
-																							)}
-																							{isDeviation && (
-																								<Box sx={{ mt: 0.5 }}>
-																									<Chip
-																										label={rangeStatus}
-																										size="small"
-																										color={rangeStatus === 'Lesser' ? 'warning' : 'error'}
-																										sx={{ fontSize: '0.7rem', height: 20 }}
-																									/>
-																									<FormControlLabel
-																										control={
-																											<Checkbox
-																												size="small"
-																												checked={acknowledgments[errKey] || false}
-																												onChange={e =>
-																													handleAcknowledgmentChange(errKey, e.target.checked)
-																												}
-																												disabled={isReadOnly}
-																											/>
-																										}
-																										label="Acknowledge deviation"
-																										sx={{ display: 'block', mt: 0.25 }}
-																									/>
-																									{errors[getAckKey(errKey)] && (
-																										<Typography
-																											variant="caption"
-																											color="error"
-																											className={ERROR_ANCHOR_CLASS}
-																											sx={{ mt: 0.5, display: 'block' }}
-																										>
-																											{errors[getAckKey(errKey)]}
-																										</Typography>
-																									)}
-																								</Box>
-																							)}
 																						</TableCell>
 																					);
 																				})}

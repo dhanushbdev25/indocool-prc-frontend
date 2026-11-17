@@ -33,6 +33,70 @@ describe('sequence processStepSchema table columns', () => {
 	});
 });
 
+const tableStep = (tableConfig: unknown) => ({
+	...defaultProcessStep,
+	parameterDescription: 'Readings',
+	evaluationMethod: 'Visual',
+	targetValueType: 'table',
+	tableConfig
+});
+
+describe('sequence processStepSchema table data types', () => {
+	it('accepts a range column with its min and max', async () => {
+		await expect(
+			processStepSchema.validate(
+				tableStep({
+					columns: [{ name: 'Temp', type: 'range', minimumAcceptanceValue: 20, maximumAcceptanceValue: 30 }],
+					rows: [{ cells: { Temp: { value: '', readOnly: false } } }]
+				})
+			)
+		).resolves.toBeDefined();
+	});
+
+	it('still accepts a saved number column', async () => {
+		await expect(
+			processStepSchema.validate(
+				tableStep({
+					columns: [{ name: 'Qty', type: 'number' }],
+					rows: [{ cells: { Qty: { value: '', readOnly: false } } }]
+				})
+			)
+		).resolves.toBeDefined();
+	});
+
+	it('rejects a range column without a maximum', async () => {
+		await expect(
+			processStepSchema.validate(
+				tableStep({
+					columns: [{ name: 'Temp', type: 'range', minimumAcceptanceValue: 20 }],
+					rows: [{ cells: { Temp: { value: '', readOnly: false } } }]
+				})
+			)
+		).rejects.toThrow(/Temp: Range needs a minimum and maximum/);
+	});
+
+	it('checks each cell when per-cell types are on', async () => {
+		const config = {
+			cellTypes: true,
+			columns: [{ name: 'Reading', type: 'text' }],
+			rows: [
+				{ cells: { Reading: { value: '', readOnly: false, type: 'boolean' } } },
+				{
+					cells: {
+						Reading: { value: '', readOnly: false, type: 'range', minimumAcceptanceValue: 9, maximumAcceptanceValue: 1 }
+					}
+				}
+			]
+		};
+		await expect(processStepSchema.validate(tableStep(config))).rejects.toThrow(
+			/Row 2, Reading: Minimum value cannot be greater than maximum value/
+		);
+		config.rows[1].cells.Reading.maximumAcceptanceValue = 12;
+		const result = await processStepSchema.validate(tableStep(config));
+		expect(result.tableConfig?.cellTypes).toBe(true);
+	});
+});
+
 describe('sequence processStepGroupSchema ordering', () => {
 	it('requires a positive integer sequence', async () => {
 		await expect(

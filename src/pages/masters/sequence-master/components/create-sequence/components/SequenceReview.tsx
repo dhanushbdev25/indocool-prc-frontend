@@ -219,7 +219,7 @@ const SequenceReview = ({ control }: SequenceReviewProps) => {
 															<Typography variant="body2">{formatOkNotOkTypeForDisplay('ok/not ok')}</Typography>
 														) : isTable ? (
 															<Chip
-																label={`Table \u00b7 ${tc!.columns!.length} cols, ${tc!.rows?.length || 0} rows`}
+																label={`Fixed Table \u00b7 ${tc!.columns!.length} cols, ${tc!.rows?.length || 0} rows`}
 																size="small"
 																sx={{ backgroundColor: '#ede7f6', color: '#5e35b1', fontSize: '0.75rem', fontWeight: 500 }}
 															/>

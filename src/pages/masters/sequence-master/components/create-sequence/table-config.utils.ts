@@ -32,5 +32,5 @@ export function normalizeTableConfig(config: TableConfig | null | undefined): Ta
 		return { cells: newCells };
 	});
 
-	return { columns, rows };
+	return { ...config, columns, rows };
 }

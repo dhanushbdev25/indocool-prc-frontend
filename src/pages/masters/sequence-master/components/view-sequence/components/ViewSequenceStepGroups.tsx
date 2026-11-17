@@ -26,7 +26,7 @@ import {
 } from '../../../../../../store/api/business/sequence-master/sequence.validators';
 import { ListConfigPreview, TableConfigPreview } from '../../../../../../components/masters';
 import { readStoredListConfig } from '../../../../../../utils/listConfig';
-import { formatOkNotOkTypeForDisplay } from '../../../../../../utils/okNotOkLabels';
+import { formatSequenceTargetValueType } from '../../../../../../utils/fixedTableCellSpec';
 import {
 	CRITICALITY_CHIP_HEX,
 	formatSequenceCriticality,
@@ -139,7 +139,7 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									Target Value Type
 								</Typography>
 								<Chip
-									label={formatOkNotOkTypeForDisplay(step.targetValueType)}
+									label={formatSequenceTargetValueType(step.targetValueType)}
 									size="small"
 									sx={{
 										backgroundColor: getTargetValueTypeColor(step.targetValueType),
@@ -158,7 +158,7 @@ const ViewSequenceStepGroups = ({ stepGroups }: ViewSequenceStepGroupsProps) => 
 									<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#555', mb: 1 }}>
 										Table Structure
 									</Typography>
-									<TableConfigPreview config={step.tableConfig} title="Configured Table" />
+									<TableConfigPreview config={step.tableConfig} title="Configured Fixed Table" />
 								</Box>
 							</Grid>
 						)}

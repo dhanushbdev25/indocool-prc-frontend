@@ -1,5 +1,5 @@
-import type { TableCellConfig, TableCellType, TableColumn } from '../types/table-config.types';
-import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL } from './okNotOkLabels';
+import type { TableCellConfig, TableCellType, TableColumn, TableConfig } from '../types/table-config.types';
+import { OK_NOT_OK_TYPE_KEY, OK_NOT_OK_TYPE_LABEL, formatOkNotOkTypeForDisplay } from './okNotOkLabels';
 import { formatAcceptanceRange } from '../components/masters/acceptanceRange';
 
 type FixedTableDataTypeOption = { value: TableCellType; label: string };
@@ -123,3 +123,35 @@ export const formatCellSpecRange = (spec: Partial<FixedTableCellSpec>): string |
 	const range = formatAcceptanceRange(spec.minimumAcceptanceValue, spec.maximumAcceptanceValue);
 	return range ? `Range: ${range}` : null;
 };
+
+/**
+ * The first data type or range problem in a table, or null. Checks the column ranges, or with
+ * per-cell types on, every cell's type and range.
+ */
+export const findFixedTableSpecProblem = (config: Partial<TableConfig> | null | undefined): string | null => {
+	const columns = config?.columns ?? [];
+	if (!config?.cellTypes) {
+		for (const col of columns) {
+			const problem = validateCellSpecRange(col);
+			if (problem) return `${col.name || 'Column'}: ${problem}`;
+		}
+		return null;
+	}
+	for (const [rowIndex, row] of (config.rows ?? []).entries()) {
+		for (const [colIndex, col] of columns.entries()) {
+			const cell = row?.cells?.[col.name || `col_${colIndex}`];
+			const where = `Row ${rowIndex + 1}, ${col.name || `column ${colIndex + 1}`}`;
+			if (cell?.type && !FIXED_TABLE_DATA_TYPES.includes(cell.type)) return `${where}: invalid data type`;
+			const problem = validateCellSpecRange(resolveFixedTableCellSpec(config, col, cell));
+			if (problem) return `${where}: ${problem}`;
+		}
+	}
+	return null;
+};
+
+/** What a sequence step's `table` target value type is called in the UI. */
+export const SEQUENCE_TABLE_TYPE_LABEL = 'Fixed Table';
+
+/** A sequence target value type for display: `table` reads as Fixed Table, OK/Not OK gets its label. */
+export const formatSequenceTargetValueType = (type: string): string =>
+	type === 'table' ? SEQUENCE_TABLE_TYPE_LABEL : formatOkNotOkTypeForDisplay(type);
