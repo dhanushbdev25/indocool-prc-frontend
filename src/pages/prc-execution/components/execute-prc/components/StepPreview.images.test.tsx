@@ -122,8 +122,9 @@ describe('StepPreview inspection images', () => {
 
 		const rows = screen.getAllByRole('row').map(row => row.textContent || '');
 		const paramRow = rows.findIndex(text => text.includes('Parameter 1') && !text.includes('Image Annotation'));
-		expect(rows[paramRow + 1]).toContain('Image Annotation for Parameter 1');
+		expect(rows[paramRow + 1]).toContain('Image Annotation');
 		expect(rows[paramRow + 2]).toContain('Parameter 2');
-		expect(rows.some(text => text.includes('Image Annotation for Parameter 2'))).toBe(false);
+		// Only Parameter 1 has images, so there is exactly one image row.
+		expect(rows.filter(text => text.includes('Image Annotation'))).toHaveLength(1);
 	});
 });

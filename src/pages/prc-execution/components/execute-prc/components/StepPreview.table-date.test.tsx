@@ -139,9 +139,9 @@ describe('StepPreview table date display', () => {
 		const rows = screen.getAllByRole('row');
 		expect(rows).toHaveLength(6);
 		expect(within(rows[1]).getByText('First parameter')).toBeInTheDocument();
-		expect(within(rows[2]).getByText('Image Annotation for First parameter')).toBeInTheDocument();
+		expect(within(rows[2]).getByText('Image Annotation')).toBeInTheDocument();
 		expect(within(rows[3]).getByText('Second parameter')).toBeInTheDocument();
-		expect(within(rows[4]).getByText('Image Annotation for Second parameter')).toBeInTheDocument();
+		expect(within(rows[4]).getByText('Image Annotation')).toBeInTheDocument();
 		expect(within(rows[5]).getByText('Parameter 5')).toBeInTheDocument();
 		expect(screen.queryByText('Parameter partialCtqApprove')).not.toBeInTheDocument();
 		expect(screen.queryByText('Image Annotations')).not.toBeInTheDocument();

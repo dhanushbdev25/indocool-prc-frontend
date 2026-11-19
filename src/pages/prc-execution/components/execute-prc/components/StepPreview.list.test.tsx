@@ -124,7 +124,9 @@ describe('StepPreview list values', () => {
 		} as unknown as StepPreviewData);
 
 		expect(screen.getByText('3 items')).toBeInTheDocument();
-		expect(screen.getByText('Mould readings - List')).toBeInTheDocument();
+		// The report sub-heading does not repeat the parameter name.
+		expect(screen.getByText('List')).toBeInTheDocument();
+		expect(screen.queryByText('Mould readings - List')).not.toBeInTheDocument();
 		expectListRendered();
 	});
 });

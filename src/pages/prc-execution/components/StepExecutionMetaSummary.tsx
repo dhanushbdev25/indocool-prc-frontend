@@ -23,12 +23,31 @@ const timingFontSx = {
 	fontSize: '0.75rem'
 } as const;
 
-function buildApproverRows(approvalMeta: TimelineStepApprovalMeta): Array<{ key: string; label: string; approver: ApproverInfo }> {
-	const rows: Array<{ key: string; label: string; approver: ApproverInfo }> = [];
+type ApproverRow = { key: 'production' | 'quality' | 'recorded'; label: string; approver: ApproverInfo };
+
+/**
+ * An inspection signed off by Quality only. Its single "Approve Inspection" button saves through the
+ * production-approval call, so the approver arrives as `productionApprovedBy` even though Quality signed it.
+ */
+function isQualityOnlyInspection(step: TimelineStep): boolean {
+	return (
+		step.type === 'inspection' &&
+		step.inspectionMetadata?.approveByQuality === true &&
+		step.inspectionMetadata?.approveByProduction !== true
+	);
+}
+
+function buildApproverRows(approvalMeta: TimelineStepApprovalMeta, step: TimelineStep): ApproverRow[] {
+	const rows: ApproverRow[] = [];
+	const qualityOnlyInspection = isQualityOnlyInspection(step);
 	if (approvalMeta.productionApprovedBy) {
-		rows.push({ key: 'production', label: 'Production approved by', approver: approvalMeta.productionApprovedBy });
+		rows.push(
+			qualityOnlyInspection
+				? { key: 'quality', label: 'Quality approved by', approver: approvalMeta.productionApprovedBy }
+				: { key: 'production', label: 'Production approved by', approver: approvalMeta.productionApprovedBy }
+		);
 	}
-	if (approvalMeta.qualityApprovedBy) {
+	if (approvalMeta.qualityApprovedBy && !(qualityOnlyInspection && approvalMeta.productionApprovedBy)) {
 		rows.push({ key: 'quality', label: 'Quality approved by', approver: approvalMeta.qualityApprovedBy });
 	}
 	if (approvalMeta.dataEnteredBy && !approvalMeta.productionApprovedBy) {
@@ -102,11 +121,13 @@ function SidebarStatCell({
 function SidebarMetaPanel({
 	timing,
 	approvalMeta,
+	approverRows,
 	timingOverPlanned,
 	dimTiming
 }: {
 	timing: TimelineCardTiming;
 	approvalMeta: TimelineStepApprovalMeta;
+	approverRows: ApproverRow[];
 	timingOverPlanned: boolean;
 	dimTiming: boolean;
 }) {
@@ -114,7 +135,6 @@ function SidebarMetaPanel({
 	const { plannedSec, actualSec } = timing;
 	const showTiming = plannedSec !== null || actualSec !== null;
 	const timeRange = formatCompactTimeRange(approvalMeta.startTime, approvalMeta.endTime);
-	const approverRows = buildApproverRows(approvalMeta);
 	const primaryApprover = approverRows ?? [];
 	const approverTooltip = approverRows.map(r => `${r.label}: ${formatApproverDisplay(r.approver)}`).join('\n');
 
@@ -175,7 +195,10 @@ function SidebarMetaPanel({
 						</Typography>
 					)}
 					{timingOverPlanned && (
-						<WarningAmberRounded titleAccess="Actual time exceeds planned" sx={{ fontSize: 13, color: 'warning.main' }} />
+						<WarningAmberRounded
+							titleAccess="Actual time exceeds planned"
+							sx={{ fontSize: 13, color: 'warning.main' }}
+						/>
 					)}
 				</Box>
 			),
@@ -183,9 +206,9 @@ function SidebarMetaPanel({
 		});
 	}
 
-	primaryApprover.map(e =>{
+	primaryApprover.map(e => {
 		statCells.push({
-			key: 'approver',
+			key: `approver-${e.key}`,
 			label: e.key === 'recorded' ? 'Recorded' : e.key === 'production' ? 'Production' : 'Quality',
 			node: (
 				<Typography
@@ -204,7 +227,7 @@ function SidebarMetaPanel({
 			),
 			tooltip: approverRows.length > 1 ? approverTooltip : e.label
 		});
-	})
+	});
 
 	return (
 		<Box
@@ -230,13 +253,14 @@ function SidebarMetaPanel({
 
 function ReportMetaPanel({
 	timing,
-	approvalMeta
+	approvalMeta,
+	approverRows
 }: {
 	timing: TimelineCardTiming;
 	approvalMeta: TimelineStepApprovalMeta;
+	approverRows: ApproverRow[];
 }) {
 	const { plannedSec } = timing;
-	const approverRows = buildApproverRows(approvalMeta);
 	const hasStart = Boolean(approvalMeta.startTime);
 
 	if (!hasStart && plannedSec === null && approverRows.length === 0) return null;
@@ -245,9 +269,9 @@ function ReportMetaPanel({
 		display: 'grid',
 		gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))' },
 		gap: 1.5,
+		// Print pages are narrower than `sm`; keep the 3-column desktop layout the screen shows.
 		'@media print': {
-			gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-			gap: '4px 10px'
+			gridTemplateColumns: 'repeat(3, minmax(0, 1fr))'
 		}
 	} as const;
 
@@ -256,6 +280,7 @@ function ReportMetaPanel({
 			className="prc-report-step-meta"
 			sx={{
 				px: { xs: 2, sm: 2.5 },
+				'@media print': { px: 2.5 },
 				py: 1.25,
 				borderBottom: '1px solid',
 				borderColor: 'divider',
@@ -264,9 +289,7 @@ function ReportMetaPanel({
 		>
 			<Box className="prc-report-step-meta-grid" sx={gridSx}>
 				{hasStart && (
-					<ReportMetaField label="Start time">
-						{formatDisplayDateTime(approvalMeta.startTime)}
-					</ReportMetaField>
+					<ReportMetaField label="Start time">{formatDisplayDateTime(approvalMeta.startTime)}</ReportMetaField>
 				)}
 				{plannedSec !== null && (
 					<ReportMetaField label="Planned duration">
@@ -301,15 +324,17 @@ export function StepExecutionMetaSummary({
 	const timing = getStepTiming(step, stepStartEndTime);
 	const approvalMeta = getTimelineStepApprovalMeta(step, stepStartEndTime);
 	const timingOverPlanned = isStepLate(timing);
+	const approverRows = buildApproverRows(approvalMeta, step);
 
 	if (variant === 'report') {
-		return <ReportMetaPanel timing={timing} approvalMeta={approvalMeta} />;
+		return <ReportMetaPanel timing={timing} approvalMeta={approvalMeta} approverRows={approverRows} />;
 	}
 
 	return (
 		<SidebarMetaPanel
 			timing={timing}
 			approvalMeta={approvalMeta}
+			approverRows={approverRows}
 			timingOverPlanned={timingOverPlanned}
 			dimTiming={dimTiming}
 		/>

@@ -48,6 +48,8 @@ interface ExecutionSetupStepProps {
 	readOnlyOverride?: boolean;
 	/** With `readOnlyOverride`, use normal-looking fields (read-only, not MUI disabled grey) — e.g. consolidated report. */
 	plainReadOnlyFields?: boolean;
+	/** Hide the "Logged in as" card — it shows the current viewer, which is meaningless in a printed report. */
+	hideLoggedInUser?: boolean;
 	/** Lets the owning view (e.g. the header Next arrow) trigger this step's validate-and-save. */
 	submitActionRef?: MutableRefObject<(() => void) | null>;
 }
@@ -59,6 +61,7 @@ const ExecutionSetupStep = ({
 	onStepComplete,
 	readOnlyOverride,
 	plainReadOnlyFields,
+	hideLoggedInUser = false,
 	submitActionRef
 }: ExecutionSetupStepProps) => {
 	const { userInfo } = useCurrentRole();
@@ -168,26 +171,28 @@ const ExecutionSetupStep = ({
 
 	return (
 		<Box ref={containerRef} sx={{ p: 2, overflowY: 'auto', maxHeight: '100%' }}>
-			<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
-				<CardContent sx={{ p: 3 }}>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-						<Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
-							<PersonIcon />
-						</Avatar>
-						<Box>
-							<Typography variant="subtitle2" color="text.secondary">
-								Logged in as
-							</Typography>
-							<Typography variant="body1" fontWeight={600}>
-								{userInfo.name}
-							</Typography>
-							<Typography variant="body2" color="text.secondary">
-								{userInfo.email}
-							</Typography>
+			{!hideLoggedInUser && (
+				<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
+					<CardContent sx={{ p: 3 }}>
+						<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+							<Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+								<PersonIcon />
+							</Avatar>
+							<Box>
+								<Typography variant="subtitle2" color="text.secondary">
+									Logged in as
+								</Typography>
+								<Typography variant="body1" fontWeight={600}>
+									{userInfo.name}
+								</Typography>
+								<Typography variant="body2" color="text.secondary">
+									{userInfo.email}
+								</Typography>
+							</Box>
 						</Box>
-					</Box>
-				</CardContent>
-			</Card>
+					</CardContent>
+				</Card>
+			)}
 
 			<Card sx={{ mb: 2, borderRadius: 2, border: '1px solid #e0e0e0' }}>
 				<CardContent sx={{ p: 3 }}>

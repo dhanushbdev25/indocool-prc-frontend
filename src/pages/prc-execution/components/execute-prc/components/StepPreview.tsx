@@ -517,6 +517,25 @@ const StepPreview = ({
 		);
 	};
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- sequence measurement rows are untyped here
+	const renderSequenceCriticalityChip = (measurement: any) => {
+		const criticality = resolveCriticality(measurement);
+		if (criticality === 'NONE') return null;
+		return (
+			<Chip
+				label={formatSequenceCriticality(measurement)}
+				size="small"
+				sx={{
+					backgroundColor: CRITICALITY_CHIP_TINT[criticality].background,
+					color: CRITICALITY_CHIP_TINT[criticality].color,
+					fontSize: '0.6rem',
+					height: 16,
+					'& .MuiChip-label': { px: 0.5 }
+				}}
+			/>
+		);
+	};
+
 	// Shown outside the delay section: an edit can happen on any submitted step. Preview only (hidden in print).
 	const renderEditedAfterSubmitNote = () => {
 		if (!previewData.editedAfterSubmit) return null;
@@ -694,10 +713,14 @@ const StepPreview = ({
 						<Table size="small" stickyHeader={!embeddedReportMode}>
 							<TableHead>
 								<TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Step</TableCell>
+									{!embeddedReportMode && (
+										<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Step</TableCell>
+									)}
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Parameter</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Value</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target Value Type</TableCell>
+									{!embeddedReportMode && (
+										<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target Value Type</TableCell>
+									)}
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Method</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Target</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
@@ -715,34 +738,38 @@ const StepPreview = ({
 												'&:hover': { backgroundColor: '#f0f0f0' }
 											}}
 										>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
-												<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-													<Typography variant="body2" sx={{ fontWeight: 500 }}>
-														{measurement.stepNumber || index + 1}
-													</Typography>
-													{resolveCriticality(measurement) !== 'NONE' && (
-														<Chip
-															label={formatSequenceCriticality(measurement)}
-															size="small"
-															sx={{
-																backgroundColor: CRITICALITY_CHIP_TINT[resolveCriticality(measurement)].background,
-																color: CRITICALITY_CHIP_TINT[resolveCriticality(measurement)].color,
-																fontSize: '0.6rem',
-																height: 16,
-																'& .MuiChip-label': { px: 0.5 }
-															}}
-														/>
-													)}
-												</Box>
-											</TableCell>
+											{!embeddedReportMode && (
+												<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
+													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+														<Typography variant="body2" sx={{ fontWeight: 500 }}>
+															{measurement.stepNumber || index + 1}
+														</Typography>
+														{renderSequenceCriticalityChip(measurement)}
+													</Box>
+												</TableCell>
+											)}
 											<TableCell sx={descriptionTableCellSx(embeddedReportMode)}>
-												<Typography
-													variant="body2"
-													sx={descriptionTextSx(embeddedReportMode)}
-													title={measurement.parameterDescription}
-												>
-													{measurement.parameterDescription}
-												</Typography>
+												{embeddedReportMode ? (
+													// The Step column is dropped in the report, so its criticality chip sits here.
+													<Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+														<Typography
+															variant="body2"
+															sx={descriptionTextSx(embeddedReportMode)}
+															title={measurement.parameterDescription}
+														>
+															{measurement.parameterDescription}
+														</Typography>
+														{renderSequenceCriticalityChip(measurement)}
+													</Box>
+												) : (
+													<Typography
+														variant="body2"
+														sx={descriptionTextSx(embeddedReportMode)}
+														title={measurement.parameterDescription}
+													>
+														{measurement.parameterDescription}
+													</Typography>
+												)}
 											</TableCell>
 										<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 											{measurement.targetValueType === LIST_TYPE_KEY ? (
@@ -844,7 +871,11 @@ const StepPreview = ({
 												</Typography>
 											)}
 										</TableCell>
-											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>{formatSequenceTargetValueType(measurement.targetValueType)}</TableCell>
+											{!embeddedReportMode && (
+												<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
+													{formatSequenceTargetValueType(measurement.targetValueType)}
+												</TableCell>
+											)}
 											<TableCell sx={{ py: 1, fontSize: '0.8rem', color: '#666' }}>
 												{measurement.evaluationMethod}
 											</TableCell>
@@ -982,7 +1013,7 @@ const StepPreview = ({
 									))
 								) : (
 									<TableRow>
-										<TableCell colSpan={8} sx={{ textAlign: 'center', py: 3, color: '#666' }}>
+										<TableCell colSpan={embeddedReportMode ? 6 : 8} sx={{ textAlign: 'center', py: 3, color: '#666' }}>
 											No measurement data available
 										</TableCell>
 									</TableRow>
@@ -1145,6 +1176,8 @@ const StepPreview = ({
 		if (previewData.type === 'inspection') {
 			// Handle inspection data - show as detailed inspection report table
 			const inspectionParams = sortByNumericOrder(previewData.inspectionParameters || []);
+			// The report drops the Specification column, so detail rows span one column less.
+			const inspectionColumnCount = embeddedReportMode ? 6 : 7;
 			const inspectionMeta = previewData.inspectionMetadata;
 			const rawInspectionEntries = Object.entries(data).filter(([key]) => /^\d+$/.test(key));
 			const inspectionEntryById = new Map(rawInspectionEntries);
@@ -1371,8 +1404,8 @@ const StepPreview = ({
 				<Box>
 					{renderEditedAfterSubmitNote()}
 					{renderTimingExceededSection()}
-					{/* Inspection Metadata Header */}
-					{inspectionMeta && (
+					{/* Inspection Metadata Header (master-data detail; not part of the printed record) */}
+					{inspectionMeta && !embeddedReportMode && (
 						<Box sx={{ mb: 2, p: 1.5, backgroundColor: '#e3f2fd', borderRadius: 1, border: '1px solid #bbdefb' }}>
 							<Grid container spacing={1.5}>
 								<Grid size={{ xs: 6, sm: 4 }}>
@@ -1431,9 +1464,11 @@ const StepPreview = ({
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Type</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Value</TableCell>
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>{GATE_FIELD_LABEL}</TableCell>
-									<TableCell sx={{ fontWeight: 600, fontSize: '0.9375rem', py: 1, minWidth: 280 }}>
-										Specification
-									</TableCell>
+									{!embeddedReportMode && (
+										<TableCell sx={{ fontWeight: 600, fontSize: '0.9375rem', py: 1, minWidth: 280 }}>
+											Specification
+										</TableCell>
+									)}
 									<TableCell sx={{ fontWeight: 600, fontSize: '0.8rem', py: 1 }}>Status</TableCell>
 								</TableRow>
 							</TableHead>
@@ -1620,7 +1655,7 @@ const StepPreview = ({
 																	}}
 																/>
 															)}
-															{isListType && (
+															{isListType && !embeddedReportMode && (
 																<Chip
 																	label="List"
 																	size="small"
@@ -1659,7 +1694,7 @@ const StepPreview = ({
 																	}}
 																/>
 															)}
-															{paramMeta?.files && paramMeta.files.length > 0 && (
+															{!embeddedReportMode && paramMeta?.files && paramMeta.files.length > 0 && (
 																<Chip
 																	label={`${paramMeta.files.length} files`}
 																	size="small"
@@ -1723,6 +1758,7 @@ const StepPreview = ({
 															}}
 														/>
 													</TableCell>
+													{!embeddedReportMode && (
 													<TableCell
 														sx={{
 															...descriptionTableCellSx(embeddedReportMode, 360),
@@ -1747,6 +1783,7 @@ const StepPreview = ({
 															{specification}
 														</Typography>
 													</TableCell>
+													)}
 													<TableCell sx={{ py: 1, fontSize: '0.8rem' }}>
 														{parameterType === 'ok/not ok' && !isTableType && !isFixedTableType ? (
 															(() => {
@@ -1805,7 +1842,7 @@ const StepPreview = ({
 											{/* Collapsible Detail Row for List Parameters */}
 											{isListType && (
 												<TableRow>
-													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+													<TableCell colSpan={inspectionColumnCount} sx={{ py: 0, border: 'none' }}>
 														<Collapse
 															in={embeddedReportMode || !collapsedMultiValueParams.has(parameterId)}
 															timeout="auto"
@@ -1813,7 +1850,7 @@ const StepPreview = ({
 														>
 															<Box sx={{ p: 2, backgroundColor: '#f0f4ff', borderRadius: '8px', m: 1 }}>
 																<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a237e' }}>
-																	{parameterName} - List
+																	{embeddedReportMode ? 'List' : `${parameterName} - List`}
 																</Typography>
 																<ListValuePreview
 																	value={
@@ -1832,7 +1869,7 @@ const StepPreview = ({
 											{/* Collapsible Detail Row for Fixed-Table Parameters */}
 											{isFixedTableType && (
 												<TableRow>
-													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+													<TableCell colSpan={inspectionColumnCount} sx={{ py: 0, border: 'none' }}>
 														<Collapse
 															in={embeddedReportMode || !collapsedMultiValueParams.has(parameterId)}
 															timeout="auto"
@@ -1840,7 +1877,7 @@ const StepPreview = ({
 														>
 															<Box sx={{ p: 2, backgroundColor: '#f0f4ff', borderRadius: '8px', m: 1 }}>
 																<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a237e' }}>
-																	{parameterName} - Fixed Table Data
+																	{embeddedReportMode ? 'Fixed Table Data' : `${parameterName} - Fixed Table Data`}
 																</Typography>
 																{(() => {
 																	const tc = (paramMeta as Record<string, unknown>)?.tableConfig as Partial<TableConfig> | null;
@@ -1958,7 +1995,7 @@ const StepPreview = ({
 											{/* Collapsible Detail Row for Multi-Column and Table Parameters */}
 											{isMultiColumn && (
 													<TableRow>
-														<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+														<TableCell colSpan={inspectionColumnCount} sx={{ py: 0, border: 'none' }}>
 															<Collapse
 															in={embeddedReportMode || !collapsedMultiValueParams.has(parameterId)}
 															timeout="auto"
@@ -1974,7 +2011,8 @@ const StepPreview = ({
 																	}}
 																>
 																	<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: isTableType ? '#1a237e' : '#333' }}>
-																		{parameterName} - {isTableType ? 'Table Data' : 'Detailed Values'}
+																		{embeddedReportMode ? '' : `${parameterName} - `}
+										{isTableType ? 'Table Data' : 'Detailed Values'}
 																	</Typography>
 																	<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
 																		<Table size="small">
@@ -2110,7 +2148,7 @@ const StepPreview = ({
 											{/* Collapsible Image Row, under its parameter as in the execution step */}
 											{parameterImages && (
 												<TableRow>
-													<TableCell colSpan={7} sx={{ py: 0, border: 'none' }}>
+													<TableCell colSpan={inspectionColumnCount} sx={{ py: 0, border: 'none' }}>
 														<Collapse
 															in={embeddedReportMode || !collapsedMultiValueParams.has(parameterId)}
 															timeout="auto"
@@ -2118,7 +2156,7 @@ const StepPreview = ({
 														>
 															<Box sx={{ p: 2, backgroundColor: '#f8f9fa', borderRadius: '8px', m: 1 }}>
 																<Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 600, color: '#1a237e' }}>
-																	Image Annotation for {parameterName}
+																	{embeddedReportMode ? 'Image Annotation' : `Image Annotation for ${parameterName}`}
 																</Typography>
 																{parameterImages}
 															</Box>

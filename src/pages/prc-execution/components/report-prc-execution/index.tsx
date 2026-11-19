@@ -15,7 +15,7 @@ import BomStep from '../execute-prc/components/steps/BomStep';
 import SapConfirmationStep from '../execute-prc/components/steps/SapConfirmationStep';
 import StepPreview from '../execute-prc/components/StepPreview';
 import StepExecutionMetaSummary from '../StepExecutionMetaSummary';
-import { formatDisplayDate, formatDisplayDateTime } from '../../../../utils/formatDisplayDate';
+import { formatDisplayDate } from '../../../../utils/formatDisplayDate';
 import './prcExecutionReportPrint.css';
 
 const noopForm = (_fd: FormData) => {
@@ -26,10 +26,6 @@ const noopAsyncForm = async (_fd: FormData) => {
 };
 const noop = () => {};
 const noopProceed = () => {};
-
-function formatWhenKnown(iso?: string | null): string {
-	return formatDisplayDateTime(iso);
-}
 
 function formatOrderId(orderId?: string | number | null): string {
 	return orderId != null && String(orderId).trim() ? String(orderId) : '—';
@@ -98,8 +94,6 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 						{execution.remarks?.trim() ? execution.remarks : '—'}
 					</Typography>
 				</Box>
-				<ReportSummaryField label="Created">{formatWhenKnown(execution.createdAt)}</ReportSummaryField>
-				<ReportSummaryField label="Last updated">{formatWhenKnown(execution.updatedAt)}</ReportSummaryField>
 			</Box>
 			<Alert
 				severity="warning"
@@ -150,6 +144,7 @@ function ReportSectionShell({
 				className="prc-report-step-header"
 				sx={{
 					px: { xs: 2, sm: 2.5 },
+					'@media print': { px: 2.5 },
 					py: 2,
 					borderBottom: '1px solid',
 					borderColor: 'divider',
@@ -211,6 +206,7 @@ function ReportTimelineSection({
 							onStepComplete={noopForm}
 							readOnlyOverride
 							plainReadOnlyFields
+							hideLoggedInUser
 						/>
 					</ReportSectionShell>
 				</Box>
@@ -243,7 +239,10 @@ function ReportTimelineSection({
 				<Box className={className}>
 					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						{preview ? (
-							<Box className="prc-report-step-preview-wrap" sx={{ px: { xs: 1.5, sm: 2 }, pt: 2, pb: 2 }}>
+							<Box
+								className="prc-report-step-preview-wrap"
+								sx={{ px: { xs: 1.5, sm: 2 }, pt: 2, pb: 2, '@media print': { px: 2 } }}
+							>
 								<StepPreview
 									previewData={preview}
 									embeddedReportMode
@@ -271,7 +270,10 @@ function ReportTimelineSection({
 				<Box className={className}>
 					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
 						{preview ? (
-							<Box className="prc-report-step-preview-wrap" sx={{ px: { xs: 1.5, sm: 2 }, pt: 2, pb: 2 }}>
+							<Box
+								className="prc-report-step-preview-wrap"
+								sx={{ px: { xs: 1.5, sm: 2 }, pt: 2, pb: 2, '@media print': { px: 2 } }}
+							>
 								<StepPreview
 									previewData={preview}
 									embeddedReportMode
@@ -436,6 +438,7 @@ const PrcExecutionReport = () => {
 				elevation={0}
 				sx={{
 					p: { xs: 2.5, md: 3 },
+					'@media print': { p: 3 },
 					mb: 3,
 					borderRadius: 2,
 					border: '1px solid',
