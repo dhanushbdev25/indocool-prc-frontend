@@ -452,8 +452,10 @@ const ImageDisplay: React.FC<ImageDisplayProps> = ({
 						justifyContent: 'center',
 						alignItems: 'center',
 						// Drawing size where there is room; scales down to fit a narrower space (print, small screens).
-						width: canvasSize.width,
-						maxWidth: '100%',
+						// Width 100% capped at the drawing size, not the other way round: inside a table cell a fixed
+						// width sets the column's minimum and pushes the table past the page edge in print.
+						width: '100%',
+						maxWidth: canvasSize.width,
 						aspectRatio: `${canvasSize.width} / ${canvasSize.height}`,
 						'& > div, & .konvajs-content, & canvas': { width: '100% !important', height: '100% !important' }
 					}}

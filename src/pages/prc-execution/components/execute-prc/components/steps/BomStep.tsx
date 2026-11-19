@@ -56,6 +56,71 @@ import {
 import { formatDisplayDateTime } from '../../../../../../utils/formatDisplayDate';
 import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
 import { ERROR_ANCHOR_CLASS } from '../../../../utils/scrollToFirstError';
+import { ReportField } from '../../../report-prc-execution/ReportField';
+import { displayValue, reportFieldGridSx } from '../../../report-prc-execution/reportFieldUtils';
+
+const FOD_CHECKPOINT_QUESTION =
+	'Mixing Material is free from Foreign Object Debris (FOD) and stirred as per Work Instruction';
+
+const PotLifeAlert = () => (
+	<Alert severity="info" icon={<AccessTimeIcon />} className="prc-report-bom-pot-life" sx={{ mb: 2, borderRadius: 2 }}>
+		<Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+			Prepared chemical mixtures shall be utilized within the specified pot life
+		</Typography>
+		<Box component="ul" sx={{ m: 0, pl: 2.25 }}>
+			<Typography component="li" variant="body2">
+				Gelcoat pot life - 15 mins
+			</Typography>
+			<Typography component="li" variant="body2">
+				Resin pot life - 30 mins
+			</Typography>
+			<Typography component="li" variant="body2">
+				Topcoat pot life - 15 mins
+			</Typography>
+		</Box>
+	</Alert>
+);
+
+/** The recorded values of one catalyst mixing entry as label / value text, for the consolidated report. */
+const CatalystEntryReportFields = ({ entry }: { entry: CatalystMixingEntry }) => {
+	const fodLabel = OK_NOT_OK_OPTIONS.find(o => o.value === entry.fodCheckpoint)?.label ?? entry.fodCheckpoint;
+	return (
+		<>
+			<Box sx={reportFieldGridSx(4)}>
+				<ReportField label="Temperature">{displayValue(entry.temperature, '°C')}</ReportField>
+				<ReportField label="Humidity">{displayValue(entry.humidity, '%')}</ReportField>
+				<ReportField label="Actual Quantity">{displayValue(entry.actualQuantity)}</ReportField>
+				<ReportField label="Catalyst Quantity (ml)">{displayValue(entry.catalystQuantity)}</ReportField>
+				<ReportField label="Can number">{displayValue(entry.canNumber)}</ReportField>
+				<ReportField label="Hygrometer ID">{displayValue(entry.hygrometerInstrumentId)}</ReportField>
+				<ReportField label="Weighing Machine ID">{displayValue(entry.weighingMachineInstrumentId)}</ReportField>
+			</Box>
+
+			<Box sx={{ mt: 3, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
+				<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', mb: 2 }}>
+					Operator details
+				</Typography>
+				<Box sx={reportFieldGridSx(3)}>
+					<ReportField label="Skill level">{displayValue(entry.role?.toUpperCase())}</ReportField>
+					<ReportField label="Employee name">{displayValue(entry.employeeName)}</ReportField>
+					<ReportField label="Employee number">{displayValue(entry.employeeCode)}</ReportField>
+				</Box>
+			</Box>
+
+			<Box sx={{ mt: 3, display: 'grid', gap: 2 }}>
+				<ReportField label={FOD_CHECKPOINT_QUESTION}>{displayValue(fodLabel)}</ReportField>
+				{acceptsOkNotOkComment(entry.fodCheckpoint) && (
+					<ReportField label={getOkNotOkCommentFieldLabel(entry.fodCheckpoint)}>
+						<Box component="span" sx={{ whiteSpace: 'pre-wrap' }}>
+							{displayValue(entry.fodDeviationComment)}
+						</Box>
+					</ReportField>
+				)}
+				<PotLifeAlert />
+			</Box>
+		</>
+	);
+};
 
 interface BomStepProps {
 	step: TimelineStep;
@@ -64,6 +129,8 @@ interface BomStepProps {
 	readOnlyOverride?: boolean;
 	/** Consolidated PDF/report: every material group expanded; no interaction needed. */
 	expandAccordionsForPdf?: boolean;
+	/** Show the recorded values as plain label / value text instead of form fields (consolidated report). */
+	labelValueFields?: boolean;
 	submitLabel?: string;
 	hideSubmitButton?: boolean;
 	submitActionRef?: MutableRefObject<(() => void) | null>;
@@ -189,6 +256,7 @@ const BomStep = ({
 	onStepComplete,
 	readOnlyOverride,
 	expandAccordionsForPdf,
+	labelValueFields = false,
 	submitLabel = 'Complete Catalyst Mixing',
 	hideSubmitButton = false,
 	submitActionRef
@@ -758,266 +826,254 @@ const BomStep = ({
 									</Box>
 
 									<CardContent sx={{ p: 3 }}>
-										{/* Input Fields */}
-										<Grid container spacing={3}>
-											<Grid size={{ xs: 12, md: 3 }}>
-												<Box sx={{ position: 'relative' }}>
-													<TextField
-														fullWidth
-														label="Temperature"
-														type="number"
-														value={entry.temperature}
-														onChange={e => handleInputChange(entry.id, 'temperature', e.target.value)}
-														error={!!errors[`${entry.id}_temperature`]}
-														helperText={errors[`${entry.id}_temperature`] || 'Enter temperature in °C'}
-														disabled={isReadOnly || entry.blocked || entry.savedEntry}
-														InputProps={{
-															startAdornment: (
-																<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-																	<ThermostatIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-																</Box>
-															),
-															endAdornment: (
-																<Typography variant="body2" sx={{ color: 'text.secondary' }}>
-																	°C
-																</Typography>
-															)
-														}}
-													/>
+										{labelValueFields ? (
+											<CatalystEntryReportFields entry={entry} />
+										) : (
+											<>
+												{/* Input Fields */}
+												<Grid container spacing={3}>
+													<Grid size={{ xs: 12, md: 3 }}>
+														<Box sx={{ position: 'relative' }}>
+															<TextField
+																fullWidth
+																label="Temperature"
+																type="number"
+																value={entry.temperature}
+																onChange={e => handleInputChange(entry.id, 'temperature', e.target.value)}
+																error={!!errors[`${entry.id}_temperature`]}
+																helperText={errors[`${entry.id}_temperature`] || 'Enter temperature in °C'}
+																disabled={isReadOnly || entry.blocked || entry.savedEntry}
+																InputProps={{
+																	startAdornment: (
+																		<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+																			<ThermostatIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+																		</Box>
+																	),
+																	endAdornment: (
+																		<Typography variant="body2" sx={{ color: 'text.secondary' }}>
+																			°C
+																		</Typography>
+																	)
+																}}
+															/>
+														</Box>
+													</Grid>
+
+													<Grid size={{ xs: 12, md: 3 }}>
+														<TextField
+															fullWidth
+															label="Humidity"
+															type="number"
+															value={entry.humidity}
+															onChange={e => handleInputChange(entry.id, 'humidity', e.target.value)}
+															error={!!errors[`${entry.id}_humidity`]}
+															helperText={errors[`${entry.id}_humidity`] || 'Enter humidity in %'}
+															disabled={isReadOnly || entry.blocked || entry.savedEntry}
+															InputProps={{
+																startAdornment: (
+																	<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+																		<WaterDropIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+																	</Box>
+																),
+																endAdornment: (
+																	<Typography variant="body2" sx={{ color: 'text.secondary' }}>
+																		%
+																	</Typography>
+																)
+															}}
+														/>
+													</Grid>
+
+													<Grid size={{ xs: 12, md: 3 }}>
+														<TextField
+															fullWidth
+															label="Actual Quantity"
+															type="number"
+															value={entry.actualQuantity}
+															onChange={e => handleInputChange(entry.id, 'actualQuantity', e.target.value)}
+															error={!!errors[`${entry.id}_actualQuantity`]}
+															helperText={errors[`${entry.id}_actualQuantity`] || 'Enter actual quantity'}
+															disabled={isReadOnly || entry.blocked || entry.savedEntry}
+															InputProps={{
+																startAdornment: (
+																	<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+																		<ScienceIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+																	</Box>
+																)
+															}}
+														/>
+													</Grid>
+
+													<Grid size={{ xs: 12, md: 3 }}>
+														<TextField
+															fullWidth
+															label="Catalyst Quantity (ml)"
+															type="number"
+															value={entry.catalystQuantity}
+															onChange={e => handleInputChange(entry.id, 'catalystQuantity', e.target.value)}
+															error={!!errors[`${entry.id}_catalyst`]}
+															helperText={errors[`${entry.id}_catalyst`] || 'Enter catalyst quantity in ml'}
+															disabled={isReadOnly || entry.blocked || entry.savedEntry}
+															InputProps={{
+																startAdornment: (
+																	<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
+																		<ScienceIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+																	</Box>
+																)
+															}}
+														/>
+													</Grid>
+
+													<Grid size={{ xs: 12, md: 3 }}>
+														<TextField
+															fullWidth
+															label="Can number"
+															value={entry.canNumber}
+															onChange={e => handleInputChange(entry.id, 'canNumber', e.target.value)}
+															helperText="Optional"
+															disabled={isReadOnly || entry.blocked || entry.savedEntry}
+														/>
+													</Grid>
+
+													<Grid size={{ xs: 12, md: 3 }}>
+														<TextField
+															fullWidth
+															label="Hygrometer ID"
+															value={entry.hygrometerInstrumentId}
+															onChange={e => handleInputChange(entry.id, 'hygrometerInstrumentId', e.target.value)}
+															helperText="Optional"
+															disabled={isReadOnly || entry.blocked || entry.savedEntry}
+														/>
+													</Grid>
+
+													<Grid size={{ xs: 12, md: 3 }}>
+														<TextField
+															fullWidth
+															label="Weighing Machine ID"
+															value={entry.weighingMachineInstrumentId}
+															onChange={e => handleInputChange(entry.id, 'weighingMachineInstrumentId', e.target.value)}
+															helperText="Optional"
+															disabled={isReadOnly || entry.blocked || entry.savedEntry}
+														/>
+													</Grid>
+												</Grid>
+
+												<Box
+													sx={{ mt: 3, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}
+												>
+													<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', mb: 2 }}>
+														Operator details
+													</Typography>
+													<Grid container spacing={2}>
+														<Grid size={{ xs: 12, md: 4 }}>
+															<FormControl
+																fullWidth
+																error={!!errors[`${entry.id}_role`]}
+																disabled={isReadOnly || entry.blocked || entry.savedEntry}
+															>
+																<InputLabel>Skill level</InputLabel>
+																<Select
+																	value={entry.role}
+																	onChange={e => handleInputChange(entry.id, 'role', e.target.value)}
+																	label="Skill level"
+																>
+																	<MenuItem value="l1">L1</MenuItem>
+																	<MenuItem value="l2">L2</MenuItem>
+																	<MenuItem value="l3">L3</MenuItem>
+																	<MenuItem value="l4">L4</MenuItem>
+																</Select>
+																{errors[`${entry.id}_role`] && (
+																	<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
+																		{errors[`${entry.id}_role`]}
+																	</Typography>
+																)}
+															</FormControl>
+														</Grid>
+														<Grid size={{ xs: 12, md: 4 }}>
+															<TextField
+																fullWidth
+																label="Employee name"
+																value={entry.employeeName}
+																onChange={e => handleInputChange(entry.id, 'employeeName', e.target.value)}
+																error={!!errors[`${entry.id}_employeeName`]}
+																helperText={errors[`${entry.id}_employeeName`]}
+																disabled={isReadOnly || entry.blocked || entry.savedEntry}
+															/>
+														</Grid>
+														<Grid size={{ xs: 12, md: 4 }}>
+															<TextField
+																fullWidth
+																label="Employee number"
+																value={entry.employeeCode}
+																onChange={e => handleInputChange(entry.id, 'employeeCode', e.target.value)}
+																error={!!errors[`${entry.id}_employeeCode`]}
+																helperText={errors[`${entry.id}_employeeCode`]}
+																disabled={isReadOnly || entry.blocked || entry.savedEntry}
+															/>
+														</Grid>
+													</Grid>
 												</Box>
-											</Grid>
 
-											<Grid size={{ xs: 12, md: 3 }}>
-												<TextField
-													fullWidth
-													label="Humidity"
-													type="number"
-													value={entry.humidity}
-													onChange={e => handleInputChange(entry.id, 'humidity', e.target.value)}
-													error={!!errors[`${entry.id}_humidity`]}
-													helperText={errors[`${entry.id}_humidity`] || 'Enter humidity in %'}
-													disabled={isReadOnly || entry.blocked || entry.savedEntry}
-													InputProps={{
-														startAdornment: (
-															<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-																<WaterDropIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-															</Box>
-														),
-														endAdornment: (
-															<Typography variant="body2" sx={{ color: 'text.secondary' }}>
-																%
-															</Typography>
-														)
-													}}
-												/>
-											</Grid>
-
-											<Grid size={{ xs: 12, md: 3 }}>
-												<TextField
-													fullWidth
-													label="Actual Quantity"
-													type="number"
-													value={entry.actualQuantity}
-													onChange={e => handleInputChange(entry.id, 'actualQuantity', e.target.value)}
-													error={!!errors[`${entry.id}_actualQuantity`]}
-													helperText={errors[`${entry.id}_actualQuantity`] || 'Enter actual quantity'}
-													disabled={isReadOnly || entry.blocked || entry.savedEntry}
-													InputProps={{
-														startAdornment: (
-															<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-																<ScienceIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-															</Box>
-														)
-													}}
-												/>
-											</Grid>
-
-											<Grid size={{ xs: 12, md: 3 }}>
-												<TextField
-													fullWidth
-													label="Catalyst Quantity (ml)"
-													type="number"
-													value={entry.catalystQuantity}
-													onChange={e => handleInputChange(entry.id, 'catalystQuantity', e.target.value)}
-													error={!!errors[`${entry.id}_catalyst`]}
-													helperText={errors[`${entry.id}_catalyst`] || 'Enter catalyst quantity in ml'}
-													disabled={isReadOnly || entry.blocked || entry.savedEntry}
-													InputProps={{
-														startAdornment: (
-															<Box sx={{ display: 'flex', alignItems: 'center', mr: 1 }}>
-																<ScienceIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
-															</Box>
-														)
-													}}
-												/>
-											</Grid>
-
-											<Grid size={{ xs: 12, md: 3 }}>
-												<TextField
-													fullWidth
-													label="Can number"
-													value={entry.canNumber}
-													onChange={e => handleInputChange(entry.id, 'canNumber', e.target.value)}
-													helperText="Optional"
-													disabled={isReadOnly || entry.blocked || entry.savedEntry}
-												/>
-											</Grid>
-
-											<Grid size={{ xs: 12, md: 3 }}>
-												<TextField
-													fullWidth
-													label="Hygrometer ID"
-													value={entry.hygrometerInstrumentId}
-													onChange={e => handleInputChange(entry.id, 'hygrometerInstrumentId', e.target.value)}
-													helperText="Optional"
-													disabled={isReadOnly || entry.blocked || entry.savedEntry}
-												/>
-											</Grid>
-
-											<Grid size={{ xs: 12, md: 3 }}>
-												<TextField
-													fullWidth
-													label="Weighing Machine ID"
-													value={entry.weighingMachineInstrumentId}
-													onChange={e => handleInputChange(entry.id, 'weighingMachineInstrumentId', e.target.value)}
-													helperText="Optional"
-													disabled={isReadOnly || entry.blocked || entry.savedEntry}
-												/>
-											</Grid>
-										</Grid>
-
-										<Box sx={{ mt: 3, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1, border: '1px solid #e9ecef' }}>
-											<Typography variant="subtitle2" sx={{ fontWeight: 600, color: '#333', mb: 2 }}>
-												Operator details
-											</Typography>
-											<Grid container spacing={2}>
-												<Grid size={{ xs: 12, md: 4 }}>
+												{/* FOD Checkpoint */}
+												<Box sx={{ mt: 3 }}>
 													<FormControl
-														fullWidth
-														error={!!errors[`${entry.id}_role`]}
+														component="fieldset"
 														disabled={isReadOnly || entry.blocked || entry.savedEntry}
+														fullWidth
+														error={!!errors[`${entry.id}_fod`]}
 													>
-														<InputLabel>Skill level</InputLabel>
-														<Select
-															value={entry.role}
-															onChange={e => handleInputChange(entry.id, 'role', e.target.value)}
-															label="Skill level"
+														<FormLabel
+															component="legend"
+															sx={{ mb: 1, fontWeight: 500 }}
+															required={entry.catalystQuantity.trim() !== ''}
 														>
-															<MenuItem value="l1">L1</MenuItem>
-															<MenuItem value="l2">L2</MenuItem>
-															<MenuItem value="l3">L3</MenuItem>
-															<MenuItem value="l4">L4</MenuItem>
-														</Select>
-														{errors[`${entry.id}_role`] && (
+															{FOD_CHECKPOINT_QUESTION}
+														</FormLabel>
+														<RadioGroup
+															row
+															value={entry.fodCheckpoint}
+															onChange={e => handleInputChange(entry.id, 'fodCheckpoint', e.target.value)}
+														>
+															{OK_NOT_OK_OPTIONS.map(option => (
+																<FormControlLabel
+																	key={option.value}
+																	value={option.value}
+																	control={<Radio size="small" color={option.color} />}
+																	label={option.label}
+																/>
+															))}
+														</RadioGroup>
+														{errors[`${entry.id}_fod`] && (
 															<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-																{errors[`${entry.id}_role`]}
+																{errors[`${entry.id}_fod`]}
 															</Typography>
 														)}
+														{acceptsOkNotOkComment(entry.fodCheckpoint) && (
+															<TextField
+																fullWidth
+																multiline
+																rows={2}
+																label={getOkNotOkCommentFieldLabel(entry.fodCheckpoint)}
+																placeholder={getOkNotOkCommentPlaceholder(entry.fodCheckpoint)}
+																value={entry.fodDeviationComment}
+																onChange={e => handleInputChange(entry.id, 'fodDeviationComment', e.target.value)}
+																error={!!errors[`${entry.id}_fodComment`]}
+																helperText={
+																	errors[`${entry.id}_fodComment`] ||
+																	(requiresOkNotOkComment(entry.fodCheckpoint)
+																		? `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
+																		: 'Optional')
+																}
+																disabled={isReadOnly || entry.blocked || entry.savedEntry}
+																required={requiresOkNotOkComment(entry.fodCheckpoint)}
+																sx={{ mt: 1.5 }}
+															/>
+														)}
+														<PotLifeAlert />
 													</FormControl>
-												</Grid>
-												<Grid size={{ xs: 12, md: 4 }}>
-													<TextField
-														fullWidth
-														label="Employee name"
-														value={entry.employeeName}
-														onChange={e => handleInputChange(entry.id, 'employeeName', e.target.value)}
-														error={!!errors[`${entry.id}_employeeName`]}
-														helperText={errors[`${entry.id}_employeeName`]}
-														disabled={isReadOnly || entry.blocked || entry.savedEntry}
-													/>
-												</Grid>
-												<Grid size={{ xs: 12, md: 4 }}>
-													<TextField
-														fullWidth
-														label="Employee number"
-														value={entry.employeeCode}
-														onChange={e => handleInputChange(entry.id, 'employeeCode', e.target.value)}
-														error={!!errors[`${entry.id}_employeeCode`]}
-														helperText={errors[`${entry.id}_employeeCode`]}
-														disabled={isReadOnly || entry.blocked || entry.savedEntry}
-													/>
-												</Grid>
-											</Grid>
-										</Box>
-
-										{/* FOD Checkpoint */}
-										<Box sx={{ mt: 3 }}>
-											<FormControl
-												component="fieldset"
-												disabled={isReadOnly || entry.blocked || entry.savedEntry}
-												fullWidth
-												error={!!errors[`${entry.id}_fod`]}
-											>
-												<FormLabel
-													component="legend"
-													sx={{ mb: 1, fontWeight: 500 }}
-													required={entry.catalystQuantity.trim() !== ''}
-												>
-													Mixing Material is free from Foreign Object Debris (FOD) and stirred as per Work Instruction
-												</FormLabel>
-												<RadioGroup
-													row
-													value={entry.fodCheckpoint}
-													onChange={e => handleInputChange(entry.id, 'fodCheckpoint', e.target.value)}
-												>
-													{OK_NOT_OK_OPTIONS.map(option => (
-														<FormControlLabel
-															key={option.value}
-															value={option.value}
-															control={<Radio size="small" color={option.color} />}
-															label={option.label}
-														/>
-													))}
-												</RadioGroup>
-												{errors[`${entry.id}_fod`] && (
-													<Typography variant="caption" color="error" sx={{ mt: 0.5 }}>
-														{errors[`${entry.id}_fod`]}
-													</Typography>
-												)}
-												{acceptsOkNotOkComment(entry.fodCheckpoint) && (
-													<TextField
-														fullWidth
-														multiline
-														rows={2}
-														label={getOkNotOkCommentFieldLabel(entry.fodCheckpoint)}
-														placeholder={getOkNotOkCommentPlaceholder(entry.fodCheckpoint)}
-														value={entry.fodDeviationComment}
-														onChange={e => handleInputChange(entry.id, 'fodDeviationComment', e.target.value)}
-														error={!!errors[`${entry.id}_fodComment`]}
-														helperText={
-															errors[`${entry.id}_fodComment`] ||
-															(requiresOkNotOkComment(entry.fodCheckpoint)
-																? `Required when ${OK_NOT_OK_NEGATIVE_LABEL} is selected`
-																: 'Optional')
-														}
-														disabled={isReadOnly || entry.blocked || entry.savedEntry}
-														required={requiresOkNotOkComment(entry.fodCheckpoint)}
-														sx={{ mt: 1.5 }}
-													/>
-												)}
-												<Alert
-													severity="info"
-													icon={<AccessTimeIcon />}
-													className="prc-report-bom-pot-life"
-													sx={{ mb: 2, borderRadius: 2 }}
-												>
-													<Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
-														Prepared chemical mixtures shall be utilized within the specified pot life
-													</Typography>
-													<Box component="ul" sx={{ m: 0, pl: 2.25 }}>
-														<Typography component="li" variant="body2">
-															Gelcoat pot life - 15 mins
-														</Typography>
-														<Typography component="li" variant="body2">
-															Resin pot life - 30 mins
-														</Typography>
-														<Typography component="li" variant="body2">
-															Topcoat pot life - 15 mins
-														</Typography>
-													</Box>
-												</Alert>
-											</FormControl>
-										</Box>
+												</Box>
+											</>
+										)}
 
 										{/* Range Display and Validation */}
 										{entry.calculatedMin > 0 && entry.calculatedMax > 0 && (
@@ -1048,8 +1104,9 @@ const BomStep = ({
 											</Paper>
 										)}
 
-										{/* Acknowledgment checkbox for out-of-range values */}
-										{(entry.validationStatus === 'Lesser' || entry.validationStatus === 'Greater') &&
+										{/* Acknowledgment checkbox for out-of-range values (not printed in the report) */}
+										{!labelValueFields &&
+											(entry.validationStatus === 'Lesser' || entry.validationStatus === 'Greater') &&
 											!entry.blocked && (
 												<Box sx={{ mt: 2 }}>
 													<FormControlLabel

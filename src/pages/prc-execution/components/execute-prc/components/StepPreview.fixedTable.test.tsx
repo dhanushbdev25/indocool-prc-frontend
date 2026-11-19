@@ -140,4 +140,33 @@ describe('StepPreview fixed-table rows', () => {
 		// The column header no longer claims a type the cells may not share.
 		expect(screen.queryByText('Text')).not.toBeInTheDocument();
 	});
+
+	it('leaves out the Row Images column when no row has an image', () => {
+		renderPreview([savedRow, { ...savedRow, 'Employee Code': '1234' }]);
+
+		expect(screen.queryByRole('columnheader', { name: 'Row Images' })).not.toBeInTheDocument();
+		expect(screen.queryByText('No row annotations')).not.toBeInTheDocument();
+	});
+
+	it('keeps the Row Images column when at least one row has an image', () => {
+		const preview = previewWith([savedRow, { ...savedRow, 'Employee Code': '1234' }]);
+		(preview.data as Record<number, Record<string, unknown>>)[PARAM_ID].rowAnnotations = [
+			{ rowIndex: 1, annotations: [{ imageFileName: 'row-1.jpg', regions: [] }] }
+		];
+		render(
+			<StepPreview
+				previewData={preview}
+				onBackToStep={noop}
+				onApproveProduction={noop}
+				onApproveCTQ={noop}
+				onPartialApproveCTQ={noop}
+				onProceedToNext={noop}
+				embeddedReportMode
+			/>
+		);
+
+		expect(screen.getByRole('columnheader', { name: 'Row Images' })).toBeInTheDocument();
+		// The row without an image still says so.
+		expect(screen.getAllByText('No row annotations')).toHaveLength(1);
+	});
 });

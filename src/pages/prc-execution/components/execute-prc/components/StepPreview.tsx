@@ -1894,6 +1894,8 @@ const StepPreview = ({
 																		}>;
 																	}>((parameterData as Record<string, unknown>).rowAnnotations);
 																	if (!tc?.columns) return <Typography variant="body2" color="text.secondary">No table configuration</Typography>;
+																	// Only show the Row Images column when at least one row actually has an image.
+																	const hasRowImages = rowAnnotations.some(a => Array.isArray(a?.annotations) && a.annotations.length > 0);
 																	return (
 																		<TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '8px', overflow: 'hidden' }}>
 																			<Table size="small">
@@ -1907,9 +1909,11 @@ const StepPreview = ({
 																								</Typography>
 																							</TableCell>
 																						))}
-																						<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75, px: 1 }}>
-																							Row Images
-																						</TableCell>
+																						{hasRowImages && (
+																							<TableCell sx={{ fontWeight: 600, fontSize: '0.75rem', py: 0.75, px: 1 }}>
+																								Row Images
+																							</TableCell>
+																						)}
 																					</TableRow>
 																				</TableHead>
 																				<TableBody>
@@ -1940,6 +1944,7 @@ const StepPreview = ({
 																									</TableCell>
 																								);
 																							})}
+																							{hasRowImages && (
 																							<TableCell sx={{ minWidth: 260 }}>
 																								{(() => {
 																									const mappedFiles = rowMappings.find(m => m.rowIndex === rIdx)?.fileName || [];
@@ -1979,6 +1984,7 @@ const StepPreview = ({
 																									);
 																								})()}
 																							</TableCell>
+																							)}
 																						</TableRow>
 																					))}
 																				</TableBody>

@@ -21,6 +21,8 @@ interface RawMaterialsStepProps {
 	sapRawMaterials?: RawMaterialItem[];
 	/** Optional title for SAP mode (defaults to "Raw Materials"). */
 	sapTitle?: string;
+	/** Hide the step title and instruction text — the consolidated report already shows the title in the section header. */
+	hideHeading?: boolean;
 }
 
 /** Flat shape expected by `buildAggregatedData` for raw materials (matches prior editable step). */
@@ -48,7 +50,8 @@ const RawMaterialsStep = ({
 	onStepComplete,
 	readOnlyOverride,
 	sapRawMaterials,
-	sapTitle
+	sapTitle,
+	hideHeading = false
 }: RawMaterialsStepProps) => {
 	if (sapRawMaterials) {
 		return (
@@ -156,16 +159,18 @@ const RawMaterialsStep = ({
 
 	return (
 		<Box sx={{ p: 2, backgroundColor: 'white' }}>
-			<Box sx={{ mb: 2 }}>
-				<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', mb: 0.5, lineHeight: 1.3 }}>
-					{step.title}
-				</Typography>
-				{step.description && step.description !== step.title && (
-					<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
-						{step.description}
+			{!hideHeading && (
+				<Box sx={{ mb: 2 }}>
+					<Typography variant="h6" sx={{ fontWeight: 600, color: '#333', mb: 0.5, lineHeight: 1.3 }}>
+						{step.title}
 					</Typography>
-				)}
-			</Box>
+					{step.description && step.description !== step.title && (
+						<Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
+							{step.description}
+						</Typography>
+					)}
+				</Box>
+			)}
 
 			<TableContainer component={Paper} sx={{ mb: 2 }}>
 				<Table size="small">

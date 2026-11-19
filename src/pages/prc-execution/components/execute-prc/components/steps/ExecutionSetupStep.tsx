@@ -29,6 +29,8 @@ import {
 	mergeOperationWiseForRead
 } from '../../../../utils/operationWiseMerge';
 import { useScrollToFirstError } from '../../../../hooks/useScrollToFirstError';
+import { ReportField } from '../../../report-prc-execution/ReportField';
+import { displayValue, reportFieldGridSx } from '../../../report-prc-execution/reportFieldUtils';
 
 const getMouldCode = (item: MouldComboItem | null): string => {
 	if (!item) return '';
@@ -50,6 +52,8 @@ interface ExecutionSetupStepProps {
 	plainReadOnlyFields?: boolean;
 	/** Hide the "Logged in as" card — it shows the current viewer, which is meaningless in a printed report. */
 	hideLoggedInUser?: boolean;
+	/** Consolidated report: show the recorded values as plain label / value text instead of form fields, without helper text. */
+	labelValueFields?: boolean;
 	/** Lets the owning view (e.g. the header Next arrow) trigger this step's validate-and-save. */
 	submitActionRef?: MutableRefObject<(() => void) | null>;
 }
@@ -62,6 +66,7 @@ const ExecutionSetupStep = ({
 	readOnlyOverride,
 	plainReadOnlyFields,
 	hideLoggedInUser = false,
+	labelValueFields = false,
 	submitActionRef
 }: ExecutionSetupStepProps) => {
 	const { userInfo } = useCurrentRole();
@@ -202,104 +207,113 @@ const ExecutionSetupStep = ({
 							<Typography variant="h6" sx={{ fontWeight: 600, color: '#333' }}>
 								Production setup
 							</Typography>
-							<Typography variant="body2" sx={{ color: '#666' }}>
-								Production set and mould used for this run
-							</Typography>
+							{!labelValueFields && (
+								<Typography variant="body2" sx={{ color: '#666' }}>
+									Production set and mould used for this run
+								</Typography>
+							)}
 						</Box>
 					</Box>
-					<Grid container spacing={3}>
-						<Grid size={{ xs: 12, md: 4 }}>
-							<TextField
-								fullWidth
-								label="PRC Set ID"
-								value={prcSetId}
-								onChange={e => {
-									setPrcSetId(e.target.value);
-									if (errors.prcSetId) setErrors(prev => ({ ...prev, prcSetId: '' }));
-								}}
-								error={!!errors.prcSetId}
-								helperText={errors.prcSetId}
-								disabled={greyDisabledReadOnly}
-								required
-								InputProps={plainLocked ? { readOnly: true } : undefined}
-								sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, md: 4 }}>
-							<TextField
-								fullWidth
-								label="SAP Set ID"
-								value={productionSetId}
-								disabled
-								InputProps={{ readOnly: true }}
-								helperText="Auto-populated from SAP"
-								sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-							/>
-						</Grid>
-						<Grid size={{ xs: 12, md: 4 }}>
-							{!partId ? (
-								<Alert severity="warning" sx={{ borderRadius: 2 }}>
-									Part is missing for this execution, so the mould list cannot be loaded.
-								</Alert>
-							) : isReadOnly && !selectedMould && fallbackMouldId ? (
+					{labelValueFields ? (
+						// PRC Set ID and Mould are left out: the report header already shows them.
+						<Box sx={reportFieldGridSx(3)}>
+							<ReportField label="SAP Set ID">{displayValue(productionSetId)}</ReportField>
+						</Box>
+					) : (
+						<Grid container spacing={3}>
+							<Grid size={{ xs: 12, md: 4 }}>
 								<TextField
 									fullWidth
-									label="Mould ID"
-									value={fallbackMouldId}
+									label="PRC Set ID"
+									value={prcSetId}
+									onChange={e => {
+										setPrcSetId(e.target.value);
+										if (errors.prcSetId) setErrors(prev => ({ ...prev, prcSetId: '' }));
+									}}
+									error={!!errors.prcSetId}
+									helperText={errors.prcSetId}
 									disabled={greyDisabledReadOnly}
+									required
 									InputProps={plainLocked ? { readOnly: true } : undefined}
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-									helperText="Saved mould is not in the current list for this part"
 								/>
-							) : plainLocked ? (
+							</Grid>
+							<Grid size={{ xs: 12, md: 4 }}>
 								<TextField
 									fullWidth
-									label="Mould"
-									value={selectedMould?.label?.trim() || fallbackMouldId || '—'}
+									label="SAP Set ID"
+									value={productionSetId}
+									disabled
 									InputProps={{ readOnly: true }}
+									helperText="Auto-populated from SAP"
 									sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-									helperText={mouldComboBusy ? 'Loading mould list…' : 'Mould recorded for this execution'}
 								/>
-							) : (
-								<Autocomplete<MouldComboItem, false, false, false>
-									options={mouldOptions}
-									loading={mouldComboBusy}
-									value={selectedMould}
-									onChange={(_, value) => {
-										setSelectedMould(value);
-										setFallbackMouldId(getMouldCode(value));
-										if (errors.mouldId) setErrors(prev => ({ ...prev, mouldId: '' }));
-									}}
-									getOptionLabel={option => option.label}
-									isOptionEqualToValue={(a, b) => a.value === b.value}
-									disabled={greyDisabledReadOnly}
-									renderInput={params => (
-										<TextField
-											{...params}
-											label="Mould"
-											error={!!errors.mouldId}
-											helperText={
-												errors.mouldId ||
-												(mouldOptions.length === 0 && !mouldComboBusy
-													? 'No moulds linked to this part'
-													: 'Optional — select a mould for this part')
-											}
-											sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-											InputProps={{
-												...params.InputProps,
-												endAdornment: (
-													<>
-														{mouldComboBusy ? <CircularProgress color="inherit" size={20} sx={{ mr: 1 }} /> : null}
-														{params.InputProps.endAdornment}
-													</>
-												)
-											}}
-										/>
-									)}
-								/>
-							)}
+							</Grid>
+							<Grid size={{ xs: 12, md: 4 }}>
+								{!partId ? (
+									<Alert severity="warning" sx={{ borderRadius: 2 }}>
+										Part is missing for this execution, so the mould list cannot be loaded.
+									</Alert>
+								) : isReadOnly && !selectedMould && fallbackMouldId ? (
+									<TextField
+										fullWidth
+										label="Mould ID"
+										value={fallbackMouldId}
+										disabled={greyDisabledReadOnly}
+										InputProps={plainLocked ? { readOnly: true } : undefined}
+										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+										helperText="Saved mould is not in the current list for this part"
+									/>
+								) : plainLocked ? (
+									<TextField
+										fullWidth
+										label="Mould"
+										value={selectedMould?.label?.trim() || fallbackMouldId || '—'}
+										InputProps={{ readOnly: true }}
+										sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+										helperText={mouldComboBusy ? 'Loading mould list…' : 'Mould recorded for this execution'}
+									/>
+								) : (
+									<Autocomplete<MouldComboItem, false, false, false>
+										options={mouldOptions}
+										loading={mouldComboBusy}
+										value={selectedMould}
+										onChange={(_, value) => {
+											setSelectedMould(value);
+											setFallbackMouldId(getMouldCode(value));
+											if (errors.mouldId) setErrors(prev => ({ ...prev, mouldId: '' }));
+										}}
+										getOptionLabel={option => option.label}
+										isOptionEqualToValue={(a, b) => a.value === b.value}
+										disabled={greyDisabledReadOnly}
+										renderInput={params => (
+											<TextField
+												{...params}
+												label="Mould"
+												error={!!errors.mouldId}
+												helperText={
+													errors.mouldId ||
+													(mouldOptions.length === 0 && !mouldComboBusy
+														? 'No moulds linked to this part'
+														: 'Optional — select a mould for this part')
+												}
+												sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+												InputProps={{
+													...params.InputProps,
+													endAdornment: (
+														<>
+															{mouldComboBusy ? <CircularProgress color="inherit" size={20} sx={{ mr: 1 }} /> : null}
+															{params.InputProps.endAdornment}
+														</>
+													)
+												}}
+											/>
+										)}
+									/>
+								)}
+							</Grid>
 						</Grid>
-					</Grid>
+					)}
 				</CardContent>
 			</Card>
 

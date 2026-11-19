@@ -15,6 +15,7 @@ import BomStep from '../execute-prc/components/steps/BomStep';
 import SapConfirmationStep from '../execute-prc/components/steps/SapConfirmationStep';
 import StepPreview from '../execute-prc/components/StepPreview';
 import StepExecutionMetaSummary from '../StepExecutionMetaSummary';
+import { ReportField } from './ReportField';
 import { formatDisplayDate } from '../../../../utils/formatDisplayDate';
 import './prcExecutionReportPrint.css';
 
@@ -35,19 +36,6 @@ function getPrcSetId(execution: ExecutionData): string {
 	const meta = (execution.prcAggregatedSteps as { prcmetadata?: { prcSetId?: unknown } } | undefined)?.prcmetadata;
 	const value = typeof meta?.prcSetId === 'string' ? meta.prcSetId.trim() : '';
 	return value || '—';
-}
-
-function ReportSummaryField({ label, children }: { label: string; children: React.ReactNode }) {
-	return (
-		<Box sx={{ minWidth: 0 }}>
-			<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-				{label}
-			</Typography>
-			<Typography variant="body2" sx={{ fontWeight: 600, lineHeight: 1.35 }}>
-				{children}
-			</Typography>
-		</Box>
-	);
 }
 
 function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData }) {
@@ -72,20 +60,20 @@ function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData 
 	return (
 		<>
 			<Box className="prc-report-header-summary-grid" sx={summaryGridSx}>
-				<ReportSummaryField label="Order no.">{formatOrderId(execution.orderId)}</ReportSummaryField>
-				<ReportSummaryField label="Date">{formatDisplayDate(execution.date) ?? '—'}</ReportSummaryField>
+				<ReportField label="Order no.">{formatOrderId(execution.orderId)}</ReportField>
+				<ReportField label="Date">{formatDisplayDate(execution.date) ?? '—'}</ReportField>
 
-				<ReportSummaryField label="Part no.">{execution.partNumber || '—'}</ReportSummaryField>
-				<ReportSummaryField label="SAP no.">{execution.sapReferenceNumber || '—'}</ReportSummaryField>
-				<ReportSummaryField label="Part description">{execution.partDescription || '—'}</ReportSummaryField>
-				<ReportSummaryField label="Drawing no">{execution.drawingNumber || '—'}</ReportSummaryField>
-				<ReportSummaryField label="Customer">{execution.customer || '—'}</ReportSummaryField>
+				<ReportField label="Part no.">{execution.partNumber || '—'}</ReportField>
+				<ReportField label="SAP no.">{execution.sapReferenceNumber || '—'}</ReportField>
+				<ReportField label="Part description">{execution.partDescription || '—'}</ReportField>
+				<ReportField label="Drawing no">{execution.drawingNumber || '—'}</ReportField>
+				<ReportField label="Customer">{execution.customer || '—'}</ReportField>
 
-				<ReportSummaryField label="Variant">{execution.customerVariantName || '—'}</ReportSummaryField>
-				<ReportSummaryField label="Mould">{mouldDisplay}</ReportSummaryField>
-				<ReportSummaryField label="PRC Set ID">{getPrcSetId(execution)}</ReportSummaryField>
-				{/* <ReportSummaryField label="SAP Set">{execution.productionSetId ?? '—'}</ReportSummaryField> */}
-				<ReportSummaryField label="Reservation no">{execution.reservation || '—'}</ReportSummaryField>
+				<ReportField label="Variant">{execution.customerVariantName || '—'}</ReportField>
+				<ReportField label="Mould">{mouldDisplay}</ReportField>
+				<ReportField label="PRC Set ID">{getPrcSetId(execution)}</ReportField>
+				{/* <ReportField label="SAP Set">{execution.productionSetId ?? '—'}</ReportField> */}
+				<ReportField label="Reservation no">{execution.reservation || '—'}</ReportField>
 				<Box sx={{ gridColumn: '1 / -1' }}>
 					<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
 						Remarks
@@ -159,11 +147,6 @@ function ReportSectionShell({
 						<Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
 							{step.title}
 						</Typography>
-						{step.description && step.description !== step.title && (
-							<Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, maxWidth: 720 }}>
-								{step.description}
-							</Typography>
-						)}
 					</Box>
 					<Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
 						{step.ctq && <Chip label="CTQ" size="small" color="warning" variant="outlined" sx={{ fontWeight: 600 }} />}
@@ -207,6 +190,7 @@ function ReportTimelineSection({
 							readOnlyOverride
 							plainReadOnlyFields
 							hideLoggedInUser
+							labelValueFields
 						/>
 					</ReportSectionShell>
 				</Box>
@@ -215,7 +199,7 @@ function ReportTimelineSection({
 			return (
 				<Box className={className}>
 					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						<RawMaterialsStep step={step} onStepComplete={noopForm} readOnlyOverride />
+						<RawMaterialsStep step={step} onStepComplete={noopForm} readOnlyOverride hideHeading />
 					</ReportSectionShell>
 				</Box>
 			);
@@ -229,6 +213,7 @@ function ReportTimelineSection({
 							onStepComplete={noopForm}
 							readOnlyOverride
 							expandAccordionsForPdf
+							labelValueFields
 						/>
 					</ReportSectionShell>
 				</Box>

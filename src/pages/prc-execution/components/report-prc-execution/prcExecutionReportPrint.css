@@ -93,6 +93,13 @@
 		word-break: break-word !important;
 	}
 
+	/* Tighter side padding in every table cell (16px -> 8px) so wide tables, e.g. the 9-column BOM
+	   list, fit the ~730px page instead of running off the right edge. Text size is unchanged. */
+	.prc-execution-report-root .MuiTableCell-root {
+		padding-left: 8px !important;
+		padding-right: 8px !important;
+	}
+
 	.prc-report-page-break-before {
 		page-break-before: always;
 		break-before: page;
