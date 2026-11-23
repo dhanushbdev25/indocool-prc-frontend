@@ -1,6 +1,7 @@
 import type { ListConfig, ListSavedEntry } from '../../../../../types/list-config.types';
-import type { TableColumn, TableConfig } from '../../../../../types/table-config.types';
+import type { TableConfig } from '../../../../../types/table-config.types';
 import { formatAcceptanceRange } from '../../../../../components/masters/acceptanceRange';
+import { parseListSavedValue } from '../../../../../utils/listConfig';
 import { resolveFixedTableCellSpec } from '../../../../../utils/fixedTableCellSpec';
 import { formatTableCellDisplay } from '../../../../../utils/formatTableCellDisplay';
 import { formatDisplayDateTime } from '../../../../../utils/formatDisplayDate';
@@ -66,7 +67,7 @@ function finish(table: DocTableModel, results: string[]): SubTable {
 
 /** A list answer as Item | Value | Range | Result | Comment, in the master's item order. */
 export function listSubTable(value: unknown, listConfig?: ListConfig | null): SubTable {
-	const entries = readStoredRowList<ListSavedEntry>(value).filter(e => e && typeof e === 'object');
+	const entries: ListSavedEntry[] = parseListSavedValue(value);
 	const order = new Map((listConfig?.items ?? []).map((item, i) => [item.id, i]));
 	const sorted = [...entries].sort(
 		(a, b) => (order.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (order.get(b.id) ?? Number.MAX_SAFE_INTEGER)
@@ -128,7 +129,7 @@ export function fixedSubTable(value: unknown, tableConfig?: TableConfig | null):
 }
 
 /** A table / multi-column answer: rows of { column: value } typed by the parameter's columns. */
-export function columnsSubTable(rowsValue: unknown, columns: Array<Pick<TableColumn, 'name' | 'type'>>): SubTable {
+export function columnsSubTable(rowsValue: unknown, columns: Array<{ name: string; type?: string }>): SubTable {
 	const results: string[] = [];
 	const rows: DocRow[] = readStoredRowList<Record<string, unknown>>(rowsValue).map((row, r) => {
 		const strong: string[] = [];
