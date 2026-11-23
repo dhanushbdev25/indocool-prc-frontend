@@ -110,8 +110,7 @@ function recommended(saved: Record<string, unknown>): string {
 
 const POT_LIFE_NOTE =
 	'Prepared chemical mixtures shall be utilized within the specified pot life: gelcoat 15 mins, resin 30 mins, topcoat 15 mins.';
-const FOD_NOTE =
-	'FOD: mixing material is free from Foreign Object Debris (FOD) and stirred as per Work Instruction.';
+const FOD_NOTE = 'FOD: mixing material is free from Foreign Object Debris (FOD) and stirred as per Work Instruction.';
 
 /** Catalyst mixing: a Mixing table and a Checks table, one row per entry in each. */
 export function mapBom(step: TimelineStep, agg: Record<string, unknown>): DocSectionBody {

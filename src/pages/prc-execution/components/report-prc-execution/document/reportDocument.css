@@ -1,0 +1,371 @@
+/* PRC report as a boxed document (GRN style). Same sizes on screen and on paper:
+   the sheet is A4 wide on screen, so text wraps the same way in both. */
+
+.prc-doc-root {
+	--prc-doc-line: #4b5563;
+	--prc-doc-head: #eceef1;
+	--prc-doc-title: #dde2e8;
+	--prc-doc-muted: #4b5563;
+	background: #e5e7eb;
+	padding: 16px 8px;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+
+.prc-doc-sheet {
+	box-sizing: border-box;
+	width: 794px;
+	max-width: 100%;
+	margin: 0 auto;
+	padding: 30px;
+	background: #fff;
+	color: #111;
+	font-size: 12px;
+	line-height: 1.4;
+	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+
+.prc-doc-sheet *,
+.prc-doc-sheet *::before,
+.prc-doc-sheet *::after {
+	box-sizing: border-box;
+}
+
+/* ---------- Header ---------- */
+
+.prc-doc-head {
+	display: grid;
+	grid-template-columns: 26% minmax(0, 1fr) 26%;
+	border: 1px solid var(--prc-doc-line);
+}
+
+.prc-doc-head > div {
+	padding: 8px 10px;
+	min-width: 0;
+}
+
+.prc-doc-head > div + div {
+	border-left: 1px solid var(--prc-doc-line);
+}
+
+.prc-doc-logo {
+	display: block;
+	max-width: 100%;
+	max-height: 46px;
+}
+
+.prc-doc-title {
+	font-size: 15px;
+	font-weight: 700;
+}
+
+.prc-doc-subtitle {
+	margin-top: 2px;
+	font-weight: 600;
+}
+
+.prc-doc-signature-note {
+	margin: 6px 0 0;
+	font-size: 10.5px;
+	color: var(--prc-doc-muted);
+}
+
+/* ---------- Boxed label / value grid ---------- */
+
+.prc-doc-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	border-left: 1px solid var(--prc-doc-line);
+	border-top: 1px solid var(--prc-doc-line);
+}
+
+.prc-doc-grid > div {
+	min-width: 0;
+	padding: 3px 6px;
+	border-right: 1px solid var(--prc-doc-line);
+	border-bottom: 1px solid var(--prc-doc-line);
+	overflow-wrap: anywhere;
+}
+
+.prc-doc-grid-attached {
+	border-top: 0;
+}
+
+.prc-doc-label {
+	display: block;
+	font-size: 10px;
+	color: var(--prc-doc-muted);
+}
+
+.prc-doc-value {
+	font-weight: 600;
+	white-space: pre-wrap;
+}
+
+/* ---------- Sections ---------- */
+
+.prc-doc-section {
+	margin-top: 14px;
+}
+
+.prc-doc-section-title {
+	display: flex;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 4px 6px;
+	border: 1px solid var(--prc-doc-line);
+	background: var(--prc-doc-title);
+	font-size: 12.5px;
+	font-weight: 700;
+	break-after: avoid;
+	page-break-after: avoid;
+}
+
+.prc-doc-section-flags {
+	flex-shrink: 0;
+	font-weight: 600;
+}
+
+.prc-doc-strip {
+	display: flex;
+	border-left: 1px solid var(--prc-doc-line);
+	break-after: avoid;
+	page-break-after: avoid;
+}
+
+.prc-doc-strip > div {
+	flex: 1 1 0;
+	min-width: 0;
+	padding: 3px 6px;
+	border-right: 1px solid var(--prc-doc-line);
+	border-bottom: 1px solid var(--prc-doc-line);
+	overflow-wrap: anywhere;
+}
+
+.prc-doc-box-line {
+	padding: 5px 6px;
+	border: 1px solid var(--prc-doc-line);
+	border-top: 0;
+	overflow-wrap: anywhere;
+}
+
+.prc-doc-empty {
+	font-style: italic;
+	color: var(--prc-doc-muted);
+}
+
+.prc-doc-notice {
+	font-weight: 600;
+}
+
+.prc-doc-block {
+	margin-top: 6px;
+}
+
+.prc-doc-block-title {
+	margin: 0 0 3px;
+	font-size: 11.5px;
+	font-weight: 700;
+	break-after: avoid;
+	page-break-after: avoid;
+}
+
+.prc-doc-notes {
+	margin: 6px 0 0;
+	padding-left: 16px;
+	font-size: 10.5px;
+}
+
+.prc-doc-approvals {
+	margin-top: 6px;
+	border-top: 1px solid var(--prc-doc-line);
+	break-inside: avoid;
+	page-break-inside: avoid;
+}
+
+/* ---------- Tables ---------- */
+
+.prc-doc-table {
+	width: 100%;
+	border-collapse: collapse;
+	table-layout: fixed;
+	font-size: 11px;
+}
+
+.prc-doc-table th,
+.prc-doc-table td {
+	padding: 3px 5px;
+	border: 1px solid var(--prc-doc-line);
+	text-align: left;
+	vertical-align: top;
+	overflow-wrap: anywhere;
+}
+
+.prc-doc-table th {
+	background: var(--prc-doc-head);
+	font-weight: 700;
+}
+
+.prc-doc-table thead {
+	display: table-header-group;
+}
+
+.prc-doc-table > tbody > tr:not(.prc-doc-detail) {
+	break-inside: avoid;
+	page-break-inside: avoid;
+}
+
+.prc-doc-table .prc-doc-right {
+	text-align: right;
+}
+
+.prc-doc-table .prc-doc-strong {
+	font-weight: 700;
+}
+
+/* Totals print once, at the end of the table, not at the foot of every page. */
+.prc-doc-table tfoot {
+	display: table-row-group;
+}
+
+.prc-doc-table tfoot td {
+	background: #f5f6f8;
+	font-weight: 600;
+}
+
+.prc-doc-detail > td {
+	padding: 6px;
+}
+
+.prc-doc-detail .prc-doc-table {
+	font-size: 10.5px;
+}
+
+.prc-doc-detail + .prc-doc-detail > td {
+	border-top: 0;
+}
+
+/* ---------- Photos ---------- */
+
+.prc-doc-photos {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.prc-doc-photo {
+	margin: 0;
+	min-width: 0;
+	break-inside: avoid;
+	page-break-inside: avoid;
+}
+
+.prc-doc-photo-frame {
+	position: relative;
+	display: block;
+	width: 100%;
+	border: 1px solid #9ca3af;
+	line-height: 0;
+}
+
+.prc-doc-photo-frame img {
+	display: block;
+	width: 100%;
+	height: auto;
+}
+
+.prc-doc-photo-frame svg {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+
+.prc-doc-photo-missing {
+	padding: 16px 6px;
+	border: 1px dashed #9ca3af;
+	color: var(--prc-doc-muted);
+	font-style: italic;
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+
+.prc-doc-photo figcaption {
+	margin-top: 3px;
+	font-size: 10.5px;
+	font-weight: 600;
+	overflow-wrap: anywhere;
+}
+
+.prc-doc-legend {
+	margin: 2px 0 0;
+	padding: 0;
+	list-style: none;
+	font-size: 10.5px;
+	overflow-wrap: anywhere;
+}
+
+.prc-doc-defects {
+	margin-top: 6px;
+	font-size: 10.5px;
+	font-weight: 600;
+}
+
+/* ---------- Print ---------- */
+
+@page {
+	size: A4 portrait;
+	margin: 10mm 8mm 12mm;
+
+	@bottom-right {
+		content: 'Page ' counter(page) ' of ' counter(pages);
+		font-size: 8pt;
+		color: #4b5563;
+	}
+}
+
+@media print {
+	html,
+	body {
+		height: auto !important;
+		overflow: visible !important;
+		background: #fff !important;
+	}
+
+	/* The app shell is a fixed-height, overflow-hidden frame. Hide everything that does not hold
+	   the report, and let every element that does hold it flow, so the report spans pages
+	   instead of being clipped to the first one. */
+	body:has(.prc-doc-root) *:not(:has(.prc-doc-root)):not(.prc-doc-root):not(.prc-doc-root *) {
+		display: none !important;
+	}
+
+	body:has(.prc-doc-root) *:has(.prc-doc-root) {
+		display: block !important;
+		position: static !important;
+		width: auto !important;
+		height: auto !important;
+		min-height: 0 !important;
+		max-height: none !important;
+		margin: 0 !important;
+		padding: 0 !important;
+		overflow: visible !important;
+		background: none !important;
+		box-shadow: none !important;
+	}
+
+	.prc-doc-root {
+		padding: 0;
+		background: none;
+	}
+
+	.prc-doc-sheet {
+		width: auto;
+		max-width: none;
+		padding: 0;
+		box-shadow: none;
+	}
+}
+
+/* A single photo always fits on a page: DocPhotoStrip caps each frame's width at
+   120mm × (width / height), which caps its height at 120mm without distorting it. */

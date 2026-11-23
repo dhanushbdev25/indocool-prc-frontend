@@ -6,14 +6,28 @@ describe('mapRawMaterials', () => {
 	it('prints one row per material with a formatted expiry', () => {
 		const step = {
 			items: [
-				{ description: '1000000015', name: 'Ortho resin', quantity: '7', uom: 'KG', actualQuantity: '7.1', batchNumber: 'B1', expiryDate: '2027-01-31' },
+				{
+					description: '1000000015',
+					name: 'Ortho resin',
+					quantity: '7',
+					uom: 'KG',
+					actualQuantity: '7.1',
+					batchNumber: 'B1',
+					expiryDate: '2027-01-31'
+				},
 				{ description: '1000000016', name: 'Gelcoat', quantity: '2', uom: 'KG' }
 			]
 		} as unknown as TimelineStep;
 		const body = mapRawMaterials(step);
 		const [first, second] = body.tables[0].table.rows;
 		expect(body.hasData).toBe(true);
-		expect(first.cells).toMatchObject({ no: '1', material: '1000000015', actualQty: '7.1', actualUom: 'KG', expiry: '31/01/2027' });
+		expect(first.cells).toMatchObject({
+			no: '1',
+			material: '1000000015',
+			actualQty: '7.1',
+			actualUom: 'KG',
+			expiry: '31/01/2027'
+		});
 		expect(second.cells).toMatchObject({ batch: '—', expiry: '—' });
 		expect(body.tables[0].table.columns.map(c => c.label)).not.toContain('PRC Set ID');
 	});
@@ -28,8 +42,26 @@ describe('mapBom', () => {
 	const step = {
 		items: [
 			{ id: 15, materialCode: '1000000015', materialName: 'Ortho resin', quantity: '7.03', uom: 'KG', order: 1 },
-			{ id: 16, materialCode: 'GC', materialName: 'Gelcoat', quantity: '4', splitQuantity: '2', uom: 'KG', order: 2, splitting: true },
-			{ id: 16, materialCode: 'GC', materialName: 'Gelcoat', quantity: '4', splitQuantity: '2', uom: 'KG', order: 1, splitting: true }
+			{
+				id: 16,
+				materialCode: 'GC',
+				materialName: 'Gelcoat',
+				quantity: '4',
+				splitQuantity: '2',
+				uom: 'KG',
+				order: 2,
+				splitting: true
+			},
+			{
+				id: 16,
+				materialCode: 'GC',
+				materialName: 'Gelcoat',
+				quantity: '4',
+				splitQuantity: '2',
+				uom: 'KG',
+				order: 1,
+				splitting: true
+			}
 		]
 	} as unknown as TimelineStep;
 	const agg = {
@@ -68,9 +100,20 @@ describe('mapBom', () => {
 		const body = mapBom(step, agg);
 		const mix = body.tables[0].table.rows[0];
 		const check = body.tables[1].table.rows[0];
-		expect(mix.cells).toMatchObject({ catalyst: '126.54', recommended: '140.60 – 210.90', range: 'Low', temp: '24.5', rh: '75.3' });
+		expect(mix.cells).toMatchObject({
+			catalyst: '126.54',
+			recommended: '140.60 – 210.90',
+			range: 'Low',
+			temp: '24.5',
+			rh: '75.3'
+		});
 		expect(mix.strong).toEqual(['range']);
-		expect(check.cells).toMatchObject({ can: '—', fod: 'OK with deviation', comment: 'DEV-7', operator: 'Ravi (E12), L2' });
+		expect(check.cells).toMatchObject({
+			can: '—',
+			fod: 'OK with deviation',
+			comment: 'DEV-7',
+			operator: 'Ravi (E12), L2'
+		});
 		expect(body.hasData).toBe(true);
 		expect(body.notes).toHaveLength(2);
 	});

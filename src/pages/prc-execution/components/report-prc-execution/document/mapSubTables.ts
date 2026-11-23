@@ -18,7 +18,8 @@ import type { DocRow, DocTableModel } from './types';
 export function readOkNotOk(raw: unknown): { value: string; comments: string } {
 	if (raw && typeof raw === 'object') {
 		const o = raw as Record<string, unknown>;
-		const comments = typeof o.comments === 'string' ? o.comments : typeof o.notOkComment === 'string' ? o.notOkComment : '';
+		const comments =
+			typeof o.comments === 'string' ? o.comments : typeof o.notOkComment === 'string' ? o.notOkComment : '';
 		return { value: typeof o.value === 'string' ? o.value : '', comments };
 	}
 	return { value: typeof raw === 'string' ? raw : '', comments: '' };
@@ -85,8 +86,15 @@ export function listSubTable(value: unknown, listConfig?: ListConfig | null): Su
 			key: `list-${entry.id ?? i}`,
 			cells: {
 				item: dash(entry.label),
-				value: isOk ? (entry.value ? formatOkNotOkValueForDisplay(entry.value) : EMPTY) : cellText(entry.type, entry.value),
-				range: entry.type === 'number' ? dash(formatAcceptanceRange(entry.minimumAcceptanceValue, entry.maximumAcceptanceValue)) : EMPTY,
+				value: isOk
+					? entry.value
+						? formatOkNotOkValueForDisplay(entry.value)
+						: EMPTY
+					: cellText(entry.type, entry.value),
+				range:
+					entry.type === 'number'
+						? dash(formatAcceptanceRange(entry.minimumAcceptanceValue, entry.maximumAcceptanceValue))
+						: EMPTY,
 				result,
 				comment: dash(entry.comments)
 			},

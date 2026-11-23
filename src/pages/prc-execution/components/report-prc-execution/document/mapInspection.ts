@@ -27,7 +27,8 @@ const fileLabel = (file?: PreviewImageFile, annotation?: PreviewAnnotation) =>
 function legend(regions: AnnotationRegion[]): string[] {
 	return regions.map((region, i) => {
 		const comment = typeof region.comment === 'string' && region.comment.trim() ? region.comment.trim() : EMPTY;
-		const category = typeof region.category === 'string' && region.category.trim() ? ` (${region.category.trim()})` : '';
+		const category =
+			typeof region.category === 'string' && region.category.trim() ? ` (${region.category.trim()})` : '';
 		return `${i + 1}. ${comment}${category}`;
 	});
 }
@@ -88,7 +89,8 @@ function singleValue(type: string, payload: Payload): { value: string; result: s
 		const comments = typeof payload.comments === 'string' ? payload.comments : '';
 		return { value: okNotOkText(raw, comments), result: okNotOkResult(readOkNotOk(raw).value) };
 	}
-	if (type === 'datetime') return { value: typeof raw === 'string' && raw ? formatDisplayDateTime(raw) : EMPTY, result: EMPTY };
+	if (type === 'datetime')
+		return { value: typeof raw === 'string' && raw ? formatDisplayDateTime(raw) : EMPTY, result: EMPTY };
 	if (type === 'date') return { value: typeof raw === 'string' && raw ? formatDisplayDate(raw) : EMPTY, result: EMPTY };
 	return { value: dash(raw), result: rangeResult(payload.validationStatus, payload.acknowledged) };
 }
@@ -103,7 +105,9 @@ function compound(parameter: Parameter | undefined, payload: Payload): SubTable 
 		// Multi-column answer: { column: value, column_validationStatus: … } in one row.
 		const columns = parameter?.columns?.length
 			? parameter.columns
-			: Object.keys(value).filter(key => !key.includes('_')).map(name => ({ name, type }));
+			: Object.keys(value)
+					.filter(key => !key.includes('_'))
+					.map(name => ({ name, type }));
 		return columnsSubTable([value], columns);
 	}
 	return null;
@@ -115,7 +119,9 @@ export function mapInspection(step: TimelineStep, agg: Record<string, unknown>):
 	if (tid === undefined || tid === null) return { hasData: true, unavailable: UNAVAILABLE, tables: [], notes: [] };
 
 	const slice = agg[String(tid)];
-	const data = normalizeInspectionStepAggregatedData(slice && typeof slice === 'object' ? (slice as Record<string, unknown>) : {});
+	const data = normalizeInspectionStepAggregatedData(
+		slice && typeof slice === 'object' ? (slice as Record<string, unknown>) : {}
+	);
 	const parameters = sortByNumericOrder(step.inspectionParameters ?? []);
 	const byId = new Map(parameters.map(p => [String(p.id), p]));
 	const entries = Object.entries(data).filter(([key]) => /^\d+$/.test(key));
@@ -148,10 +154,19 @@ export function mapInspection(step: TimelineStep, agg: Record<string, unknown>):
 					const rowIndex = Number(rowEntry?.rowIndex);
 					const target = sub.table.rows[rowIndex];
 					const rowFiles = (rowMappings.find(m => m.rowIndex === rowIndex)?.fileName ?? []) as PreviewImageFile[];
-					const photos = photosFor(annotationsOf(rowEntry?.annotations), rowFiles, `Photo ${no}.R${rowIndex + 1}`, `${id}-r${rowIndex}`, files);
+					const photos = photosFor(
+						annotationsOf(rowEntry?.annotations),
+						rowFiles,
+						`Photo ${no}.R${rowIndex + 1}`,
+						`${id}-r${rowIndex}`,
+						files
+					);
 					if (!target || photos.length === 0) continue;
 					photoCount += photos.length;
-					target.details = [...(target.details ?? []), { kind: 'photos', photos, defects: defectsLine(rowEntry?.defectCounts) }];
+					target.details = [
+						...(target.details ?? []),
+						{ kind: 'photos', photos, defects: defectsLine(rowEntry?.defectCounts) }
+					];
 				}
 			}
 			if (sub.table.rows.length) details.push({ kind: 'table', table: sub.table });
@@ -165,8 +180,17 @@ export function mapInspection(step: TimelineStep, agg: Record<string, unknown>):
 			// Row-mapped defects on a non-fixed-table parameter print after its own photos.
 			for (const rowEntry of readStoredRowList<Record<string, unknown>>(payload.rowAnnotations)) {
 				const rowIndex = Number(rowEntry?.rowIndex);
-				const rowFiles = (parameter?.rowMappings?.find(m => m.rowIndex === rowIndex)?.fileName ?? []) as PreviewImageFile[];
-				photos.push(...photosFor(annotationsOf(rowEntry?.annotations), rowFiles, `Photo ${no}.R${rowIndex + 1}`, `${id}-r${rowIndex}`, files));
+				const rowFiles = (parameter?.rowMappings?.find(m => m.rowIndex === rowIndex)?.fileName ??
+					[]) as PreviewImageFile[];
+				photos.push(
+					...photosFor(
+						annotationsOf(rowEntry?.annotations),
+						rowFiles,
+						`Photo ${no}.R${rowIndex + 1}`,
+						`${id}-r${rowIndex}`,
+						files
+					)
+				);
 			}
 		}
 		const defects = defectsLine(payload.defectCounts);

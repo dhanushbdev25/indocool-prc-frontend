@@ -1,7 +1,10 @@
 import type { TimelineStep } from '../../../types/execution.types';
 import type { ListConfig } from '../../../../../types/list-config.types';
 import type { TableConfig } from '../../../../../types/table-config.types';
-import { buildSequenceDetailedMeasurements, type SequenceStepTimings } from '../../../utils/sequencePreviewMeasurements';
+import {
+	buildSequenceDetailedMeasurements,
+	type SequenceStepTimings
+} from '../../../utils/sequencePreviewMeasurements';
 import { formatCompactTimeRange } from '../../../utils/timelineCardTiming';
 import { formatAcceptanceRange } from '../../../../../components/masters/acceptanceRange';
 import { formatSequenceCriticality } from '../../../../../utils/criticality';
@@ -21,18 +24,28 @@ const text = (value: unknown) => (typeof value === 'string' ? value : value == n
 function target(m: Measurement): string {
 	const type = text(m.targetValueType);
 	if (type === 'list' || type === 'table' || type === OK_NOT_OK_TYPE_KEY) return EMPTY;
-	if (type === 'exact value') return withUnit(dash(m.minimumAcceptanceValue) !== EMPTY ? m.minimumAcceptanceValue : m.maximumAcceptanceValue, text(m.uom));
+	if (type === 'exact value')
+		return withUnit(
+			dash(m.minimumAcceptanceValue) !== EMPTY ? m.minimumAcceptanceValue : m.maximumAcceptanceValue,
+			text(m.uom)
+		);
 	const range = formatAcceptanceRange(m.minimumAcceptanceValue as string, m.maximumAcceptanceValue as string);
 	return range ? withUnit(range.replace(' to ', ' – '), text(m.uom)) : EMPTY;
 }
 
 /** Readings saved for one parameter, with each reading's own range check when it has one. */
 function readings(saved: unknown): Array<{ value: unknown; validationStatus?: unknown }> | null {
-	const data = saved && typeof saved === 'object' ? ((saved as Record<string, unknown>).data ?? (saved as Record<string, unknown>).value) : undefined;
+	const data =
+		saved && typeof saved === 'object'
+			? ((saved as Record<string, unknown>).data ?? (saved as Record<string, unknown>).value)
+			: undefined;
 	if (!Array.isArray(data)) return null;
 	return data.map(item =>
 		item && typeof item === 'object' && 'value' in item
-			? { value: (item as Record<string, unknown>).value, validationStatus: (item as Record<string, unknown>).validationStatus }
+			? {
+					value: (item as Record<string, unknown>).value,
+					validationStatus: (item as Record<string, unknown>).validationStatus
+				}
 			: { value: item }
 	);
 }
@@ -75,7 +88,11 @@ function timeCell(m: Measurement): string {
 }
 
 /** Process sequence step: one row per parameter in template order, sub-tables under their row. */
-export function mapSequence(step: TimelineStep, agg: Record<string, unknown>, tim: Record<string, unknown>): DocSectionBody {
+export function mapSequence(
+	step: TimelineStep,
+	agg: Record<string, unknown>,
+	tim: Record<string, unknown>
+): DocSectionBody {
 	const pid = step.prcTemplateStepId;
 	const group = step.stepGroup;
 	if (!pid || !group) return { hasData: true, unavailable: UNAVAILABLE, tables: [], notes: [] };
@@ -90,7 +107,8 @@ export function mapSequence(step: TimelineStep, agg: Record<string, unknown>, ti
 	const position = new Map(group.steps.map((s, i) => [String(s.id), i]));
 	const measurements = buildSequenceDetailedMeasurements(groupData, group.steps, timings).sort(
 		(a, b) =>
-			(position.get(text(a.stepId)) ?? Number.MAX_SAFE_INTEGER) - (position.get(text(b.stepId)) ?? Number.MAX_SAFE_INTEGER)
+			(position.get(text(a.stepId)) ?? Number.MAX_SAFE_INTEGER) -
+			(position.get(text(b.stepId)) ?? Number.MAX_SAFE_INTEGER)
 	);
 
 	const rows: DocRow[] = measurements.map((m, i) => {

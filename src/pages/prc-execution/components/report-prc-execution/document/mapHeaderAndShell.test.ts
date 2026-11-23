@@ -82,10 +82,7 @@ describe('mapSectionShell', () => {
 		expect(shell.meta[1].value).toBe('00:20:00');
 		expect(shell.meta[2].value).toBe('00:30:00');
 		expect(shell.approvals).toEqual([{ label: 'Quality approved by', value: 'Priya (E9)' }]);
-		expect(shell.notices).toEqual([
-			'Timing exceeded — reason: Machine down, remarks: Pump',
-			'Edited after submission'
-		]);
+		expect(shell.notices).toEqual(['Timing exceeded — reason: Machine down, remarks: Pump', 'Edited after submission']);
 	});
 
 	it('leaves out timing cells that were never recorded', () => {

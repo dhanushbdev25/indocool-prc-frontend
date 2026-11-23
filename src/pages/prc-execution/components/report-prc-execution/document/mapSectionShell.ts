@@ -18,7 +18,10 @@ function notices(step: TimelineStep, agg: Record<string, unknown>): string[] {
 		delay.timingExceededReasonLabel ??
 		(delay.timingExceededReasonCode !== undefined ? String(delay.timingExceededReasonCode) : '');
 	if (delay.persistedTimingExceeded || reason || delay.timingExceededRemarks) {
-		const parts = [reason && `reason: ${reason}`, delay.timingExceededRemarks && `remarks: ${delay.timingExceededRemarks}`];
+		const parts = [
+			reason && `reason: ${reason}`,
+			delay.timingExceededRemarks && `remarks: ${delay.timingExceededRemarks}`
+		];
 		const detail = parts.filter(Boolean).join(', ');
 		out.push(detail ? `Timing exceeded — ${detail}` : 'Timing exceeded');
 	}

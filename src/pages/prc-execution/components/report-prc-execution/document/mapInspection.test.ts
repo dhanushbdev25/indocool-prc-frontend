@@ -28,7 +28,9 @@ const step = {
 				],
 				rows: []
 			},
-			rowMappings: [{ rowIndex: 1, fileName: [{ fileName: 'row2.jpg', filePath: 'files/row2.jpg', originalFileName: 'Row 2.jpg' }] }]
+			rowMappings: [
+				{ rowIndex: 1, fileName: [{ fileName: 'row2.jpg', filePath: 'files/row2.jpg', originalFileName: 'Row 2.jpg' }] }
+			]
 		}),
 		param(1, 1, { type: 'number', ctq: true }),
 		param(2, 2, { type: 'list', listConfig: { items: [{ id: 'b' }, { id: 'a' }] } }),
@@ -49,12 +51,30 @@ const agg = {
 		2: {
 			value: {
 				'0': { id: 'a', label: 'Gloss', type: 'ok/not ok', value: 'not ok', comments: 'D1' },
-				'1': { id: 'b', label: 'Width', type: 'number', value: '50', validationStatus: 'InRange', minimumAcceptanceValue: 49, maximumAcceptanceValue: 51 }
+				'1': {
+					id: 'b',
+					label: 'Width',
+					type: 'number',
+					value: '50',
+					validationStatus: 'InRange',
+					minimumAcceptanceValue: 49,
+					maximumAcceptanceValue: 51
+				}
 			}
 		},
 		3: {
 			value: { '0': { Point: 'P1', Thk: '3' }, '1': { Point: 'P2', Thk: '9', Thk_validationStatus: 'Greater' } },
-			rowAnnotations: [{ rowIndex: 1, annotations: [{ imageFileName: 'row2.jpg', regions: [{ type: 'point', id: 'r', x: 0.1, y: 0.1, cls: '', comment: 'Crack' }] }] }]
+			rowAnnotations: [
+				{
+					rowIndex: 1,
+					annotations: [
+						{
+							imageFileName: 'row2.jpg',
+							regions: [{ type: 'point', id: 'r', x: 0.1, y: 0.1, cls: '', comment: 'Crack' }]
+						}
+					]
+				}
+			]
 		},
 		4: {
 			value: 'ok',
@@ -97,7 +117,11 @@ describe('mapInspection', () => {
 		if (detail.kind !== 'table') throw new Error('expected table');
 		expect(detail.table.rows.map(r => r.cells.item)).toEqual(['Width', 'Gloss']);
 		expect(detail.table.rows[0].cells).toMatchObject({ value: '50', range: '49 to 51', result: 'OK' });
-		expect(detail.table.rows[1].cells).toMatchObject({ value: 'OK with deviation', result: 'OK with deviation', comment: 'D1' });
+		expect(detail.table.rows[1].cells).toMatchObject({
+			value: 'OK with deviation',
+			result: 'OK with deviation',
+			comment: 'D1'
+		});
 	});
 
 	it('reads legacy fixed-table rows and prints row photos under their row', () => {

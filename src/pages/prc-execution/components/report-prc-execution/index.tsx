@@ -1,307 +1,11 @@
-import React, { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { Box, Button, CircularProgress, Paper, Stack, Typography, Alert, Chip, Divider } from '@mui/material';
-import { ArrowBack, PictureAsPdf, WarningAmberOutlined } from '@mui/icons-material';
+import { Box, Button, CircularProgress, Stack, Typography, Alert } from '@mui/material';
+import { ArrowBack, PictureAsPdf } from '@mui/icons-material';
 import { useFetchPrcExecutionDetailsQuery } from '../../../../store/api/business/prc-execution/prc-execution.api';
-import type { ExecutionData, FormData, TimelineStep } from '../../types/execution.types';
+import type { ExecutionData } from '../../types/execution.types';
 import { buildTimelineSteps } from '../../utils/buildTimelineSteps';
-import {
-	buildInspectionStepPreviewForReport,
-	buildSequenceStepPreviewForReport
-} from '../../utils/reportStepPreviewData';
-import ExecutionSetupStep from '../execute-prc/components/steps/ExecutionSetupStep';
-import RawMaterialsStep from '../execute-prc/components/steps/RawMaterialsStep';
-import BomStep from '../execute-prc/components/steps/BomStep';
-import SapConfirmationStep from '../execute-prc/components/steps/SapConfirmationStep';
-import StepPreview from '../execute-prc/components/StepPreview';
-import StepExecutionMetaSummary from '../StepExecutionMetaSummary';
-import { ReportField } from './ReportField';
-import { formatDisplayDate } from '../../../../utils/formatDisplayDate';
-import './prcExecutionReportPrint.css';
-
-const noopForm = (_fd: FormData) => {
-	void _fd;
-};
-const noopAsyncForm = async (_fd: FormData) => {
-	void _fd;
-};
-const noop = () => {};
-const noopProceed = () => {};
-
-function formatOrderId(orderId?: string | number | null): string {
-	return orderId != null && String(orderId).trim() ? String(orderId) : '—';
-}
-
-function getPrcSetId(execution: ExecutionData): string {
-	const meta = (execution.prcAggregatedSteps as { prcmetadata?: { prcSetId?: unknown } } | undefined)?.prcmetadata;
-	const value = typeof meta?.prcSetId === 'string' ? meta.prcSetId.trim() : '';
-	return value || '—';
-}
-
-function ReportExecutionHeaderSummary({ execution }: { execution: ExecutionData }) {
-	const templateName = execution.prcCurrentTemplate?.prcTemplate?.templateName;
-	const templateVersion = execution.prcCurrentTemplate?.prcTemplate?.version;
-	const mouldDisplay = [execution.mouldCode, execution.mouldId].filter(Boolean).join(' · ') || '—';
-
-	const summaryGridSx = {
-		display: 'grid',
-		gridTemplateColumns: {
-			xs: 'minmax(0, 1fr)',
-			sm: 'repeat(2, minmax(0, 1fr))',
-			md: 'repeat(3, minmax(0, 1fr))'
-		},
-		gap: 2,
-		mt: 1,
-		'@media print': {
-			gridTemplateColumns: 'repeat(3, minmax(0, 1fr))'
-		}
-	} as const;
-
-	return (
-		<>
-			<Box className="prc-report-header-summary-grid" sx={summaryGridSx}>
-				<ReportField label="Order no.">{formatOrderId(execution.orderId)}</ReportField>
-				<ReportField label="Date">{formatDisplayDate(execution.date) ?? '—'}</ReportField>
-
-				<ReportField label="Part no.">{execution.partNumber || '—'}</ReportField>
-				<ReportField label="SAP no.">{execution.sapReferenceNumber || '—'}</ReportField>
-				<ReportField label="Part description">{execution.partDescription || '—'}</ReportField>
-				<ReportField label="Drawing no">{execution.drawingNumber || '—'}</ReportField>
-				<ReportField label="Customer">{execution.customer || '—'}</ReportField>
-
-				<ReportField label="Variant">{execution.customerVariantName || '—'}</ReportField>
-				<ReportField label="Mould">{mouldDisplay}</ReportField>
-				<ReportField label="PRC Set ID">{getPrcSetId(execution)}</ReportField>
-				{/* <ReportField label="SAP Set">{execution.productionSetId ?? '—'}</ReportField> */}
-				<ReportField label="Reservation no">{execution.reservation || '—'}</ReportField>
-				<Box sx={{ gridColumn: '1 / -1' }}>
-					<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
-						Remarks
-					</Typography>
-					<Typography variant="body2" sx={{ fontWeight: 500, whiteSpace: 'pre-wrap' }}>
-						{execution.remarks?.trim() ? execution.remarks : '—'}
-					</Typography>
-				</Box>
-			</Box>
-			<Alert
-				severity="warning"
-				icon={<WarningAmberOutlined />}
-				className="prc-report-bom-pot-life"
-				sx={{ mb: 2, borderRadius: 2, mt: 2 }}
-			>
-				<Typography variant="body2" sx={{ fontWeight: 600, mt: 0.5 }}>
-					Physical signature is not required for Digital PRC; electronic approval shall serve as evidence of
-					authorization
-				</Typography>
-			</Alert>
-		</>
-	);
-}
-
-function stepStatusChipColor(status: TimelineStep['status']): 'success' | 'info' | 'warning' | 'default' {
-	if (status === 'completed') return 'success';
-	if (status === 'in-progress') return 'info';
-	if (status === 'pending') return 'warning';
-	return 'default';
-}
-
-function ReportSectionShell({
-	step,
-	stepTimingRoot,
-	children
-}: {
-	step: TimelineStep;
-	stepTimingRoot: Record<string, unknown>;
-	children: React.ReactNode;
-}) {
-	return (
-		<Paper
-			variant="outlined"
-			className="prc-report-section"
-			elevation={0}
-			sx={{
-				borderRadius: 2,
-				overflow: 'hidden',
-				borderLeftWidth: 4,
-				borderLeftColor: 'primary.main',
-				boxShadow: theme => `0 1px 2px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.35)' : 'rgba(15,23,42,0.06)'}`,
-				bgcolor: 'background.paper'
-			}}
-		>
-			<Box
-				className="prc-report-step-header"
-				sx={{
-					px: { xs: 2, sm: 2.5 },
-					'@media print': { px: 2.5 },
-					py: 2,
-					borderBottom: '1px solid',
-					borderColor: 'divider',
-					bgcolor: theme => (theme.palette.mode === 'dark' ? 'grey.900' : 'grey.50')
-				}}
-			>
-				<Stack direction="row" alignItems="flex-start" justifyContent="space-between" flexWrap="wrap" gap={1.5}>
-					<Box sx={{ minWidth: 0 }}>
-						<Typography variant="overline" color="text.secondary" sx={{ letterSpacing: 0.5 }}>
-							Step {step.stepNumber}
-						</Typography>
-						<Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.25 }}>
-							{step.title}
-						</Typography>
-					</Box>
-					<Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-						{step.ctq && <Chip label="CTQ" size="small" color="warning" variant="outlined" sx={{ fontWeight: 600 }} />}
-						{step.partialCtqApprove && (
-							<Chip label="Partial CTQ" size="small" color="warning" variant="filled" sx={{ fontWeight: 600 }} />
-						)}
-						<Chip label={step.type} size="small" variant="outlined" />
-						<Chip label={step.status} size="small" color={stepStatusChipColor(step.status)} />
-					</Stack>
-				</Stack>
-			</Box>
-			<StepExecutionMetaSummary step={step} stepStartEndTime={stepTimingRoot} variant="report" />
-			<Box sx={{ p: 0 }}>{children}</Box>
-		</Paper>
-	);
-}
-
-function ReportTimelineSection({
-	step,
-	execution,
-	agg,
-	stepTimingRoot,
-	className
-}: {
-	step: TimelineStep;
-	execution: ExecutionData;
-	agg: Record<string, unknown>;
-	stepTimingRoot: Record<string, unknown>;
-	className?: string;
-}) {
-	switch (step.type) {
-		case 'setup':
-			return (
-				<Box className={className}>
-					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						<ExecutionSetupStep
-							step={step}
-							executionData={execution}
-							aggregatedStepsSnapshot={agg}
-							onStepComplete={noopForm}
-							readOnlyOverride
-							plainReadOnlyFields
-							hideLoggedInUser
-							labelValueFields
-						/>
-					</ReportSectionShell>
-				</Box>
-			);
-		case 'rawMaterials':
-			return (
-				<Box className={className}>
-					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						<RawMaterialsStep step={step} onStepComplete={noopForm} readOnlyOverride hideHeading />
-					</ReportSectionShell>
-				</Box>
-			);
-		case 'bom':
-			return (
-				<Box className={className}>
-					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						<BomStep
-							step={step}
-							executionData={execution}
-							onStepComplete={noopForm}
-							readOnlyOverride
-							expandAccordionsForPdf
-							labelValueFields
-						/>
-					</ReportSectionShell>
-				</Box>
-			);
-		case 'sequence': {
-			const preview = buildSequenceStepPreviewForReport(step, agg, stepTimingRoot);
-			return (
-				<Box className={className}>
-					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						{preview ? (
-							<Box
-								className="prc-report-step-preview-wrap"
-								sx={{ px: { xs: 1.5, sm: 2 }, pt: 2, pb: 2, '@media print': { px: 2 } }}
-							>
-								<StepPreview
-									previewData={preview}
-									embeddedReportMode
-									onBackToStep={noop}
-									onApproveProduction={noop}
-									onApproveCTQ={noop}
-									onPartialApproveCTQ={noop}
-									onProceedToNext={noopProceed}
-								/>
-							</Box>
-						) : (
-							<Box sx={{ p: 2.5 }}>
-								<Typography variant="body2" color="text.secondary">
-									Sequence measurement data is not available for this step (missing template or group metadata).
-								</Typography>
-							</Box>
-						)}
-					</ReportSectionShell>
-				</Box>
-			);
-		}
-		case 'inspection': {
-			const preview = buildInspectionStepPreviewForReport(step, agg, stepTimingRoot);
-			return (
-				<Box className={className}>
-					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						{preview ? (
-							<Box
-								className="prc-report-step-preview-wrap"
-								sx={{ px: { xs: 1.5, sm: 2 }, pt: 2, pb: 2, '@media print': { px: 2 } }}
-							>
-								<StepPreview
-									previewData={preview}
-									embeddedReportMode
-									onBackToStep={noop}
-									onApproveProduction={noop}
-									onApproveCTQ={noop}
-									onPartialApproveCTQ={noop}
-									onProceedToNext={noopProceed}
-								/>
-							</Box>
-						) : (
-							<Box sx={{ p: 2.5 }}>
-								<Typography variant="body2" color="text.secondary">
-									Inspection data is not available for this step.
-								</Typography>
-							</Box>
-						)}
-					</ReportSectionShell>
-				</Box>
-			);
-		}
-		case 'sapConfirmations':
-			return (
-				<Box className={className}>
-					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						<SapConfirmationStep executionData={execution} onStepComplete={noopAsyncForm} readOnlyOverride />
-					</ReportSectionShell>
-				</Box>
-			);
-		default:
-			return (
-				<Box className={className}>
-					<ReportSectionShell step={step} stepTimingRoot={stepTimingRoot}>
-						<Box sx={{ p: 2.5 }}>
-							<Typography variant="body2" color="text.secondary">
-								This step type is not supported in the consolidated report.
-							</Typography>
-						</Box>
-					</ReportSectionShell>
-				</Box>
-			);
-	}
-}
+import { ReportDocument } from './document/ReportDocument';
 
 const PrcExecutionReport = () => {
 	const { id } = useParams<{ id: string }>();
@@ -344,15 +48,7 @@ const PrcExecutionReport = () => {
 		return fullTimelineSteps;
 	}, [execution, stepReportMode.kind, fullTimelineSteps]);
 
-	const agg = useMemo(() => {
-		if (!execution?.prcAggregatedSteps || typeof execution.prcAggregatedSteps !== 'object') return {};
-		return execution.prcAggregatedSteps as Record<string, unknown>;
-	}, [execution]);
-
-	const stepTimingRoot = useMemo(() => {
-		if (!execution?.stepStartEndTime || typeof execution.stepStartEndTime !== 'object') return {};
-		return execution.stepStartEndTime as Record<string, unknown>;
-	}, [execution]);
+	const [pendingPhotos, setPendingPhotos] = useState(0);
 
 	const handlePrint = () => {
 		window.print();
@@ -409,75 +105,26 @@ const PrcExecutionReport = () => {
 	}
 
 	return (
-		<Box className="prc-execution-report-root" sx={{ p: { xs: 1.5, md: 3 }, maxWidth: 1100, mx: 'auto', pb: 6 }}>
-			<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} className="prc-report-no-print" sx={{ mb: 3 }}>
+		<Box>
+			<Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mb: 2, maxWidth: 794, mx: 'auto' }}>
 				<Button startIcon={<ArrowBack />} onClick={() => navigate(`/prc-execution/execute/${execution.id}`)}>
 					Back to execution
 				</Button>
-				<Button variant="contained" startIcon={<PictureAsPdf />} onClick={handlePrint}>
-					Print / Save as PDF
+				<Button
+					variant="contained"
+					startIcon={pendingPhotos > 0 ? <CircularProgress size={16} color="inherit" /> : <PictureAsPdf />}
+					onClick={handlePrint}
+					disabled={pendingPhotos > 0}
+				>
+					{pendingPhotos > 0 ? 'Preparing photos…' : 'Print / Save as PDF'}
 				</Button>
 			</Stack>
-
-			<Paper
-				elevation={0}
-				sx={{
-					p: { xs: 2.5, md: 3 },
-					'@media print': { p: 3 },
-					mb: 3,
-					borderRadius: 2,
-					border: '1px solid',
-					borderColor: 'divider',
-					background: theme =>
-						theme.palette.mode === 'dark'
-							? theme.palette.grey[900]
-							: `linear-gradient(135deg, ${theme.palette.primary.light}14 0%, ${theme.palette.background.paper} 48%)`
-				}}
-				className="prc-report-section prc-report-hero-paper"
-			>
-				<Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-					{isSingleStepReport ? 'PRC Step Report' : 'PRC Report'}
-				</Typography>
-				{/* <Typography variant="body2" color="text.secondary">
-					Execution #{execution.id}
-				</Typography> */}
-				{isSingleStepReport && singleTimelineStep && (
-					<Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 600 }}>
-						Step {singleTimelineStep.stepNumber}: {singleTimelineStep.title}
-					</Typography>
-				)}
-				{/* {execution.sapReferenceNumber && (
-					<Typography variant="body2" sx={{ fontFamily: 'monospace', mt: 0.5 }}>
-						SAP reference {execution.sapReferenceNumber}
-					</Typography>
-				)} */}
-				<Divider sx={{ my: 2 }} />
-				<ReportExecutionHeaderSummary execution={execution} />
-			</Paper>
-
-			<Stack spacing={3}>
-				{isSingleStepReport && singleTimelineStep ? (
-					<ReportTimelineSection
-						key={`single-${singleTimelineStep.type}-${singleTimelineStep.stepNumber}-${stepReportMode.kind === 'single' ? stepReportMode.index : 0}`}
-						step={singleTimelineStep}
-						execution={execution}
-						agg={agg}
-						stepTimingRoot={stepTimingRoot}
-						className="prc-report-section"
-					/>
-				) : (
-					timelineSteps.map((step, i) => (
-						<ReportTimelineSection
-							key={`${step.type}-${step.stepNumber}-${i}`}
-							step={step}
-							execution={execution}
-							agg={agg}
-							stepTimingRoot={stepTimingRoot}
-							className="prc-report-section"
-						/>
-					))
-				)}
-			</Stack>
+			<ReportDocument
+				execution={execution}
+				steps={isSingleStepReport && singleTimelineStep ? [singleTimelineStep] : timelineSteps}
+				singleStep={isSingleStepReport ? singleTimelineStep : null}
+				onPendingPhotosChange={setPendingPhotos}
+			/>
 		</Box>
 	);
 };

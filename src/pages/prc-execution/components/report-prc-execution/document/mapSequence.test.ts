@@ -26,7 +26,13 @@ const step = {
 	stepGroup: {
 		id: 3,
 		steps: [
-			def(11, { targetValueType: 'range', minimumAcceptanceValue: '10', maximumAcceptanceValue: '14', multipleMeasurements: true, notes: 'Measure at 3 points' }),
+			def(11, {
+				targetValueType: 'range',
+				minimumAcceptanceValue: '10',
+				maximumAcceptanceValue: '14',
+				multipleMeasurements: true,
+				notes: 'Measure at 3 points'
+			}),
 			def(12, { targetValueType: 'exact value', minimumAcceptanceValue: '5', maximumAcceptanceValue: '5', ctq: true }),
 			def(13, { targetValueType: 'ok/not ok', uom: 'None' }),
 			def(14, {
