@@ -20,7 +20,8 @@
 	padding: 30px;
 	background: #fff;
 	color: #111;
-	font-size: 12px;
+	/* Two sizes only: 12px bold for headings and column headers, 11px for everything else. */
+	font-size: 11px;
 	line-height: 1.4;
 	box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
 }
@@ -35,7 +36,9 @@
 
 .prc-doc-head {
 	display: grid;
-	grid-template-columns: 26% minmax(0, 1fr) 26%;
+	grid-template-columns: 30%;
+	grid-auto-flow: column;
+	grid-auto-columns: minmax(0, 1fr);
 	border: 1px solid var(--prc-doc-line);
 }
 
@@ -48,25 +51,20 @@
 	border-left: 1px solid var(--prc-doc-line);
 }
 
+.prc-doc-head > .prc-doc-logo-cell {
+	display: flex;
+	align-items: center;
+	background: #0b1f3a;
+}
+
 .prc-doc-logo {
 	display: block;
 	max-width: 100%;
-	max-height: 46px;
-}
-
-.prc-doc-title {
-	font-size: 15px;
-	font-weight: 700;
-}
-
-.prc-doc-subtitle {
-	margin-top: 2px;
-	font-weight: 600;
+	max-height: 40px;
 }
 
 .prc-doc-signature-note {
 	margin: 6px 0 0;
-	font-size: 10.5px;
 	color: var(--prc-doc-muted);
 }
 
@@ -93,12 +91,10 @@
 
 .prc-doc-label {
 	display: block;
-	font-size: 10px;
 	color: var(--prc-doc-muted);
 }
 
 .prc-doc-value {
-	font-weight: 600;
 	white-space: pre-wrap;
 }
 
@@ -115,7 +111,7 @@
 	padding: 4px 6px;
 	border: 1px solid var(--prc-doc-line);
 	background: var(--prc-doc-title);
-	font-size: 12.5px;
+	font-size: 12px;
 	font-weight: 700;
 	break-after: avoid;
 	page-break-after: avoid;
@@ -123,7 +119,6 @@
 
 .prc-doc-section-flags {
 	flex-shrink: 0;
-	font-weight: 600;
 }
 
 .prc-doc-strip {
@@ -150,12 +145,7 @@
 }
 
 .prc-doc-empty {
-	font-style: italic;
 	color: var(--prc-doc-muted);
-}
-
-.prc-doc-notice {
-	font-weight: 600;
 }
 
 .prc-doc-block {
@@ -164,7 +154,7 @@
 
 .prc-doc-block-title {
 	margin: 0 0 3px;
-	font-size: 11.5px;
+	font-size: 12px;
 	font-weight: 700;
 	break-after: avoid;
 	page-break-after: avoid;
@@ -173,7 +163,6 @@
 .prc-doc-notes {
 	margin: 6px 0 0;
 	padding-left: 16px;
-	font-size: 10.5px;
 }
 
 .prc-doc-approvals {
@@ -189,7 +178,6 @@
 	width: 100%;
 	border-collapse: collapse;
 	table-layout: fixed;
-	font-size: 11px;
 }
 
 .prc-doc-table th,
@@ -203,7 +191,11 @@
 
 .prc-doc-table th {
 	background: var(--prc-doc-head);
+	font-size: 12px;
 	font-weight: 700;
+	/* Headings wrap between words only, never mid-word. */
+	overflow-wrap: normal;
+	word-break: normal;
 }
 
 .prc-doc-table thead {
@@ -230,15 +222,10 @@
 
 .prc-doc-table tfoot td {
 	background: #f5f6f8;
-	font-weight: 600;
 }
 
 .prc-doc-detail > td {
 	padding: 6px;
-}
-
-.prc-doc-detail .prc-doc-table {
-	font-size: 10.5px;
 }
 
 .prc-doc-detail + .prc-doc-detail > td {
@@ -247,15 +234,18 @@
 
 /* ---------- Photos ---------- */
 
+/* One photo per line at its own size: never wider than the page, never taller than one page. */
 .prc-doc-photos {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 8px;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 10px;
 }
 
 .prc-doc-photo {
 	margin: 0;
 	min-width: 0;
+	max-width: 100%;
 	break-inside: avoid;
 	page-break-inside: avoid;
 }
@@ -286,15 +276,11 @@
 	padding: 16px 6px;
 	border: 1px dashed #9ca3af;
 	color: var(--prc-doc-muted);
-	font-style: italic;
-	text-align: center;
 	overflow-wrap: anywhere;
 }
 
 .prc-doc-photo figcaption {
 	margin-top: 3px;
-	font-size: 10.5px;
-	font-weight: 600;
 	overflow-wrap: anywhere;
 }
 
@@ -302,14 +288,11 @@
 	margin: 2px 0 0;
 	padding: 0;
 	list-style: none;
-	font-size: 10.5px;
 	overflow-wrap: anywhere;
 }
 
 .prc-doc-defects {
 	margin-top: 6px;
-	font-size: 10.5px;
-	font-weight: 600;
 }
 
 /* ---------- Print ---------- */
@@ -368,4 +351,4 @@
 }
 
 /* A single photo always fits on a page: DocPhotoStrip caps each frame's width at
-   120mm × (width / height), which caps its height at 120mm without distorting it. */
+   230mm × (width / height), which caps its height at 230mm without distorting it. */

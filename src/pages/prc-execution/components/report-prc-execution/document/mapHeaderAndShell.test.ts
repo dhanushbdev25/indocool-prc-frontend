@@ -25,7 +25,6 @@ describe('mapHeader', () => {
 	it('lists the header fields with dashes for blanks', () => {
 		const header = mapHeader(execution);
 		const byLabel = Object.fromEntries(header.fields.map(f => [f.label, f.value]));
-		expect(header.title).toBe('Process Record Card');
 		expect(header.subtitle).toBeUndefined();
 		expect(header.orderNo).toBe('1000123');
 		expect(header.date).toBe('21/11/2026');
@@ -43,7 +42,7 @@ describe('mapHeader', () => {
 
 	it('names the step in a single-step report', () => {
 		const step = { stepNumber: 4, title: 'Final inspection' } as TimelineStep;
-		expect(mapHeader(execution, step).subtitle).toBe('Step 4: Final inspection');
+		expect(mapHeader(execution, step).subtitle).toBe('4. Final inspection');
 	});
 });
 

@@ -160,7 +160,7 @@ export function mapBom(step: TimelineStep, agg: Record<string, unknown>): DocSec
 		{ key: 'reqQty', label: 'Req. qty', align: 'right' as const, width: '10%' },
 		{ key: 'actualQty', label: 'Actual qty', align: 'right' as const, width: '9%' },
 		{ key: 'catalyst', label: 'Catalyst (ml)', align: 'right' as const, width: '10%' },
-		{ key: 'recommended', label: 'Recommended (ml)', align: 'right' as const, width: '14%' },
+		{ key: 'recommended', label: 'Recommended (ml)', align: 'right' as const, width: '16%' },
 		{ key: 'range', label: 'Range', width: '9%' },
 		{ key: 'temp', label: 'Temp (°C)', align: 'right' as const, width: '8%' },
 		{ key: 'rh', label: 'RH (%)', align: 'right' as const, width: '8%' }
@@ -177,10 +177,10 @@ export function mapBom(step: TimelineStep, agg: Record<string, unknown>): DocSec
 					columns: [
 						{ key: 'material', label: 'Material', width: '14%' },
 						{ key: 'can', label: 'Can no.', width: '9%' },
-						{ key: 'hygrometer', label: 'Hygrometer', width: '11%' },
-						{ key: 'weighing', label: 'Weighing m/c', width: '11%' },
+						{ key: 'hygrometer', label: 'Hygrometer', width: '12%' },
+						{ key: 'weighing', label: 'Weighing m/c', width: '12%' },
 						{ key: 'fod', label: 'FOD', width: '10%' },
-						{ key: 'comment', label: 'Deviation / comment', width: '12%' },
+						{ key: 'comment', label: 'Deviation / comment', width: '13%' },
 						{ key: 'operator', label: 'Operator' },
 						{ key: 'captured', label: 'Captured at', width: '13%' }
 					],

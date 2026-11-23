@@ -20,8 +20,7 @@ function sapSetId(execution: ExecutionData): string {
 export function mapHeader(execution: ExecutionData, singleStep?: TimelineStep | null): DocHeaderModel {
 	const mould = [execution.mouldCode, execution.mouldId].filter(Boolean).join(' · ');
 	return {
-		title: 'Process Record Card',
-		subtitle: singleStep ? `Step ${singleStep.stepNumber}: ${singleStep.title}` : undefined,
+		subtitle: singleStep ? `${singleStep.stepNumber}. ${singleStep.title}` : undefined,
 		orderNo: dash(execution.orderId),
 		date: formatDisplayDate(execution.date),
 		fields: [

@@ -144,8 +144,8 @@ export function mapSequence(
 				columns: [
 					{ key: 'no', label: 'No', width: '5%' },
 					{ key: 'parameter', label: 'Parameter' },
-					{ key: 'criticality', label: 'Criticality', width: '9%' },
-					{ key: 'value', label: 'Value', width: '17%' },
+					{ key: 'criticality', label: 'Criticality', width: '11%' },
+					{ key: 'value', label: 'Value', width: '15%' },
 					{ key: 'target', label: 'Target', width: '12%' },
 					{ key: 'method', label: 'Method', width: '11%' },
 					{ key: 'result', label: 'Result', width: '10%' },

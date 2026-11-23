@@ -31,21 +31,24 @@ export function DocHeader({ header }: { header: DocHeaderModel }) {
 	return (
 		<header>
 			<div className="prc-doc-head">
-				<div>
+				{/* The logo artwork is white, so it sits on the same dark band as the QR label's. */}
+				<div className="prc-doc-logo-cell">
 					<img className="prc-doc-logo" src={indocoolLogo} alt="Indocool" />
-				</div>
-				<div>
-					<div className="prc-doc-title">{header.title}</div>
-					{header.subtitle && <div className="prc-doc-subtitle">{header.subtitle}</div>}
 				</div>
 				<div>
 					<span className="prc-doc-label">Order no.</span>
 					<span className="prc-doc-value">{header.orderNo}</span>
-					<span className="prc-doc-label" style={{ marginTop: 4 }}>
-						Date
-					</span>
+				</div>
+				<div>
+					<span className="prc-doc-label">Date</span>
 					<span className="prc-doc-value">{header.date}</span>
 				</div>
+				{header.subtitle && (
+					<div>
+						<span className="prc-doc-label">Step</span>
+						<span className="prc-doc-value">{header.subtitle}</span>
+					</div>
+				)}
 			</div>
 			<DocFieldGrid attached fields={[...header.fields, { label: 'Remarks', value: header.remarks, span: 4 }]} />
 			<p className="prc-doc-signature-note">
@@ -79,7 +82,7 @@ export function DocSection({ section }: { section: DocSectionModel }) {
 				</div>
 			)}
 			{section.notices.map(notice => (
-				<div key={notice} className="prc-doc-box-line prc-doc-notice">
+				<div key={notice} className="prc-doc-box-line">
 					{notice}
 				</div>
 			))}

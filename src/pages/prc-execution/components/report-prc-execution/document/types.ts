@@ -75,7 +75,7 @@ export interface DocSectionBody {
 export type DocSectionModel = DocSectionShell & DocSectionBody;
 
 export interface DocHeaderModel {
-	title: string;
+	/** Single-step report: "Step N: <title>". */
 	subtitle?: string;
 	orderNo: string;
 	date: string;

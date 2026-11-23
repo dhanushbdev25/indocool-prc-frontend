@@ -105,7 +105,15 @@ function Photo({ photo }: { photo: DocPhoto }) {
 			) : (
 				<div
 					className="prc-doc-photo-frame"
-					style={ready ? { maxWidth: `calc(120mm * ${ready.width / ready.height})` } : undefined}
+					style={
+						ready
+							? {
+									// Natural size, but never wider than the page or taller than one page.
+									width: `${ready.width}px`,
+									maxWidth: `min(100%, calc(230mm * ${ready.width / ready.height}))`
+								}
+							: undefined
+					}
 				>
 					{src && (
 						<img

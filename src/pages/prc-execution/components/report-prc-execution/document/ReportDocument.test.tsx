@@ -66,7 +66,8 @@ describe('ReportDocument', () => {
 			<ReportDocument execution={execution} steps={[inspection, pendingInspection, brokenSequence]} />
 		);
 		const sheet = container.querySelector('.prc-doc-sheet') as HTMLElement;
-		expect(within(sheet).getByText('Process Record Card')).toBeInTheDocument();
+		expect(within(sheet).queryByText('Process Record Card')).not.toBeInTheDocument();
+		expect(within(sheet).getByText('Order no.')).toBeInTheDocument();
 		expect(within(sheet).getByText('FG-20418')).toBeInTheDocument();
 		expect(within(sheet).getByText('2. Final inspection')).toBeInTheDocument();
 		expect(within(sheet).getByText('Completed')).toBeInTheDocument();
