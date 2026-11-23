@@ -45,7 +45,8 @@ import { formatCompactTimeRange, formatExecutionDuration } from '../../../utils/
 import { useFetchOperationDelayReasonComboQuery } from '../../../../../store/api/business/prc-execution/prc-execution.api';
 import { type OperationDelayReasonComboOption } from '../../../../../store/api/business/prc-execution/prc-execution.validators';
 import ImageDisplay from './ImageDisplay';
-import { debugDataTransformation, transformObjectToArray } from '../../../utils/dataTransformers';
+import { debugDataTransformation } from '../../../utils/dataTransformers';
+import { readStoredRowList } from '../../../utils/storedRowList';
 import { useCurrentRole } from '../../../../../hooks/useCurrentRole';
 import {
 	OK_NOT_OK_DEVIATION_PREVIEW_LABEL,
@@ -84,17 +85,6 @@ import {
 	type PreviewImageFile
 } from '../../../utils/inspectionPreviewImageHelpers';
 import { normalizeInspectionStepAggregatedData } from '../../../utils/inspectionAggregatedNormalization';
-
-/**
- * Fixed-table rows are saved as an array, but re-saving a step used to spread that array into an
- * index-keyed object (`{ "0": {...} }`) — the shape nearly every stored execution holds. The merge
- * that caused it is fixed, so newer saves are arrays; both have to render or the sheet reads empty.
- */
-const readStoredRowList = <T,>(value: unknown): T[] => {
-	if (Array.isArray(value)) return value as T[];
-	if (value !== null && typeof value === 'object') return transformObjectToArray(value as Record<string, T>);
-	return [];
-};
 
 const COMMENT_PREVIEW_MAX_CHARS = 50;
 
