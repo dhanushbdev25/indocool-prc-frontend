@@ -65,7 +65,13 @@
 
 .prc-doc-signature-note {
 	margin: 6px 0 0;
-	color: var(--prc-doc-muted);
+	font-weight: 700;
+}
+
+.prc-doc-order-no,
+.prc-doc-order-no .prc-doc-label {
+	font-weight: 700;
+	color: inherit;
 }
 
 /* ---------- Boxed label / value grid ---------- */
@@ -297,7 +303,7 @@
 
 	@bottom-right {
 		content: 'Page ' counter(page) ' of ' counter(pages);
-		font-size: 8pt;
+		font-size: 6.5pt;
 		color: #4b5563;
 	}
 }

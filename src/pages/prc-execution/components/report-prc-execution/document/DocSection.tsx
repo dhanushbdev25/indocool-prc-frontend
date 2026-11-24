@@ -35,7 +35,7 @@ export function DocHeader({ header }: { header: DocHeaderModel }) {
 				<div className="prc-doc-logo-cell">
 					<img className="prc-doc-logo" src={indocoolLogo} alt="Indocool" />
 				</div>
-				<div>
+				<div className="prc-doc-order-no">
 					<span className="prc-doc-label">Order no.</span>
 					<span className="prc-doc-value">{header.orderNo}</span>
 				</div>

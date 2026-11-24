@@ -66,7 +66,7 @@ export function ReportDocument({ execution, steps, singleStep, onPendingPhotosCh
 
 	return (
 		<PhotoSettledContext.Provider value={onSettled}>
-			<style>{`@page { @bottom-left { content: "${footerLeft}"; font-size: 8pt; color: #4b5563; } }`}</style>
+			<style>{`@page { @bottom-left { content: "${footerLeft}"; font-size: 6.5pt; color: #4b5563; } }`}</style>
 			<div className="prc-doc-root">
 				<article className="prc-doc-sheet">
 					<DocHeader header={header} />
