@@ -279,9 +279,17 @@ export function buildTimelineSteps(
 								const fallbackRowMappings = Array.isArray(fallbackDiagram?.rowMappings)
 									? fallbackDiagram.rowMappings
 									: [];
+								const rowMappings = directRowMappings.length > 0 ? directRowMappings : fallbackRowMappings;
+								// A fixed table whose rows have images shows them only in those rows. The part's
+								// mapping can still carry parameter-level images for it (the mapping screen keeps
+								// them but no longer shows them for a fixed table), often the same drawing as a
+								// row; passing them on showed each image twice — in the row and under the parameter.
+								const rowsHaveImages =
+									param.type === 'fixed-table' &&
+									rowMappings.some(row => Array.isArray(row?.fileName) && row.fileName.length > 0);
 								return {
-									files: directFiles.length > 0 ? directFiles : fallbackFiles,
-									rowMappings: directRowMappings.length > 0 ? directRowMappings : fallbackRowMappings
+									files: rowsHaveImages ? [] : directFiles.length > 0 ? directFiles : fallbackFiles,
+									rowMappings
 								};
 							})(),
 							id: param.id,
