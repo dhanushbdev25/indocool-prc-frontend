@@ -6,11 +6,10 @@ import {
 	type SequenceStepTimings
 } from '../../../utils/sequencePreviewMeasurements';
 import { formatCompactTimeRange } from '../../../utils/timelineCardTiming';
-import { formatAcceptanceRange } from '../../../../../components/masters/acceptanceRange';
 import { formatSequenceCriticality } from '../../../../../utils/criticality';
 import { OK_NOT_OK_TYPE_KEY } from '../../../../../utils/okNotOkLabels';
-import { EMPTY, dash, exactResult, isNotOk, okNotOkResult, rangeResult, readingsResult, withUnit } from './formatters';
-import { fixedSubTable, listSubTable, okNotOkText, readOkNotOk } from './mapSubTables';
+import { EMPTY, dash, withUnit } from './formatters';
+import { fixedSubTable, listSubTable, okNotOkText } from './mapSubTables';
 import type { DocDetail, DocRow, DocSectionBody, DocTableModel } from './types';
 
 const UNAVAILABLE = 'Data not available for this step.';
@@ -21,65 +20,32 @@ type Measurement = Record<string, unknown>;
 
 const text = (value: unknown) => (typeof value === 'string' ? value : value == null ? '' : String(value));
 
-function target(m: Measurement): string {
-	const type = text(m.targetValueType);
-	if (type === 'list' || type === 'table' || type === OK_NOT_OK_TYPE_KEY) return EMPTY;
-	if (type === 'exact value')
-		return withUnit(
-			dash(m.minimumAcceptanceValue) !== EMPTY ? m.minimumAcceptanceValue : m.maximumAcceptanceValue,
-			text(m.uom)
-		);
-	const range = formatAcceptanceRange(m.minimumAcceptanceValue as string, m.maximumAcceptanceValue as string);
-	return range ? withUnit(range.replace(' to ', ' – '), text(m.uom)) : EMPTY;
-}
-
-/** Readings saved for one parameter, with each reading's own range check when it has one. */
-function readings(saved: unknown): Array<{ value: unknown; validationStatus?: unknown }> | null {
+/** Readings saved for one parameter: one value, or several when it takes multiple measurements. */
+function readings(saved: unknown): unknown[] | null {
 	const data =
 		saved && typeof saved === 'object'
 			? ((saved as Record<string, unknown>).data ?? (saved as Record<string, unknown>).value)
 			: undefined;
 	if (!Array.isArray(data)) return null;
 	return data.map(item =>
-		item && typeof item === 'object' && 'value' in item
-			? {
-					value: (item as Record<string, unknown>).value,
-					validationStatus: (item as Record<string, unknown>).validationStatus
-				}
-			: { value: item }
+		item && typeof item === 'object' && 'value' in item ? (item as Record<string, unknown>).value : item
 	);
 }
 
-function numericValueAndResult(m: Measurement, saved: unknown): { value: string; result: string } {
-	const exact = text(m.targetValueType) === 'exact value';
-	const targetValue = dash(m.minimumAcceptanceValue) !== EMPTY ? m.minimumAcceptanceValue : m.maximumAcceptanceValue;
-	const resultOf = (value: unknown, status: unknown) => (exact ? exactResult(value, targetValue) : rangeResult(status));
-	const list = readings(saved);
-	if (list && list.length > 0) {
-		const values = list.map(r => dash(r.value));
-		const results = list.map(r => resultOf(r.value, r.validationStatus ?? m.validationStatus));
-		return {
-			value: withUnit(values.join(', '), text(m.uom)),
-			result: list.length > 1 ? readingsResult(results) : results[0]
-		};
-	}
-	return { value: withUnit(m.value, text(m.uom)), result: resultOf(m.value, m.validationStatus) };
-}
-
-function valueCell(m: Measurement, saved: unknown): { value: string; result: string; details?: DocDetail[] } {
+function valueCell(m: Measurement, saved: unknown): { value: string; details?: DocDetail[] } {
 	const type = text(m.targetValueType);
 	if (type === 'list') {
 		const sub = listSubTable(m.value, m.listConfig as ListConfig | undefined);
-		return { value: 'See below', result: sub.result, details: [{ kind: 'table', table: sub.table }] };
+		return { value: 'See below', details: [{ kind: 'table', table: sub.table }] };
 	}
 	if (type === 'table') {
 		const sub = fixedSubTable(m.value, m.tableConfig as TableConfig | undefined);
-		return { value: 'See below', result: sub.result, details: [{ kind: 'table', table: sub.table }] };
+		return { value: 'See below', details: [{ kind: 'table', table: sub.table }] };
 	}
-	if (type === OK_NOT_OK_TYPE_KEY) {
-		return { value: okNotOkText(m.value), result: okNotOkResult(readOkNotOk(m.value).value) };
-	}
-	return numericValueAndResult(m, saved);
+	if (type === OK_NOT_OK_TYPE_KEY) return { value: okNotOkText(m.value) };
+	const list = readings(saved);
+	if (list && list.length > 0) return { value: withUnit(list.map(dash).join(', '), text(m.uom)) };
+	return { value: withUnit(m.value, text(m.uom)) };
 }
 
 function timeCell(m: Measurement): string {
@@ -112,7 +78,7 @@ export function mapSequence(
 	);
 
 	const rows: DocRow[] = measurements.map((m, i) => {
-		const { value, result, details } = valueCell(m, groupData[text(m.stepId)]);
+		const { value, details } = valueCell(m, groupData[text(m.stepId)]);
 		const instrument = dash(m.instrumentId);
 		const criticality = formatSequenceCriticality(m as Parameters<typeof formatSequenceCriticality>[0]);
 		return {
@@ -122,12 +88,9 @@ export function mapSequence(
 				parameter: dash(m.parameterDescription),
 				criticality: criticality === 'None' ? EMPTY : criticality,
 				value: instrument === EMPTY ? value : `${value}\nInstrument: ${instrument}`,
-				target: target(m),
 				method: text(m.evaluationMethod) === 'Unknown' ? EMPTY : dash(m.evaluationMethod),
-				result,
 				time: timeCell(m)
 			},
-			strong: isNotOk(result) ? ['result'] : undefined,
 			details
 		};
 	});
@@ -145,11 +108,9 @@ export function mapSequence(
 					{ key: 'no', label: 'No', width: '5%' },
 					{ key: 'parameter', label: 'Parameter' },
 					{ key: 'criticality', label: 'Criticality', width: '11%' },
-					{ key: 'value', label: 'Value', width: '15%' },
-					{ key: 'target', label: 'Target', width: '12%' },
-					{ key: 'method', label: 'Method', width: '11%' },
-					{ key: 'result', label: 'Result', width: '10%' },
-					{ key: 'time', label: 'Start – End', width: '13%' }
+					{ key: 'value', label: 'Value', width: '24%' },
+					{ key: 'method', label: 'Method', width: '14%' },
+					{ key: 'time', label: 'Start – End', width: '15%' }
 				],
 				rows
 			}

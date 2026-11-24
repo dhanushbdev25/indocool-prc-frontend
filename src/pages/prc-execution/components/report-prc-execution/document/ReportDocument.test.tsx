@@ -99,4 +99,28 @@ describe('ReportDocument', () => {
 		expect(onPending).toHaveBeenLastCalledWith(0);
 		fileUrl.result = { src: 'blob:photo', loading: false, error: false };
 	});
+	it('prints timing and the approver side by side in the row under the title', () => {
+		const setup = {
+			stepNumber: 1,
+			title: 'Execution setup',
+			type: 'setup',
+			status: 'completed'
+		} as unknown as TimelineStep;
+		const withTiming = {
+			...execution,
+			stepStartEndTime: {
+				prcmetadata: {
+					startTime: '2026-11-14T13:33:00Z',
+					dataEnteredBy: { name: 'Sathoshkumar A', employeeNo: '1577' }
+				}
+			}
+		} as unknown as ExecutionData;
+		const { container } = render(<ReportDocument execution={withTiming} steps={[setup]} />);
+		const strips = container.querySelectorAll('.prc-doc-strip');
+		expect(strips).toHaveLength(1);
+		expect(strips[0].textContent).toContain('Start time');
+		expect(strips[0].textContent).toContain('Recorded by');
+		expect(strips[0].textContent).toContain('Sathoshkumar A (1577)');
+		expect(container.querySelector('.prc-doc-approvals')).toBeNull();
+	});
 });

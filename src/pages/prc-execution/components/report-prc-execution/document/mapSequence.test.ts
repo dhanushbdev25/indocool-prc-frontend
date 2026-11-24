@@ -80,29 +80,32 @@ describe('mapSequence', () => {
 		expect(body.hasData).toBe(true);
 	});
 
-	it('prints several readings in one cell with a combined result', () => {
+	it('prints several readings in one cell, with no target or result column', () => {
 		expect(byParam.P11.cells.value).toBe('12.1, 15 mm');
-		expect(byParam.P11.cells.target).toBe('10 – 14 mm');
-		expect(byParam.P11.cells.result).toBe('Not OK (1 of 2)');
-		expect(byParam.P11.strong).toEqual(['result']);
+		expect(main.columns.map(c => c.label)).toEqual([
+			'No',
+			'Parameter',
+			'Criticality',
+			'Value',
+			'Method',
+			'Start – End'
+		]);
+		expect(byParam.P11.cells).not.toHaveProperty('target');
+		expect(byParam.P11.cells).not.toHaveProperty('result');
 	});
 
-	it('compares an exact target and shows the instrument', () => {
+	it('shows the instrument under the value', () => {
 		expect(byParam.P12.cells.value).toBe('5.2 mm\nInstrument: VC-01');
-		expect(byParam.P12.cells.target).toBe('5 mm');
-		expect(byParam.P12.cells.result).toBe('Deviation +0.2');
 		expect(byParam.P12.cells.criticality).toBe('CTQ');
 	});
 
 	it('prints ok / not ok with its deviation number', () => {
 		expect(byParam.P13.cells.value).toBe('OK with deviation\nDeviation Number: DEV-9');
-		expect(byParam.P13.cells.result).toBe('OK with deviation');
 		expect(byParam.P13.cells.criticality).toBe('—');
 	});
 
 	it('puts a legacy index-keyed table under its row', () => {
 		expect(byParam.P14.cells.value).toBe('See below');
-		expect(byParam.P14.cells.result).toBe('Not OK');
 		const detail = byParam.P14.details?.[0];
 		expect(detail?.kind).toBe('table');
 		if (detail?.kind !== 'table') return;

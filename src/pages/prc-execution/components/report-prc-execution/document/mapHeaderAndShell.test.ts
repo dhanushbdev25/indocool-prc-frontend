@@ -77,9 +77,8 @@ describe('mapSectionShell', () => {
 		const shell = mapSectionShell(inspection, 's5', agg, tim);
 		expect(shell.status).toBe('In progress');
 		expect(shell.gate).toBe(true);
-		expect(shell.meta.map(m => m.label)).toEqual(['Start time', 'Planned duration', 'Actual duration']);
+		expect(shell.meta.map(m => m.label)).toEqual(['Start time', 'Planned duration']);
 		expect(shell.meta[1].value).toBe('00:20:00');
-		expect(shell.meta[2].value).toBe('00:30:00');
 		expect(shell.approvals).toEqual([{ label: 'Quality approved by', value: 'Priya (E9)' }]);
 		expect(shell.notices).toEqual(['Timing exceeded — reason: Machine down, remarks: Pump', 'Edited after submission']);
 	});

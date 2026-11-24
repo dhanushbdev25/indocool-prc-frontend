@@ -63,6 +63,8 @@ export function DocSection({ section }: { section: DocSectionModel }) {
 	const flags = [section.gate && 'Gate', section.partialGate && 'Partial gate approval', section.status]
 		.filter(Boolean)
 		.join(' · ');
+	// Timing and approvals share the row under the title: Start time, Planned duration, approved by.
+	const strip = [...section.meta, ...section.approvals];
 	return (
 		<section className="prc-doc-section">
 			<div className="prc-doc-section-title">
@@ -71,9 +73,9 @@ export function DocSection({ section }: { section: DocSectionModel }) {
 				</span>
 				<span className="prc-doc-section-flags">{flags}</span>
 			</div>
-			{section.meta.length > 0 && (
+			{strip.length > 0 && (
 				<div className="prc-doc-strip">
-					{section.meta.map(field => (
+					{strip.map(field => (
 						<div key={field.label}>
 							<span className="prc-doc-label">{field.label}</span>
 							<span className="prc-doc-value">{field.value}</span>
@@ -104,11 +106,6 @@ export function DocSection({ section }: { section: DocSectionModel }) {
 						<li key={note}>{note}</li>
 					))}
 				</ul>
-			)}
-			{section.approvals.length > 0 && (
-				<div className="prc-doc-approvals">
-					<DocFieldGrid attached columns={Math.min(section.approvals.length, 3)} fields={section.approvals} />
-				</div>
 			)}
 		</section>
 	);

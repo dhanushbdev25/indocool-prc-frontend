@@ -50,9 +50,6 @@ export function mapSectionShell(
 	if (timing.plannedSec !== null) {
 		meta.push({ label: 'Planned duration', value: formatExecutionDuration(timing.plannedSec) });
 	}
-	if ((step.type === 'sequence' || step.type === 'inspection') && timing.actualSec !== null) {
-		meta.push({ label: 'Actual duration', value: formatExecutionDuration(timing.actualSec) });
-	}
 
 	return {
 		key,
