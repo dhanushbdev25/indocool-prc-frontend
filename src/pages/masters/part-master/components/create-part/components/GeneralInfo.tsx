@@ -225,7 +225,7 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 									helperText="Drawing revision number "
 									slotProps={{
 										htmlInput: {
-											readOnly: true
+											// readOnly: true
 										}
 									}}
 									sx={{
@@ -254,7 +254,7 @@ const GeneralInfo = ({ control, gallery, onAddImage, onRemoveImage }: GeneralInf
 									helperText="Part revision number "
 									slotProps={{
 										htmlInput: {
-											readOnly: true
+											// readOnly: true
 										}
 									}}
 									sx={{
